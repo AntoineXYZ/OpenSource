@@ -1,3 +1,11 @@
+Default ports of 
+Login: 16757
+Mail: 16758
+Master: 16759, 16756, 16762
+Manager: 16759, 16756, 16762
+Worker: 16760, 16761, 16763
+PostegreSQL: 5432
+
 Shores of Hazeron
 -----------------
 	The multiplayer sandbox universe.
