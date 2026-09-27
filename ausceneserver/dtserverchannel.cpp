@@ -40,6 +40,7 @@ DtServerChannel::DtServerChannel(unsigned int id, int socketDesc,
 	m_SubAtomMgrs = 1;
 	m_SubNetPort = 0;
 	m_SubServerMode = 0;				// subordinate server mode: 0=Master, 1=Manager, 2=Worker
+	m_SubServerPort = 0;				// Needed for fallback running server on one machine, to go off by port instead of name/url 
 	m_SubTickTime = 0xffffffff;			// tick time
 	m_SubWorkers = 0;		// number of scene worker attached to manager
 	m_SubWorkerCores = 0;
@@ -1260,6 +1261,10 @@ void DtServerChannel::ReadPacket(const QByteArray& ba, QTcpSocket& /*tcpSocket*/
 				block >> sstat.m_Tick;
 				m_SubSystemClients.insert(pair<AuId, AuSystemStatus>(idSystem, sstat));
 			}
+
+			m_SubServerPort = 0;
+			if(!block.atEnd())
+				block >> m_SubServerPort;
 			m_SubCheckInTime = AuTime::Now();
 			m_SubStatusLock.unlock();
 
@@ -2021,13 +2026,16 @@ void DtServerChannel::DeferSceneWorker()
 			out << toServer.m_PeerName;
 		else
 			out << toServer.m_NetName;
+		// Tell the worker which port the manager is on. Fallback for single machine server 
+		quint16 toPort = toServer.m_ServerPort ? toServer.m_ServerPort : g_Au.ServerPort();
+		out << toPort;
 		SendPacket(ba);
 		Disconnect();
 
 		if(g_Au.m_LogMessages & LOG_ConnectDisconnect)
 		{
-			QString logmsg = tr("Deferred Scene Worker %1 to Scene Manager %2 %3.").arg(m_Id).arg(toServer.m_Id)
-				.arg(isPeer ? toServer.m_PeerName : toServer.m_NetName);
+			QString logmsg = tr("Deferred Scene Worker %1 to Scene Manager %2 %3:%4.").arg(m_Id).arg(toServer.m_Id)
+				.arg(isPeer ? toServer.m_PeerName : toServer.m_NetName).arg(toPort); //The toPort arg is newly for logging .
 			g_Au.Log(logmsg);
 		}
 	}

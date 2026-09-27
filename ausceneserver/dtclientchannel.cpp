@@ -49,7 +49,7 @@ void DtClientChannel::run()
 
 	// Connect to server.
 	//tcpSocket.abort();
-	tcpSocket.connectToHost(g_Au.ClientChannelServer(), g_Au.ServerPort());
+	tcpSocket.connectToHost(g_Au.ClientChannelServer(), g_AuDb.BossPort()); //Connects to Bossport instead of Serverport now 
 	tcpSocket.waitForConnected(10000);
 	if(tcpSocket.state() != QAbstractSocket::ConnectedState)
 	{
@@ -947,22 +947,29 @@ bool DtClientChannel::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 			QString toServer;
 			block >> toServer;
 
+			// Use standard port if port isn't sent 
+			quint16 toPort = g_Au.ServerPort();
+			if(!block.atEnd())
+				block >> toPort;
+
 			// Disconnect from current server.
 			if(tcpSocket.state() == QAbstractSocket::ConnectedState)
 				tcpSocket.disconnectFromHost();
 			if(tcpSocket.state() == QAbstractSocket::ConnectedState)
 				tcpSocket.waitForDisconnected(10000);
 
-			// Change our global scene server name.
+			// Change our global scene server name and port.
 			g_Au.SetClientChannelServer(toServer);
+			g_AuDb.SetBossPort(toPort);
 
 			// Connect to the scene server to which we were deferred.
-			tcpSocket.connectToHost(g_Au.ClientChannelServer(), g_Au.ServerPort());
+			tcpSocket.connectToHost(g_Au.ClientChannelServer(), g_AuDb.BossPort());
 			tcpSocket.waitForConnected(10000);
 			if(tcpSocket.state() != QAbstractSocket::ConnectedState)
 			{
 				// The connection attempt failed. The server or the network is probably not up.
-				g_Au.Warning(QString("ERROR! Client Channel deferred to %1. Connection failed.").arg(g_Au.ClientChannelServer()));
+				g_Au.Warning(QString("ERROR! Client Channel deferred to %1 port %2. Connection failed.")
+						.arg(g_Au.ClientChannelServer()).arg(g_AuDb.BossPort()));
 				return false;
 			}
 			
@@ -972,7 +979,7 @@ bool DtClientChannel::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 			SendStatus();
 
 			if(g_Au.m_LogMessages & LOG_ConnectDisconnect)
-				g_Au.Log("Client channel deferred to " + g_Au.ClientChannelServer());
+				g_Au.Log(QString("Client channel deferred to %1 port %2").arg(g_Au.ClientChannelServer()).arg(g_AuDb.BossPort()));
 		}
 		break;
 
@@ -1470,6 +1477,7 @@ void DtClientChannel::SendStatus()
 		out << (*it).second.m_Clients;
 		out << (*it).second.m_Tick;	// This value is in 1/2 millisecond increments. i.e. 100 = 50ms
 	}
+	out << g_AuDb.ServerChannelPort(); // Send the port last so it can be ignored if needed I guess?
 	SendPacket(ba);
 }
 
@@ -1477,8 +1485,8 @@ void DtClientChannel::SendStatus()
 void DtClientChannel::RestockNextIds()
 {
 	// Scene worker must not request ids from the scene master.
-	// NOTE: This prevents the scene manager from running at the same IP address as the scene master.
-	if(g_Au.IsSceneWorker() && g_Au.ClientChannelServer() == g_Au.SceneMasterName())
+	// Allow to use bossport and serverport as fallback here 
+	if(g_Au.IsSceneWorker() && g_Au.ClientChannelServer() == g_Au.SceneMasterName() && g_AuDb.BossPort() == g_Au.ServerPort())
 		return;
 
 	//qDebug("DtClientChannel::RestockNextIds");

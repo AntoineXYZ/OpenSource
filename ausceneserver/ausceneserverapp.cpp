@@ -85,11 +85,13 @@ AuSceneServerApp::AuSceneServerApp(int& argc, char** argv) : QCoreApplication(ar
 	m_UdpPacketsTx = 0;	// count of udp packets sent
 
 	// Get default values that may be overridden by command line options.
+	quint16 bossPort = 0;
 	quint16 chatPort = 0;
 	quint16 mgrPort = 0;
 	QString netName;
 	int role = 2;			// default 2=worker role. 0=master, 1=manager
 	quint16 scenePort = AuUtil::SceneMasterPort();
+	quint16 serverPort = 0;
 	QString settingsAlt;
 
 	// Parse command line.
@@ -175,6 +177,8 @@ AuSceneServerApp::AuSceneServerApp(int& argc, char** argv) : QCoreApplication(ar
 		m_AtomManagerCount = settings.value("Settings/atomManagers").toUInt();
 	if(settings.contains("Settings/bossName"))									// bossName
 		m_ClientChannelServer = settings.value("Settings/bossName").toString();
+	if(settings.contains("Settings/bossPort"))									// bossPort
+		bossPort = settings.value("Settings/bossPort").toUInt();
 	if(settings.contains("Settings/chatPort"))									// chatPort
 		chatPort = settings.value("Settings/chatPort").toUInt();
 	if(settings.contains("Settings/loginName"))									// loginName
@@ -196,6 +200,8 @@ AuSceneServerApp::AuSceneServerApp(int& argc, char** argv) : QCoreApplication(ar
 		netName = settings.value("Settings/netName").toString();
 	if(settings.contains("Settings/scenePort"))									// scenePort
 		scenePort = settings.value("Settings/scenePort").toUInt();
+	if(settings.contains("Settings/serverPort"))								// serverPort
+		serverPort = settings.value("Settings/serverPort").toUInt();
 	if(settings.contains("Settings/serverRole"))								// serverRole
 	{
 		QString srole = settings.value("Settings/serverRole").toString();
@@ -327,6 +333,13 @@ AuSceneServerApp::AuSceneServerApp(int& argc, char** argv) : QCoreApplication(ar
 			g_Au.SetManagerPort(mgrPort);
 		else
 			g_Au.Error("Server manager port not set. -mPORTNUMBER option needed.");
+
+		
+		// A scene master and scene manager on the same computer need different serverPorts. With this the workers can figure out by port 
+		if(serverPort)
+			g_AuDb.SetServerChannelPort(serverPort);
+		if(bossPort)
+			g_AuDb.SetBossPort(bossPort);
 
 		// Configure internet name.
 		if(!netName.isEmpty())
@@ -1139,11 +1152,11 @@ void AuSceneServerApp::StartServerChannel()
 	{
 		connect(&m_ServerChannel, SIGNAL(ConnectionClosed(unsigned int)), SLOT(ServerChannelClosed(unsigned int)));
 		QString logmsg;
-		if(m_ServerChannel.listen(QHostAddress::Any, g_Au.ServerPort()))
+		if(m_ServerChannel.listen(QHostAddress::Any, g_AuDb.ServerChannelPort()))
 		{
 			if(g_Au.m_LogMessages & LOG_ConnectDisconnect)
 			{
-				logmsg = tr("APP: Server Channel listening on TCP port %1").arg(g_Au.ServerPort());
+				logmsg = tr("APP: Server Channel listening on TCP port %1").arg(g_AuDb.ServerChannelPort());
 				g_Au.LogConnect(LoginName(), logmsg);
 			}
 		}
@@ -1151,7 +1164,7 @@ void AuSceneServerApp::StartServerChannel()
 		{
 			if(g_Au.m_LogMessages & LOG_Error)
 			{
-				logmsg = tr("APP: Server Channel failed to listen on TCP port %1").arg(g_Au.ServerPort());
+				logmsg = tr("APP: Server Channel failed to listen on TCP port %1").arg(g_AuDb.ServerChannelPort());
 				g_Au.Error(logmsg);
 			}
 		}
@@ -1169,7 +1182,7 @@ void AuSceneServerApp::StopServerChannel()
 
 		if(g_Au.m_LogMessages & LOG_ConnectDisconnect)
 		{
-			QString logmsg = tr("APP: Server Channel stopped listening on TCP port %1").arg(g_Au.ServerPort());
+			QString logmsg = tr("APP: Server Channel stopped listening on TCP port %1").arg(g_AuDb.ServerChannelPort());
 			g_Au.LogConnect(LoginName(), logmsg);
 		}
 	}
@@ -1544,6 +1557,7 @@ DhSceneServer AuSceneServerApp::DeferSceneToManager() const
 			toServer.m_NetName = (*it).second->InternetName();
 			toServer.m_NetPort = (*it).second->InternetPort();
 			toServer.m_PeerName = (*it).second->PeerAddress();
+			toServer.m_ServerPort = (*it).second->SubServerPort();
 			toServer.m_CheckIn = (*it).second->CheckInTime();
 			leastWorkers = (*it).second->SubWorkers();
 			if(!leastWorkers)

@@ -20,6 +20,9 @@ AuDbGlobal::AuDbGlobal(const QString& appName, const QString& company, AuGlobal:
 	m_HasCriticalUpdates = false;
 	m_RestockAtomCount = 0;				// ids in unused stock
 
+	m_BossPort = ServerPort();
+	m_ServerChannelPort = ServerPort();
+
 	m_NextEmpireId = 0;					// 0=invalid
 
 	m_NextBuildingDesignId = 0;			// 0=invalid

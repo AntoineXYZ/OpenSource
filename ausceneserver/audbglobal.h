@@ -83,6 +83,12 @@ public:
 
 	virtual void BidRevoked(const AuId& idFrom, const QString& channelName);
 
+	// Returns the port on which the boss server listens for its subordinate servers.
+	inline quint16 BossPort() const
+	{
+		return m_BossPort;
+	}
+
 	inline bool BuildingDesignIdsNeedRestock() const
 	{
 		return m_RestockBuildingDesignCount ? false : true;
@@ -386,6 +392,21 @@ public:
 
 	virtual void SendAtomChat(const AuCommPacket& msg);
 
+	inline quint16 ServerChannelPort() const
+	{
+		return m_ServerChannelPort;
+	}
+
+	inline void SetBossPort(quint16 bossPort)
+	{
+		m_BossPort = bossPort;
+	}
+
+	inline void SetServerChannelPort(quint16 serverPort)
+	{
+		m_ServerChannelPort = serverPort;
+	}
+
 	virtual void BdDesignAdded(quint32 designId);
 	virtual void BdDesignChanged(quint32 designId);
 	virtual void BdDesignDeactivated(quint32 designId);
@@ -602,6 +623,9 @@ private:
 	QMutex								m_muDbDesignTransIt;					// Guards m_DesignTransactionsIt.
 
 	QMutex					m_muDbStoryIds;			// Added/Changed StoryIds
+
+	quint16					m_BossPort;
+	quint16					m_ServerChannelPort;
 
 	AuId					m_NextAtomId;			// 0=invalid
 	AuId					m_LastAtomId;			// last assigned from boss

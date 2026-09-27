@@ -60,7 +60,7 @@ public:
 		P_CityMailRequested,
 		P_CollectBounty,
 		P_CreditCityBank,		// Credit city bank treasury with money.
-		P_Deferred,			// Sent by boss to subordinate with nu boss name.
+		P_Deferred,			// Sent by boss to subordinate with nu boss name and server channel port. Originally only with nu boss name 
 		P_EmpireChanged,	// Sent by boss to subs with empire record added/changed.
 		P_EmpireChg,
 		P_EmpireChgFlag,	// Sent by sub to boss with empire id and nu flag.
@@ -308,6 +308,17 @@ public:
 		unsigned int subPlayers = m_SubPlayers.size();
 		m_SubStatusLock.unlock();
 		return subPlayers;
+	}
+
+	// Oninnaise - 
+	// Returns the port on which the subordinate listens for its own subordinates.
+	// Returns 0 until its first P_Status arrives, or if its P_Status doesn't include the port.
+	inline quint16 SubServerPort() const
+	{
+		m_SubStatusLock.lockForRead();
+		quint16 subServerPort = m_SubServerPort;
+		m_SubStatusLock.unlock();
+		return subServerPort;
 	}
 
 	inline unsigned int SubWorkerCores() const
@@ -698,6 +709,7 @@ private:
 	quint16								m_SubNetPort;			// sub server port for internet client access
 	AuPlayerOnlineStatusVector			m_SubPlayers;			// status about all players attached to subordinate worker(s)
 	quint8								m_SubServerMode;		// subordinate server mode: 0=Master, 1=Manager, 2=Worker
+	quint16								m_SubServerPort;		// sub server port for its subordinate servers 
 	unordered_map<AuId, AuSystemStatus, AuIdHash> 		m_SubSystemClients;		// Status of individual systems assigned to system clients
 	quint32								m_SubTickTime;			// tick time. 0xffffffff until at least one P_Status received.
 	quint16								m_SubWorkerCores;		// number of scene worker processor cores attached to manager

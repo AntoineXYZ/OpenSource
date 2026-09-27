@@ -203,11 +203,13 @@ public:
 	QString			m_NetName;	// Internet resolvable name/ip address.
 	quint16			m_NetPort;	// Port on which the server is listening.
 	QString			m_PeerName;	// Name on internal lan. PeerAddress of client channel.
+	quint16			m_ServerPort;	// Port on which the server listens for workers. 
 
 	DhSceneServer()
 	{
 		m_Id = 0;
 		m_NetPort = 0;
+		m_ServerPort = 0;
 	}
 
 	DhSceneServer(const DhSceneServer& c)
@@ -217,6 +219,7 @@ public:
 		m_NetName = c.m_NetName;
 		m_NetPort = c.m_NetPort;
 		m_PeerName = c.m_PeerName;
+		m_ServerPort = c.m_ServerPort;
 	}
 
 	DhSceneServer& operator=(const DhSceneServer& c)
@@ -226,6 +229,7 @@ public:
 		m_NetName = c.m_NetName;
 		m_NetPort = c.m_NetPort;
 		m_PeerName = c.m_PeerName;
+		m_ServerPort = c.m_ServerPort;
 
 		return *this;
 	}
