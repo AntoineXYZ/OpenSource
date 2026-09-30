@@ -65,6 +65,11 @@ RUN make -j"$(nproc)" \
         sdl2 \
         openal
 
+RUN test -s /opt/mxe/usr/x86_64-pc-linux-gnu/bin/ninja \
+    && test -s "/opt/mxe/usr/${MXE_TARGET}/share/cmake/mxe-conf.cmake" \
+    && test -s "/opt/mxe/usr/bin/${MXE_TARGET}-g++" \
+    && /opt/mxe/usr/x86_64-pc-linux-gnu/bin/ninja --version
+
 ENV PATH="/opt/mxe/usr/bin:${PATH}"
 ENV MXE_TARGET="${MXE_TARGET}"
 

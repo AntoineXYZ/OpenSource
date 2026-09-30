@@ -8,6 +8,7 @@ import ipaddress
 import json
 import os
 import re
+import secrets
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -29,6 +30,7 @@ COMMON_DEFAULTS = {
     "AU_DB_OWNER_PASSWORD": "Light",
     "AU_DB_PASSWORD": "Gold",
     "SERVER_LOGIN_PASSWORD": "Au*Server",
+    "INTERNAL_AUTH_TOKEN": "",
     "CREATE_LOCAL_PLAYER": "true",
     "LOCAL_PLAYER_NAME": "local",
     "LOCAL_PLAYER_PASSWORD": "local",
@@ -44,6 +46,7 @@ PRODUCTION_DEFAULTS = {
     "AU_DB_OWNER_PASSWORD": "",
     "AU_DB_PASSWORD": "",
     "SERVER_LOGIN_PASSWORD": "",
+    "INTERNAL_AUTH_TOKEN": "",
     "CREATE_LOCAL_PLAYER": "false",
     "LOCAL_PLAYER_NAME": "",
     "LOCAL_PLAYER_PASSWORD": "",
@@ -124,6 +127,15 @@ def main() -> None:
     if args.config is not None:
         settings["SERVER_BUILD_CONFIG"] = args.config
 
+    # Keep the local token stable across rebuilds without checking it into Git.
+    if environment == "local" and not settings["INTERNAL_AUTH_TOKEN"]:
+        previous = read_env(ROOT / "build" / "server" / "local" / "compose.env")
+        settings["INTERNAL_AUTH_TOKEN"] = previous.get("INTERNAL_AUTH_TOKEN") or secrets.token_hex(32)
+    if settings["INTERNAL_AUTH_TOKEN"] and not re.fullmatch(
+        r"[A-Za-z0-9_-]{32,}", settings["INTERNAL_AUTH_TOKEN"]
+    ):
+        raise SystemExit("INTERNAL_AUTH_TOKEN must have at least 32 letters, digits, - or _")
+
     workers = integer(settings, "SCENE_WORKERS", 1, 50)
     atom_managers = integer(settings, "ATOM_MANAGERS", 1, 256)
     login_worker_port = integer(settings, "LOGIN_WORKER_PORT", 1024, 65535)
@@ -164,6 +176,7 @@ def main() -> None:
             "AU_DB_OWNER_PASSWORD",
             "AU_DB_PASSWORD",
             "SERVER_LOGIN_PASSWORD",
+            "INTERNAL_AUTH_TOKEN",
         )
         missing = [name for name in required if not settings[name] or settings[name] == "CHANGE_ME"]
         if missing:
@@ -192,6 +205,7 @@ def main() -> None:
         "AU_MAIL_DB_HOST": "postgres",
         "AU_UNIVERSE_DB_HOST": "postgres",
         "AU_DB_PASSWORD": settings["AU_DB_PASSWORD"],
+        "AU_INTERNAL_TOKEN": settings["INTERNAL_AUTH_TOKEN"],
         "AU_PUBLIC_ENDPOINTS": "1",
     }
     services: dict[str, object] = {}
@@ -199,6 +213,7 @@ def main() -> None:
         scene_port = worker_port_base + (index - 1) * 2
         chat_port = scene_port + 1
         worker: dict[str, object] = {
+            "container_name": f"{settings['COMPOSE_PROJECT_NAME']}-scene-worker-{index}",
             "image": settings["SERVER_IMAGE"],
             "pull_policy": "never",
             "restart": "unless-stopped",

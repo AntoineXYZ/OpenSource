@@ -22,6 +22,7 @@ private:
 	unsigned int						m_BytesTx;				// Total bytes sent to client
 	quint32								m_idPlayer;
 	bool								m_LocalClient;			// true if the client appears to be on our LAN
+	QString							m_PeerAddress;		// Keep the address after the peer disconnects.
 	quint32								m_PacketSize;			// Data packet size
 	int									m_PacketSizeBytesLeft;	// Number of packet size bytes we are expecting.
 	int									m_socketDescriptor;		// Provided in the constructor.

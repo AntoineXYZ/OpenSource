@@ -7,6 +7,7 @@ x-server-environment: &server-environment
   AU_MAIL_DB_HOST: postgres
   AU_UNIVERSE_DB_HOST: postgres
   AU_DB_PASSWORD: ${AU_DB_PASSWORD}
+  AU_INTERNAL_TOKEN: ${INTERNAL_AUTH_TOKEN}
   AU_PUBLIC_ENDPOINTS: "1"
 
 x-server: &server
@@ -26,6 +27,7 @@ x-server: &server
 
 services:
   postgres:
+    container_name: ${COMPOSE_PROJECT_NAME}-postgres
     image: ${POSTGRES_IMAGE}
     pull_policy: never
     build:
@@ -57,6 +59,7 @@ services:
 
   login-master:
     <<: *server
+    container_name: ${COMPOSE_PROJECT_NAME}-login-master
     command: ["/opt/openshores/bin/AuLoginServer", "-master"]
     ports:
       - "${BIND_ADDRESS}:16757:16757/tcp"
@@ -73,6 +76,7 @@ services:
 
   login-worker:
     <<: *server
+    container_name: ${COMPOSE_PROJECT_NAME}-login-worker
     command:
       - /opt/openshores/bin/AuLoginServer
       - -n${PUBLIC_HOST}
@@ -92,6 +96,7 @@ services:
 
   mail-master:
     <<: *server
+    container_name: ${COMPOSE_PROJECT_NAME}-mail-master
     command: ["/opt/openshores/bin/AuMailServer", "-master"]
     depends_on:
       postgres:
@@ -113,6 +118,7 @@ services:
 
   mail-worker:
     <<: *server
+    container_name: ${COMPOSE_PROJECT_NAME}-mail-worker
     command:
       - /opt/openshores/bin/AuMailServer
       - -n${PUBLIC_HOST}
@@ -134,6 +140,7 @@ services:
 
   scene-master:
     <<: *server
+    container_name: ${COMPOSE_PROJECT_NAME}-scene-master
     command:
       - /opt/openshores/bin/AuSceneServer
       - -master
@@ -162,6 +169,7 @@ services:
 
   scene-manager:
     <<: *server
+    container_name: ${COMPOSE_PROJECT_NAME}-scene-manager
     command:
       - /opt/openshores/bin/AuSceneServer
       - -manager

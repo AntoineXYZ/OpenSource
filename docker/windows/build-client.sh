@@ -41,11 +41,40 @@ mkdir -p "$local_output_dir" "$local_editor_root"
 
 cd "$repo_root"
 
+toolchain_healthy() {
+    docker run --rm "$image" /bin/bash -ec '
+        for file in \
+            /opt/mxe/usr/x86_64-pc-linux-gnu/bin/ninja \
+            "/opt/mxe/usr/${MXE_TARGET}/share/cmake/mxe-conf.cmake" \
+            "/opt/mxe/usr/bin/${MXE_TARGET}-g++"; do
+            if [[ ! -s "$file" ]]; then
+                echo "error: missing or empty toolchain file: $file" >&2
+                exit 1
+            fi
+        done
+        /opt/mxe/usr/x86_64-pc-linux-gnu/bin/ninja --version >/dev/null
+    '
+}
+
 if ! docker image inspect "$image" >/dev/null 2>&1; then
     docker build \
         --tag "$image" \
         --file docker/windows/Dockerfile \
         docker/windows
+fi
+
+if ! toolchain_healthy; then
+    echo "Windows toolchain image is damaged; rebuilding it without cached layers." >&2
+    docker build \
+        --no-cache \
+        --tag "$image" \
+        --file docker/windows/Dockerfile \
+        docker/windows
+fi
+
+if ! toolchain_healthy; then
+    echo "error: Windows toolchain image failed validation after build" >&2
+    exit 1
 fi
 
 image_id=$(docker image inspect "$image" --format '{{.Id}}')
@@ -110,6 +139,11 @@ docker run --rm \
                "$package_dir/bearer" \
             -L "$target_prefix/bin" \
                "$target_prefix/qt5/bin"
+
+        # MXE can supply a Mesa opengl32.dll here. Qt uses the system WGL
+        # implementation, so loading both OpenGL DLLs breaks widget painting.
+        # Let the Windows loader resolve opengl32.dll from System32 for the game.
+        rm -f "$package_dir/opengl32.dll" "$package_dir/libgallium_wgl.dll"
 
         python3 /src/docker/support/export-intellisense.py \
             --compile-commands /build/compile_commands.json \

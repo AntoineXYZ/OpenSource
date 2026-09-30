@@ -121,6 +121,8 @@ docker run --rm \
             -L /output/bin \
                "$target_prefix/bin" \
                "$target_prefix/qt5/bin"
+        # Use the system OpenGL DLL consistently with the Qt WGL context.
+        rm -f "$game/opengl32.dll" "$game/libgallium_wgl.dll"
         python3 /opt/mxe/tools/copydlldeps.py \
             "$launcher" \
             -C "$launcher" \

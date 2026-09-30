@@ -40,7 +40,8 @@ void DtMailServer::run()
 			//SLOT(NetworkError(QAbstractSocket::SocketError)));
 
 	//qDebug("DtMailServer::run - Connection established.");
-	QString peerAddr = tcpSocket.peerAddress().toString();
+	m_PeerAddress = tcpSocket.peerAddress().toString();
+	const QString peerAddr = m_PeerAddress;
 	if(peerAddr.left(8) == "192.168." || peerAddr == "127.0.0.1" || peerAddr.left(15) == "::ffff:192.168.")
 		m_LocalClient = true;	// This is cheesy but it works for my internal purposes.
 	QString logmsg;
@@ -499,7 +500,7 @@ void DtMailServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 		if(!g_Au.IsMailWorker())
 		{
 			// MailMaster app keeps track of live MailServers.
-			QString serverName = tcpSocket.peerAddress().toString();
+			QString serverName = m_PeerAddress;
 			if(!serverName.isEmpty())
 			{
 				DhMailServer srv;
@@ -560,7 +561,7 @@ void DtMailServer::Defer(QTcpSocket& tcpSocket)
 {
 	// Key value is calculated to defer to a mail server based on the peer
 	// address.
-	QString peerAddr = tcpSocket.peerAddress().toString();
+	QString peerAddr = m_PeerAddress;
 	unsigned int key = 0;
 	unsigned int plen = peerAddr.count();
 	if(plen == 1)

@@ -196,11 +196,15 @@ Important settings:
 | `SCENE_WORKERS` | Number of generated scene-worker containers |
 | `ATOM_MANAGERS` | Atom-manager bundles per scene worker |
 | `BIND_ADDRESS` | Host interface used for published ports |
+| `INTERNAL_AUTH_TOKEN` | Shared secret for login worker registration and scene server avatar events; required in production and generated locally when omitted |
 | `PUBLIC_HOST` | Host/IP placed in client redirect packets |
 | `*_PORT` | Published role and worker ports |
 | `POSTGRES_VOLUME` | Persistent database volume name |
 | `AU_DB_PASSWORD` | Runtime database-user password |
 | `SERVER_LOGIN_PASSWORD` | Password used by scene server accounts |
+
+For production, generate `INTERNAL_AUTH_TOKEN` with `python3 -c 'import secrets; print(secrets.token_hex(32))'` and keep it in the private environment file.
+The login master, login worker, and every scene server must receive the same token as `AU_INTERNAL_TOKEN`.
 
 Generated Compose environment and worker services live under `build/server/local/` or `build/server/production/`.
 

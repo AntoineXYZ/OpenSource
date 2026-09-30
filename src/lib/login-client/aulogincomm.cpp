@@ -542,6 +542,7 @@ void AuLoginComm::PlayerUnitBorn(const AuId& motherUnit, const AuId& idUnit)
 			out << (quint8)DtLoginServer::P_UnitBorn4;
 			out << motherUnit;
 			out << idUnit;
+			out << qgetenv("AU_INTERNAL_TOKEN");
 			AuUtil::WritePacketSize(tcpSocket, ba.size());
 			tcpSocket.write(ba);
 			tcpSocket.waitForBytesWritten();
@@ -591,7 +592,7 @@ void AuLoginComm::PlayerUnitDied(const AuId& avatar)
 			out.setVersion(QDataStream::Qt_4_1);
 			out << (quint8)DtLoginServer::P_UnitDied;
 			out << avatar;
-			out << AuId::Haxus();				// A little weak verification for the server.
+			out << qgetenv("AU_INTERNAL_TOKEN");
 			AuUtil::WritePacketSize(tcpSocket, ba.size());
 			tcpSocket.write(ba);
 			tcpSocket.waitForBytesWritten();
@@ -833,7 +834,7 @@ void AuLoginComm::TransferPlayerUnit(const AuId& avatar, const AuId& accepter)
 			out << (quint8)DtLoginServer::P_UnitTransfer;
 			out << avatar;
 			out << accepter;
-			out << AuId::Haxus();				// A little weak verification for the server.
+			out << qgetenv("AU_INTERNAL_TOKEN");
 			AuUtil::WritePacketSize(tcpSocket, ba.size());
 			tcpSocket.write(ba);
 			tcpSocket.waitForBytesWritten();

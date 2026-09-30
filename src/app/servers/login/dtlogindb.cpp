@@ -15,9 +15,12 @@
 #include "dhdna.h"
 #include <QCryptographicHash>
 #include <QFile>
+#include <QProcess>
+#include <QRandomGenerator>
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QStringList>
 #include <QTextStream>
 
 DtLoginDb::DtLoginDb(QObject* parent) : QThread(parent), m_semAlive(1)
@@ -451,10 +454,6 @@ void DtLoginDb::PerformQueuedOperations()
 	// Player password reset.
 	if(!auLoginServerApp->m_ResetPassword.isEmpty())
 	{
-		// Seed dice for generating random passwords.
-		AuDice dice;
-		dice.TimeSeed();
-
 		for(QVector<AuResetPassword>::iterator it = auLoginServerApp->m_ResetPassword.begin();
 				it != auLoginServerApp->m_ResetPassword.end(); it++)
 		{
@@ -462,7 +461,10 @@ void DtLoginDb::PerformQueuedOperations()
 			if(player.Select((*it).m_Name))
 			{
 				// Generate a new password randomly.
-				QString password = dice.RandomPassword(10);
+				const QString passChars("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789");
+				QString password;
+				for(int i = 0; i < 16; ++i)
+					password += passChars.at(QRandomGenerator::system()->bounded(passChars.size()));
 
 				// Put password into a byte array.
 				QByteArray passBytes;
@@ -491,7 +493,7 @@ void DtLoginDb::PerformQueuedOperations()
 				char tmpname[64];
 				strcpy(tmpname, "/tmp/AuLoginServerXXXXXX");
 				int fd = mkstemp(tmpname);
-				if(fd)
+				if(fd >= 0)
 				{
 					QFile file;
 					if(file.open(fd, QIODevice::WriteOnly))
@@ -513,11 +515,18 @@ void DtLoginDb::PerformQueuedOperations()
 						file.close();
 
 						// Mail the file to the address.
-						QString mailcmd = QString("mail -s 'Shores of Hazeron Password' %1 < %2").arg(player.Email()).arg(tmpname);
-						//sprintf(mailcmd, "mail -s 'Shores of Hazeron Password' "
-						//		"%s < %s", (const char*)player.m_email.toLatin1(),
-						//		tmpname);
-						if(system((const char*)mailcmd.toLatin1()) == -1)
+						QProcess mail;
+						mail.setStandardInputFile(QString::fromLatin1(tmpname));
+						mail.start("mail", QStringList() << "-s" << "Shores of Hazeron Password"
+							<< "--" << player.Email());
+						bool sent = mail.waitForStarted(5000) && mail.waitForFinished(30000) &&
+							mail.exitStatus() == QProcess::NormalExit && mail.exitCode() == 0;
+						if(!sent && mail.state() != QProcess::NotRunning)
+						{
+							mail.kill();
+							mail.waitForFinished();
+						}
+						if(!sent)
 						{
 							QString logmsg = QObject::tr("Password NOT sent to %1 at %2 due to system error")
 								.arg((*it).m_Name).arg(player.Email());

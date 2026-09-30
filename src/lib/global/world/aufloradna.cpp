@@ -292,6 +292,11 @@ void AuFloraDNA::operator<<(QDataStream& in)
 {
 	QByteArray ba;
 	in >> ba;
+	if(ba.size() != sizeof(AuFloraDNA))
+	{
+		in.setStatus(QDataStream::ReadCorruptData);
+		return;
+	}
 	memcpy(this, ba.constData(), sizeof(AuFloraDNA));
 }
 
@@ -311,6 +316,11 @@ void AuFloraDNA::RxUpdate(QDataStream& fromServer)
 {
 	QByteArray ba;
 	fromServer >> ba;
+	if(ba.size() != sizeof(AuFloraDNA))
+	{
+		fromServer.setStatus(QDataStream::ReadCorruptData);
+		return;
+	}
 	memcpy(this, ba.constData(), sizeof(AuFloraDNA));
 }
 

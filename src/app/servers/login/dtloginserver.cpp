@@ -14,6 +14,19 @@
 #include "hashpack.h"
 #include <QHostAddress>
 
+static bool ReadInternalToken(QDataStream& stream)
+{
+	QByteArray supplied;
+	stream >> supplied;
+	const QByteArray expected = qgetenv("AU_INTERNAL_TOKEN");
+	if(stream.status() != QDataStream::Ok || expected.isEmpty() || supplied.size() != expected.size())
+		return false;
+	unsigned char difference = 0;
+	for(int i = 0; i < expected.size(); ++i)
+		difference |= static_cast<unsigned char>(supplied.at(i) ^ expected.at(i));
+	return difference == 0;
+}
+
 DtLoginServer::DtLoginServer(unsigned int id, int socketDesc, QObject* parent) : QThread(parent)
 {
 	m_Id = id;
@@ -43,7 +56,8 @@ void DtLoginServer::run()
 			//SLOT(NetworkError(QAbstractSocket::SocketError)));
 
 	//qDebug("DtLoginServer::run - Connection established.");
-	QString peerAddr = tcpSocket.peerAddress().toString();
+	m_PeerAddress = tcpSocket.peerAddress().toString();
+	const QString peerAddr = m_PeerAddress;
 	if(peerAddr.left(8) == "192.168." || peerAddr == "127.0.0.1" || peerAddr.left(15) == "::ffff:192.168.")
 		m_LocalClient = true;	// This is cheesy but it works for my purposes.
 	QString logmsg;
@@ -804,7 +818,7 @@ void DtLoginServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 				if(g_Au.IsLoginWorker())
 				{
 					// Running as login server; process the login request.
-					QString serverName = tcpSocket.peerAddress().toString();
+					QString serverName = m_PeerAddress;
 					AuLoginAttempt login(m_Id, serverName, uname, upass, (type == P_LoginTest)?true:false);
 					auLoginServerApp->m_LoginMutex.lock();
 					auLoginServerApp->m_LoginAttempts.append(login);
@@ -850,7 +864,7 @@ void DtLoginServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 				{
 					// Running as login server; process the login request.
 					ticket.Crypt(AuUtil::NetCryptKey(0x0101));	// Decrypt the ticket.
-					QString serverName = tcpSocket.peerAddress().toString();
+					QString serverName = m_PeerAddress;
 					AuLoginSteamAttempt login(m_Id, serverName, ticket, (type == P_LoginSteamTest)?true:false);
 					auLoginServerApp->m_LoginMutex.lock();
 					auLoginServerApp->m_LoginSteamAttempts.append(login);
@@ -890,7 +904,7 @@ void DtLoginServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 				quint32 confirmNum;
 				block >> confirmNum;
 
-				QString serverName = tcpSocket.peerAddress().toString();
+				QString serverName = m_PeerAddress;
 				AuLoginQuery query(m_Id, idPlayer, confirmNum, false, serverName);
 				auLoginServerApp->m_LoginMutex.lock();
 				auLoginServerApp->m_LoginQueries.append(query);
@@ -912,7 +926,7 @@ void DtLoginServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 				quint32 confirmNum;
 				block >> confirmNum;
 
-				QString serverName = tcpSocket.peerAddress().toString();
+				QString serverName = m_PeerAddress;
 				AuLoginQuery query(m_Id, idPlayer, confirmNum, true, serverName);
 				auLoginServerApp->m_LoginMutex.lock();
 				auLoginServerApp->m_LoginQueries.append(query);
@@ -933,7 +947,7 @@ void DtLoginServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 			quint32 confirmNum;
 			block >> confirmNum;
 
-			QString serverName = tcpSocket.peerAddress().toString();
+			QString serverName = m_PeerAddress;
 			AuLogoutAttempt logout(idPlayer, confirmNum, serverName);
 			auLoginServerApp->m_LoginMutex.lock();
 			auLoginServerApp->m_LogoutAttempts.append(logout);
@@ -1023,7 +1037,7 @@ void DtLoginServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 			{
 				// Running as login server; process the contacts request.
 				QString uname = unameE.DecryptString(AuUtil::NetCryptKey(0x0202));
-				QString serverName = tcpSocket.peerAddress().toString();
+				QString serverName = m_PeerAddress;
 				AuLoginContacts logincontacts(m_Id, serverName, uname, upass);
 				auLoginServerApp->m_LoginContactsMutex.lock();
 				auLoginServerApp->m_ContactsQueries.append(logincontacts);
@@ -1071,7 +1085,7 @@ void DtLoginServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 			{
 				// Running as login server; process the contacts request.
 				QString uname = unameE.DecryptString(AuUtil::NetCryptKey(0x0303));
-				QString serverName = tcpSocket.peerAddress().toString();
+				QString serverName = m_PeerAddress;
 				AuLoginContacts logincontacts(m_Id, serverName, uname, upass, &contacts);
 				auLoginServerApp->m_LoginContactsMutex.lock();
 				auLoginServerApp->m_ContactsAdds.append(logincontacts);
@@ -1127,7 +1141,7 @@ void DtLoginServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 			{
 				// Running as login server; process the contacts request.
 				QString uname = unameE.DecryptString(AuUtil::NetCryptKey(0x0303));
-				QString serverName = tcpSocket.peerAddress().toString();
+				QString serverName = m_PeerAddress;
 				AuLoginContacts logincontacts(m_Id, serverName, uname, upass, &contacts);
 				auLoginServerApp->m_LoginContactsMutex.lock();
 				auLoginServerApp->m_ContactsDeletes.append(logincontacts);
@@ -1166,7 +1180,7 @@ void DtLoginServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 			{
 				// Running as login server; process the contacts request.
 				QString uname = unameE.DecryptString(AuUtil::NetCryptKey(0x0404));
-				QString serverName = tcpSocket.peerAddress().toString();
+				QString serverName = m_PeerAddress;
 				AuLoginContacts logincontacts(m_Id, serverName, uname, upass, &contact);
 				auLoginServerApp->m_LoginContactsMutex.lock();
 				auLoginServerApp->m_ContactAdds.append(logincontacts);
@@ -1195,7 +1209,7 @@ void DtLoginServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 			{
 				// Running as login server; process the contacts request.
 				QString uname = unameE.DecryptString(AuUtil::NetCryptKey(0x0404));
-				QString serverName = tcpSocket.peerAddress().toString();
+				QString serverName = m_PeerAddress;
 				AuLoginContacts logincontacts(m_Id, serverName, uname, upass, idContact);
 				auLoginServerApp->m_LoginContactsMutex.lock();
 				auLoginServerApp->m_ContactDeletes.append(logincontacts);
@@ -1213,13 +1227,18 @@ void DtLoginServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 		if(!g_Au.IsLoginWorker())
 		{
 			// LoginMaster app keeps track of live LoginServers.
-			QString serverName = tcpSocket.peerAddress().toString();
+			QString serverName = m_PeerAddress;
 			if(!serverName.isEmpty())
 			{
 				DhLoginServer srv;
 				srv.m_PeerAddr = serverName;
 				block >> srv.m_NetName;
 				block >> srv.m_NetPort;
+				if(!ReadInternalToken(block) || srv.m_NetName.isEmpty() || !srv.m_NetPort)
+				{
+					m_BadPackets++;
+					break;
+				}
 				srv.m_CheckIn = g_Au.CurrentUTC();
 
 				QString serverKey = QString("%1:%2").arg(srv.m_PeerAddr).arg(srv.m_NetPort);
@@ -1263,7 +1282,7 @@ void DtLoginServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 			block >> confirmNum;
 			block >> idUnit;
 
-			QString serverName = tcpSocket.peerAddress().toString();
+			QString serverName = m_PeerAddress;
 			AuSetUnit setUnit(serverName, idPlayer, confirmNum, idUnit, false);
 			auLoginServerApp->m_LoginMutex.lock();
 			auLoginServerApp->m_SetUnit.append(setUnit);
@@ -1296,7 +1315,7 @@ void DtLoginServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 			block >> confirmNum;
 			block >> idUnit;
 
-			QString serverName = tcpSocket.peerAddress().toString();
+			QString serverName = m_PeerAddress;
 			AuSetUnit setUnit(serverName, idPlayer, confirmNum, idUnit, true);
 			auLoginServerApp->m_LoginMutex.lock();
 			auLoginServerApp->m_SetUnit.append(setUnit);
@@ -1326,8 +1345,13 @@ void DtLoginServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 
 			block >> motherUnit;
 			block >> idUnit;
+			if(!ReadInternalToken(block))
+			{
+				m_BadPackets++;
+				break;
+			}
 
-			QString serverName = tcpSocket.peerAddress().toString();
+			QString serverName = m_PeerAddress;
 			AuUnitBorn unitBorn(serverName, motherUnit, idUnit);
 			auLoginServerApp->m_LoginMutex.lock();
 			auLoginServerApp->m_UnitBorn.append(unitBorn);
@@ -1347,19 +1371,19 @@ void DtLoginServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 		if(g_Au.IsLoginWorker())
 		{
 			AuId idUnit;
-			AuId idHaxus;
 
 			block >> idUnit;
-			block >> idHaxus;
 
-			if(idHaxus == AuId::Haxus())
+			if(!ReadInternalToken(block))
 			{
-				QString serverName = tcpSocket.peerAddress().toString();
-				AuUnitDied unitDied(serverName, idUnit);
-				auLoginServerApp->m_LoginMutex.lock();
-				auLoginServerApp->m_UnitDied.append(unitDied);
-				auLoginServerApp->m_LoginMutex.unlock();
+				m_BadPackets++;
+				break;
 			}
+			QString serverName = m_PeerAddress;
+			AuUnitDied unitDied(serverName, idUnit);
+			auLoginServerApp->m_LoginMutex.lock();
+			auLoginServerApp->m_UnitDied.append(unitDied);
+			auLoginServerApp->m_LoginMutex.unlock();
 
 			// Ack
 			QByteArray ba;
@@ -1382,20 +1406,20 @@ void DtLoginServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 		{
 			AuId avatar;
 			AuId accepter;
-			AuId idHaxus;
 
 			block >> avatar;
 			block >> accepter;
-			block >> idHaxus;
 
-			if(idHaxus == AuId::Haxus())
+			if(ReadInternalToken(block))
 			{
-				QString serverName = tcpSocket.peerAddress().toString();
+				QString serverName = m_PeerAddress;
 				AuUnitTransfer unitTransfer(serverName, avatar, accepter);
 				auLoginServerApp->m_LoginMutex.lock();
 				auLoginServerApp->m_UnitTransfer.append(unitTransfer);
 				auLoginServerApp->m_LoginMutex.unlock();
 			}
+			else
+				m_BadPackets++;
 		}
 		else
 		{
@@ -1546,7 +1570,7 @@ void DtLoginServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 			block >> queryUnit;
 			if(g_Au.IsLoginWorker())
 			{
-				QString serverName = tcpSocket.peerAddress().toString();
+				QString serverName = m_PeerAddress;
 				AuUnitQuery query(m_Id, queryUnit, serverName);
 				auLoginServerApp->m_LoginMutex.lock();
 				auLoginServerApp->m_UnitQueries.append(query);
@@ -1581,7 +1605,7 @@ void DtLoginServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 		{
 			if(g_Au.IsLoginWorker())
 			{
-				QString serverName = tcpSocket.peerAddress().toString();
+				QString serverName = m_PeerAddress;
 				AuQueryAvatars query(m_Id, serverName);
 				auLoginServerApp->m_LoginMutex.lock();
 				auLoginServerApp->m_QueryAvatars.append(query);
@@ -1604,7 +1628,7 @@ void DtLoginServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 				block >> accountId;
 				block >> confirmNum;
 
-				QString serverName = tcpSocket.peerAddress().toString();
+				QString serverName = m_PeerAddress;
 				AuQueryAccountAvatars query(m_Id, serverName, accountId, confirmNum);
 				auLoginServerApp->m_LoginMutex.lock();
 				auLoginServerApp->m_QueryAccountAvatars.append(query);
@@ -1623,7 +1647,7 @@ void DtLoginServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 void DtLoginServer::Defer(QTcpSocket& tcpSocket)
 {
 	// Key value is calculated to defer to a login server based on the peer address.
-	QString peerAddr = tcpSocket.peerAddress().toString();
+	QString peerAddr = m_PeerAddress;
 	unsigned int key = 0;
 	unsigned int plen = peerAddr.count();
 	if(plen == 1)
@@ -1705,6 +1729,7 @@ void DtLoginServer::CheckIn()
 		out << (quint8)P_CheckIn;
 		out << netName;
 		out << netPort;
+		out << qgetenv("AU_INTERNAL_TOKEN");
 		AuUtil::WritePacketSize(tcpSocket, ba.size());
 		tcpSocket.write(ba);
 		tcpSocket.waitForBytesWritten();

@@ -24,7 +24,9 @@ DhDNA_::DhDNA_()
 
 DhDNA_::DhDNA_(const QByteArray& ba)
 {
-	memcpy(this, ba.constData(), sizeof(DhDNA_));
+	memset(this, 0, sizeof(DhDNA_));
+	if(ba.size() == sizeof(DhDNA_))
+		memcpy(this, ba.constData(), sizeof(DhDNA_));
 
 	// Unsure the unused bits are 0 so we don't get random differences between otherwise identical DNA.
 	UNUSED0 = 0;
@@ -61,7 +63,11 @@ void DhDNA_::operator<<(QDataStream& in)
 	QByteArray ba;
 	in >> ba;
 	if(ba.size() != sizeof(DhDNA_))
+	{
 		qWarning() << "error: DhDNA_::operator<< read" << ba.size() << "bytes, should be" << sizeof(DhDNA_);
+		in.setStatus(QDataStream::ReadCorruptData);
+		return;
+	}
 	memcpy(this, ba.constData(), sizeof(DhDNA_));
 
 	// Unsure the unused bits are 0 so we don't get random differences between otherwise identical DNA.

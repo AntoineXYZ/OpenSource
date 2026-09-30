@@ -41,10 +41,10 @@ public:
 		P_ContactAdd,		// Add a single contact
 		P_ContactDelete,	// Delete a single contact
 		P_LoginLockedOut,	// Server reply to Login - account locked out
-		P_UnitBorn4,		// Sent by client to server with new unit that was born in the game.
-		P_UnitDied,			// Sent by client to server when demiavatar dies permanently.
+		P_UnitBorn4,		// Sent by a scene server when a new unit is born in the game.
+		P_UnitDied,			// Sent by a scene server when a demiavatar dies permanently.
 		P_UnitQuery,		// Query for list of units owned by a player.
-		P_UnitTransfer,		// Sent by client to server to transfer an avatar from one account to another.
+		P_UnitTransfer,		// Sent by a scene server to transfer an avatar between accounts.
 		P_InactiveUnitQuery,	// Query for list of units owned by all inactive players.
 		P_QueryAvatars,		// Query for lists active and inactive avatars.
 		P_QueryAccountAvatars,	// Query for list of avatars associated with a particular account.
@@ -89,6 +89,7 @@ private:
 	unsigned int	m_BytesTx;			// Total bytes sent to client
 	bool			m_LocalClient;		// true if the client appears to be on
 										// our LAN
+	QString			m_PeerAddress;		// Keep the address after the peer disconnects.
 	quint32			m_PacketSize;		// Data packet size
 	int				m_PacketSizeBytesLeft;	// Number of packet size bytes we are expecting.
 	int				m_socketDescriptor;	// Provided in the constructor.
