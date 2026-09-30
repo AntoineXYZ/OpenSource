@@ -35,6 +35,7 @@ AuDesignerApp::AuDesignerApp(int& argc, char** argv, const QString& appName, con
 	}
 
 	gp_AuGlobal = new AuClientGlobal(appName, settingsAppName, "Hazeron Freehold", isSolo, m_Data, m_Etherium, settingsFormat);
+	setProperty("titleBarHeight", qBound(16, g_Au.Settings().readNumEntry("/Settings/TitleBarHeight", 28), 48));
 	if(logClient)
 		g_Au.m_LogMessages |= LOG_ConnectDisconnect;	// Log what happens while starting up and logging in.
 //#if !defined(QT_NO_DEBUG)

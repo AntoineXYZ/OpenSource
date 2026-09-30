@@ -24,6 +24,7 @@
 #include <QSpinBox>
 #include <QTimer>
 #include <QVBoxLayout>
+#include <QFrame>
 
 AuSetRender::AuSetRender(bool glContextOk, QWidget *parent) : QWidget(parent)
 {
@@ -611,7 +612,18 @@ AuSetRender::AuSetRender(bool glContextOk, QWidget *parent) : QWidget(parent)
 	lay->addLayout(cklay, row,0, 1,1);
 	lay->addLayout(infolay, row,1, 1,1);
 	row++;
-	lay->addLayout(sliderlay, row,0, 1,2);
+	QFrame* sliderFrame = new QFrame(this);
+	sliderFrame->setObjectName("sceneSliderFrame");
+	sliderFrame->setStyleSheet(
+		"QFrame#sceneSliderFrame {"
+		"  border: 1px solid orange;"
+		"}"
+	);
+
+	int sliderPadding = 4; // Set padding value here in px
+	sliderlay->setContentsMargins(sliderPadding, sliderPadding, sliderPadding, sliderPadding);
+	sliderFrame->setLayout(sliderlay);
+	lay->addWidget(sliderFrame, row,0, 1,2);
 	row++;
 	/*
 	lay->setRowStretch(row, 1);

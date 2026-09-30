@@ -406,6 +406,15 @@ void AuApp::Logout()
 
 	// Notify scene server and change run state.
 	SceneLogout();
+	if(m_tSceneChannel)
+	{
+		// Finish the old connection before another account can log in.
+		m_tSceneChannel->wait();
+	}
+	StopThreads();
+	QByteArray& txbuf = LockSceneTcpBuffer("AuApp::Logout");
+	txbuf.clear();
+	UnlockSceneTcpBuffer("AuApp::Logout");
 
 	// Notify login server that we are logging out. This is a formality; it's not
 	// really essential.
@@ -1456,13 +1465,10 @@ void AuApp::ConnectionEstablished()
 void AuApp::SceneLogout()
 {
 	//qDebug("AuApp::SceneLogout");
-	QByteArray ba;
-	QDataStream out(&ba, QIODevice::WriteOnly);
-	out.setVersion(QDataStream::Qt_4_1);
-	out << (quint8)DtSceneServerPacket::PL_Logout;
 	if(g_Au.m_LogMessages & LOG_ConnectDisconnect)
 		g_Au.Log(g_Au.CacheApp() + "/soh.txt", QString("App: Sending logout TCP packet."));
-	QueueScenePacket(ba);
+	if(m_tSceneChannel)
+		m_tSceneChannel->Logout();
 	SetRunState(NotLoggedIn);
 }
 

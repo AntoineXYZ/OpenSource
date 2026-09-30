@@ -104,6 +104,20 @@ void DtClient::run()
 		}
 	}
 
+	if(m_semLogout.available() && tcpSocket.state() == QAbstractSocket::ConnectedState)
+	{
+		TxData(tcpSocket);
+		QByteArray ba;
+		QDataStream out(&ba, QIODevice::WriteOnly);
+		out.setVersion(QDataStream::Qt_4_1);
+		out << (quint8)DtSceneServerPacket::PL_Logout;
+		AuUtil::WritePacketSize(tcpSocket, ba.size());
+		tcpSocket.write(ba);
+		tcpSocket.disconnectFromHost();
+		if(tcpSocket.state() != QAbstractSocket::UnconnectedState)
+			tcpSocket.waitForDisconnected(1000);
+	}
+
 	// We don't like to disconnect.
 	m_isConnected = false;
 	if(Alive() && gp_AuGlobal)

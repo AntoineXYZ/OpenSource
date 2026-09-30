@@ -14,6 +14,9 @@
 #include <iostream>
 #include <QColor>
 #include <QCoreApplication>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QTcpSocket>
 #include <QTextStream>
 
@@ -28,7 +31,7 @@ void PollSceneServer(int dbLoadTime);
 void PollServerManager(int dbLoadTime);
 void ReportGalacticChat(const QList<AuTime>& posted, const QList<quint8>& galaxies, const QStringList& senders,
 		const QStringList& msgs);
-void ReportPlayersOnline();
+bool ReportPlayersOnline();
 
 //-+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
@@ -37,6 +40,10 @@ int main(int argc, char** argv)
 	bool didSomething = false;
 	QCoreApplication a(argc, argv);
 	QStringList args = a.arguments();
+
+	// Keep the machine-readable query separate from status HTML output.
+	if(args.contains("-p"))
+		return ReportPlayersOnline() ? 0 : 1;
 
 	// Extract my path from arg 0.
 	QFileInfo fileInfo(args.first());
@@ -120,11 +127,12 @@ void PrintUsage()
 {
 	QTextStream out(stdout);
 	out << "Shores of Hazeron Server Status\n";
-	out << " Usage: AuServerStatus [-l] [-m] [-s] [-v] [-?]\n";
+	out << " Usage: AuServerStatus [-l] [-m] [-s] [-g] [-p] [-v] [-?]\n";
 	out << "  -l      Poll login master server for status. \n";
 	out << "  -m      Poll mail master server for status. \n";
 	out << "  -s[nn]  Poll scene master server for status on scene channel. 'nn' is estimated database load time in minutes, default 60.\n";
 	out << "  -g[nn]  Poll scene master server for status on manager channel. 'nn' is estimated database load time in minutes, default 60.\n";
+	out << "  -p      Output the online avatar list as JSON.\n";
 	out << "  -v      Outputs the program version.\n";
 	out << "  -?      Outputs this program usage information.\n";
 }
@@ -132,7 +140,7 @@ void PrintUsage()
 void PrintVersion()
 {
 	QTextStream out(stdout);
-	out << "Shores of Hazeron Server Status " << AuUtil::VersionFull() << '\n';
+	out << "OpenShores Server Status " << AuUtil::VersionFull() << '\n';
 }
 
 void PollLoginServer()
@@ -143,7 +151,7 @@ void PollLoginServer()
 	quint8 workers = 0;
 
 	QTcpSocket tcpSocket;
-	tcpSocket.connectToHost(AuUtil::LoginMasterName(), AuUtil::LoginMasterPort());
+	tcpSocket.connectToHost(QStringLiteral("login-master"), AuUtil::LoginMasterPort());
 	tcpSocket.waitForConnected(10000);
 	if(tcpSocket.state() == QAbstractSocket::ConnectedState)
 	{
@@ -219,7 +227,7 @@ void PollLoginServer()
 	switch(status)
 	{
 	case 0:
-		out << "Master Up " << tmUp.toLocalTime().toString("M/d/yyyy h:mm") << " CDT<br>";
+		out << "Master Up " << tmUp.toLocalTime().toString("M/d/yyyy h:mm") << " <br>";
 		if(workers == 0)
 			out << "<span style=\"color: rgb(255, 0, 0);\">No Worker Servers</span>";
 		else if(workers == 1)
@@ -250,7 +258,7 @@ void PollMailServer()
 	quint8 workers = 0;
 
 	QTcpSocket tcpSocket;
-	tcpSocket.connectToHost(AuUtil::MailMasterName(), AuUtil::MailMasterPort());
+	tcpSocket.connectToHost(QStringLiteral("mail-master"), AuUtil::MailMasterPort());
 	tcpSocket.waitForConnected(10000);
 	if(tcpSocket.state() == QAbstractSocket::ConnectedState)
 	{
@@ -327,7 +335,7 @@ void PollMailServer()
 	switch(status)
 	{
 	case 0:
-		out << "Master Up " << tmUp.toLocalTime().toString("M/d/yyyy h:mm") << " CDT<br>";
+		out << "Master Up " << tmUp.toLocalTime().toString("M/d/yyyy h:mm") << " <br>";
 		if(workers == 0)
 			out << "<span style=\"color: rgb(255, 0, 0);\">No Worker Servers</span>";
 		else if(workers == 1)
@@ -365,7 +373,7 @@ void PollSceneServer(int dbLoadTime)
 	QStringList msgs;
 
 	QTcpSocket tcpSocket;
-	tcpSocket.connectToHost(AuUtil::SceneMasterName(), AuUtil::SceneMasterPort());
+	tcpSocket.connectToHost(QStringLiteral("scene-master"), AuUtil::SceneMasterPort());
 	tcpSocket.waitForConnected(10000);
 	if(tcpSocket.state() == QAbstractSocket::ConnectedState)
 	{
@@ -452,9 +460,9 @@ void PollSceneServer(int dbLoadTime)
 		// During the dbLoadTime, show orange text and an "estimated" ready time.
 		if(tmUp.toLocalTime().secsTo(QDateTime::currentDateTime())/60 < dbLoadTime)
 			out << "<span style=\"color: rgb(255, 128, 0);\">Master Est. Ready At " <<
-				(tmUp.addSecs(dbLoadTime*60)).toLocalTime().toString("M/d/yyyy h:mm") << " CDT</span><br>";
+				(tmUp.addSecs(dbLoadTime*60)).toLocalTime().toString("M/d/yyyy h:mm") << " </span><br>";
 		else
-			out << "Master Up " << tmUp.toLocalTime().toString("M/d/yyyy h:mm") << " CDT<br>";
+			out << "Master Up " << tmUp.toLocalTime().toString("M/d/yyyy h:mm") << " <br>";
 		if(managers == 0)
 			out << "<span style=\"color: rgb(255, 0, 0);\">No Manager Servers</span>";
 		else if(managers == 1)
@@ -480,11 +488,11 @@ void PollSceneServer(int dbLoadTime)
 		out << "<br>";
 
 		if(players == 0)
-			out << "<a class=\"aon\" style=\"color: rgb(112, 127, 255);\" href=\"playerson.php\">No Avatars Online</a>";
+			out << "<a class=\"aon\" style=\"color: rgb(112, 127, 255);\" href=\"/playerson.php\">No Avatars Online</a>";
 		else if(players == 1)
-			out << "<a class=\"aon\" style=\"color: rgb(112, 127, 255);\" href=\"playerson.php\">1 Avatar Online</a>";
+			out << "<a class=\"aon\" style=\"color: rgb(112, 127, 255);\" href=\"/playerson.php\">1 Avatar Online</a>";
 		else
-			out << QString("<a class=\"aon\" style=\"color: rgb(112, 127, 255);\" href=\"playerson.php\">%1 Avatars Online</a>").arg(players);
+			out << QString("<a class=\"aon\" style=\"color: rgb(112, 127, 255);\" href=\"/playerson.php\">%1 Avatars Online</a>").arg(players);
 		break;
 	case 100:	// Invalid response from server.
 		out << "<span style=\"color: rgb(255, 0, 0);\">Confused</span>";
@@ -499,9 +507,6 @@ void PollSceneServer(int dbLoadTime)
 		out << "<span style=\"color: rgb(255, 0, 0);\">Hacked</span>";
 		break;
 	}
-
-	//if(players)
-		ReportPlayersOnline();
 
 	// Report recent galactic chat.
 	ReportGalacticChat(posted, galaxies, senders, msgs);
@@ -522,7 +527,7 @@ void PollServerManager(int dbLoadTime)
 	QStringList msgs;
 
 	QTcpSocket tcpSocket;
-	tcpSocket.connectToHost(AuUtil::SceneMasterName(), 16762);
+	tcpSocket.connectToHost(QStringLiteral("scene-master"), 16762);
 	tcpSocket.waitForConnected(10000);
 	if(tcpSocket.state() == QAbstractSocket::ConnectedState)
 	{
@@ -622,8 +627,8 @@ void PollServerManager(int dbLoadTime)
 	case 0:	// NotLoaded,		// Database has not been loaded yet.
 		// During the dbLoadTime, show orange text and an "estimated" ready time.
 		out << "<span style=\"color: rgb(255, 128, 0);\">Master Loading Universe Database<br>"
-			"Load Started " << tmUp.toLocalTime().toString("M/d/yyyy h:mm") << " CDT<br>"
-			"Estimated Ready For Players At " << (tmUp.addSecs(dbLoadTime*60)).toLocalTime().toString("M/d/yyyy h:mm") << " CDT"
+			"Load Started " << tmUp.toLocalTime().toString("M/d/yyyy h:mm") << " <br>"
+			"Estimated Ready For Players At " << (tmUp.addSecs(dbLoadTime*60)).toLocalTime().toString("M/d/yyyy h:mm") << " "
 			"</span>";
 
 		// Other status may be known.
@@ -658,7 +663,7 @@ void PollServerManager(int dbLoadTime)
 	case 1:	// Loaded,			// Database loaded ok.
 	case 2:	// Storing,		// Database loaded ok and is currently storing.
 		// Master server is up and ready. Manager could still be loading.
-		out << "Master Up " << tmUp.toLocalTime().toString("M/d/yyyy h:mm") << " CDT<br>";
+		out << "Master Up " << tmUp.toLocalTime().toString("M/d/yyyy h:mm") << " <br>";
 
 		if(managers == 0)
 			out << "<span style=\"color: rgb(255, 0, 0);\">No Manager Servers</span>";
@@ -685,11 +690,11 @@ void PollServerManager(int dbLoadTime)
 		out << "<br>";
 
 		if(players == 0)
-			out << "<a class=\"aon\" style=\"color: rgb(112, 127, 255);\" href=\"playerson.php\">No Avatars Online</a>";
+			out << "<a class=\"aon\" style=\"color: rgb(112, 127, 255);\" href=\"/playerson.php\">No Avatars Online</a>";
 		else if(players == 1)
-			out << "<a class=\"aon\" style=\"color: rgb(112, 127, 255);\" href=\"playerson.php\">1 Avatar Online</a>";
+			out << "<a class=\"aon\" style=\"color: rgb(112, 127, 255);\" href=\"/playerson.php\">1 Avatar Online</a>";
 		else
-			out << QString("<a class=\"aon\" style=\"color: rgb(112, 127, 255);\" href=\"playerson.php\">%1 Avatars Online</a>").arg(players);
+			out << QString("<a class=\"aon\" style=\"color: rgb(112, 127, 255);\" href=\"/playerson.php\">%1 Avatars Online</a>").arg(players);
 		break;
 
 	case 3:	// OpenError,		// Database did not open ok.
@@ -714,20 +719,18 @@ void PollServerManager(int dbLoadTime)
 		break;
 	}
 
-	//if(players)
-		ReportPlayersOnline();
-
 	// Report recent galactic chat.
 	ReportGalacticChat(posted, galaxies, senders, msgs);
 }
 
-void ReportPlayersOnline()
+bool ReportPlayersOnline()
 {
 	// Values we will get from the server on successful players query.
 	AuPlayerOnlineStatusVector playersList;
+	bool received = false;
 
 	QTcpSocket tcpSocket;
-	tcpSocket.connectToHost(AuUtil::SceneMasterName(), AuUtil::SceneMasterPort());
+	tcpSocket.connectToHost(QStringLiteral("scene-master"), AuUtil::SceneMasterPort());
 	tcpSocket.waitForConnected(10000);
 	if(tcpSocket.state() == QAbstractSocket::ConnectedState)
 	{
@@ -778,6 +781,7 @@ void ReportPlayersOnline()
 				{
 				case DtSceneServerPacket::PZ_PlayersQuery:
 					playersList << block;
+					received = block.status() == QDataStream::Ok;
 					break;
 
 				default:
@@ -795,158 +799,37 @@ void ReportPlayersOnline()
 		}
 	}
 
+	if(!received)
 	{
-		// Copied from austylesheet.h
-		QColor hazBlue5(25, 54, 128);
-		qreal h,s,v;
-		hazBlue5.getHsvF(&h, &s, &v);
-		QColor hazBlue4;
-		hazBlue4.setHsvF(h, s, v * .8f);
-		QColor hazBlue3;
-		hazBlue3.setHsvF(h, s, v * .6f);
-		QColor hazBlue2;
-		hazBlue2.setHsvF(h, s, v * .4f);
-		QColor hazBlue1;
-		hazBlue1.setHsvF(h, s, v * .2f);
-
-		QString s_htmlStyles = "<style>"
-			"a "
-			"{ "
-			" text-decoration: none; "
-			"} "
-			""
-			"a:hover "
-			"{ "
-			" -webkit-transition-duration: .4s; "
-		    " transition-duration: .4s; "
-			" color: #ffffff; "
-			"} "
-			"</style>";
-
-		QString s_htmlHeader = "<html>";
-
-		QString s_bodyStart("<body style=\"color: rgb(112, 127, 255); background-color: rgb(0, 0, 0); font-family: Helvetica, Arial, "
-				"sans-serif;\" alink=\"#ffffff\" lang=\"EN-US\" link=\"#a0b3f9\" vlink=\"#a0a0a0\">\n"
-				"<?php include(\"sohpageheader.html\"); ?><br>");
-		QString titleBar("<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"><title>Shores of Hazeron - %1</title></head>\n<link rel=\"shortcut icon\" "
-				"href=\"https://Hazeron.com/favicon.png\" type=\"image/png\">\n");
-		QString subPageTitle = "<div style=\"text-align: center; font-family: sans-serif;\"><big style=\"color: #ffffff; font-weight: bold;\">%1</big></div><br><span style=\"font-family: "
-			"sans-serif;\">%2</span><br><br>\n";
-		QString tableStart = QString("<table style=\"text-align: left; width: 100%; background-color: %1; font-family: sans-serif;\" border=\"0\" cellpadding=\"2\" "
-				"cellspacing=\"2\">\n<tbody>")
-			.arg(hazBlue2.name());
-		QString subTableHeader = QString("<tr>"
-			"<td colspan=\"2\" style=\"vertical-align: top; background-color: %1;\"><small><b>%2</b><br></small></td>"
-			"</tr>\n").arg(hazBlue5.name());
-		QString tableRow("<tr>"
-			"<td width=\"32\" style=\"vertical-align: top;\"><a href=\"https://Hazeron.com/EmpireStandings/p%2.php\"><img style=\"max-width: %4px; max-height: %5px;\" "
-			"align=\"center\" src=\"https://Hazeron.com/%3\"></a></td>"
-			"<td style=\"vertical-align: top;\"><small><a class=\"ll\" href=\"https://Hazeron.com/EmpireStandings/p%2.php\">%1</a></small></td>"
-			"</tr>\n");
-
-		QString tableEnd = "</tbody>\n</table>\n";
-		QString subHtmlFooter = "</body></html>\n";
-
-		// Make a map of the player names so they'll be alphabetized.
-		// The multi-map keeps duplicates so the count matches the total number online.
-		QMultiMap<QString, AuPlayerOnlineStatus> playersOn;
-		QSet<AuId> playersListed;
-		for(AuPlayerOnlineStatusVector::const_iterator pli = playersList.constBegin(); pli != playersList.constEnd(); pli++)
-		{
-			// Skip null entries. Just logging on?
-			if((*pli).m_Id.IsNull())
-				continue;
-
-			// Prevent duplicates.
-			if(playersListed.contains((*pli).m_Id))
-				continue;
-			playersListed.insert((*pli).m_Id);
-
-			// Hide some incognito agents.
-			if((*pli).IsIncognito() && (*pli).m_Id == AuId::Haxus())
-				continue;
-
-			playersOn.insert((*pli).m_Name.toUpper(), *pli);
-		}
-
-		// History of players online count.
-		// This code gets called once per minute. Let's only keep a time hack every 10 minutes.
-		QDateTime now = QDateTime::currentDateTimeUtc();
-		if(now.time().minute()%10 == 0)
-		{
-			QFile playerhist;
-			playerhist.setFileName("/home/webmaster/hazeron/playerhistory.txt");
-			if(playerhist.open(QIODevice::Append))
-			{
-				QTextStream sro(&playerhist);
-				sro.setCodec("UTF-8");
-
-				sro << "'" << now.toString() << "', '" << playersOn.count() << "'\n";
-				playerhist.close();
-			}
-		}
-
-		QFile playersfile;
-		playersfile.setFileName("/home/webmaster/hazeron/playerson.php");
-		if(playersfile.open(QIODevice::WriteOnly))
-		{
-			QTextStream sro(&playersfile);
-			sro.setCodec("UTF-8");
-
-			sro << s_htmlHeader;
-			sro << s_htmlStyles;
-			sro << titleBar.arg("Avatars Online");
-			sro << s_bodyStart;
-
-			if(playersOn.count())
-				sro << subPageTitle
-					.arg("Avatars Online")
-					.arg(QString("%1 avatars are currently online.").arg(playersOn.count()));
-			else
-				sro << subPageTitle
-					.arg("Avatars Online")
-					.arg(QString("No avatars are currently online."));
-
-			sro << tableStart;
-			sro << subTableHeader
-				.arg("Avatar");
-
-			for(QMultiMap<QString, AuPlayerOnlineStatus>::const_iterator posi = playersOn.constBegin();
-					posi != playersOn.constEnd(); posi++)
-			{
-				int height = 20;
-				int width = 20;
-
-				QString plico;
-				if((*posi).IsAFK())
-					plico = QString("images/ComputerEye.png");
-				else if((*posi).IsAgent() && !(*posi).IsIncognito())
-					plico = QString("images/SoHLogo32.png");
-				else if((*posi).IsChatClient())
-					plico = QString("images/Microphone.png");
-				else if((*posi).IsNewEmperor())
-					plico = QString("images/SurrenderFlag.png");
-				else
-					plico = QString("images/c_VacSuitHelmet.png");
-
-				// Some wise guy named their avatar Athena%1. :/
-				// All % characters are replaced with _.
-				QString personName((*posi).m_Name);
-				personName.replace("%","_");
-
-				sro << tableRow
-					.arg(personName)
-					.arg((*posi).m_Id.StringId())
-					.arg(plico)
-					.arg(width)
-					.arg(height);
-			}
-
-			sro << tableEnd;
-			sro << subHtmlFooter;
-			playersfile.close();
-		}
+		qWarning("Online avatar query failed or returned an invalid response.");
+		return false;
 	}
+
+	// Preserve the report's ordering, deduplication and incognito filtering.
+	QMultiMap<QString, AuPlayerOnlineStatus> playersOn;
+	QSet<AuId> playersListed;
+	for(const auto& player : playersList)
+	{
+		if(player.m_Id.IsNull() || playersListed.contains(player.m_Id))
+			continue;
+		playersListed.insert(player.m_Id);
+		if(player.IsIncognito() && player.m_Id == AuId::Haxus())
+			continue;
+		playersOn.insert(player.m_Name.toUpper(), player);
+	}
+
+	QJsonArray avatars;
+	for(const auto& player : playersOn)
+	{
+		QJsonObject avatar;
+		avatar.insert("name", player.m_Name);
+		avatar.insert("afk", player.IsAFK());
+		avatars.append(avatar);
+	}
+	QTextStream output(stdout);
+	output.setCodec("UTF-8");
+	output << QString::fromUtf8(QJsonDocument(avatars).toJson(QJsonDocument::Compact)) << '\n';
+	return true;
 }
 
 void DoTest()

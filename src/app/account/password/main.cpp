@@ -12,6 +12,7 @@
 #include <QCryptographicHash>
 #include <QStringList>
 #include <QTextStream>
+#include <QUrl>
 #include <QVariant>
 
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
@@ -38,7 +39,7 @@ void ChangePassword(const QString& acctname, const QString& password, const QStr
 void ErrorBlankPassword();
 void ErrorLogin();
 void ErrorPasswordMismatch();
-void GoodReply(const QString& acctname, const QString& password);
+void GoodReply(const QString& acctname);
 
 int main(int argc, char** argv)
 {
@@ -52,6 +53,13 @@ int main(int argc, char** argv)
 			std::cout << "AuAcctPassword " << (const char*)AuUtil::VersionFull().toLatin1() << '\n';
 			exit(0);
 		}
+	}
+
+	const QByteArray method = qgetenv("REQUEST_METHOD");
+	if(!method.isEmpty() && method != "POST")
+	{
+		printf("Status: 405 Method Not Allowed\r\nAllow: POST\r\nContent-Type: text/plain\r\n\r\nMethod not allowed.\n");
+		return 0;
 	}
 
 	// Read the POST data from standard input.
@@ -72,85 +80,27 @@ int main(int argc, char** argv)
 			{
 				QString name = fieldVals[0];	// field name
 				QString val = fieldVals[1];		// field value
-				if(!val.isEmpty())
-				{
-					QString parsval = val.replace("+", " ");
-					QRegExp rexp("[%%][0-9a-fA-F][0-9a-fA-F]");
-					val = "";
-					do
-					{
-						int idx = parsval.indexOf(rexp);
-						if(idx >= 0)
-						{
-							// An encoded char was found in the parse string.
-							// Grab the field leading up to the encoded char.
-							if(idx)
-								val += parsval.left(idx);
-
-							// Decode the hex encoded character.
-							int dig1val;
-							char dig = parsval[idx+1].toLatin1();
-							if(dig >= 'a')
-							{
-								dig1val = dig - 'a' + 10;
-							}
-							else if(dig >= 'A')
-							{
-								dig1val = dig - 'A' + 10;
-							}
-							else
-							{
-								dig1val = dig - '0';
-							}
-
-							int dig0val;
-							dig = parsval[idx+2].toLatin1();
-							if(dig >= 'a')
-							{
-								dig0val = dig - 'a' + 10;
-							}
-							else if(dig >= 'A')
-							{
-								dig0val = dig - 'A' + 10;
-							}
-							else
-							{
-								dig0val = dig - '0';
-							}
-
-							// Append the decoded character.
-							dig = dig1val * 16 + dig0val;
-							val += QChar(dig);			// Decoded character
-							
-							// Remove the encoded char from the parse string.
-							parsval = parsval.mid(idx+3);	// Drop encoded char
-						}
-						else
-						{
-							// No encoded chars were found in the remainder of
-							// the parse string.
-							val += parsval;			// Remainder of the field
-							parsval = "";
-						}
-					}
-					while(!parsval.isEmpty());
-				}
+				val = QUrl::fromPercentEncoding(val.replace("+", " ").toUtf8());
 
 				// Collect field values.
 				if(name == "acctname")
 					acctname = val.trimmed();
 				else if(name == "password")
-					password = val.trimmed();
+					password = val;
 				else if(name == "newpassword1")
-					newpassword1 = val.trimmed();
+					newpassword1 = val;
 				else if(name == "newpassword2")
-					newpassword2 = val.trimmed();
+					newpassword2 = val;
 			}
 		}
 
 		// This guy will validate the field contents and spit out the
 		// appropriate response.
 		ChangePassword(acctname, password, newpassword1, newpassword2);
+	}
+	else
+	{
+		ErrorLogin();
 	}
 
 	return 0;
@@ -190,7 +140,7 @@ void ChangePassword(const QString& acctname, const QString& password, const QStr
 
 		// Tell the server to change the password.
 		login.ChangePassword(acctname, passCrypt, newPassCrypt);
-		GoodReply(acctname, newpassword1);
+		GoodReply(acctname);
 	}
 	else
 	{
@@ -198,11 +148,11 @@ void ChangePassword(const QString& acctname, const QString& password, const QStr
 	}
 }
 
-void GoodReply(const QString& acctname, const QString& password)
+void GoodReply(const QString& acctname)
 {
 	// This HTML header is required to be the first output to stdout from our
 	// cgi program. The HTML header(s) must terminate with a blank line.
-	printf("Content-type: text/html\n\n");
+	printf("Content-Type: text/html; charset=UTF-8\r\nCache-Control: no-store\r\n\r\n");
 
 	// The following code simply constructs a web page.
 	const char* titleBar = "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"><title>Shores of Hazeron - Password Changed</title><meta content=\"Haxus\" name=\"author\"></head>\n<link rel=\"shortcut icon\" href=\"https://hazeron.com/favicon.png\" type=\"image/png\">\n";
@@ -220,9 +170,8 @@ void GoodReply(const QString& acctname, const QString& password)
 	printf("Your login account password has been changed. Here is your updated login information.<p>\n");
 	printf("<b>Print this page and retain a copy for your records.</b><p>\n");
 	printf("<div style=\"margin-left: 40px;\"><font color=\"#a86d30\">Account Name: <b>%s</b><br>",
-			(const char*)acctname.toLatin1());
-	printf("Password: <b>%s</b><p></font></div>",
-			(const char*)password.toLatin1());
+			acctname.toHtmlEscaped().toUtf8().constData());
+	printf("</font></div>\n");
 
 	//printf("<br><a href=\"../acctsendpass.html\">Send Password to Account E-mail</a>\n");
 	//printf(s_htmlFooter);
@@ -233,7 +182,7 @@ void ErrorBlankPassword()
 {
 	// This HTML header is required to be the first output to stdout from our
 	// cgi program. The HTML header(s) must terminate with a blank line.
-	printf("Content-type: text/html\n\n");
+	printf("Content-Type: text/html; charset=UTF-8\r\nCache-Control: no-store\r\n\r\n");
 
 	// The following code simply constructs a web page.
 	const char* titleBar = "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"><title>Shores of Hazeron - Blank Password</title><meta content=\"Haxus\" name=\"author\"></head>\n<link rel=\"shortcut icon\" href=\"https://hazeron.com/favicon.png\" type=\"image/png\">\n";
@@ -259,7 +208,7 @@ void ErrorPasswordMismatch()
 {
 	// This HTML header is required to be the first output to stdout from our
 	// cgi program. The HTML header(s) must terminate with a blank line.
-	printf("Content-type: text/html\n\n");
+	printf("Content-Type: text/html; charset=UTF-8\r\nCache-Control: no-store\r\n\r\n");
 
 	// The following code simply constructs a web page.
 	const char* titleBar = "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"><title>Shores of Hazeron - Password Mismatch</title><meta content=\"Haxus\" name=\"author\"></head>\n<link rel=\"shortcut icon\" href=\"https://hazeron.com/favicon.png\" type=\"image/png\">\n";
@@ -285,7 +234,7 @@ void ErrorLogin()
 {
 	// This HTML header is required to be the first output to stdout from our
 	// cgi program. The HTML header(s) must terminate with a blank line.
-	printf("Content-type: text/html\n\n");
+	printf("Content-Type: text/html; charset=UTF-8\r\nCache-Control: no-store\r\n\r\n");
 
 	// The following code simply constructs a web page.
 	const char* titleBar = "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"><title>Shores of Hazeron - Login Error</title><meta content=\"Haxus\" name=\"author\"></head>\n<link rel=\"shortcut icon\" href=\"https://hazeron.com/favicon.png\" type=\"image/png\">\n";
@@ -306,4 +255,3 @@ void ErrorLogin()
 	//printf(s_htmlFooter);
 	puts(s_htmlFooter);
 }
-

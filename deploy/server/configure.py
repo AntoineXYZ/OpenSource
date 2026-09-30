@@ -20,6 +20,8 @@ COMMON_DEFAULTS = {
     "ATOM_MANAGERS": "1",
     "BIND_ADDRESS": "127.0.0.1",
     "PUBLIC_HOST": "127.0.0.1",
+    "WEB_BIND_ADDRESS": "127.0.0.1",
+    "WEB_PORT": "80",
     "LOGIN_WORKER_PORT": "16767",
     "MAIL_WORKER_PORT": "16768",
     "SCENE_MANAGER_PORT": "16769",
@@ -40,6 +42,7 @@ PRODUCTION_DEFAULTS = {
     "SERVER_BUILD_CONFIG": "release",
     "BIND_ADDRESS": "0.0.0.0",
     "PUBLIC_HOST": "",
+    "WEB_BIND_ADDRESS": "0.0.0.0",
     "COMPOSE_PROJECT_NAME": "openshores-production",
     "POSTGRES_VOLUME": "openshores-production-postgres",
     "POSTGRES_PASSWORD": "",
@@ -142,6 +145,7 @@ def main() -> None:
     mail_worker_port = integer(settings, "MAIL_WORKER_PORT", 1024, 65535)
     scene_manager_port = integer(settings, "SCENE_MANAGER_PORT", 1024, 65535)
     worker_port_base = integer(settings, "SCENE_WORKER_PORT_BASE", 1024, 65534)
+    web_port = integer(settings, "WEB_PORT", 1, 65535)
     create_local_player = boolean(settings, "CREATE_LOCAL_PLAYER")
 
     config = settings["SERVER_BUILD_CONFIG"].lower()
@@ -152,6 +156,11 @@ def main() -> None:
         ipaddress.ip_address(settings["BIND_ADDRESS"])
     except ValueError as error:
         raise SystemExit("BIND_ADDRESS must be an IP address") from error
+
+    try:
+        web_bind = ipaddress.ip_address(settings["WEB_BIND_ADDRESS"])
+    except ValueError as error:
+        raise SystemExit("WEB_BIND_ADDRESS must be an IP address") from error
 
     public_host = settings["PUBLIC_HOST"].strip()
     if not public_host or not re.fullmatch(r"[A-Za-z0-9.-]+", public_host):
@@ -164,6 +173,12 @@ def main() -> None:
     worker_ports = set(range(worker_port_base, final_worker_port + 1))
     if len(fixed_ports) != 6 or fixed_ports & worker_ports:
         raise SystemExit("configured public ports overlap")
+
+    game_bind = ipaddress.ip_address(settings["BIND_ADDRESS"])
+    if web_port in fixed_ports | worker_ports and (
+        web_bind == game_bind or web_bind.is_unspecified or game_bind.is_unspecified
+    ):
+        raise SystemExit("WEB_PORT overlaps a game port on the selected bind addresses")
 
     if create_local_player and (
         not settings["LOCAL_PLAYER_NAME"] or not settings["LOCAL_PLAYER_PASSWORD"]
@@ -192,6 +207,8 @@ def main() -> None:
             "SERVER_IMAGE_TARGET": "server-debug" if debug_enabled else "server-runtime",
             "SERVER_IMAGE": f"openshores-server:{environment}-{config}",
             "POSTGRES_IMAGE": f"openshores-postgres:{environment}",
+            "WEB_IMAGE": f"openshores-web:{environment}",
+            "WEB_PORT": str(web_port),
             "SCENE_WORKERS": str(workers),
             "ATOM_MANAGERS": str(atom_managers),
             "CREATE_LOCAL_PLAYER": "true" if create_local_player else "false",
@@ -274,6 +291,7 @@ def main() -> None:
         "SERVER_IMAGE_TARGET",
         "SERVER_IMAGE",
         "POSTGRES_IMAGE",
+        "WEB_IMAGE",
     ]
     env_order = list(COMMON_DEFAULTS) + generated_names
     env_lines = [f"{name}={settings[name]}" for name in env_order]

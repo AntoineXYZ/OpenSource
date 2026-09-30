@@ -25,6 +25,13 @@ int AuLoginCheck::LoginTestCredentials(const QString& acctName, const QByteArray
 {
 	m_LoginPort = AuUtil::LoginMasterPort();
 	m_LoginServer = AuUtil::LoginMasterName();
+	// Container deployments can connect directly to their own login worker.
+	const QString loginServer = qEnvironmentVariable("AU_LOGIN_SERVER");
+	if(!loginServer.isEmpty())
+		m_LoginServer = loginServer;
+	const int loginPort = qEnvironmentVariableIntValue("AU_LOGIN_PORT");
+	if(loginPort > 0 && loginPort <= 65535)
+		m_LoginPort = quint16(loginPort);
 
 	//qDebug() << "AuLoginCheck::LoginTest" << acctName << "pass" << acctPassword;
 	m_Result = 1;		// Start with error code until we succeed.

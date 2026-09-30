@@ -43,6 +43,12 @@ public:
 			m_semAlive.release(1);
 	}
 
+	void Logout()
+	{
+		m_semLogout.release();
+		Kill();
+	}
+
 public slots:
 	void TxData(QTcpSocket& tcpSocket);
 
@@ -99,6 +105,7 @@ private:
 	quint32		m_PacketSize;			// TCP block size
 	int			m_PacketSizeBytesLeft;	// Number of packet size bytes we are expecting.
 	QSemaphore	m_semAlive;				// Used to know when I'm supposed to die.
+	QSemaphore	m_semLogout;			// Send a logout packet before closing the connection.
 	unordered_map<AuId, bool, AuIdHash>	m_SyncLastAtomIds;	// Ids of non-permanent atoms that belong in the scene.
 	bool		m_EmpireDataIncoming;	// true while we are receiving a batch of empire data.
 	quint32		m_ClientUnitEmpire;		// client unit empire id

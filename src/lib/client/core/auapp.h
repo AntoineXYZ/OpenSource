@@ -831,6 +831,8 @@ public:
 
 	virtual void SceneLogin() = 0;	// Send login packet to scene server.
 
+	void Logout();	// Log out of the scene and login servers and stop client connections.
+
 	void SceneLogout();	// Send logout packet to scene server.
 
 	void SceneSyncComplete();
@@ -1649,8 +1651,6 @@ protected:
 		//qDebug("LockSceneTcpBuffer - %s acquired", who);
 		return m_SceneTcpBuffer;
 	}
-
-	void Logout();
 
 	virtual bool notify(QObject* receiver, QEvent* event);
 

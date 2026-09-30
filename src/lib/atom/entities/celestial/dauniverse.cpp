@@ -55,14 +55,17 @@ void DaUniverse::Create()
 	DaAtom::Create(AuId::Universe());
 }
 
-void DaUniverse::InitGalaxies()
+void DaUniverse::InitGalaxies(bool generateAllGalaxies)
 {
 	AuEther* ether = Ether();
 	if(!ether)
 		return;
-	// Create all galaxies.
+	// Create the selected galaxies.
 	for(int galaxyIdx=0; galaxyIdx < GALAXY_Count; galaxyIdx++)
 	{
+		if(!generateAllGalaxies && galaxyIdx != ShoresOfHazeron)
+			continue;
+
 		// Create a galaxy.
 		DaGalaxy *pGalaxy = new DaGalaxy((GALAXY)galaxyIdx);
 		pGalaxy->ConnectSignals();
@@ -77,12 +80,12 @@ void DaUniverse::InitGalaxies()
 	}
 }
 
-void DaUniverse::CreateMissingGalaxies()
+void DaUniverse::CreateMissingGalaxies(bool generateAllGalaxies)
 {
 	AuEther* ether = Ether();
 	if(!ether)
 		return;
-	// Create all galaxies that are missing.
+	// Reposition existing galaxies and create selected galaxies that are missing.
 	for(int galaxyIdx=0; galaxyIdx < GALAXY_Count; galaxyIdx++)
 	{
 		DaGalaxy* galaxy = FindGalaxy((GALAXY)galaxyIdx);
@@ -91,7 +94,7 @@ void DaUniverse::CreateMissingGalaxies()
 			// Insure the galaxy is positioned properly.
 			galaxy->InitPos(Id());
 		}
-		else
+		else if(generateAllGalaxies || galaxyIdx == ShoresOfHazeron)
 		{
 			// Create a galaxy.
 			DaGalaxy *pGalaxy = new DaGalaxy((GALAXY)galaxyIdx);

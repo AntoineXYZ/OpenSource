@@ -61,6 +61,7 @@ AuIntro::AuIntro(QWidget* parent) : AuIntroBase(parent)
 	connect(m_ChooseAvatarPage, SIGNAL(NewAvatarDNA3(int)), SLOT(NewAvatarDNA3(int)));
 	connect(m_ChooseAvatarPage, SIGNAL(NewAvatarDNA4(int)), SLOT(NewAvatarDNA4(int)));
 	connect(m_ChooseAvatarPage, SIGNAL(AvatarLogin(AuId)), SLOT(ExistingAvatarLogin(AuId)));
+	connect(m_ChooseAvatarPage, &AuIntroChooseAvatar::LogoutRequested, this, &AuIntro::Logout);
 
 #if defined(INTRO_SOLO_TOO)
 	// Solo avatar selection page
@@ -188,6 +189,18 @@ void AuIntro::LoggedIn()
 {
 	ShowWaitMessage(tr("Getting Game Data"));
 	emit LoginOk();
+}
+
+void AuIntro::Logout()
+{
+	if(m_Pages->currentIndex() != m_ChooseAvatarIdx || auApp->RunState() != AuApp::LoggedInInit)
+		return;
+
+	auApp->Logout();
+	m_HasInfo = false;
+	HideWaitInfoMsg();
+	m_LoginPage->ResetLogin();
+	LaunchLogin();
 }
 
 void AuIntro::SetAccountInfo()
@@ -595,6 +608,9 @@ AuIntroLogin::AuIntroLogin(AuIntro* parent) : QWidget(parent)
 	m_Login->setToolTip(QObject::tr("<html><b>Login</b><br>"
 				"Requests access to the <i>%1</i> game by sending the name and password to the server.</html>").arg(g_Au.ApplicationName()));
 	connect(m_Login, SIGNAL(clicked()), SLOT(Login()));
+	connect(m_Host, &QLineEdit::returnPressed, m_Login, &QPushButton::click);
+	connect(m_AccountName, &QLineEdit::returnPressed, m_Login, &QPushButton::click);
+	connect(m_Password, &QLineEdit::returnPressed, m_Login, &QPushButton::click);
 
 	QToolButton* backButton = new QToolButton(this);
 	backButton->setAutoRaise(true);
@@ -637,6 +653,11 @@ AuIntroLogin::AuIntroLogin(AuIntro* parent) : QWidget(parent)
 
 AuIntroLogin::~AuIntroLogin()
 {
+}
+
+void AuIntroLogin::ResetLogin()
+{
+	m_Login->setEnabled(true);
 }
 
 void AuIntroLogin::PasswordEdited(const QString& password)

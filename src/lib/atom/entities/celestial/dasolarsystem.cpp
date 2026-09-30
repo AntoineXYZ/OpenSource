@@ -1471,6 +1471,16 @@ QString DaSolarSystem::WormholeNameAt(const AuPoint& loc) const
 
 void DaSolarSystem::AddWormholeConnection(const AuId &idSolarSystem, const AuPoint &vToThere, AuWormhole::POLARITY polarity)
 {
+	if(polarity == AuWormhole::Intergalactic || polarity == AuWormhole::IntergalacticOneWay)
+	{
+		// Intergalactic destinations are galaxy ids. A one-galaxy universe has no valid destination.
+		// Also guard callers that repair missing wormholes when a ship arrives.
+		const DaUniverse* universe = FindParentUniverse();
+		const DaGalaxy* galaxy = FindParentGalaxy();
+		if(!universe || !galaxy || galaxy->Is(idSolarSystem) || !universe->FindGalaxy(idSolarSystem.Galaxy()))
+			return;
+	}
+
 	// Check to see if we already have a wormhole connected to that destination.
 	if(FindWormhole(idSolarSystem, polarity).IsValid())
 		return;
@@ -1711,6 +1721,8 @@ bool DaSolarSystem::PositionWormholes()
 			{
 				// Found a connection from my current galaxy.
 				const DaGalaxy* destGalaxy = universe->FindGalaxy(s_GConns[gcon].m_ToGalaxy);
+				if(!destGalaxy)
+					continue;	// Destination galaxy was not generated.
 				AddWormholeConnection(destGalaxy->Id(), s_GConns[gcon].m_VecToDest, AuWormhole::Intergalactic);
 				anyChange = true;
 			}
@@ -1752,16 +1764,18 @@ bool DaSolarSystem::PositionWormholes()
 		if(!universe)
 			return anyChange;
 
-		// Tally intergalactic wormholes.
+		// Only consider destinations present in this universe. A fresh 1galaxy universe has none.
 		QList<int> holeidxs;
 		for(int gcon=0; gcon<s_GConCount; gcon++)
-			if(s_GConns[gcon].m_FromGalaxy == galaxy->Galaxy())
+			if(s_GConns[gcon].m_FromGalaxy == galaxy->Galaxy() && universe->FindGalaxy(s_GConns[gcon].m_ToGalaxy))
 				holeidxs.append(gcon);	// Found a connection from my current galaxy.
 		if(holeidxs.empty())
 			return anyChange;	// No intergalactic wormholes depart from my galaxy.
 		int gcon = GenSeed() % holeidxs.size();	// Choose one based on my genseed.
 		int didx = holeidxs[gcon];	// Index of galaxy connection.
 		const DaGalaxy* destGalaxy = universe->FindGalaxy(s_GConns[didx].m_ToGalaxy);
+		if(!destGalaxy)
+			return anyChange;
 		AddWormholeConnection(destGalaxy->Id(), s_GConns[didx].m_VecToDest, AuWormhole::IntergalacticOneWay);
 		anyChange = true;
 	}

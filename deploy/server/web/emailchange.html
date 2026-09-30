@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Change email address - OpenShores</title>
+    <style>
+        body { background: #0B0B3B; color: white; font-family: sans-serif; }
+        label { display: block; margin: 1em 0; }
+        a { color: #a0b3f9; }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Change email address</h1>
+        <form method="post" action="/cgi-bin/AuAcctEmail" accept-charset="UTF-8">
+            <label>Account name <input name="acctname" autocomplete="username" required></label>
+            <label>Current password <input type="password" name="password" autocomplete="current-password" required></label>
+            <label>New email address <input type="email" name="newemail" autocomplete="email" required></label>
+            <button type="submit">Change email address</button>
+        </form>
+        <p><a href="/">Home</a></p>
+    </main>
+</body>
+</html>

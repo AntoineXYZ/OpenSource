@@ -680,6 +680,12 @@ public:
 		return m_AtomManagerCount;
 	}
 
+	// False limits galaxy creation to Shores of Hazeron. Existing galaxies are retained.
+	inline bool GenerateAllGalaxies() const
+	{
+		return m_GenerateAllGalaxies;
+	}
+
 	// Returns a number from 0 to 1+. 1 is 100%.
 	float AtomManagerLoadAverage() const;
 
@@ -1714,6 +1720,7 @@ private:
 	QString								m_ClientChannelServer;
 
 	// This server.
+	bool m_GenerateAllGalaxies;							// Settings/galaxyGen: all or 1galaxy.
 	int									m_AtomManagerCount;		// Number of atom managers to create. Default is idealThreadCount()
 																// but can be overridden with command line option.
 	unsigned int						m_AtomMgrLoadIndex;		// Which load index we are timing, in the array.

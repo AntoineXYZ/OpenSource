@@ -22,7 +22,6 @@ AuDlgTitleBar::AuDlgTitleBar(QWidget *parent) : QWidget(parent)
 {	
     m_hasFocus = false;
 
-	setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 	setCursor(Qt::OpenHandCursor);
 
     m_minimize = new QToolButton(this);
@@ -48,43 +47,28 @@ AuDlgTitleBar::AuDlgTitleBar(QWidget *parent) : QWidget(parent)
     m_label->setText(tr("Default Window Title"));
     parent->setWindowTitle(tr("Default Window Title"));
 	m_label->setTextInteractionFlags(Qt::NoTextInteraction);
-	QFont lblFont = m_label->font();
-	if(lblFont.pixelSize() > 0)
-		lblFont.setPixelSize(lblFont.pixelSize() - 1);
-	else
-		lblFont.setPointSize(lblFont.pointSize() - 1);
-	m_label->setFont(lblFont);
-	QFontMetrics fmet = m_label->fontMetrics();
-	int fontHt = fmet.height();
-    m_label->setFixedHeight(fontHt);
-	setFixedHeight(fontHt + 2);
   
     m_Icon = new QToolButton(this);
     m_Icon->setBackgroundRole(QPalette::Text);
 	m_Icon->setAutoRaise(true);
 	m_Icon->setCursor(QCursor(Qt::ArrowCursor));
-    m_Icon->setFixedSize(fontHt, fontHt);
     m_Icon->setFocusPolicy(Qt::NoFocus);
     
     // Use the style to set the button pixmaps
     QPixmap pix(":data/hazBlackClose.png");
     m_close->setIcon(pix);
-    m_close->setFixedSize(fontHt, fontHt);
     m_close->setFocusPolicy(Qt::NoFocus);
     
     maxPix = QPixmap(":data/hazBlackMax.png");
     m_maximize->setIcon(maxPix);
-    m_maximize->setFixedSize(fontHt, fontHt);
     m_maximize->setFocusPolicy(Qt::NoFocus);
     
     pix = QPixmap(":data/hazBlackMin.png");
     m_minimize->setIcon(pix);
-    m_minimize->setFixedSize(fontHt, fontHt);
     m_minimize->setFocusPolicy(Qt::NoFocus);
     
     pix = QPixmap(":data/hazWiki.png");
     m_HelpButton->setIcon(pix);
-    m_HelpButton->setFixedSize(fontHt, fontHt);
     m_HelpButton->setFocusPolicy(Qt::NoFocus);
 	m_HelpButton->hide();
 
@@ -92,7 +76,6 @@ AuDlgTitleBar::AuDlgTitleBar(QWidget *parent) : QWidget(parent)
     
   	//titlebar layout
     m_hbox_TitleBar = new QHBoxLayout(this);
-    m_hbox_TitleBar->setContentsMargins( 2, 0, 2, 0);
     
     //titlebar icon
     m_hbox_TitleBar->addWidget(m_Icon);
@@ -109,8 +92,6 @@ AuDlgTitleBar::AuDlgTitleBar(QWidget *parent) : QWidget(parent)
     //setMax(false);//default get max button
     m_hbox_TitleBar->addWidget(m_close);
     
-    //spacing is mainly for the buttons
- 	m_hbox_TitleBar->setSpacing(1);
 	setLayout(m_hbox_TitleBar);
     
     //this is for restoring the dialog after maxmize has been hit
@@ -125,6 +106,14 @@ AuDlgTitleBar::AuDlgTitleBar(QWidget *parent) : QWidget(parent)
    
     //system menu
     createActions();
+	RefreshStyle();
+}
+
+void AuDlgTitleBar::RefreshStyle()
+{
+	AuStyleSheet::SetTitleBar(this, m_label, m_hbox_TitleBar);
+	updateGeometry();
+	update();
 }
 
 void AuDlgTitleBar::contextMenuEvent(QContextMenuEvent *e)

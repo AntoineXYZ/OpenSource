@@ -11,6 +11,7 @@
 #include <QCryptographicHash>
 #include <QStringList>
 #include <QTextStream>
+#include <QUrl>
 #include <QVariant>
 
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
@@ -52,6 +53,13 @@ int main(int argc, char** argv)
 		}
 	}
 
+	const QByteArray method = qgetenv("REQUEST_METHOD");
+	if(!method.isEmpty() && method != "POST")
+	{
+		printf("Status: 405 Method Not Allowed\r\nAllow: POST\r\nContent-Type: text/plain\r\n\r\nMethod not allowed.\n");
+		return 0;
+	}
+
 	// Read the POST data from standard input.
 	QTextStream stream(stdin);
 	QString line;
@@ -71,75 +79,13 @@ int main(int argc, char** argv)
 			{
 				QString name = fieldVals[0];	// field name
 				QString val = fieldVals[1];		// field value
-				if(!val.isEmpty())
-				{
-					QString parsval = val.replace("+", " ");
-					QRegExp rexp("[%%][0-9a-fA-F][0-9a-fA-F]");
-					val = "";
-					do
-					{
-						int idx = parsval.indexOf(rexp);
-						if(idx >= 0)
-						{
-							// An encoded char was found in the parse string.
-							// Grab the field leading up to the encoded char.
-							if(idx)
-								val += parsval.left(idx);
-
-							// Decode the hex encoded character.
-							int dig1val;
-							char dig = parsval[idx+1].toLatin1();
-							if(dig >= 'a')
-							{
-								dig1val = dig - 'a' + 10;
-							}
-							else if(dig >= 'A')
-							{
-								dig1val = dig - 'A' + 10;
-							}
-							else
-							{
-								dig1val = dig - '0';
-							}
-
-							int dig0val;
-							dig = parsval[idx+2].toLatin1();
-							if(dig >= 'a')
-							{
-								dig0val = dig - 'a' + 10;
-							}
-							else if(dig >= 'A')
-							{
-								dig0val = dig - 'A' + 10;
-							}
-							else
-							{
-								dig0val = dig - '0';
-							}
-
-							// Append the decoded character.
-							dig = dig1val * 16 + dig0val;
-							val += QChar(dig);			// Decoded character
-							
-							// Remove the encoded char from the parse string.
-							parsval = parsval.mid(idx+3);	// Drop encoded char
-						}
-						else
-						{
-							// No encoded chars were found in the remainder of
-							// the parse string.
-							val += parsval;			// Remainder of the field
-							parsval = "";
-						}
-					}
-					while(!parsval.isEmpty());
-				}
+				val = QUrl::fromPercentEncoding(val.replace("+", " ").toUtf8());
 
 				// Collect field values.
 				if(name == "acctname")
 					acctname = val.trimmed();
 				else if(name == "password")
-					password = val.trimmed();
+					password = val;
 				else if(name == "newemail")
 					newemail = val.trimmed();
 			}
@@ -148,6 +94,10 @@ int main(int argc, char** argv)
 		// This guy will validate the field contents and spit out the
 		// appropriate response.
 		ChangeEmail(acctname, password, newemail);
+	}
+	else
+	{
+		ErrorLogin();
 	}
 
 	return 0;
@@ -188,7 +138,7 @@ void GoodReply(const QString& acctname, const QString& email)
 {
 	// This HTML header is required to be the first output to stdout from our
 	// cgi program. The HTML header(s) must terminate with a blank line.
-	printf("Content-type: text/html\n\n");
+	printf("Content-Type: text/html; charset=UTF-8\r\nCache-Control: no-store\r\n\r\n");
 
 	// The following code simply constructs a web page.
 	const char* titleBar = "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"><title>Shores of Hazeron - E-mail Address Changed</title><meta content=\"Haxus\" name=\"author\"></head>\n<link rel=\"shortcut icon\" href=\"https://hazeron.com/favicon.png\" type=\"image/png\">";
@@ -206,8 +156,8 @@ void GoodReply(const QString& acctname, const QString& email)
 	printf("Your login account e-mail address has been changed. Here is your updated login information.<p>\n");
 	printf("<b>Print this page and retain a copy for your records.</b><p>\n");
 	printf("<div style=\"margin-left: 40px;\">Account Name: <b>%s</b><br>",
-			(const char*)acctname.toLatin1());
-	printf("E-mail Address: <b>%s</b><p></div>", (const char*)email.toLatin1());
+			acctname.toHtmlEscaped().toUtf8().constData());
+	printf("E-mail Address: <b>%s</b><p></div>", email.toHtmlEscaped().toUtf8().constData());
 
 	//printf(s_htmlFooter);
 	puts(s_htmlFooter);
@@ -217,7 +167,7 @@ void ErrorBlankAddress()
 {
 	// This HTML header is required to be the first output to stdout from our
 	// cgi program. The HTML header(s) must terminate with a blank line.
-	printf("Content-type: text/html\n\n");
+	printf("Content-Type: text/html; charset=UTF-8\r\nCache-Control: no-store\r\n\r\n");
 
 	// The following code simply constructs a web page.
 	const char* titleBar = "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"><title>Shores of Hazeron - Blank E-mail Address</title><meta content=\"Haxus\" name=\"author\"></head>\n<link rel=\"shortcut icon\" href=\"https://hazeron.com/favicon.png\" type=\"image/png\">\n";
@@ -243,7 +193,7 @@ void ErrorLogin()
 {
 	// This HTML header is required to be the first output to stdout from our
 	// cgi program. The HTML header(s) must terminate with a blank line.
-	printf("Content-type: text/html\n\n");
+	printf("Content-Type: text/html; charset=UTF-8\r\nCache-Control: no-store\r\n\r\n");
 
 	// The following code simply constructs a web page.
 	const char* titleBar = "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"><title>Shores of Hazeron - Login Error</title><meta content=\"Haxus\" name=\"author\"></head>\n<link rel=\"shortcut icon\" href=\"https://hazeron.com/favicon.png\" type=\"image/png\">\n";

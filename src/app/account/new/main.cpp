@@ -14,6 +14,7 @@
 #include <QFile>
 #include <QStringList>
 #include <QTextStream>
+#include <QUrl>
 
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
@@ -44,7 +45,7 @@ void ErrorBlankName();
 void ErrorBlankPassword();
 void ErrorPasswordMismatch();
 void ErrorDuplicateName(const QString& acctname);
-void GoodReply(const QString& acctname, const QString& password, const QString& email);
+void GoodReply(const QString& acctname, const QString& email);
 void NewAccountsDisabled();
 void NewAccountsUnavailable();
 
@@ -64,6 +65,20 @@ int main(int argc, char** argv)
 
 	QSettings settings("AuAcctNew.ini", QSettings::IniFormat);
 	int isEnabled = settings.value("Settings/enable", 0).toInt();
+	if(qEnvironmentVariableIsSet("AU_ACCOUNT_REGISTRATION"))
+		isEnabled = qEnvironmentVariableIntValue("AU_ACCOUNT_REGISTRATION");
+	if(!isEnabled)
+	{
+		NewAccountsDisabled();
+		return 0;
+	}
+
+	const QByteArray method = qgetenv("REQUEST_METHOD");
+	if(!method.isEmpty() && method != "POST")
+	{
+		printf("Status: 405 Method Not Allowed\r\nAllow: POST\r\nContent-Type: text/plain\r\n\r\nMethod not allowed.\n");
+		return 0;
+	}
 
 	// Read the POST data from standard input.
 	QTextStream stream(stdin);
@@ -84,211 +99,25 @@ int main(int argc, char** argv)
 			{
 				QString name = fieldVals[0];	// field name
 				QString val = fieldVals[1];		// field value
-				if(!val.isEmpty())
-				{
-					QString parsval = val.replace("+", " ");
-					QRegExp rexp("[%%][0-9a-fA-F][0-9a-fA-F]");
-					val = "";
-					do
-					{
-						int idx = parsval.indexOf(rexp);
-						if(idx >= 0)
-						{
-							// An encoded char was found in the parse string.
-							// Grab the field leading up to the encoded char.
-							if(idx)
-								val += parsval.left(idx);
-
-							// Decode the hex encoded character.
-							int dig1val;
-							char dig = parsval[idx+1].toLatin1();
-							if(dig >= 'a')
-							{
-								dig1val = dig - 'a' + 10;
-							}
-							else if(dig >= 'A')
-							{
-								dig1val = dig - 'A' + 10;
-							}
-							else
-							{
-								dig1val = dig - '0';
-							}
-
-							int dig0val;
-							dig = parsval[idx+2].toLatin1();
-							if(dig >= 'a')
-							{
-								dig0val = dig - 'a' + 10;
-							}
-							else if(dig >= 'A')
-							{
-								dig0val = dig - 'A' + 10;
-							}
-							else
-							{
-								dig0val = dig - '0';
-							}
-
-							// Append the decoded character.
-							dig = dig1val * 16 + dig0val;
-							val += QChar(dig);			// Decoded character
-							
-							// Remove the encoded char from the parse string.
-							parsval = parsval.mid(idx+3);	// Drop encoded char
-						}
-						else
-						{
-							// No encoded chars were found in the remainder of
-							// the parse string.
-							val += parsval;			// Remainder of the field
-							parsval = "";
-						}
-					}
-					while(!parsval.isEmpty());
-				}
+				val = QUrl::fromPercentEncoding(val.replace("+", " ").toUtf8());
 
 				// Collect field values.
 				if(name == "acctname")
 					acctname = val.trimmed();
 				else if(name == "password1")
-					password1 = val.trimmed();
+					password1 = val;
 				else if(name == "password2")
-					password2 = val.trimmed();
+					password2 = val;
 				else if(name == "email")
 					email = val.trimmed();
 			}
 		}
 
-		if(isEnabled || acctname == "dhhtest")
-		{
-			// This guy will validate the field contents and spit out the appropriate response.
-			// 0 = ok
-			// 1 = blank name
-			// 2 = blank password
-			// 3 = password mismatch
-			// 4 = blank email address
-			// 5 = bad email address
-			// 6 = new accounts disabled
-			// 7 = account name already exists
-			// 8 = unexpected error
-			CreateUserAccount(acctname, password1, password2, email);
-
-			/*DHH Ok, that's enough spam.
-			int result = CreateUserAccount(acctname, password1, password2, email);
-
-			// Slip a little "unix" shell code in here to mail a notification
-			// that someone attempted to create an account. 'sure glad this
-			// doesn't have to run on Windows.
-			char tmpname[32];
-			strcpy(tmpname, "/tmp/AuAcctNewXXXXXX");
-			int fd = mkstemp(tmpname);
-			if(fd)
-			{
-				QFile file;
-				if(file.open(fd, QIODevice::WriteOnly))
-				{
-					// Write the message into the file.
-					QString msgTitle = "Failure to Create New " g_AppName " Account";
-					QTextStream mailbody(&file);
-					switch(result)
-					{
-					case 0:	// ok
-						mailbody << "A new " g_AppName " login account was created.\n\n";
-						msgTitle = "New " g_AppName " Account Created";
-						break;
-					case 1:	// blank name
-						mailbody << "Failed to create a new " g_AppName " login account due to a blank name.\n\n";
-						break;
-					case 2:	// blank password
-						mailbody << "Failed to create a new " g_AppName " login account due to a blank password.\n\n";
-						break;
-					case 3:	// password mismatch
-						mailbody << "Failed to create a new " g_AppName " login account due to a password mismatch.\n\n";
-						break;
-					case 4:	// blank email address
-						mailbody << "Failed to create a new " g_AppName " login account due to a blank email address.\n\n";
-						break;
-					case 5:	// bad email address
-						mailbody << "Failed to create a new " g_AppName " login account due to an invalid email address.\n\n";
-						break;
-					case 6:	// new accounts disabled
-						mailbody << "Failed to create a new " g_AppName " login account because new accounts are disabled.\n\n";
-						break;
-					case 7:	// account name already exists
-						mailbody << "Failed to create a new " g_AppName " login account because the account name already exists.\n\n";
-						break;
-					case 8:	// unexpected error
-						mailbody << "Failed to create a new " g_AppName " login account because of an unexpected error.\n\n";
-						break;
-					}
-					mailbody << "Name: " << acctname << "\n";
-					mailbody << "E-Mail: " << email << "\n";
-					file.close();
-					
-					// Mail the file to the address.
-					char mailcmd[128];
-					sprintf(mailcmd, "mail -s '%s' NewAccount@Hazeron.com < %s", (const char*)msgTitle.toLatin1(), tmpname);
-					if(system(mailcmd) == -1)
-						qWarning("AuAcctNew Failed to execute system command '%s'", mailcmd);
-				}
-				else
-				{
-					qWarning("AuAcctNew Failed to open temp file %d", fd);
-				}
-
-				// Delete the temporary file.
-				remove(tmpname);
-			}
-			else
-			{
-				qWarning("AuAcctNew mkstemp failed.");
-			}
-			*/
-		}
-		else
-		{
-			// New accounts are disabled but we don't want to forget this guy.
-			NewAccountsDisabled();
-
-			// Slip a little "unix" shell code in here to mail a notification
-			// that someone attempted to create an account. 'sure glad this
-			// doesn't have to run on Windows.
-			char tmpname[32];
-			strcpy(tmpname, "/tmp/AuAcctNewXXXXXX");
-			int fd = mkstemp(tmpname);
-			if(fd)
-			{
-				QFile file;
-				if(file.open(fd, QIODevice::WriteOnly))
-				{
-					// Write the message into the file.
-					QTextStream mailbody(&file);
-					mailbody << "Blocked attempt to create a new " g_AppName " login account.\n\n";
-					mailbody << "Name: " << acctname << "\n";
-					mailbody << "Password: " << password1 << "\n";
-					mailbody << "E-Mail: " << email << "\n";
-					file.close();
-					
-					// Mail the file to the address.
-					char mailcmd[128];
-					sprintf(mailcmd, "mail -s 'New " g_AppName " Account Blocked' NewAccount@Hazeron.com < %s", tmpname);
-					if(system(mailcmd) == -1)
-						qWarning("AuAcctNew Failed to execute system command '%s'", mailcmd);
-				}
-				else
-				{
-					qWarning("AuAcctNew Failed to open temp file %d", fd);
-				}
-
-				// Delete the temporary file.
-				remove(tmpname);
-			}
-			else
-			{
-				qWarning("AuAcctNew mkstemp failed.");
-			}
-		}
+		CreateUserAccount(acctname, password1, password2, email);
+	}
+	else
+	{
+		ErrorBlankName();
 	}
 
 	return 0;
@@ -340,7 +169,12 @@ int CreateUserAccount(const QString& acctname, const QString& password1, const Q
 
 	// Create a SHA-1 hash key from the webmaster's password.
 	QByteArray loginPassCrypt;
-	loginPassCrypt.append(QString("web*master").toUtf8());
+	loginPassCrypt = qgetenv("AU_WEBMASTER_PASSWORD");
+	if(loginPassCrypt.isEmpty())
+	{
+		NewAccountsUnavailable();
+		return 6;
+	}
 	QCryptographicHash loginPassCryptHash(QCryptographicHash::Sha1);
 	loginPassCryptHash.addData(loginPassCrypt);
 	loginPassCrypt = loginPassCryptHash.result();
@@ -364,17 +198,12 @@ int CreateUserAccount(const QString& acctname, const QString& password1, const Q
 		ACCOUNT status = ACCT_Trial;		// Trial accounts are created with a few days of free activation time.
 #endif
 		result = login.CreateAccount(acctname, passCrypt, email, status);
-		//qDebug("CreateAccount name %s pass %s email %s result %d",
-				//(const char*)acctname.toLatin1(),
-				//(const char*)password1.toLatin1(),
-				//(const char*)email.toLatin1(),
-				//result);
 		//qDebug() << "CreateAccount result" << result;
 		switch(result)
 		{
 		case 0:
 			// It looks like all went well.
-			GoodReply(acctname, password1, email);
+			GoodReply(acctname, email);
 			return 0;
 		case 1:
 			// An unspecified error occurred.
@@ -397,11 +226,11 @@ int CreateUserAccount(const QString& acctname, const QString& password1, const Q
 	}
 }
 
-void GoodReply(const QString& acctname, const QString& password, const QString& email)
+void GoodReply(const QString& acctname, const QString& email)
 {
 	// This HTML header is required to be the first output to stdout from our
 	// cgi program. The HTML header(s) must terminate with a blank line.
-	printf("Content-type: text/html\n\n");
+	printf("Content-Type: text/html; charset=UTF-8\r\nCache-Control: no-store\r\n\r\n");
 
 	// The following code simply constructs a web page.
 	const char* titleBar = "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"><title>" g_AppName " - Account Created</title></head>\n<link rel=\"shortcut icon\" href=\"https://hazeron.com/favicon.png\" type=\"image/png\">\n";
@@ -425,10 +254,8 @@ void GoodReply(const QString& acctname, const QString& password, const QString& 
 #endif
 	printf("<p><b>Print this page and retain a copy for your records.</b></p>\n");
 	printf("<div style=\"margin-left: 40px;\"><font color=\"#a86d30\">Account Name: <b>%s</b><br>",
-			(const char*)acctname.toLatin1());
-	printf("Password: <b>%s</b><br>",
-			(const char*)password.toLatin1());
-	printf("E-mail Address: <b>%s</b><p></font></div>", (const char*)email.toLatin1());
+			acctname.toHtmlEscaped().toUtf8().constData());
+	printf("E-mail Address: <b>%s</b><p></font></div>", email.toHtmlEscaped().toUtf8().constData());
 
 	//printf(s_htmlFooter);
 	puts(s_htmlFooter);
@@ -438,7 +265,7 @@ void ErrorBadAddress(const QString& address)
 {
 	// This HTML header is required to be the first output to stdout from our
 	// cgi program. The HTML header(s) must terminate with a blank line.
-	printf("Content-type: text/html\n\n");
+	printf("Content-Type: text/html; charset=UTF-8\r\nCache-Control: no-store\r\n\r\n");
 
 	// The following code simply constructs a web page.
 	const char* titleBar = "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"><title>" g_AppName " - Bad E-mail Address</title></head>\n<link rel=\"shortcut icon\" href=\"https://hazeron.com/favicon.png\" type=\"image/png\">\n";
@@ -454,7 +281,7 @@ void ErrorBadAddress(const QString& address)
 	puts(pageTitle);
 
 	printf("There was a problem with the e-mail address entered.<p>\n");
-	printf("<div style=\"margin-left: 40px;\">E-mail Address: <b>%s</b><p></div>", (const char*)address.toLatin1());
+	printf("<div style=\"margin-left: 40px;\">E-mail Address: <b>%s</b><p></div>", address.toHtmlEscaped().toUtf8().constData());
 	printf("Please go back and enter a valid e-mail address.<p>\n");
 
 	//printf(s_htmlFooter);
@@ -465,7 +292,7 @@ void ErrorBlankAddress()
 {
 	// This HTML header is required to be the first output to stdout from our
 	// cgi program. The HTML header(s) must terminate with a blank line.
-	printf("Content-type: text/html\n\n");
+	printf("Content-Type: text/html; charset=UTF-8\r\nCache-Control: no-store\r\n\r\n");
 
 	// The following code simply constructs a web page.
 	const char* titleBar = "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"><title>" g_AppName " - Blank E-mail Address</title></head>\n<link rel=\"shortcut icon\" href=\"https://hazeron.com/favicon.png\" type=\"image/png\">\n";
@@ -491,7 +318,7 @@ void ErrorBlankName()
 {
 	// This HTML header is required to be the first output to stdout from our
 	// cgi program. The HTML header(s) must terminate with a blank line.
-	printf("Content-type: text/html\n\n");
+	printf("Content-Type: text/html; charset=UTF-8\r\nCache-Control: no-store\r\n\r\n");
 
 	// The following code simply constructs a web page.
 	const char* titleBar = "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"><title>" g_AppName " - Blank Account Name</title></head>\n<link rel=\"shortcut icon\" href=\"https://hazeron.com/favicon.png\" type=\"image/png\">\n";
@@ -517,7 +344,7 @@ void ErrorBlankPassword()
 {
 	// This HTML header is required to be the first output to stdout from our
 	// cgi program. The HTML header(s) must terminate with a blank line.
-	printf("Content-type: text/html\n\n");
+	printf("Content-Type: text/html; charset=UTF-8\r\nCache-Control: no-store\r\n\r\n");
 
 	// The following code simply constructs a web page.
 	const char* titleBar = "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"><title>" g_AppName " - Blank Password</title></head>\n<link rel=\"shortcut icon\" href=\"https://hazeron.com/favicon.png\" type=\"image/png\">\n";
@@ -543,7 +370,7 @@ void ErrorPasswordMismatch()
 {
 	// This HTML header is required to be the first output to stdout from our
 	// cgi program. The HTML header(s) must terminate with a blank line.
-	printf("Content-type: text/html\n\n");
+	printf("Content-Type: text/html; charset=UTF-8\r\nCache-Control: no-store\r\n\r\n");
 
 	// The following code simply constructs a web page.
 	const char* titleBar = "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"><title>" g_AppName " - Password Mismatch</title></head>\n<link rel=\"shortcut icon\" href=\"https://hazeron.com/favicon.png\" type=\"image/png\">\n";
@@ -569,7 +396,7 @@ void ErrorDuplicateName(const QString& name)
 {
 	// This HTML header is required to be the first output to stdout from our
 	// cgi program. The HTML header(s) must terminate with a blank line.
-	printf("Content-type: text/html\n\n");
+	printf("Content-Type: text/html; charset=UTF-8\r\nCache-Control: no-store\r\n\r\n");
 
 	// The following code simply constructs a web page.
 	const char* titleBar = "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"><title>" g_AppName " - Account Name In Use</title></head>\n<link rel=\"shortcut icon\" href=\"https://hazeron.com/favicon.png\" type=\"image/png\">\n";
@@ -585,7 +412,7 @@ void ErrorDuplicateName(const QString& name)
 	puts(pageTitle);
 
 	printf("The account name you chose is already in use. Your account name must be unique among all players.<p>\n");
-	printf("<div style=\"margin-left: 40px;\">Account Name: <b>%s</b><p></div>", (const char*)name.toLatin1());
+	printf("<div style=\"margin-left: 40px;\">Account Name: <b>%s</b><p></div>", name.toHtmlEscaped().toUtf8().constData());
 	printf("We apologize for the inconvenience.<p>\n");
 	printf("Please go back and enter a different account name.<p>\n");
 
@@ -597,7 +424,7 @@ void NewAccountsDisabled()
 {
 	// This HTML header is required to be the first output to stdout from our
 	// cgi program. The HTML header(s) must terminate with a blank line.
-	printf("Content-type: text/html\n\n");
+	printf("Content-Type: text/html; charset=UTF-8\r\nCache-Control: no-store\r\n\r\n");
 
 	// The following code simply constructs a web page.
 	const char* titleBar = "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"><title>" g_AppName " - New Accounts Disabled</title></head>\n<link rel=\"shortcut icon\" href=\"https://hazeron.com/favicon.png\" type=\"image/png\">\n";
@@ -623,7 +450,7 @@ void NewAccountsUnavailable()
 {
 	// This HTML header is required to be the first output to stdout from our
 	// cgi program. The HTML header(s) must terminate with a blank line.
-	printf("Content-type: text/html\n\n");
+	printf("Content-Type: text/html; charset=UTF-8\r\nCache-Control: no-store\r\n\r\n");
 
 	// The following code simply constructs a web page.
 	const char* titleBar = "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"><title>" g_AppName " - New Accounts Unavailable</title></head>\n<link rel=\"shortcut icon\" href=\"https://hazeron.com/favicon.png\" type=\"image/png\">\n";

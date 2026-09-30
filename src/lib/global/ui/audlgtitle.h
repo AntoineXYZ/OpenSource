@@ -43,6 +43,7 @@ private:
 
 public:
     AuDlgTitleBar(QWidget *parent);
+	void RefreshStyle();
     
 	inline void SetHasFocus(bool hasFocus)
 	{

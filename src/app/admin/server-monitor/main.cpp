@@ -19,12 +19,7 @@ int main(int argc, char *argv[])
 	// Change my current directory.
 	QDir::setCurrent(dir.absolutePath());
 
-#if defined(QT_NO_DEBUG)
 	QStringList libPaths;
-#else
-	// In debug mode, we need the default library paths.
-	QStringList libPaths = QCoreApplication::libraryPaths();
-#endif
 
 #if defined(Q_OS_MACOS)
 	libPaths << dir.absolutePath();
@@ -36,6 +31,8 @@ int main(int argc, char *argv[])
 	dir.cd("platforms");
 	libPaths << dir.absolutePath();
 #endif
+	// Preserve Qt's default plugin paths in release builds as well as debug builds.
+	libPaths << QCoreApplication::libraryPaths();
 	QCoreApplication::setLibraryPaths(libPaths);
 
 	// Create an object from each library, so their constructors can call the appropriate Q_INIT_RESOURCE macros.
@@ -50,4 +47,3 @@ int main(int argc, char *argv[])
 	w.show();
 	return a.exec();
 }
-

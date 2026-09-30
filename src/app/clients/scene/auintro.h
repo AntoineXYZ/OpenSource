@@ -83,6 +83,7 @@ protected slots:
 #endif
 	void LoggedIn();
 	void LoginBack();
+	void Logout();
 	void NewAvatarBack();
 	void NewAvatarDNA3(int index);
 	void NewAvatarDNA4(int index);
@@ -150,6 +151,7 @@ class AuIntroLogin : public QWidget
 public:
 	AuIntroLogin(AuIntro* parent=0);
 	virtual ~AuIntroLogin();
+	void ResetLogin();
 
 protected slots:
 	void Login();

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Register account - OpenShores</title>
+    <style>
+        body { background: #0B0B3B; color: white; font-family: sans-serif; }
+        label { display: block; margin: 1em 0; }
+        a { color: #a0b3f9; }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Register account</h1>
+        <form method="post" action="/cgi-bin/AuAcctNew" accept-charset="UTF-8">
+            <label>Account name <input name="acctname" autocomplete="username" required></label>
+            <label>Email <input type="email" name="email" autocomplete="email" required></label>
+            <label>Password <input type="password" name="password1" autocomplete="new-password" required></label>
+            <label>Confirm password <input type="password" name="password2" autocomplete="new-password" required></label>
+            <button type="submit">Create account</button>
+        </form>
+        <p><a href="/">Home</a></p>
+    </main>
+</body>
+</html>

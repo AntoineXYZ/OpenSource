@@ -63,6 +63,7 @@ quint64 s_FreedGlobal = 0;
 
 AuSceneServerApp::AuSceneServerApp(int& argc, char** argv) : QCoreApplication(argc, argv)
 {
+	m_GenerateAllGalaxies = true;
 	m_AtomManagerCount = 0;
 	m_AtomMgrLoadIndex = 0;
 	for(int l=0; l<60; l++)
@@ -171,6 +172,16 @@ AuSceneServerApp::AuSceneServerApp(int& argc, char** argv) : QCoreApplication(ar
 		}
 	}
 	QSettings settings(settingsFile, QSettings::IniFormat);
+	QString galaxyGen = settings.value("Settings/galaxyGen", "all").toString().trimmed().toLower();
+	if(galaxyGen == "1galaxy")
+		m_GenerateAllGalaxies = false;
+	else if(galaxyGen != "all")
+	{
+		qWarning() << "error: Invalid Settings/galaxyGen in" << settingsFile
+			<< "- expected all or 1galaxy, got" << galaxyGen << "- terminating.";
+		QTimer::singleShot(0, [=](){exit(1);});
+		return;
+	}
 	if(settings.contains("Settings/atomManagers"))								// atomManagers
 		m_AtomManagerCount = settings.value("Settings/atomManagers").toUInt();
 	if(settings.contains("Settings/bossName"))									// bossName

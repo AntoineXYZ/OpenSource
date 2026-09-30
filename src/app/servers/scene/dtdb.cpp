@@ -770,17 +770,19 @@ DaUniverse* DtDb::LoadGalaxies(QSqlDatabase& db, AuEther& ether)
 {
 	// All database accesses must be done from the same thread.
 	Q_ASSERT(ThreadId() == QThread::currentThreadId());
+	const bool generateAllGalaxies = auSceneServerApp->GenerateAllGalaxies();
 
 	// Load the Universe from the database.
 	DaUniverse::LoadSubatoms(ether, db, AuId(0));	// Universe but no subordinates.
 	DaUniverse* universe = ether.FindUniverse();
 	if(!universe)
 	{
-		if(g_Au.m_LogMessages & LOG_Error)
+		if(g_Au.IsSceneMaster() && (g_Au.m_LogMessages & LOG_Error))
 			qWarning("******************** NOTICE! ********************\n"
 					 "    A Universe was not found in the database.\n"
-					 "   A Universe and %d galaxies will be created.\n"
-					 "*************************************************", GALAXY_Count);
+					 "   A Universe and %d %s will be created.\n"
+					 "*************************************************", generateAllGalaxies ? GALAXY_Count : 1,
+					 generateAllGalaxies ? "galaxies" : "galaxy");
 		return 0;
 	}
 
@@ -793,7 +795,10 @@ DaUniverse* DtDb::LoadGalaxies(QSqlDatabase& db, AuEther& ether)
 		const DaGalaxy* galaxy = universe->FindGalaxy((GALAXY)gal);
 		if(!galaxy)
 		{
-			qWarning() << "error: Missing galaxy" << GalaxyName((GALAXY)gal);
+			// Only the master knows which optional galaxies it is configured to create.
+			// Managers and workers load the persisted set and may use different INI files.
+			if(gal == ShoresOfHazeron || (g_Au.IsSceneMaster() && generateAllGalaxies))
+				qWarning() << "error: Missing galaxy" << GalaxyName((GALAXY)gal);
 			continue;
 		}
 
@@ -2330,8 +2335,8 @@ void DtDb::LoadAssignedAtoms()
 			DaUniverse* universe = LoadGalaxies(db, ether);
 			if(universe)
 			{
-				// Universe loaded. Insure all galaxies are present, including late additions.
-				universe->CreateMissingGalaxies();
+				// Universe loaded. Insure the configured galaxies are present, including late additions.
+				universe->CreateMissingGalaxies(auSceneServerApp->GenerateAllGalaxies());
 
 				// Load all sectors in the galaxies and their primary stars.
 				DaAtomList subs;
@@ -2356,13 +2361,13 @@ void DtDb::LoadAssignedAtoms()
 			else
 			{
 				// No Universe?
-				// Create a nu universe with a bunch of galaxies in it.
+				// Create a nu universe with the configured galaxies in it.
 				DaUniverse* universe = new DaUniverse;
 				universe->ConnectSignals();
 				universe->Create();
 				universe->SetPosAndOrient(AuAtomPos(AuId(0), AuMatrix4x4()));
 				ether.AddAtom(universe);
-				universe->InitGalaxies();	// Create the galaxies.
+				universe->InitGalaxies(auSceneServerApp->GenerateAllGalaxies());
 
 				g_AuDb.AtomAdded(universe->Id());
 				universe->SetNormal();

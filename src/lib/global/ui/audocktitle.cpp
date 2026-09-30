@@ -21,14 +21,11 @@
 
 AuDockTitle::AuDockTitle(QWidget* parent) : QWidget(parent)
 {	
-	//title bar sizing
-	setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 	setCursor(Qt::OpenHandCursor);
 
     m_FloatButton = new QToolButton(this);
 	m_FloatButton->setAutoRaise(true);
 	m_FloatButton->setCursor(QCursor(Qt::ArrowCursor));
-    //m_FloatButton->setFixedSize(14, 14);
     m_FloatButton->setFocusPolicy ( Qt::NoFocus );
     m_FloatButton->setIcon(QPixmap(":data/hazBlackFloat.png"));
 	m_FloatButton->setToolTip(tr("<html>Dock/Float<br>"
@@ -39,7 +36,6 @@ AuDockTitle::AuDockTitle(QWidget* parent) : QWidget(parent)
     m_CloseButton = new QToolButton(this);
 	m_CloseButton->setAutoRaise(true);
 	m_CloseButton->setCursor(QCursor(Qt::ArrowCursor));
-    //m_CloseButton->setFixedSize(14, 14);
     m_CloseButton->setFocusPolicy ( Qt::NoFocus );
     m_CloseButton->setIcon(QPixmap(":data/hazBlackClose.png"));
 	m_CloseButton->setToolTip(tr("<html>Close<br>"
@@ -51,7 +47,6 @@ AuDockTitle::AuDockTitle(QWidget* parent) : QWidget(parent)
 	m_HelpButton->setAutoRaise(true);
 	m_HelpButton->setCursor(QCursor(Qt::ArrowCursor));
     m_HelpButton->setIcon(QPixmap(":data/hazWiki.png"));
-    //m_HelpButton->setFixedSize(14, 14);
     m_HelpButton->setFocusPolicy(Qt::NoFocus);
 	m_HelpButton->hide();
 	m_HelpButton->setToolTip(tr("<html>"
@@ -63,7 +58,6 @@ AuDockTitle::AuDockTitle(QWidget* parent) : QWidget(parent)
     m_Icon->setBackgroundRole(QPalette::Text);
 	m_Icon->setAutoRaise(true);
 	m_Icon->setCursor(QCursor(Qt::ArrowCursor));
-    //m_Icon->setFixedSize(14, 14);
     m_Icon->setFocusPolicy ( Qt::NoFocus );
     connect(m_Icon, SIGNAL(clicked()), this, SLOT(showIconMenu()));
     
@@ -72,16 +66,9 @@ AuDockTitle::AuDockTitle(QWidget* parent) : QWidget(parent)
     m_label->setText(tr("Default Window Title"));
     //parent->setWindowTitle(tr("Default Window Title"));
 	m_label->setTextInteractionFlags(Qt::NoTextInteraction);
-	QFont lblFont = m_label->font();
-	if(lblFont.pixelSize() > 0)
-		lblFont.setPixelSize(lblFont.pixelSize() - 2);
-	else
-		lblFont.setPointSize(lblFont.pointSize() - 2);
-	m_label->setFont(lblFont);
   
   	//titlebar layout
     m_hbox_TitleBar = new QHBoxLayout(this);
-    m_hbox_TitleBar->setContentsMargins( 2, 0, 2, 0 );
     
     //titlebar icon
     m_hbox_TitleBar->addWidget(m_Icon);
@@ -97,13 +84,18 @@ AuDockTitle::AuDockTitle(QWidget* parent) : QWidget(parent)
     m_hbox_TitleBar->addWidget(m_FloatButton);
     m_hbox_TitleBar->addWidget(m_CloseButton);
     
-    //spacing is mainly for the buttons
- 	m_hbox_TitleBar->setSpacing(2);
- 	m_hbox_TitleBar->setMargin(2);
 	setLayout(m_hbox_TitleBar);
 
     //system menu
     createActions();
+	RefreshStyle();
+}
+
+void AuDockTitle::RefreshStyle()
+{
+	AuStyleSheet::SetTitleBar(this, m_label, m_hbox_TitleBar);
+	updateGeometry();
+	update();
 }
 
 void AuDockTitle::contextMenuEvent(QContextMenuEvent *e)
@@ -238,32 +230,12 @@ void AuDockTitle::resizeEvent(QResizeEvent* event)
 
 QSize AuDockTitle::sizeHint() const
 {
-	/*
-	if(m_Orientation == Qt::Horizontal)
-	{
-	}
-	else
-	{
-	}
-	*/
-	//return m_hbox_TitleBar->sizeHint();
-	QFontMetrics fmet = m_label->fontMetrics();
-	int barHt = fmet.height() + 2;
-	return QSize(barHt, barHt);
+	return QWidget::sizeHint().expandedTo(QSize(0, height()));
 }
 
 QSize AuDockTitle::minimumSizeHint() const
 {
-	/*
-	if(m_Orientation == Qt::Horizontal)
-	{
-	}
-	else
-	{
-	}
-	*/
-	//return m_hbox_TitleBar->minimumSize();
-	return QSize(20,20);
+	return QWidget::minimumSizeHint().expandedTo(QSize(0, height()));
 }
 
 void AuDockTitle::ToggleFloat()

@@ -24,6 +24,7 @@ protected slots:
 	void ResetWidgets();
 	void SetActiveTrans(int value);
 	void SetInactiveTrans(int value);
+	void SetTitleBarHeight(int value);
 	void TestColorDialog();
 	void TestFileDialog();
 	void TestFontDialog();

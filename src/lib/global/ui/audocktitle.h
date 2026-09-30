@@ -36,6 +36,7 @@ private:
 
 public:
     AuDockTitle(QWidget* parent);
+	void RefreshStyle();
  
 	virtual QSize minimumSizeHint() const;
 

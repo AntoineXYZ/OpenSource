@@ -17,9 +17,9 @@ PRODUCTION_COMPOSE = BUILDX_NO_DEFAULT_ATTESTATIONS=1 docker compose \
 	-f deploy/server/compose.yaml -f "$(PRODUCTION_SERVER_WORKERS)"
 
 .PHONY: server-config server-ensure-config server-image server-up server-down \
-        server-logs server-status server-reset \
+        server-web-up server-logs server-status server-reset \
         server-prod-config server-prod-ensure-config server-prod-image \
-        server-prod-up server-prod-down server-prod-logs server-prod-status
+        server-prod-up server-prod-web-up server-prod-down server-prod-logs server-prod-status
 
 server-config:
 	python3 deploy/server/configure.py --environment local \
@@ -40,6 +40,9 @@ server-image: server-config
 server-up: server-image
 	$(LOCAL_COMPOSE) up --build --detach --remove-orphans --wait
 
+server-web-up: server-config
+	$(LOCAL_COMPOSE) up --build --detach --wait --no-deps --force-recreate web
+
 server-down: server-ensure-config
 	$(LOCAL_COMPOSE) down --remove-orphans
 
@@ -51,7 +54,7 @@ server-status: server-ensure-config
 
 server-reset: server-image
 	@if [ "$(CONFIRM)" != "yes" ]; then \
-		printf 'Delete the local universe database and restart? [y/N] '; \
+		printf 'Delete the local universe database and web reports, then restart? [y/N] '; \
 		read answer; \
 		case "$$answer" in y|Y|yes|YES) ;; *) echo 'Cancelled.'; exit 1;; esac; \
 	fi
@@ -78,6 +81,9 @@ server-prod-image: server-prod-config
 
 server-prod-up: server-prod-image
 	$(PRODUCTION_COMPOSE) up --build --detach --remove-orphans --wait
+
+server-prod-web-up: server-prod-config
+	$(PRODUCTION_COMPOSE) up --build --detach --wait --no-deps --force-recreate web
 
 server-prod-down: server-prod-ensure-config
 	$(PRODUCTION_COMPOSE) down --remove-orphans

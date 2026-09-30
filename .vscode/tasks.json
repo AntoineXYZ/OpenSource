@@ -92,6 +92,23 @@
         ]
       },
       "problemMatcher": []
+    },
+    {
+      "label": "Docker: build Windows client (Release)",
+      "type": "process",
+      "command": "make",
+      "args": ["CONFIG=release", "win-client"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "windows": {
+        "command": "wsl.exe",
+        "args": [
+          "--cd", "${workspaceFolder}",
+          "--exec", "make", "CONFIG=release", "win-client"
+        ]
+      },
+      "problemMatcher": []
     }
   ]
 }

@@ -38,7 +38,8 @@ public:
 
 	void Create();
 
-	void CreateMissingGalaxies();
+	// False creates only Shores of Hazeron; existing galaxies are retained and repositioned.
+	void CreateMissingGalaxies(bool generateAllGalaxies=true);
 
 	// Performs decay on solo game after loading, before player starts playing.
 	void DecaySolo();
@@ -47,7 +48,8 @@ public:
 
 	virtual const DaUniverse* FindParentUniverse() const;
 
-	void InitGalaxies();
+	// False creates only Shores of Hazeron. Defaults to all galaxies for solo callers.
+	void InitGalaxies(bool generateAllGalaxies=true);
 
 	virtual bool InStarField() const
 	{
