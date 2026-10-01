@@ -328,6 +328,8 @@ public:	// Methods
 
 	void DesignerLoadedFromFile(AuDesign& design);
 
+	void DesignerApplySimpleMode(const QString& recipe);
+
 	void DesignerMakeDecal(const AuScSelection& partIds);
 
 	void DesignerMakeDoor(const AuScSelection& partIds);

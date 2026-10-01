@@ -1972,6 +1972,21 @@ void DtChatChannel::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 		}
 		break;
 
+	case DtChatChannelPacket::PD_BdSimpleMode:
+		if(g_Au.IsSceneWorker())
+		{
+			// Needed to sync studio stuff between client and server
+			QByteArray bcomp;
+
+			block >> bcomp;
+
+			if(bcomp.isEmpty())
+				break;
+			QByteArray ba = AuUncompress(bcomp, __FILE__, __LINE__,m_UnitName);
+			m_I->DesignerApplySimpleMode(QString::fromUtf8(ba));
+		}
+		break;
+
 	case DtChatChannelPacket::PD_Redo:
 		if(g_Au.IsSceneWorker())
 			m_I->DesignerRedo();

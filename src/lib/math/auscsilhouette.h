@@ -90,6 +90,12 @@ public:	// Methods
 		return AuPoint((m_YZMin + m_YZMax)/2, (m_XZMin + m_XZMax)/2, (m_XYMin + m_XYMax)/2);
 	}
 
+	inline void BoxExtents(AuPoint& min, AuPoint& max) const
+	{
+		min = AuPoint(m_YZMin, m_XZMin, m_XYMin);
+		max = AuPoint(m_YZMax, m_XZMax, m_XYMax);
+	}
+
 	// Returns true if 'loc' is inside this 3d silhouette.
 	bool IsInside(const AuPoint& loc) const;
 

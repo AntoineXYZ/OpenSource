@@ -675,6 +675,8 @@ private:
     QPoint								m_AnchorLoc;			// Mouse pixel location at 'anchor' location.
 	bool								m_AnchorSelected;		// true if anchor part selected on mouse down.
 	QString								m_DesignerFileName;
+	bool								m_DesignerSimple;
+	bool								m_SimpleModeReload;
 	AuMatrix4x4							m_DesignPlane;			// Current design plane.
 	int									m_DragConstraint;		// 0=none, 1=X, 2=Y, 4=Z restraint when dragging with the mouse.
 	QString								m_FinalizeReport;		// Result of last attempt to finalize.
@@ -855,6 +857,14 @@ public:
 	// Warn against losing changes to the current design. Provide an option to cancel.
 	// Returns true if it's ok to proceed, false if user wants to cancel.
 	bool DesignerConfirmLoseChanges();
+
+	bool DesignerNewBuildingDesign(bool simple);
+
+	bool DesignerSimplePlan(QString& plan);
+
+	void DesignerOpenSimple(const QString& fileName);
+
+	bool DesignerSaveSimple(const QString& fileName, const QString& plan);
 
 	// Updates a drag operation in designer, for grab, rotate, and stretch.
 	void DesignerDragging(const AuMatrix4x4& t, bool isCopy);
@@ -1294,6 +1304,15 @@ protected slots:
 
 	void ScreenShot();
 
+public:
+	bool DesignerSimpleState(QString& plan, const void*& design);
+	bool TakeSimpleModeReload()
+	{
+		bool reload = m_SimpleModeReload;
+		m_SimpleModeReload = false;
+		return reload;
+	}
+
 public slots:
 	void AvatarOnLine(AuId id);
 
@@ -1544,6 +1563,7 @@ public slots:
 	void DesignerMoveDoorSwitches();
 	void DesignerMoveMenu();			// Grab initiated off menu.
 	void DesignerNewBuilding();
+	void DesignerNewBuildingSimple();
 	void DesignerNewItem();
 	void DesignerNewSpacecraft();
 	void DesignerNewVehicle();

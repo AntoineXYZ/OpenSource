@@ -49,6 +49,55 @@ AuScFaceList							s_FenceSections[AuScFence::STYLE_Count+1];		// Faces of each 
 AuScFaceList							s_FenceSectionBarriers[AuScFence::STYLE_Count];	// Faces of section barriers 
 AuScPathSeg								s_PathSeg;				// Static constructed path segment for the Null return value.
 
+namespace
+{
+	struct PartBoxes
+	{
+		const AuScParts*								parts;
+		QHash<quint16, QPair<AuPoint, AuPoint> >		boxes;
+	};
+	thread_local PartBoxes* t_PartBoxes = 0;
+
+	class PartBoxPass
+	{
+		PartBoxes		m_Boxes;
+		PartBoxes*		m_Outer;
+	public:
+		explicit PartBoxPass(const AuScParts& parts) : m_Outer(t_PartBoxes)
+		{
+			m_Boxes.parts = &parts;
+			t_PartBoxes = &m_Boxes;
+		}
+		~PartBoxPass()
+		{
+			t_PartBoxes = m_Outer;
+		}
+	};
+
+	bool MayHaveVertexInside(const AuScParts& parts, quint16 id, const AuScPart& part, const AuPoint& min, const AuPoint& max)
+	{
+		if(!t_PartBoxes || t_PartBoxes->parts != &parts)
+			return true;
+		QHash<quint16, QPair<AuPoint, AuPoint> >::iterator bi = t_PartBoxes->boxes.find(id);
+		if(bi == t_PartBoxes->boxes.end())
+		{
+			AuPoint lo(1e300, 1e300, 1e300), hi(-1e300, -1e300, -1e300);	// (no vertices: a box nothing is inside)
+			QSet<quint32> vertexIds;
+			part.VertexIds(vertexIds);
+			for(QSet<quint32>::const_iterator vi = vertexIds.cbegin(); vi != vertexIds.cend(); vi++)
+			{
+				AuPoint p = part.VertexLoc(*vi);
+				lo = AuPoint(qMin(lo.x, p.x), qMin(lo.y, p.y), qMin(lo.z, p.z));
+				hi = AuPoint(qMax(hi.x, p.x), qMax(hi.y, p.y), qMax(hi.z, p.z));
+			}
+			bi = t_PartBoxes->boxes.insert(id, qMakePair(lo, hi));
+		}
+		const AuPoint& lo = (*bi).first;
+		const AuPoint& hi = (*bi).second;
+		return lo.x < max.x && hi.x > min.x && lo.y < max.y && hi.y > min.y && lo.z < max.z && hi.z > min.z;
+	}
+}
+
 //static
 const AuScPathSeg& AuScPathSeg::Null()
 {
@@ -4598,11 +4647,18 @@ bool AuScParts::EffectStretch(const AuScSelection& sel, const QPointF& base, dou
 	return true;
 }
 
+
+static bool MayMakeObstructionModels()
+{
+	return g_Au.IsSceneApp() || g_Au.IsSceneWorker();
+}
+
 void AuScParts::RefreshObstructionsCache()
 {
-	if(!g_Au.IsSceneApp())
+	if(!MayMakeObstructionModels())
 		qWarning() << "error: AuScParts::RefreshObstructionsCache must only be called on scene client.";
 
+	PartBoxPass boxes(*this);
 	for(iterator pi = begin(); pi != end(); pi++)
 		if(!(*pi)->IsOmitted())
 			(*pi)->RefreshObstructionsCache(pi.key(), *this);
@@ -4610,9 +4666,10 @@ void AuScParts::RefreshObstructionsCache()
 
 void AuScParts::RefreshObstructionsCache(QProgressDialog& progress)
 {
-	if(!g_Au.IsSceneApp())
+	if(!MayMakeObstructionModels())
 		qWarning() << "error: AuScParts::RefreshObstructionsCache must only be called on scene client.";
 
+	PartBoxPass boxes(*this);
 	for(iterator pi = begin(); pi != end(); pi++)
 	{
 		if(!(*pi)->IsOmitted())
@@ -4625,9 +4682,10 @@ void AuScParts::RefreshObstructionsCache(QProgressDialog& progress)
 
 void AuScParts::RefreshObstructionsCacheForFinalize(QProgressDialog& progress)
 {
-	if(!g_Au.IsSceneApp())
+	if(!MayMakeObstructionModels())
 		qWarning() << "error: AuScParts::RefreshObstructionsCacheForFinalize must only be called on scene client.";
 
+	PartBoxPass boxes(*this);
 	for(iterator pi = begin(); pi != end(); pi++)
 	{
 		if(!(*pi)->IsOmitted())
@@ -4640,9 +4698,10 @@ void AuScParts::RefreshObstructionsCacheForFinalize(QProgressDialog& progress)
 
 bool AuScParts::RefreshObstructionsCacheIfNeeded()
 {
-	if(!g_Au.IsSceneApp())
+	if(!MayMakeObstructionModels())
 		qWarning() << "error: AuScParts::RefreshObstructionsCacheIfNeeded must only be called on scene client.";
 
+	PartBoxPass boxes(*this);
 	bool needed = false;
 	for(iterator pi = begin(); pi != end(); pi++)
 		if(!(*pi)->IsOmitted())
@@ -5113,6 +5172,8 @@ double AuScParts::FenceVolume() const
 
 quint32 AuScParts::HullVolume() const
 {
+	PartBoxPass boxes(*this);
+
 	// Collect voxels from all of my hull parts.
 	QMap<AuPoint, bool> voxels;
 	//double voxelSize = 1;	// cubic feet
@@ -5145,6 +5206,8 @@ quint32 AuScParts::HullVolume() const
 
 quint32 AuScParts::HullVolume(QProgressDialog& progress) const
 {
+	PartBoxPass boxes(*this);
+
 	// Collect voxels from all of my hull parts.
 	QMap<AuPoint, bool> voxels;
 	//double voxelSize = 1;	// cubic feet
@@ -9433,6 +9496,11 @@ void AuScHull::RefreshObstructionsCache(quint16 partId, const AuScParts& parts)
 			continue;
 
 		// Check the part to see if it is contiguous with the hull we have accumulated so far.
+		AuPoint modelMin, modelMax;
+		m_Silhouette.BoxExtents(modelMin, modelMax);
+		if(!MayHaveVertexInside(parts, pi.key(), **pi, modelMin, modelMax))
+			continue;
+
 		// Get vertices of the part.
 		QSet<quint32> vertexIds;
 		(*pi)->VertexIds(vertexIds);
@@ -9516,6 +9584,12 @@ quint32 AuScHull::HullVolume(quint16 partId, const AuScParts& parts) const
 			continue;
 
 		// Check the part to see if it is contiguous with the hull we have accumulated so far.
+		// None of its vertices can be inside my obstruction model if they are all outside the model's box.
+		AuPoint modelMin, modelMax;
+		m_Silhouette.BoxExtents(modelMin, modelMax);
+		if(!MayHaveVertexInside(parts, pi.key(), **pi, modelMin, modelMax))
+			continue;
+
 		// Get vertices of the part.
 		QSet<quint32> vertexIds;
 		(*pi)->VertexIds(vertexIds);
@@ -9566,6 +9640,11 @@ quint32 AuScHull::HullVolumeVoxels(quint16 partId, const AuScParts& parts, QMap<
 			continue;
 
 		// Check the part to see if it is contiguous with the hull we have accumulated so far.
+		AuPoint modelMin, modelMax;
+		m_Silhouette.BoxExtents(modelMin, modelMax);
+		if(!MayHaveVertexInside(parts, pi.key(), **pi, modelMin, modelMax))
+			continue;
+
 		// Get vertices of the part.
 		QSet<quint32> vertexIds;
 		(*pi)->VertexIds(vertexIds);

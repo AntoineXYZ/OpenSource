@@ -1830,6 +1830,48 @@ bool DaDesigner::LoadedFromFile(const AuDesign& design)
 	return true;
 }
 
+bool DaDesigner::ApplySimpleMode(const AuId& archId, const QString& archName, const QString& recipe, QString& log)
+{
+	if(m_ViewOnly)
+	{
+		log = tr("This blueprint is view only.");
+		return false;
+	}
+	m_EnvLock.lockForRead();
+	bool isBuilding = dynamic_cast<AuBdDesign*>(m_Design) != 0;
+	m_EnvLock.unlock();
+	if(!isBuilding)
+	{
+		log = tr("Simple Mode makes buildings. Start a new building blueprint first.");
+		return false;
+	}
+
+	AuBdDesign built;
+	built.SetRecipeText(recipe);
+	if(!built.GenerateFromRecipe(log))
+		return false;
+	built.Parts().SetArchitectAfterFileLoad(archId, archName);
+
+	m_EnvLock.lockForWrite();
+	AuBdDesign* design = dynamic_cast<AuBdDesign*>(m_Design);
+	if(design)
+	{
+		design->Parts() = built.Parts();
+		AuDesignTex palette[SCTEXI_Count];
+		built.TexturePalette(palette);
+		design->SetTexturePalette(palette);
+		design->SetRecipeText(recipe);
+		m_DesignChangeTimes.clear();
+		m_UndoRedo.clear();
+	}
+	m_EnvLock.unlock();
+	if(!design)
+		return false;
+
+	SetDesignModified();
+	return true;
+}
+
 void DaDesigner::PartSelectionIds(AuScSelection& partIds) const
 {
 	if(!m_Design)
@@ -2298,6 +2340,13 @@ void DaDesigner::MovePartObjects(const AuId& archId, const AuScSelection& sel, c
 
 AuDesignUndoRedoTransaction& DaDesigner::StartUndo(const AuId& architectId, const QString& desc)
 {
+	AuBdDesign* bd = dynamic_cast<AuBdDesign*>(m_Design);
+	if(bd && bd->HasRecipe())
+	{
+		bd->SetRecipeText(QString());
+		m_DesignChangeTimes.insert(0, AuElapsedTimer::Now());
+	}
+
 	// Start a new undo/redo transaction.
 	AuDesignUndoRedoTransaction undo(desc);
 	QHash<AuId, AuDesignUndoRedoList>::iterator	uri = m_UndoRedo.find(architectId);

@@ -5474,6 +5474,23 @@ void AuApp::DesignerUndo()
 	}
 }
 
+void AuApp::DesignerApplySimpleMode(const QString& recipe)
+{
+	if(IsSingleUserMode())
+	{
+		m_I->DesignerApplySimpleMode(recipe);
+	}
+	else
+	{
+		QByteArray ba;
+		QDataStream out(&ba, QIODevice::WriteOnly);
+		out.setVersion(QDataStream::Qt_4_1);
+		out << (quint8)DtChatChannelPacket::PD_BdSimpleMode;
+		out << qCompress(recipe.toUtf8());
+		QueueChatPacket(ba);
+	}
+}
+
 void AuApp::DesignerJoinParts(quint16 partId, const AuScSelection& sel)
 {
 	if(!partId)

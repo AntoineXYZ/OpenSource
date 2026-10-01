@@ -11,6 +11,7 @@
 #include "auagentdialog.h"
 #include "auapp.h"
 #include "auatommanager.h"
+#include "aubddesign.h"
 #include "aubdexchange.h"
 #include "aubdpreviewinit.h"
 #include "aubeamoptions.h"
@@ -82,6 +83,7 @@
 #include "auunitorders.h"
 #include "daatomlist.h"
 #include "dagalaxy.h"
+#include "dadesigner.h"
 #include "daperson.h"
 #include "dasector.h"
 #include "dasolarsystem.h"
@@ -331,6 +333,10 @@ AuDesignerFrame::AuDesignerFrame(QWidget *parent) : AuFrame(parent)
 	m_DesignerBar2 = 0;
 	m_DesignerPartsDock = 0;
 	m_DesignerTextureWrapDock = 0;
+	m_SimpleModeDock = 0;
+	m_SimpleModeWatch = 0;
+	m_SimpleModeWaitFor = 0;
+	m_SimpleModeWaits = 0;
 	m_GearDock = 0;
 	m_GovernAnnouncementsDock = 0;
 	m_GovernCitiesDock = 0;
@@ -525,6 +531,7 @@ AuDesignerFrame::AuDesignerFrame(QWidget *parent) : AuFrame(parent)
 	m_Designer_MakeWindow = 0;
 	m_Designer_MoveDoorSwitches = 0;
 	m_Designer_NewBuilding = 0;
+	m_Designer_NewBuildingSimple = 0;
 	m_Designer_NewItem = 0;
 	m_Designer_NewSpacecraft = 0;
 	m_Designer_NewVehicle = 0;
@@ -1429,6 +1436,71 @@ void AuDesignerFrame::ToggleDesignTextureWrapUi()
 	}
 }
 
+void AuDesignerFrame::CreateSimpleModeDock()
+{
+	if(m_SimpleModeDock || !AuBdDesign::SimpleModeDock())
+		return;
+	m_SimpleModeDock = AuBdDesign::SimpleModeDock()(this, [](const QString& recipe) { auApp->DesignerApplySimpleMode(recipe); });
+	if(!m_SimpleModeDock)
+		return;
+	addDockWidget(Qt::LeftDockWidgetArea, m_SimpleModeDock, Qt::Vertical);
+	m_SimpleModeDock->hide();
+	m_SimpleModeDock->setFloating(true);
+	m_SimpleModeDock->resize(1100, 760);
+	m_SimpleModeWatch = new QTimer(this);
+	m_SimpleModeWatch->setInterval(300);
+	connect(m_SimpleModeWatch, SIGNAL(timeout()), SLOT(WatchSimpleMode()));
+	m_SimpleModeWatch->start();
+}
+
+void AuDesignerFrame::WatchSimpleMode()
+{
+	if(!m_SimpleModeDock)
+		return;
+	QString plan;
+	const void* design = 0;
+	const bool simple = m_View && m_View->SceneContext() == SCENE_Designer && m_View->DesignerSimpleState(plan, design);
+
+	if(m_View && m_View->TakeSimpleModeReload())
+	{
+		m_SimpleModeWaitFor = design ? design : (const void*)this;
+		m_SimpleModeWaits = 0;
+		m_SimpleModeDock->hide();
+		return;
+	}
+	if(m_SimpleModeWaitFor)
+	{
+		if(design == m_SimpleModeWaitFor && ++m_SimpleModeWaits < 20)
+			return;
+		m_SimpleModeWaitFor = 0;
+		if(simple)
+		{
+			if(plan.isEmpty())
+				QMetaObject::invokeMethod(m_SimpleModeDock, "NewBuilding");
+			else
+				QMetaObject::invokeMethod(m_SimpleModeDock, "LoadRecipe", Q_ARG(QString, plan));
+		}
+	}
+	else if(simple && m_SimpleModeDock->isHidden() && !plan.isEmpty())
+		QMetaObject::invokeMethod(m_SimpleModeDock, "LoadRecipe", Q_ARG(QString, plan));
+
+	if(simple && m_SimpleModeDock->isHidden())
+	{
+		m_SimpleModeDock->show();
+		m_SimpleModeDock->raise();
+	}
+	else if(!simple && !m_SimpleModeDock->isHidden())
+		m_SimpleModeDock->hide();
+}
+
+QString AuDesignerFrame::SimpleModePlanText() const
+{
+	QString plan;
+	if(m_SimpleModeDock)
+		QMetaObject::invokeMethod(m_SimpleModeDock, "PlanText", Q_RETURN_ARG(QString, plan));
+	return plan;
+}
+
 void AuDesignerFrame::ToggleHoldUi()
 {
 	if(m_HoldDock && m_HoldDockFree)
@@ -2201,6 +2273,9 @@ void AuDesignerFrame::CreateDockWidgets()
 		m_DesignerTextureWrapDock->hide();
 		m_DockBars.m_DockWidgets.append(AuFrameDock(m_DesignerTextureWrapDock));
 
+		// Simple Mode.
+		CreateSimpleModeDock();
+
 		// Restore positions and visibility of dock widgets.
 		QByteArray windowState = g_Au.Settings().value("/Widget/MainFrame/DesignerWindowState").toByteArray();
 		if(!windowState.isEmpty())
@@ -2501,6 +2576,9 @@ void AuDesignerFrame::CreateDockWidgets()
 		addDockWidget(Qt::RightDockWidgetArea, m_DesignerTextureWrapDock, Qt::Vertical);
 		m_DesignerTextureWrapDock->hide();
 		m_DockBars.m_DockWidgets.append(AuFrameDock(m_DesignerTextureWrapDock));
+
+		// Simple Mode.
+		CreateSimpleModeDock();
 
 		// Players Online
 		if(solo)
@@ -3501,6 +3579,8 @@ void AuDesignerFrame::DesignerExited()
 		m_DesignerPartsDock->hide();
 	if(m_DesignerTextureWrapDock)
 		m_DesignerTextureWrapDock->hide();
+	if(m_SimpleModeDock)
+		m_SimpleModeDock->hide();
 }
 
 void AuDesignerFrame::CreateDesignerMenu()
@@ -3518,6 +3598,13 @@ void AuDesignerFrame::CreateDesignerMenu()
 		{
 			m_Designer_NewBuilding = nuMenu->addAction(tr("New &Building..."), m_View, SLOT(DesignerNewBuilding()));
 			m_Designer_NewBuilding->setIcon(QIcon(":data/City.png"));
+
+			if(AuBdDesign::SimpleModeDock())
+			{
+				m_Designer_NewBuildingSimple = nuMenu->addAction(tr("New Building - &Simple..."), m_View,
+						SLOT(DesignerNewBuildingSimple()));
+				m_Designer_NewBuildingSimple->setIcon(QIcon(":data/City.png"));
+			}
 
 			m_Designer_NewItem = nuMenu->addAction(tr("New &Item..."), m_View, SLOT(DesignerNewItem()));
 			m_Designer_NewItem->setIcon(QIcon(":data/Inventory.png"));
@@ -4499,6 +4586,7 @@ void AuDesignerFrame::CreateDesignerMenu()
 		viewMenu->addAction(QIcon(":data/SoHDesignerIcon.png"), tr("Parts"), this, SLOT(ToggleDesignPartsUi()));
 
 		viewMenu->addAction(QIcon(":data/ScTexPalette.png"), tr("Texture &Wrapper"), this, SLOT(ToggleDesignTextureWrapUi()));
+
 	}
 
 	QMenu* helpMenu = menuBar()->addMenu(tr("&Help"));

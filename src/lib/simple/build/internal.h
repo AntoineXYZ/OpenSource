@@ -1,0 +1,15 @@
+#pragma once
+
+#include "common.h"
+#include "constants.h"
+#include "../geometry/v2.h"
+#include "../geometry/mesh.h"
+#include "../geometry/outline.h"
+#include "theme.h"
+#include "trims.h"
+#include "doors.h"
+#include "windows.h"
+#include "stairs.h"
+#include "roofhelpers.h"
+#include "roof.h"
+#include "context.h"

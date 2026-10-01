@@ -144,6 +144,10 @@ private:
 	AuDesignerBar2*						m_DesignerBar2;
 	AuDesignerPartsDock*				m_DesignerPartsDock;
 	AuDesignerTextureWrapDock*			m_DesignerTextureWrapDock;
+	QDockWidget*						m_SimpleModeDock;
+	QTimer*								m_SimpleModeWatch;
+	const void*							m_SimpleModeWaitFor;
+	int									m_SimpleModeWaits;
 	AuGearDock*							m_GearDock;
 	AuGovernDock*						m_GovernDock;
 	AuGovAnnouncementsDock*				m_GovernAnnouncementsDock;
@@ -329,6 +333,7 @@ private:
 	QAction*							m_Designer_MakeWindow;
 	QAction*							m_Designer_MoveDoorSwitches;
 	QAction*							m_Designer_NewBuilding;
+	QAction*							m_Designer_NewBuildingSimple;
 	QAction*							m_Designer_NewItem;
 	QAction*							m_Designer_NewSpacecraft;
 	QAction*							m_Designer_NewVehicle;
@@ -806,6 +811,8 @@ public slots:
 	void ToggleConstructionUi();
 	void ToggleDesignPartsUi();
 	void ToggleDesignTextureWrapUi();
+	QString SimpleModePlanText() const;
+	void WatchSimpleMode();
 	void ToggleFullScreen();
 	void ToggleGearUi();
 	void ToggleGovernAnnouncementsUi();
@@ -858,6 +865,8 @@ protected:
 	virtual void closeEvent(QCloseEvent* event);
 
 	void CreateDockWidgets();
+
+	void CreateSimpleModeDock();
 
 	void CreateDesignerMenu();
 

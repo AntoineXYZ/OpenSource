@@ -1730,6 +1730,8 @@ AuDesignerView::AuDesignerView(QWidget* parent) : QOpenGLWidget(parent), m_Scene
 	m_CameraAnimSpeed = 0;
 	m_Cursor = CURSOR_Unknown;
 	m_DesignMode = DaDesignBase::InvalidMode;
+	m_DesignerSimple = false;
+	m_SimpleModeReload = false;
 	m_DragConstraint = 0;
 	m_ModalDlgCount = 0;
 	m_InCity = false;
@@ -11593,6 +11595,8 @@ void AuDesignerView::DesignerDepart()
 		return;
 
 	m_DesignerFileName = "";
+	m_DesignerSimple = false;
+	m_SimpleModeReload = true;
 
 	// Restore title on main frame window so it does not mention our design file name.
 	auApp->Frame()->setWindowTitle(g_Au.ApplicationName());
@@ -12119,6 +12123,8 @@ void AuDesignerView::DesignerNewSpacecraft()
 	designRec.SetStructure(newStructure);
 
 	m_DesignerFileName = "";
+	m_DesignerSimple = false;
+	m_SimpleModeReload = true;
 	auApp->DesignerNew(designRec);
 
 	// Update title on main frame window to show design file unsaved status.
@@ -12135,9 +12141,19 @@ void AuDesignerView::DesignerNewSpacecraft()
 
 void AuDesignerView::DesignerNewBuilding()
 {
+	DesignerNewBuildingDesign(false);
+}
+
+void AuDesignerView::DesignerNewBuildingSimple()
+{
+	DesignerNewBuildingDesign(true);
+}
+
+bool AuDesignerView::DesignerNewBuildingDesign(bool simple)
+{
 	// Warn against losing the current design. Provide an option to cancel.
 	if(!DesignerConfirmLoseChanges())
-		return;
+		return false;
 
 	// Start with no commands running.
 	EndCommands();
@@ -12151,12 +12167,127 @@ void AuDesignerView::DesignerNewBuilding()
 	designRec.SetStructure(newStructure);
 
 	m_DesignerFileName = "";
+	m_DesignerSimple = simple;
+	m_SimpleModeReload = true;
 	auApp->DesignerNew(designRec);
 
 	// Update title on main frame window to show design file unsaved status.
-	QString windowTitle = QString("%1 %2 New Building")
+	QString windowTitle = QString("%1 %2 %3")
 		.arg(g_Au.ApplicationName())
-		.arg(g_Au.MiddleDotSymbol());
+		.arg(g_Au.MiddleDotSymbol())
+		.arg(simple ? tr("New Simple Mode Building") : tr("New Building"));
+	auApp->Frame()->setWindowTitle(windowTitle);
+
+	// Trigger enable/disable of menu controls.
+	m_RenderInfo->DesignerClearPartSelection();
+	auDesignerApp->DesignerFrame()->DesignerSetObjectMode(false);
+	emit DesignerSelectionChanged();
+	return true;
+}
+
+bool AuDesignerView::DesignerSimpleState(QString& plan, const void*& design)
+{
+	plan.clear();
+	design = 0;
+	bool building = false, hasPlan = false;
+	int parts = 0;
+	DaPerson* sceneAtom;
+	LockSceneAtom(&sceneAtom);
+	if(sceneAtom)
+	{
+		DaDesigner* pde = sceneAtom->FindParentDesignerInEnv();
+		if(pde)
+		{
+			const AuDesign* d = pde->LockDesignForRead();
+			design = d;
+			const AuBdDesign* bd = dynamic_cast<const AuBdDesign*>(d);
+			if(bd)
+			{
+				building = true;
+				hasPlan = bd->HasRecipe();
+				parts = bd->Parts().size();
+				if(hasPlan)
+					plan = bd->RecipeText();
+			}
+			pde->UnlockDesign();
+		}
+	}
+	UnlockSceneAtom();
+	return building && (hasPlan || (m_DesignerSimple && !parts));
+}
+
+bool AuDesignerView::DesignerSimplePlan(QString& plan)
+{
+	const void* design;
+	if(!DesignerSimpleState(plan, design))
+		return false;
+
+	if(m_DesignerSimple)
+	{
+		QString editing = auDesignerApp->DesignerFrame()->SimpleModePlanText();
+		if(!editing.isEmpty())
+			plan = editing;
+	}
+	return !plan.isEmpty();
+}
+
+bool AuDesignerView::DesignerSaveSimple(const QString& fileName, const QString& plan)
+{
+	QFile file(fileName);
+	if(!file.open(QFile::WriteOnly | QFile::Truncate))
+		return false;
+	QByteArray text = plan.toUtf8();
+	bool ok = file.write(text) == text.size();
+	file.close();
+	return ok;
+}
+
+void AuDesignerView::DesignerOpenSimple(const QString& fileName)
+{
+	QFile file(fileName);
+	if(!file.open(QFile::ReadOnly))
+		return;
+	const QString plan = QString::fromUtf8(file.readAll());
+	file.close();
+
+	QString name = QFileInfo(fileName).completeBaseName();
+	for(const QString& line : plan.split(QChar('\n')))
+	{
+		const QString l = line.section(QChar('#'), 0, 0).trimmed();
+		if(l.startsWith("name ", Qt::CaseInsensitive) && !l.mid(5).trimmed().isEmpty())
+		{
+			name = l.mid(5).trimmed();
+			break;
+		}
+	}
+
+	AuBdDesign design;
+	design.SetStructure(BD_Building);
+	design.SetName(name);
+	design.SetRecipeText(plan);
+	QString log;
+	if(!design.GenerateFromRecipe(log))
+	{
+		QMessageBox mb(g_Au.ApplicationName(), tr("The Simple Mode plan in %1 does not build:\n%2")
+					.arg(QFileInfo(fileName).fileName()).arg(log.trimmed()),
+				QMessageBox::Warning, QMessageBox::Ok, QMessageBox::NoButton, QMessageBox::NoButton, auApp->Frame());
+		auApp->Frame()->ExecMessageBox(mb);
+		return;
+	}
+	design.SetPackPlanOnly(true);
+
+	// Start with no commands running.
+	EndCommands();
+	auApp->DesignerLoadedFromFile(design);
+	m_DesignerFileName = fileName;
+	m_DesignerSimple = true;
+	m_SimpleModeReload = true;			// (the Simple Mode dock shows itself for it, with its plan)
+
+	// Update title on main frame window to show current design file name.
+	QString windowTitle = QString("%1 %2 %3")
+		.arg(g_Au.ApplicationName())
+		.arg(g_Au.MiddleDotSymbol())
+		.arg(m_DesignerFileName);
 	auApp->Frame()->setWindowTitle(windowTitle);
 
 	// Trigger enable/disable of menu controls.
@@ -12188,6 +12319,8 @@ void AuDesignerView::DesignerNewItem()
 	designRec.SetCommodityId(newCommodityId);
 
 	m_DesignerFileName = "";
+	m_DesignerSimple = false;
+	m_SimpleModeReload = true;
 	auApp->DesignerNew(designRec);
 
 	// Update title on main frame window to show design file unsaved status.
@@ -12286,9 +12419,17 @@ void AuDesignerView::DesignerOpen()
 	}
 
 	QString loadFile = QFileDialog::getOpenFileName(this, tr("Hazeron Design File"), designFileName,
-			"Hazeron Designs (*.SoH);;All Files (*.*)", 0,
+			AuBdDesign::HasSimpleModeGenerator()
+				? "Hazeron Designs (*.SoH *.sohs);;Full Blueprints (*.SoH);;Simple Mode Buildings (*.sohs);;All Files (*.*)"
+				: "Hazeron Designs (*.SoH);;All Files (*.*)", 0,
 			g_Au.UseNativeFileDialog() ? QFileDialog::Options() : QFileDialog::DontUseNativeDialog);
-	if(!loadFile.isEmpty() && loadFile.right(4).compare(".SoH", Qt::CaseInsensitive) == 0)
+	if(!loadFile.isEmpty() && loadFile.endsWith(".sohs", Qt::CaseInsensitive) && AuBdDesign::HasSimpleModeGenerator())
+	{
+		// Store last known .SoH file folder.
+		g_Au.Settings().writeEntry("/Designer/LastSoHFile", loadFile);
+		DesignerOpenSimple(loadFile);
+	}
+	else if(!loadFile.isEmpty() && loadFile.right(4).compare(".SoH", Qt::CaseInsensitive) == 0)
 	{
 		// Store last known .SoH file folder.
 		g_Au.Settings().writeEntry("/Designer/LastSoHFile", loadFile);
@@ -12312,6 +12453,8 @@ void AuDesignerView::DesignerOpen()
 			else
 			{
 				m_DesignerFileName = loadFile;
+				m_DesignerSimple = false;
+				m_SimpleModeReload = true;
 
 				// Update title on main frame window to show current design file name.
 				QString windowTitle = QString("%1 %2 %3")
@@ -12765,8 +12908,20 @@ void AuDesignerView::DesignerSave()
 {
 	bool savedIt = false;
 
-	// Attempt to resave the file using it's last known file name.
-	if(!m_DesignerFileName.isEmpty())
+	// A Simple Mode building is saved as (.sohs)
+	QString plan;
+	const bool simple = DesignerSimplePlan(plan);
+	const bool sohsFile = m_DesignerFileName.endsWith(".sohs", Qt::CaseInsensitive);
+	if(!m_DesignerFileName.isEmpty() && sohsFile && !simple)
+	{
+		QMessageBox mb(g_Au.ApplicationName(), tr("This building was changed with the building tools, so it is no longer a "
+					"Simple Mode plan. Save it as a whole blueprint (.SoH)."),
+				QMessageBox::Information, QMessageBox::Ok, QMessageBox::NoButton, QMessageBox::NoButton, auApp->Frame());
+		auApp->Frame()->ExecMessageBox(mb);
+	}
+	if(!m_DesignerFileName.isEmpty() && simple && sohsFile)
+		savedIt = DesignerSaveSimple(m_DesignerFileName, plan);
+	else if(!m_DesignerFileName.isEmpty() && !simple && !sohsFile)
 	{
 		// Grab a thumbnail image of the screen, to accompany the design.
 		QImage thumb = grabFramebuffer().convertToFormat(QImage::Format_RGB16).scaled(256,256, Qt::KeepAspectRatio,
@@ -12825,8 +12980,13 @@ void AuDesignerView::DesignerSaveAs()
 		designFileName = lastFileInfo.absolutePath();	// Use last known ship file folder.
 	}
 
-	QString suffix(".SoH");
-	QString filter = QString("Hazeron Designs (*%1);;All Files (*.*)").arg(suffix);
+	QString plan;
+	const bool simple = DesignerSimplePlan(plan);
+	QString suffix(simple ? ".sohs" : ".SoH");
+	QString filter = QString(simple ? "Simple Mode Buildings (*%1);;All Files (*.*)" : "Hazeron Designs (*%1);;All Files (*.*)")
+			.arg(suffix);
+	if(designFileName.endsWith(simple ? ".SoH" : ".sohs", Qt::CaseInsensitive))
+		designFileName = QFileInfo(designFileName).absolutePath() + "/" + QFileInfo(designFileName).completeBaseName() + suffix;
 
 	QString saveFile = QFileDialog::getSaveFileName(this, tr("Hazeron Design File"), designFileName, filter, 0,
 			g_Au.UseNativeFileDialog() ? QFileDialog::Options() : QFileDialog::DontUseNativeDialog);
@@ -12853,8 +13013,9 @@ void AuDesignerView::DesignerSaveAs()
 		DaDesigner* pde = sceneAtom->FindParentDesignerInEnv();
 		if(pde)
 		{
-			savedIt = pde->SaveToFile(sceneAtom->Id(), saveFile, &thumb);
+			savedIt = simple ? DesignerSaveSimple(saveFile, plan) : pde->SaveToFile(sceneAtom->Id(), saveFile, &thumb);
 			m_DesignerFileName = saveFile;
+			m_DesignerSimple = simple;
 
 			// Update title on main frame window to show current design file name.
 			QString windowTitle = QString("%1 %2 %3")
@@ -13791,6 +13952,8 @@ void AuDesignerView::DesignerBdLibraryDelete()
 				designReport = d->ReportAnalysis();
 
 				m_DesignerFileName = "";
+				m_DesignerSimple = false;
+				m_SimpleModeReload = true;
 
 				// Update title on main frame window to show current design file name.
 				QString windowTitle = QString("%1 %2 %3 %2 %4")
@@ -13836,6 +13999,8 @@ void AuDesignerView::DesignerScLibraryDelete()
 				designReport = d->ReportAnalysis();
 
 				m_DesignerFileName = "";
+				m_DesignerSimple = false;
+				m_SimpleModeReload = true;
 
 				// Update title on main frame window to show current design file name.
 				QString windowTitle = QString("%1 %2 %3 %2 %4")
@@ -13881,6 +14046,8 @@ void AuDesignerView::DesignerItLibraryDelete()
 				designReport = d->ReportAnalysis();
 
 				m_DesignerFileName = "";
+				m_DesignerSimple = false;
+				m_SimpleModeReload = true;
 
 				// Update title on main frame window to show current design file name.
 				QString windowTitle = QString("%1 %2 %3 %2 %4")
@@ -13930,6 +14097,8 @@ void AuDesignerView::DesignerScLibraryOpen()
 				designReport = d->ReportAnalysis();
 
 				m_DesignerFileName = "";
+				m_DesignerSimple = false;
+				m_SimpleModeReload = true;
 
 				// Update title on main frame window to show current design file name.
 				QString windowTitle = QString("%1 %2 %3 %2 %4")
@@ -13983,6 +14152,8 @@ void AuDesignerView::DesignerBdLibraryOpen()
 				designReport = d->ReportAnalysis();
 
 				m_DesignerFileName = "";
+				m_DesignerSimple = false;
+				m_SimpleModeReload = true;
 
 				// Update title on main frame window to show current design file name.
 				QString windowTitle = QString("%1 %2 %3 %2 %4")
@@ -14036,6 +14207,8 @@ void AuDesignerView::DesignerItLibraryOpen()
 				designReport = d->ReportAnalysis();
 
 				m_DesignerFileName = "";
+				m_DesignerSimple = false;
+				m_SimpleModeReload = true;
 
 				// Update title on main frame window to show current design file name.
 				QString windowTitle = QString("%1 %2 %3 %2 %4")

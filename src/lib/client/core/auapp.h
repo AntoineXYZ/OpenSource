@@ -532,6 +532,8 @@ public:
 
 	void DesignerUndo();
 
+	void DesignerApplySimpleMode(const QString& recipe);
+
 	void DesignerViewPositionGrid(const AuId& avatarId, const AuDesignPosition& pos);
 
 	void DesignerViewPositionLoad(const AuId& avatarId, quint8 number);

@@ -7,9 +7,11 @@
 #include "aubdfinalizedlg.h"
 //
 #include "auapp.h"
+#include "aubddesign.h"
 #include "audesign.h"
 #include "auglobal.h"
 #include "auframe.h"
+#include "auscparts.h"
 #include <QLabel>
 #include <QMessageBox>
 #include <QProgressDialog>
@@ -17,12 +19,22 @@
 #include <QTextBrowser>
 #include <QVBoxLayout>
 
+static const AuBdDesign* SimpleModeDesign(const AuDesign* design)
+{
+	const AuBdDesign* bd = dynamic_cast<const AuBdDesign*>(design);
+	return bd && bd->HasRecipe() ? bd : 0;
+}
+
 AuBdFinalizeDlg::AuBdFinalizeDlg(const AuDesign& design, const QImage& thumb, const AuId& archId, const QString& archName,
 		QWidget* parent) : AuDialog(parent)
 {
 	m_DesignId = 0;	// Can be specified by an agent.
 
-	setAuDlgTitle(tr("Finalize %1 Blueprint").arg(design.StructureName()));
+	const bool simpleMode = SimpleModeDesign(&design) != 0;
+	if(simpleMode)
+		setAuDlgTitle(tr("Finalize Simple Mode %1 Blueprint").arg(design.StructureName()));
+	else
+		setAuDlgTitle(tr("Finalize %1 Blueprint").arg(design.StructureName()));
 	setAuDlgIcon(QIcon(":data/ScFinish.png"));
 	m_Assembly = false;
 	m_Design = design.Clone();
@@ -83,7 +95,10 @@ AuBdFinalizeDlg::AuBdFinalizeDlg(const AuDesign& design, const QImage& thumb, co
 				"Finalize messages appear here. "
 				"</html>"));
 
-	m_DoDesign = new QPushButton(tr("Finalize %2 '%1'...").arg(design.Name()).arg(design.StructureName()), this);
+	if(simpleMode)
+		m_DoDesign = new QPushButton(tr("Finalize Simple Mode %2 '%1'...").arg(design.Name()).arg(design.StructureName()), this);
+	else
+		m_DoDesign = new QPushButton(tr("Finalize %2 '%1'...").arg(design.Name()).arg(design.StructureName()), this);
 	if(auApp->IsSingleUserDesignerMode())
 		m_DoDesign->setToolTip(tr("<html>"
 					"The blueprint is analyzed to ensure it can be used to construct a building. "
@@ -248,9 +263,26 @@ void AuBdFinalizeDlg::DoSpacecraft()
 	progress.setMinimumDuration(0);
 	progress.setValue(0);
 
+	const AuBdDesign* simple = SimpleModeDesign(m_Design);
+	int planSize = 0, modelSize = 0;
+	if(simple)
+	{
+		QByteArray parts;
+		QDataStream out(&parts, QIODevice::WriteOnly);
+		out.setVersion(QDataStream::Qt_4_1);
+		out << simple->Parts();
+		modelSize = qCompress(parts).size();
+		planSize = simple->RecipeText().toUtf8().size();
+	}
+
 	// Finalize the design.
 	QStringList msgs;
 	bool ok = m_Design->FinalizeDesign(msgs, progress);
+	if(simple)
+		msgs.prepend(tr("<b>Simple Mode blueprint.</b> It is stored as its plan (%1 KB) instead of its full model (%2 KB "
+				"compressed). The server builds it again from the plan, checks it, and adds it to the library; "
+				"everyone who sees it builds it from the plan too.")
+				.arg(qMax(1, (planSize + 1023) / 1024)).arg(qMax(1, (modelSize + 1023) / 1024)));
 	if(progress.wasCanceled())
 		msgs.append(tr("Finalize canceled."));
 
@@ -277,6 +309,13 @@ void AuBdFinalizeDlg::DoSpacecraft()
 				"<p>"
 				"The building blueprint finalized successfully. "
 				"If you were on line, the finalized building blueprint could be saved to the library at this time. "
+				"</p>"
+				"</html>");
+	else if(simple)
+		smsg = tr("<html>"
+				"<p>"
+				"The Simple Mode building blueprint finalized successfully. "
+				"Press 'Ok' to save it to the library as its plan. "
 				"</p>"
 				"</html>");
 	else

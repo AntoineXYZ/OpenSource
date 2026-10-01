@@ -10,6 +10,7 @@
 #include "audesign.h"
 #include "aubdmodules.h"
 #include "dbindustry.h"
+#include <functional>
 
 class AuBdReport;
 class AuDoorStateHash;
@@ -26,6 +27,8 @@ class AuScRoute;
 class AuSegmentArray;
 class AuZoneResource;
 class DeProcessComponentArray;
+class QDockWidget;
+class QMainWindow;
 class QProgressDialog;
 class QSqlDatabase;
 
@@ -59,6 +62,14 @@ private:
 	quint32								m_Shops;				// In cubic meters.
 	quint32								m_Store;				// In cubic meters.
 	quint32								m_Skeleton;				// In cubic meters.
+
+	QByteArray							m_Recipe;
+	quint32								m_RecipeSignature;
+	bool								m_PackPlanOnly;
+
+public:
+	typedef bool (*SimpleModeGenerator)(const QString& recipe, AuBdDesign& design, QString& log);
+	typedef QDockWidget* (*SimpleModeDockFactory)(QMainWindow* frame, const std::function<void(const QString&)>& apply);
 
 public:	// Constructors
 	AuBdDesign(unsigned int idDesign, const AuId& idArchitect, const QString& architect);
@@ -251,6 +262,26 @@ public:	// Methods
 	virtual bool FinalizeDesign(QStringList& msgs, QProgressDialog& progress);
 
 	virtual void FinalizePreview();
+
+	bool FinalizeDesignOnServer(QStringList& msgs);
+
+	inline bool HasRecipe() const
+	{
+		return !m_Recipe.isEmpty();
+	}
+	QString RecipeText() const;
+	void SetRecipeText(const QString& recipe);
+	bool GenerateFromRecipe(QString& log);
+	bool ExpandRecipe();
+	inline void SetPackPlanOnly(bool planOnly)
+	{
+		m_PackPlanOnly = planOnly;
+	}
+	quint32 PartsSignature() const;
+	static void SetSimpleModeGenerator(SimpleModeGenerator generator);
+	static bool HasSimpleModeGenerator();
+	static void SetSimpleModeDockFactory(SimpleModeDockFactory factory);
+	static SimpleModeDockFactory SimpleModeDock();
 
 	// Searches from 'fromLoc' to find a ladder segment.
 	// Uses IsPathBlocked test to insure fromLoc can get to each ladder.

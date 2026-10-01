@@ -13,11 +13,42 @@
 #include "auscparts.h"
 #include "hashpack.h"
 #include <QProgressDialog>
+#include <algorithm>
 #include <QSqlQuery>
 
-#define BDDESIGN_SERIALIZE_VER			4
+#define BDDESIGN_SERIALIZE_VER			6
 
 static int s_AuBdDesignMetaType = qRegisterMetaType<AuBdDesign>();
+
+static AuBdDesign::SimpleModeGenerator s_SimpleModeGenerator = 0;
+static AuBdDesign::SimpleModeDockFactory s_SimpleModeDockFactory = 0;
+
+//Tag added to the blueprint to tell the server that the blueprint is a Simple Mode recipe
+static const quint32 c_RecipeTag = 0x534d5250;
+
+static void WriteRecipeTail(QDataStream& out, const QByteArray& recipe, quint32 signature)
+{
+	if(recipe.isEmpty())
+		return;
+	out << c_RecipeTag;
+	out << recipe;
+	out << signature;
+}
+
+static void ReadRecipeTail(QDataStream& in, QByteArray& recipe, quint32& signature)
+{
+	recipe.clear();
+	signature = 0;
+	if(in.atEnd())
+		return;
+	quint32 tag = 0;
+	in >> tag;
+	if(tag != c_RecipeTag)
+		return;
+	in >> recipe;
+	if(!in.atEnd())
+		in >> signature;
+}
 
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
@@ -65,6 +96,8 @@ void AuBdDesignHash::LoadArchitect(const AuId& idArchitect)
 		}
 
 		// Parts
+		ob.m_Recipe.clear();
+		ob.m_RecipeSignature = 0;
 		qvi = qv++;
 		if(!qry.value(qvi).isNull())
 		{
@@ -81,6 +114,7 @@ void AuBdDesignHash::LoadArchitect(const AuId& idArchitect)
 			QDataStream in(ba);
 			in.setVersion(QDataStream::Qt_5_0);
 			in >> *ob.m_Parts;
+			ReadRecipeTail(in, ob.m_Recipe, ob.m_RecipeSignature);
 		}
 
 		// System Modules
@@ -137,6 +171,7 @@ void AuBdDesignHash::LoadArchitect(const AuId& idArchitect)
 
 		// Factors gleaned by design analysis
 		ob.m_HullVolume = qry.value(qv++).toUInt();
+		ob.ExpandRecipe();
 		//qDebug() << "AuBdDesignHash::LoadArchitect arch" << idArchitect << "loaded" << ob.Name() << ob.DescriptionOneLine();
 
 		// Insert/update the data in this hash.
@@ -194,6 +229,8 @@ void AuBdDesignHash::LoadSoloInit()
 		}
 
 		// Parts
+		ob.m_Recipe.clear();
+		ob.m_RecipeSignature = 0;
 		qvi = qv++;
 		if(!qry.value(qvi).isNull())
 		{
@@ -210,6 +247,7 @@ void AuBdDesignHash::LoadSoloInit()
 			QDataStream in(ba);
 			in.setVersion(QDataStream::Qt_5_0);
 			in >> *ob.m_Parts;
+			ReadRecipeTail(in, ob.m_Recipe, ob.m_RecipeSignature);
 		}
 
 		// System Modules
@@ -266,6 +304,7 @@ void AuBdDesignHash::LoadSoloInit()
 
 		// Factors gleaned by design analysis
 		ob.m_HullVolume = qry.value(qv++).toUInt();
+		ob.ExpandRecipe();
 		//qDebug() << "AuBdDesignHash::LoadSoloInit arch" << idArchitect << "loaded" << ob.Name() << ob.DescriptionOneLine();
 
 		// Insert/update the data in this hash.
@@ -373,6 +412,8 @@ AuBdDesign::AuBdDesign(unsigned int idDesign, const AuId& idArchitect, const QSt
 {
 	m_HullVolume = 0;
 	m_Parts = new AuScParts;
+	m_RecipeSignature = 0;
+	m_PackPlanOnly = false;
 	m_Structure = BD_Building;
 	m_IndustryId = IID_None;
 
@@ -407,6 +448,8 @@ AuBdDesign::AuBdDesign()
 {
 	m_HullVolume = 0;
 	m_Parts = new AuScParts;
+	m_RecipeSignature = 0;
+	m_PackPlanOnly = false;
 	m_Structure = BD_Building;
 	m_IndustryId = IID_None;
 
@@ -442,7 +485,8 @@ AuBdDesign::~AuBdDesign()
 	delete m_Parts;
 }
 
-AuBdDesign::AuBdDesign(const AuBdDesign& c) : AuDesign(c), m_Modules(c.m_Modules), m_Bays(c.m_Bays)
+AuBdDesign::AuBdDesign(const AuBdDesign& c) : AuDesign(c), m_Modules(c.m_Modules), m_Bays(c.m_Bays), m_Recipe(c.m_Recipe),
+	m_RecipeSignature(c.m_RecipeSignature), m_PackPlanOnly(false)
 {
 	m_HullVolume = c.m_HullVolume;
 	m_Parts = new AuScParts(*c.m_Parts);
@@ -496,6 +540,8 @@ AuBdDesign& AuBdDesign::operator=(const AuBdDesign& c)
 	m_Shops = c.m_Shops;
 	m_Skeleton = c.m_Skeleton;
 	m_Store = c.m_Store;
+	m_Recipe = c.m_Recipe;
+	m_RecipeSignature = c.m_RecipeSignature;
 	return *this;
 }
 
@@ -562,6 +608,7 @@ void AuBdDesign::Load(quint32 idDesign)
 			QDataStream in(ba);
 			in.setVersion(QDataStream::Qt_5_0);
 			in >> *m_Parts;
+			ReadRecipeTail(in, m_Recipe, m_RecipeSignature);
 		}
 
 		// System Modules
@@ -618,6 +665,7 @@ void AuBdDesign::Load(quint32 idDesign)
 
 		// Factors gleaned by design analysis
 		m_HullVolume = qry.value(qv++).toUInt();
+		ExpandRecipe();
 	}
 	else
 	{
@@ -672,6 +720,8 @@ void AuBdDesign::DesignLoaded(const AuDesign& design)
 		m_Shops = c.m_Shops;
 		m_Skeleton = c.m_Skeleton;
 		m_Store = c.m_Store;
+		m_Recipe = c.m_Recipe;
+		m_RecipeSignature = c.m_RecipeSignature;
 	}
 	catch(const bad_cast&)
 	{
@@ -687,7 +737,8 @@ void AuBdDesign::operator>>(QDataStream& out) const
 	out << ver;
 	out << m_HullVolume;
 	out << m_Modules;
-	out << *m_Parts;
+	AuScParts noParts;
+	out << (HasRecipe() && (State() == Final || m_PackPlanOnly) ? noParts : *m_Parts);
 	out << m_Structure;
 	out << m_IndustryId;
 	out << m_Arena;
@@ -713,6 +764,8 @@ void AuBdDesign::operator>>(QDataStream& out) const
 	out << m_Shops;
 	out << m_Skeleton;
 	out << m_Store;
+	out << m_Recipe;
+	out << (m_Recipe.isEmpty() ? (quint32)0 : PartsSignature());
 }
 
 void AuBdDesign::operator<<(QDataStream& in)
@@ -769,6 +822,14 @@ void AuBdDesign::operator<<(QDataStream& in)
 	else
 		m_Skeleton = 0;
 	in >> m_Store;
+	if(ver >= 5)
+		in >> m_Recipe;
+	else
+		m_Recipe.clear();
+	m_RecipeSignature = 0;
+	if(ver >= 6)
+		in >> m_RecipeSignature;
+	ExpandRecipe();
 }
 
 void AuBdDesign::Insert(QSqlDatabase& db) const
@@ -810,7 +871,9 @@ void AuBdDesign::Insert(QSqlDatabase& db) const
 		QByteArray ba;
 		QDataStream out(&ba, QIODevice::WriteOnly);
 		out.setVersion(QDataStream::Qt_5_0);
-		out << *m_Parts;
+		AuScParts noParts;
+		out << (HasRecipe() ? noParts : *m_Parts);
+		WriteRecipeTail(out, m_Recipe, PartsSignature());
 		QByteArray bac = qCompress(ba);
 		qa.addBindValue(bac);
 	}
@@ -900,7 +963,10 @@ void AuBdDesign::Update(QSqlDatabase& db) const
 		QByteArray ba;
 		QDataStream out(&ba, QIODevice::WriteOnly);
 		out.setVersion(QDataStream::Qt_5_0);
-		out << *m_Parts;
+		// A Simple Mode design is stored as its plan alone: no parts (ExpandRecipe builds them when it is loaded).
+		AuScParts noParts;
+		out << (HasRecipe() ? noParts : *m_Parts);
+		WriteRecipeTail(out, m_Recipe, PartsSignature());
 		QByteArray bac = qCompress(ba);
 		qa.addBindValue(bac);
 	}
@@ -970,7 +1036,8 @@ void AuBdDesign::Tx(QDataStream& out) const
 		QByteArray ba;
 		QDataStream packout(&ba, QIODevice::WriteOnly);
 		packout.setVersion(QDataStream::Qt_5_0);
-		packout << *m_Parts;
+		AuScParts noParts;
+		packout << (HasRecipe() ? noParts : *m_Parts);
 		QByteArray bac = qCompress(ba);
 		out << bac;
 	}
@@ -1000,6 +1067,8 @@ void AuBdDesign::Tx(QDataStream& out) const
 	out << m_Shops;
 	out << m_Skeleton;
 	out << m_Store;
+	out << m_Recipe;
+	out << (m_Recipe.isEmpty() ? (quint32)0 : PartsSignature());
 }
 
 void AuBdDesign::Rx(QDataStream& in)
@@ -1069,6 +1138,14 @@ void AuBdDesign::Rx(QDataStream& in)
 	else
 		m_Skeleton = 0;
 	in >> m_Store;
+	if(ver >= 5)
+		in >> m_Recipe;
+	else
+		m_Recipe.clear();
+	m_RecipeSignature = 0;
+	if(ver >= 6)
+		in >> m_RecipeSignature;
+	ExpandRecipe();
 }
 
 void AuBdDesign::SetArenaVolume(quint32 arena)
@@ -2310,6 +2387,105 @@ void AuBdDesign::FinalizePreview()
 	RefreshObstructionsCacheIfNeeded();
 }
 
+bool AuBdDesign::FinalizeDesignOnServer(QStringList& msgs)
+{
+	SetId(0);
+	SetState(Final);
+	m_Parts->Finalize(false, 0);
+	m_Parts->RefreshObstructionsCacheIfNeeded();
+	m_HullVolume = m_Parts->HullVolume();
+	SyncBays();
+	AuBdReport report;
+	ReportDesign(report);
+	return report.OkToConstruct(msgs, this);
+}
+
+QString AuBdDesign::RecipeText() const
+{
+	if(m_Recipe.isEmpty())
+		return QString();
+	return QString::fromUtf8(qUncompress(m_Recipe));
+}
+
+void AuBdDesign::SetRecipeText(const QString& recipe)
+{
+	m_Recipe = recipe.isEmpty() ? QByteArray() : qCompress(recipe.toUtf8());
+}
+
+bool AuBdDesign::GenerateFromRecipe(QString& log)
+{
+	if(m_Recipe.isEmpty())
+	{
+		log = QObject::tr("The blueprint has no Simple Mode plan.");
+		return false;
+	}
+	if(!s_SimpleModeGenerator)
+	{
+		log = QObject::tr("Simple Mode is not available in this program.");
+		return false;
+	}
+	return s_SimpleModeGenerator(RecipeText(), *this, log);
+}
+
+bool AuBdDesign::ExpandRecipe()
+{
+	if(!HasRecipe() || !m_Parts->isEmpty())
+		return true;
+	QString log;
+	if(!GenerateFromRecipe(log))
+	{
+		qWarning() << "AuBdDesign: Simple Mode blueprint" << Id() << Name() << "could not be built from its plan:"
+			<< log.trimmed().section('\n', -1);
+		return false;
+	}
+	m_Parts->SetArchitectAfterFileLoad(ArchitectId(), ArchitectName());
+	if(State() == Final)
+	{
+		m_Parts->Finalize(false, 0);
+		m_Parts->RefreshObstructionsCacheIfNeeded();
+	}
+	//Need to figure out some sort of simple mode versioning grandfathering
+	if(m_RecipeSignature && m_RecipeSignature != PartsSignature())
+		qWarning() << "AuBdDesign: Simple Mode blueprint" << Id() << Name()
+			<< "was built differently here than where it was stored";
+	return true;
+}
+
+quint32 AuBdDesign::PartsSignature() const
+{
+	QList<quint16> ids = m_Parts->keys();
+	std::sort(ids.begin(), ids.end());
+	quint32 sig = 2166136261u;
+	auto mix = [&sig](quint32 v) { for(int b = 0; b < 4; b++) { sig ^= (v >> (b * 8)) & 0xff; sig *= 16777619u; } };
+	mix(ids.size());
+	for(quint16 id : ids)
+	{
+		mix(id);
+		mix(m_Parts->value(id)->Type());
+	}
+	return sig ? sig : 1;
+}
+
+void AuBdDesign::SetSimpleModeGenerator(SimpleModeGenerator generator)
+{
+	s_SimpleModeGenerator = generator;
+}
+
+bool AuBdDesign::HasSimpleModeGenerator()
+{
+	return s_SimpleModeGenerator != 0;
+}
+
+void AuBdDesign::SetSimpleModeDockFactory(SimpleModeDockFactory factory)
+{
+	s_SimpleModeDockFactory = factory;
+}
+
+AuBdDesign::SimpleModeDockFactory AuBdDesign::SimpleModeDock()
+{
+	return s_SimpleModeDockFactory;
+}
+
 // NOTE: If you change this function be sure to change AuBdReport::ListComponents.
 void AuBdDesign::ListComponents(DeProcessComponentArray& pc) const
 {
@@ -2834,6 +3010,7 @@ quint64 AuBdDesign::MemoryUsage() const
 	mem += m_Parts->MemoryUsage();
 	mem += sizeof(m_Structure);
 	mem += sizeof(m_IndustryId);
+	mem += sizeof(m_Recipe) + m_Recipe.capacity();
 
 	mem += sizeof(m_Arena);
 	mem += sizeof(m_Armor);

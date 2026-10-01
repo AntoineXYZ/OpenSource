@@ -463,6 +463,32 @@ void AuAtomInterface::DesignerLoadedFromFile(AuDesign& design)
 	UnlockAvatar();
 }
 
+void AuAtomInterface::DesignerApplySimpleMode(const QString& recipe)
+{
+	AuId personId;
+	QString personName;
+	QString log;
+	bool built = true;
+	DaPerson* person = LockAvatar();
+	if(person)
+	{
+		personId = person->Id();
+		personName = person->Name();
+		DaDesigner* pde = person->FindParentDesignerInEnv();
+		if(pde)
+			built = pde->ApplySimpleMode(personId, personName, recipe, log);
+	}
+	UnlockAvatar();
+
+	if(!built && !personId.IsNull())
+	{
+		QStringList lines = log.split('\n', Qt::SkipEmptyParts);
+		QString why = lines.isEmpty() ? QString() : lines.last().trimmed();
+		AuCommThought msg(QObject::tr("Simple Mode could not build the plan. %1").arg(why), personId, personName);
+		g_Au.SendAtomChat(msg);
+	}
+}
+
 void AuAtomInterface::DesignerCopyParts(const AuScSelection& partIds, const AuMatrix4x4& t)
 {
 	DaPerson* person = LockAvatar();
@@ -7929,17 +7955,43 @@ void AuAtomInterface::DesignerArchitectFinalizeBdDesign(AuBdDesign& design, QSet
 	if(design.Thumbnail().width() > 256 || design.Thumbnail().height() > 256)
 		return;
 
-	AuCommThought msg(QObject::tr("Building blueprint %1 received. Verifying...").arg(design.Name()), personId, personName);
+	const bool simpleMode = design.HasRecipe();
+	AuCommThought msg(simpleMode
+			? QObject::tr("Simple Mode building blueprint %1 received. Building it from its plan and verifying...").arg(design.Name())
+			: QObject::tr("Building blueprint %1 received. Verifying...").arg(design.Name()),
+		personId, personName);
 	g_Au.SendAtomChat(msg);
 
-	// Validate design to insure it really is ok to manufacture.
 	QString resultMsg;
+	bool planBuilt = true;
+	if(simpleMode)
+	{
+		QString log;
+		if(design.GenerateFromRecipe(log))
+		{
+			design.Parts().SetArchitectAfterFileLoad(personId, personName);
+			QStringList finalizeMsgs;
+			design.FinalizeDesignOnServer(finalizeMsgs);
+		}
+		else
+		{
+			planBuilt = false;
+			QStringList lines = log.split('\n', Qt::SkipEmptyParts);
+			resultMsg = QObject::tr("Building blueprint %1 could not be built from its Simple Mode plan. %2")
+				.arg(design.Name())
+				.arg(lines.isEmpty() ? QString() : lines.last().trimmed());
+		}
+	}
+
 	AuBdReport report;
 	design.ReportDesign(report);
 	QStringList msgs;
-	if(!report.OkToConstruct(msgs, &design))
+	if(!planBuilt)
+		;
+	else if(!report.OkToConstruct(msgs, &design))
 	{
-		resultMsg = QObject::tr("Building blueprint %1 is not valid for construction.")
+		resultMsg = (simpleMode ? QObject::tr("Simple Mode building blueprint %1 was built from its plan, but is not valid for construction.")
+				: QObject::tr("Building blueprint %1 is not valid for construction."))
 			.arg(design.Name());
 	}
 	else
@@ -7955,10 +8007,17 @@ void AuAtomInterface::DesignerArchitectFinalizeBdDesign(AuBdDesign& design, QSet
 		case 0:
 			{
 				design.ExternalReferences(xrefs);
-				resultMsg = QObject::tr("New building blueprint %1 %2 added to the library. "
-						"The blueprint could now be published in the exchange or stored to a device in your gear.")
-					.arg(design.Id())
-					.arg(design.Name());
+				if(simpleMode)
+					resultMsg = QObject::tr("Simple Mode building blueprint %1 %2 has been finalized: built from its plan on the "
+							"server and added to the library. The blueprint could now be published in the exchange or stored to a "
+							"device in your gear.")
+						.arg(design.Id())
+						.arg(design.Name());
+				else
+					resultMsg = QObject::tr("New building blueprint %1 %2 added to the library. "
+							"The blueprint could now be published in the exchange or stored to a device in your gear.")
+						.arg(design.Id())
+						.arg(design.Name());
 			}
 			break;
 
@@ -7966,7 +8025,8 @@ void AuAtomInterface::DesignerArchitectFinalizeBdDesign(AuBdDesign& design, QSet
 		case 1:
 			{
 				design.ExternalReferences(xrefs);
-				resultMsg = QObject::tr("Existing building blueprint %1 %2 replaced in the library.")
+				resultMsg = (simpleMode ? QObject::tr("Simple Mode building blueprint %1 %2 has been finalized and replaced in the library.")
+						: QObject::tr("Existing building blueprint %1 %2 replaced in the library."))
 					.arg(design.Id())
 					.arg(design.Name());
 			}

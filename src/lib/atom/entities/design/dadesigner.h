@@ -526,6 +526,8 @@ public:
 	// You must call unlock even if 0 is returned.
 	const AuDesign* LockDesignForRead();
 
+	bool ApplySimpleMode(const AuId& archId, const QString& archName, const QString& recipe, QString& log);
+
 	// Const access to the parts of the design.
 	// You must call unlock even if 0 is returned.
 	const AuScParts* LockPartsForRead();

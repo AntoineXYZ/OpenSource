@@ -226,6 +226,7 @@ namespace DtChatChannelPacket
 		PC_Emoji,
 		PV_SetJoinPass,
 		PZ_TickTock,
+		PD_BdSimpleMode,
 	};
 
 	inline const char* PacketName(PACKET p)
@@ -444,6 +445,8 @@ namespace DtChatChannelPacket
 		"PD_ItErase",
 		"PC_Emoji",
 		"PV_SetJoinPass",
+		"PZ_TickTock",
+		"PD_BdSimpleMode",
 		};
 		return packetNames[p];
 	}

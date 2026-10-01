@@ -11,6 +11,7 @@
 #include "ausceneserverapp.h"
 #include "aumaillib.h"
 #include "aumodelres.h"
+#include "ausimple.h"
 #include "daatom.h"
 #include <iostream>
 #include <signal.h>
@@ -46,6 +47,7 @@ int main(int argc, char** argv)
 		AuMailLib auMailDll;
 		AuModelRes auModelRes;
 		AuUtil auUtil;
+		AuSimple::RegisterGenerator();
 
 		bool vonly = false;
 		AuSceneServerApp a(argc, argv);

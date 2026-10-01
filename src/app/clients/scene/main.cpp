@@ -13,6 +13,7 @@
 #include "auclientmailres.h"
 #include "auclientres.h"
 #include "aumodelres.h"
+#include "ausimple.h"
 #include "autexture.h"
 #include <iostream>
 #include <QDir>
@@ -84,6 +85,10 @@ int main(int argc, char** argv)
 		AuModelRes auModelRes;
 		AuTexture auTexture;
 		AuUtil auUtil;
+
+
+		AuSimple::RegisterGenerator();
+		AuSimple::RegisterEditor();
 
 		AuClientApp a(argc, argv);
 		QStringList args = a.arguments();
