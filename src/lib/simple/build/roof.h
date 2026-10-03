@@ -5,7 +5,7 @@
 #include "constants.h"
 #include "theme.h"
 #include "roofhelpers.h"
-#include "windows.h"
+#include "windowparts.h"
 #include "../geometry/outline.h"
 
 namespace SimpleMode::detail {

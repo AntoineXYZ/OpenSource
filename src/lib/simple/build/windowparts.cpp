@@ -1,4 +1,4 @@
-#include "windows.h"
+#include "windowparts.h"
 #include "internal.h"
 
 using namespace SimpleMode;

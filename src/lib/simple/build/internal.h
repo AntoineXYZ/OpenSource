@@ -8,7 +8,7 @@
 #include "theme.h"
 #include "trims.h"
 #include "doors.h"
-#include "windows.h"
+#include "windowparts.h"
 #include "stairs.h"
 #include "roofhelpers.h"
 #include "roof.h"
