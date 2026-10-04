@@ -143,6 +143,26 @@ new streamline=1, armor=0. Loading preserves saved values. Header edits mark
 the native session dirty; their 3D effects await the deferred renderer. Raw
 control captures are in pseudocode/ship-header-control-evidence.txt.
 
+Room labels in the edit view
+-----------------------------
+AuAtom13.dll RenderDesign 0x18041a5b0 labels each room on the active deck.
+The label loop at 0x180421fc0 takes boundary[0], projects it to screen space,
+and formats "%1 %2": SpaceShipDesignRoomName(type) and Number()+1. Number is
+the subtype byte, not the persistent record ID. It renders black text at
+(x,y), then room-colored text at (x-1,y-1), with flags 0x141 (AlignLeft,
+AlignBottom, TextSingleLine). Text stays screen-aligned and fixed-size.
+The RGB float table starts at 0x180a0e620, 12 bytes per type, types 0..24;
+e.g. Engine Room is #b7b7b7, Hold #ddc358 and Weapon Bay #3258c9.
+
+The focused assembly capture is pseudocode/room-label-assembly.txt; the whole
+RenderDesign decompilation timed out. AuData13.dll SpaceShipDesignRoomName
+0x180149110 looks up the original spacecraft name in the room-type definitions.
+The current view uses its recovered RoomName table and preserves its numeric
+fallback for unknown types. Labels use the native UI font at 16 logical pixels;
+original user-configured font settings have not been recovered. They draw over
+equipment, accept no mouse buttons, follow room-layer visibility, and regenerate
+when loading, changing decks or editing boundaries. No 3D renderer is required.
+
 Assets and native scope
 ------------------------
 AuLegacyShipIcon in src/lib/designer/legacy/aulegacyshipicons.h/.cpp supplies

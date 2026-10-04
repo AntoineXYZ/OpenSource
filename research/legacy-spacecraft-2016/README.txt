@@ -11,11 +11,15 @@ Launch-screen music stops during Legacy and resumes only if previously playing.
 
 The 2D editor supports fresh/New designs, loading, inspection, cell painting
 and erasing, equipment reconciliation after room edits, and header controls.
+Rooms have fixed-size name/number labels at their first boundary vertex, using
+the original label colors and black shadow; see PANEL-RECOVERY.txt.
 The original icon panel docks on the right by default and toggles with F6.
 Deck arrows cover -28..28 (57 decks); there is no deck dropdown. The footer
 dropdown is minimum tech level. Room Number displays subtype+1 (1..256), not
 the persistent room ID. Left click/drag paints; middle drag pans; wheel zooms;
-F fits the view. Unsupported original tools remain disabled.
+F fits the view. There is no File/View menu bar; Escape temporarily exits the
+designer through the normal discard-confirmation path. Unsupported original
+tools remain disabled.
 
 Edits are session-only. New/Open/Exit require Discard/Cancel for a dirty design;
 failed loads preserve it. Original files remain read-only. Successful opens

@@ -14,6 +14,8 @@
 #include <QDockWidget>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFont>
+#include <QFontMetricsF>
 #include <QFrame>
 #include <QGraphicsItem>
 #include <QGraphicsScene>
@@ -23,8 +25,6 @@
 #include <QKeySequence>
 #include <QLabel>
 #include <QMap>
-#include <QMenu>
-#include <QMenuBar>
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QPainter>
@@ -106,8 +106,69 @@ QString RoomName(int type)
 	for (const RoomChoice& choice : RoomChoices)
 		if (choice.type == type)
 			return QString::fromLatin1(choice.name);
+	// Original GD names for records outside the spacecraft paint palette.
+	switch (type)
+	{
+	case 0: return QStringLiteral("None");
+	case 12: return QString();
+	case 22: return QStringLiteral("Roof, Gable");
+	case 23: return QStringLiteral("Roof, Hip");
+	case 24: return QStringLiteral("Roof, Round");
+	}
 	return QStringLiteral("Type %1").arg(type);
 }
+
+QColor RoomLabelColor(unsigned int type)
+{
+	// Original AuAtom13.dll RGB float table at 0x180a0e620, recovered as RGB8.
+	static const QRgb colors[] = {
+		0xff0000, 0x89a349, 0xffdd00, 0x707070, 0x2d0e93,
+		0xddc358, 0xa3e293, 0xb7ac80, 0xb7b7b7, 0xedfaff,
+		0xedeca8, 0xc9ffbc, 0xfffc5b, 0xff9a3d, 0xe50000,
+		0x807080, 0xff0087, 0x5de3f4, 0x69f4ca, 0xa50050,
+		0xba4cd3, 0x3258c9, 0xe74222, 0xe74222, 0xe74222
+	};
+	return type < sizeof(colors) / sizeof(colors[0])
+		? QColor::fromRgb(colors[type]) : RecordColor(type);
+}
+
+class RoomLabel : public QGraphicsItem
+{
+public:
+	RoomLabel(const QString& text, const QFont& font, const QColor& color)
+		: m_Text(text), m_Font(font), m_Color(color)
+	{
+		setFlag(QGraphicsItem::ItemIgnoresTransformations);
+		setAcceptedMouseButtons(Qt::NoButton);
+		setZValue(20.0);
+		const QRectF measured = QFontMetricsF(m_Font).boundingRect(QRectF(),
+			Qt::AlignLeft | Qt::AlignBottom | Qt::TextSingleLine, m_Text);
+		// The original colored pass is one screen pixel above/left of its shadow.
+		m_TextRect = QRectF(-1.0, -measured.height() - 1.0, measured.width(), measured.height());
+	}
+
+	QRectF boundingRect() const override
+	{
+		return m_TextRect.united(m_TextRect.translated(1.0, 1.0)).adjusted(-1.0, -1.0, 1.0, 1.0);
+	}
+
+	void paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*) override
+	{
+		painter->setRenderHint(QPainter::TextAntialiasing);
+		painter->setFont(m_Font);
+		const int flags = Qt::AlignLeft | Qt::AlignBottom | Qt::TextSingleLine;
+		painter->setPen(Qt::black);
+		painter->drawText(m_TextRect.translated(1.0, 1.0), flags, m_Text);
+		painter->setPen(m_Color);
+		painter->drawText(m_TextRect, flags, m_Text);
+	}
+
+private:
+	QString m_Text;
+	QFont m_Font;
+	QColor m_Color;
+	QRectF m_TextRect;
+};
 
 class DeckView : public QGraphicsView
 {
@@ -456,25 +517,11 @@ public:
 			QObject::connect(lineActions[i], &QAction::toggled, window, [this](bool) { UpdateGrid(); });
 		}
 
-		window->menuBar()->setNativeMenuBar(false);
-		const QString menuStyle = QStringLiteral(
-			"QMenuBar, QMenu { background: #080b12; color: #dce5ef; }"
-			"QMenuBar { border-bottom: 1px solid #38577e; }"
-			"QMenuBar::item { background: transparent; padding: 5px 10px; }"
-			"QMenuBar::item:selected, QMenu::item:selected { background: #183254; }"
-			"QMenu { border: 1px solid #38577e; padding: 4px; }"
-			"QMenu::item { padding: 6px 28px; }"
-			"QMenu::separator { height: 1px; background: #38577e; margin: 4px 8px; }"
-			"QMenu::item:disabled { color: #657285; }");
-		window->menuBar()->setStyleSheet(menuStyle);
-		QMenu* fileMenu = window->menuBar()->addMenu(QStringLiteral("&File"));
-		fileMenu->setStyleSheet(menuStyle);
-		fileMenu->addAction(newAction);
-		fileMenu->addAction(openAction);
-		fileMenu->addAction(saveAction);
-		fileMenu->addSeparator();
-		closeAction = fileMenu->addAction(QStringLiteral("&Close"));
-		closeAction->setShortcut(QKeySequence::Close);
+		closeAction = new QAction(QStringLiteral("Exit Designer"), window);
+		closeAction->setShortcuts(QList<QKeySequence>() << QKeySequence(Qt::Key_Escape) << QKeySequence::Close);
+		closeAction->setAutoRepeat(false);
+		for (QAction* action : { newAction, openAction, fitAction, closeAction })
+			window->addAction(action);
 		QObject::connect(closeAction, &QAction::triggered, window, [this]() {
 			if (exitHandler)
 			{
@@ -484,14 +531,6 @@ public:
 			else
 				window->close();
 		});
-		QMenu* viewMenu = window->menuBar()->addMenu(QStringLiteral("&View"));
-		viewMenu->setStyleSheet(menuStyle);
-		viewMenu->addAction(fitAction);
-		viewMenu->addAction(inspectAction);
-		viewMenu->addSeparator();
-		viewMenu->addAction(roomsAction);
-		viewMenu->addAction(detailsAction);
-		viewMenu->addAction(gridAction);
 
 		QWidget* central = new QWidget(window);
 		QVBoxLayout* layout = new QVBoxLayout(central);
@@ -562,6 +601,7 @@ public:
 			"<b>CURRENT EDITOR</b><br>"
 			"Room painting and erasing are available. Equipment placement, saving, and 3D viewing are not available yet; their buttons are disabled.<br><br>"
 			"<b>WHEN FINISHED</b><br>"
+			"Press Escape to exit the designer.<br>"
 			"Edits last for this session. New, Open and Exit ask before discarding changes.<br>"
 			"F6 hides or shows this panel. Drag its title to dock it elsewhere or float it beside the deck view."));
 		informationTabs->addTab(tips, QStringLiteral("Tips"));
@@ -583,8 +623,8 @@ public:
 		showTools->setText(QStringLiteral("Spacecraft Design tools"));
 		showTools->setShortcut(QKeySequence(Qt::Key_F6));
 		toolDock->addAction(showTools);
-		viewMenu->addSeparator();
-		viewMenu->addAction(showTools);
+		toolDock->addAction(closeAction);
+		window->addAction(showTools);
 
 		coordinates = new QLabel(QStringLiteral("X \u2014   Y \u2014 ft"), window);
 		window->statusBar()->addPermanentWidget(coordinates);
@@ -983,6 +1023,8 @@ public:
 		bool hasBounds = false;
 		int visibleRooms = 0;
 		int warningCount = 0;
+		QFont labelFont = window->font();
+		labelFont.setPixelSize(16);
 		for (int index : roomDecks.value(deck))
 		{
 			const AuLegacyShip::Room& room = design.rooms[index];
@@ -1010,6 +1052,14 @@ public:
 				.arg(RoomName(room.roomType)).arg(int(room.roomSubtype) + 1).arg(room.roomId)
 				.arg(room.roomType).arg(Hex(room.roomType)).arg(deck));
 			item->setVisible(roomsAction->isChecked());
+			RoomLabel* label = new RoomLabel(QStringLiteral("%1 %2")
+				.arg(RoomName(room.roomType)).arg(int(room.roomSubtype) + 1),
+				labelFont, RoomLabelColor(room.roomType));
+			// RenderDesign labels boundary[0], not the room's center or record ID.
+			label->setPos(polygon.first());
+			label->setData(RecordKind, RoomKind);
+			label->setVisible(roomsAction->isChecked());
+			scene->addItem(label);
 			bounds = hasBounds ? bounds.united(polygon.boundingRect()) : polygon.boundingRect();
 			hasBounds = true;
 			++visibleRooms;
@@ -1163,8 +1213,6 @@ void AuLegacyShipViewer::SetExitHandler(const std::function<void()>& handler)
 {
 	m_Impl->exitHandler = handler;
 	m_Impl->closeAction->setText(handler ? QStringLiteral("E&xit Designer") : QStringLiteral("&Close"));
-	if (handler)
-		menuBar()->setNativeMenuBar(false);
 }
 
 void AuLegacyShipViewer::showEvent(QShowEvent* event)
