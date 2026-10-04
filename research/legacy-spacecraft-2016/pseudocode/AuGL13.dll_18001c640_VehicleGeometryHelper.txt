@@ -1,0 +1,85 @@
+Ghidra decompiler output; descriptive helper names are inferred, not original symbols.
+Captured 2026-10-04 from the module/address in this filename. Read-only query.
+
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+
+undefined8 FUN_18001c640(AuMatrix4x4 *param_1,QDataStream *param_2,int param_3)
+
+{
+  bool bVar1;
+  QMessageLogger *this;
+  uint uVar2;
+  ushort uVar3;
+  undefined1 auStack_1c8 [32];
+  undefined2 local_1a8;
+  char local_1a6;
+  char local_1a5;
+  char local_1a4;
+  char local_1a3;
+  char local_1a2;
+  char local_1a1;
+  char local_1a0;
+  char local_19f;
+  char local_19e;
+  char local_19d;
+  undefined4 local_19c;
+  undefined4 local_194;
+  undefined8 local_190;
+  undefined8 local_188;
+  undefined8 local_180;
+  undefined8 local_178;
+  undefined8 local_170;
+  undefined4 local_168;
+  undefined4 local_164;
+  ulonglong local_48;
+  
+  local_48 = DAT_1801310c0 ^ (ulonglong)auStack_1c8;
+  QDataStream::operator>>(param_2,(char *)((longlong)&local_1a8 + 1));
+  QDataStream::operator>>(param_2,(char *)&local_1a8);
+  uVar2 = param_3 - 2;
+  uVar3 = CONCAT11((char)local_1a8,local_1a8._1_1_);
+  if (uVar3 != 0) {
+    uVar2 = uVar2 + (uint)uVar3 * -0xc;
+    do {
+      QDataStream::operator>>(param_2,&local_1a0);
+      QDataStream::operator>>(param_2,&local_19e);
+      QDataStream::operator>>(param_2,(char *)&local_1a8);
+      QDataStream::operator>>(param_2,(char *)((longlong)&local_1a8 + 1));
+      local_19c = CONCAT31(CONCAT21(local_1a8,local_19e),local_1a0);
+      QDataStream::operator>>(param_2,&local_19d);
+      QDataStream::operator>>(param_2,&local_1a1);
+      QDataStream::operator>>(param_2,&local_19f);
+      QDataStream::operator>>(param_2,&local_1a3);
+      local_194 = CONCAT31(CONCAT21(CONCAT11(local_1a3,local_19f),local_1a1),local_19d);
+      QDataStream::operator>>(param_2,&local_1a2);
+      QDataStream::operator>>(param_2,&local_1a4);
+      QDataStream::operator>>(param_2,&local_1a5);
+      QDataStream::operator>>(param_2,&local_1a6);
+      local_168 = local_19c;
+      local_164 = local_194;
+      local_170 = 0;
+      local_180 = 0;
+      local_190 = 0;
+      local_178 = 0;
+      local_188 = 0;
+      FUN_180029630(param_1 + 0x130);
+      uVar3 = uVar3 - 1;
+    } while (uVar3 != 0);
+  }
+  bVar1 = AuMatrix4x4::IsIdentity(param_1);
+  if (!bVar1) {
+    AuMatrix4x4::Inverse(param_1);
+    FUN_180021640(param_1 + 0x130);
+  }
+  if (uVar2 != 0) {
+    this = (QMessageLogger *)
+           QMessageLogger::QMessageLogger((QMessageLogger *)&local_190,(char *)0x0,0,(char *)0x0);
+    QMessageLogger::warning
+              (this,"Au3dsGLSLObject::LoadVertexListChunk skipping remaining %d bytes",
+               (ulonglong)uVar2);
+    QDataStream::skipRawData(param_2,uVar2);
+  }
+  return 1;
+}
+
+

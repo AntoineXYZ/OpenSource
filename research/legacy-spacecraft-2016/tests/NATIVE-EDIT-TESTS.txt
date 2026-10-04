@@ -1,0 +1,36 @@
+Native working-design edit regression harness
+---------------------------------------------
+This manual harness is outside game targets. The assistant has not built or
+executed it. From the repository root, the user can compile it with Qt 5:
+
+  c++ -std=c++11 -fPIC -no-pie -Isrc/lib/data/designs \
+    research/legacy-spacecraft-2016/tests/native_ship_edit.cpp \
+    src/lib/data/designs/aulegacyship.cpp \
+    src/lib/data/designs/aulegacyshipgeometry.cpp \
+    src/lib/data/designs/aulegacyshipdetails.cpp \
+    src/lib/data/designs/aulegacyshipedit.cpp \
+    $(pkg-config --cflags --libs Qt5Core Qt5Gui) \
+    -o /tmp/native_ship_edit
+
+Run the already-built harness with synthetic fixtures only:
+
+  /tmp/native_ship_edit
+
+Optionally also load the original sample files read-only and exercise a full
+new-deck edit plus equipment reconciliation on each in-memory design:
+
+  /tmp/native_ship_edit \
+    '/mnt/c/Users/Celarious/Desktop/Shores of Hazeron/Antiflux Harvester MK2.ship' \
+    '/mnt/c/Users/Celarious/Desktop/Shores of Hazeron/B8_Galatine_A1.ship' \
+    '/mnt/c/Users/Celarious/Desktop/Shores of Hazeron/tl20StarDriver.ship'
+
+Fixtures cover same-key growth/rejection, competing repaint, ID preservation
+and reuse, failure atomicity, complete/empty erasure, deck/XY limits, diagonal
+halves, roof overlap differences, and equipment room reassignment/removal.
+Geometry fixture assumptions were independently replayed in the Python
+reference; this does not execute the native harness. Old-client before/after
+edits remain necessary to establish runtime parity.
+
+Further manual harnesses:
+  ROOM-RASTER-PORT.txt: exact cell tables and raster boundary traces.
+  tests/NATIVE-DETAIL-TESTS.txt: isolated equipment reconciliation fixtures.

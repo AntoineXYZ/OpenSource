@@ -1,0 +1,40 @@
+Ghidra decompiler output; not recovered compilable source.
+Captured read-only 2026-10-04 with explicit program /AuData13.dll.
+
+/* public: __cdecl DnSpaceShip::DnSpaceShip(unsigned int,class AuId const & __ptr64,class QString
+   const & __ptr64) __ptr64 */
+
+DnSpaceShip * __thiscall
+DnSpaceShip::DnSpaceShip(DnSpaceShip *this,uint param_1,AuId *param_2,QString *param_3)
+
+{
+                    /* 0x178f70  962  ??0DnSpaceShip@@QEAA@IAEBVAuId@@AEBVQString@@@Z */
+  QString::QString((QString *)(this + 8));
+  *(undefined4 *)(this + 0x10) = 0;
+  QString::QString((QString *)(this + 0x20));
+  *(code **)(this + 0x28) = shared_null_exref;
+  FUN_18001a630(this + 0x38);
+  FUN_18001a630(this + 0x88);
+  *(undefined4 *)(this + 0x78) = 0x10300ea;
+  *(undefined4 *)(this + 0x7c) = 0xee00ed;
+  *(undefined4 *)(this + 0x80) = 0xef00eb;
+  *(undefined4 *)(this + 0x84) = 0xf00107;
+  QString::operator=((QString *)(this + 0x20),param_3);
+  *(uint *)this = param_1;
+  *(undefined4 *)(this + 0x10) = *(undefined4 *)param_2;
+  *(undefined2 *)(this + 0x14) = 1;
+  *(undefined4 *)(this + 0x18) = 0;
+  this[0x30] = (DnSpaceShip)0x0;
+  *(undefined8 *)(this + 200) = 0;
+  *(undefined8 *)(this + 0xd0) = 0;
+  *(undefined4 *)(this + 0xd8) = 0;
+  *(undefined2 *)(this + 0xdc) = 0;
+  this[0xde] = (DnSpaceShip)0x0;
+  *(undefined8 *)(this + 0xe0) = 0;
+  this[0xe8] = (DnSpaceShip)0x0;
+  if (DAT_1803a1608 == 0) {
+    DAT_1803a1608 = FUN_18017fc10();
+  }
+  return this;
+}
+

@@ -1,0 +1,17 @@
+Ghidra decompiler output; not recovered compilable source.
+Captured read-only 2026-10-04 with explicit program /AuData13.dll.
+
+/* public: void __cdecl DnSpaceShip::DesignLoaded(class DnSpaceShip const & __ptr64) __ptr64 */
+
+void __thiscall DnSpaceShip::DesignLoaded(DnSpaceShip *this,DnSpaceShip *param_1)
+
+{
+                    /* 0x17a350  3670  ?DesignLoaded@DnSpaceShip@@QEAAXAEBV1@@Z */
+  this[0x14] = param_1[0x14];
+  this[0x15] = param_1[0x15];
+  this[0x30] = param_1[0x30];
+  AuSpaceShipModules::operator=
+            ((AuSpaceShipModules *)(this + 0x38),(AuSpaceShipModules *)(param_1 + 0x38));
+  return;
+}
+

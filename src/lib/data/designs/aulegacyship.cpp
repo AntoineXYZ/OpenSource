@@ -273,6 +273,8 @@ QPointF AuLegacyShip::DecodePoint(quint16 packedXY)
 QPolygonF AuLegacyShip::RoomBoundary(const Room& room, QString* error)
 {
 	if(error) error->clear();
+	if(room.hasWorkingBoundary)
+		return room.workingBoundary;
 	QPolygonF boundary;
 	if(!room.IsEllipse())
 	{

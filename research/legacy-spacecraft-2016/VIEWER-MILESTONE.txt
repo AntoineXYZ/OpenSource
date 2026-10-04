@@ -1,6 +1,10 @@
 2016 spacecraft designer: native deck inspection milestone
 2026-10-04
 
+Follow-up: PAINTING-MILESTONE.txt describes in-memory cell painting and erasing
+added after this viewer milestone. This document preserves the viewer's
+original implementation scope; saving remains deferred.
+
 Implemented in source
 ---------------------
 The modern scene client now has an offline, read-only viewer for the recovered

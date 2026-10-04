@@ -12,7 +12,9 @@ grid masks, ordered polygons, cursor selection and snapping. cell-shapes.svg
 shows every active mask and cursor wedge. PAINTING-RULES.txt documents raster
 merge/subtraction, room identity, validation and remaining equipment rules;
 CONTROL-MAPPING.txt records the original actions, gestures and Room Number.
-These are research/reference artifacts; native painting remains future work.
+These are research/reference artifacts. PAINTING-MILESTONE.txt describes the
+subsequent in-memory native cell editor, equipment reconciliation and manual
+validation. Saving remains deferred.
 
 Result
 ------

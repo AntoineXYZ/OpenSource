@@ -1,0 +1,503 @@
+Ghidra decompiler output; not recovered compilable source.
+Captured read-only 2026-10-04. Explicit program /AuData13.dll.
+
+/* public: bool __cdecl DgData::LoadBasicGameData(void) __ptr64 */
+
+bool __thiscall DgData::LoadBasicGameData(DgData *this)
+
+{
+  QVector<DbConstructionProcess> *pQVar1;
+  int iVar2;
+  int *piVar3;
+  longlong lVar4;
+  DnRoomType DVar5;
+  byte bVar6;
+  bool bVar7;
+  QString *pQVar8;
+  undefined8 uVar9;
+  longlong lVar10;
+  longlong lVar11;
+  uint uVar12;
+  longlong lVar13;
+  char local_res10 [8];
+  char local_res18 [8];
+  byte local_res20 [8];
+  short local_2e8 [2];
+  char local_2e4 [4];
+  short local_2e0 [2];
+  byte local_2dc [4];
+  short local_2d8 [2];
+  short local_2d4 [2];
+  short local_2d0 [2];
+  char local_2cc [4];
+  short local_2c8 [2];
+  short local_2c4 [2];
+  short local_2c0 [2];
+  short local_2bc [2];
+  short local_2b8 [2];
+  int local_2b4;
+  int local_2b0;
+  int local_2ac;
+  int local_2a8 [2];
+  QString local_2a0 [8];
+  QDataStream local_298 [24];
+  undefined4 local_280;
+  code *local_278;
+  longlong local_270;
+  QDataStream local_268 [24];
+  undefined4 local_250;
+  uint local_248;
+  uint local_244;
+  QFile local_240 [16];
+  DbConstructionComponent local_230 [16];
+  DbManufacturingComponent local_220 [16];
+  DbConstructionComponent local_210 [16];
+  DbManufacturingComponent local_200 [16];
+  QTypedArrayData<unsigned_short> *local_1f0;
+  QTypedArrayData<unsigned_short> *local_1e8;
+  QTypedArrayData<unsigned_short> *local_1e0;
+  QFile local_1d8 [16];
+  QDir local_1c8 [8];
+  undefined4 local_1c0;
+  undefined4 local_1bc;
+  QString local_1b8 [8];
+  QString local_1b0 [8];
+  QString local_1a8 [8];
+  QString local_1a0 [8];
+  QString local_198 [8];
+  DbIndustry local_190 [24];
+  DbConstructionProcess local_178 [24];
+  DbIndustry local_160 [24];
+  DbConstructionProcess local_148 [24];
+  DnRoomType local_130 [40];
+  DnRoomType local_108 [40];
+  DbManufacturingProcess local_e0 [32];
+  DbManufacturingProcess local_c0 [32];
+  undefined8 local_a0;
+  DnDetailType local_98 [24];
+  byte local_80;
+  DnDetailType local_60 [24];
+  byte local_48;
+  
+                    /* 0x13dc40  4858  ?LoadBasicGameData@DgData@@QEAA_NXZ */
+  local_a0 = 0xfffffffffffffffe;
+  pQVar8 = (QString *)AuGlobal::CacheDir(*(AuGlobal **)gp_AuGlobal_exref);
+  QDir::QDir(local_1c8,pQVar8);
+  QString::~QString(local_198);
+  local_1e8 = QString::fromAscii_helper("GD1",3);
+  QDir::absoluteFilePath(local_1c8,local_2a0);
+  QString::~QString((QString *)&local_1e8);
+  bVar7 = QFile::exists(local_2a0);
+  if (bVar7) {
+    QFile::QFile(local_240,local_2a0);
+    local_1bc = 1;
+    bVar7 = QFile::open(local_240,1);
+    if (bVar7) {
+      QDataStream::QDataStream(local_298,(QIODevice *)local_240);
+      local_280 = 7;
+      QDataStream::operator>>(local_298,local_res10);
+      QDataStream::operator>>(local_298,local_res18);
+      if ((local_res10[0] == '\x18') && (local_res18[0] == ':')) {
+        piVar3 = *(int **)(this + 0x68);
+        *(code **)(this + 0x68) = shared_null_exref;
+        if (*piVar3 == 0) {
+LAB_18013dd95:
+          FUN_1800511b0();
+        }
+        else if (*piVar3 != -1) {
+          LOCK();
+          iVar2 = *piVar3;
+          *piVar3 = *piVar3 + -1;
+          UNLOCK();
+          if (iVar2 == 1) goto LAB_18013dd95;
+        }
+        QDataStream::operator>>(local_298,local_2bc);
+        while (local_2bc[0] != 0) {
+          local_2bc[0] = local_2bc[0] + -1;
+          DnDetailType::DnDetailType(local_98);
+          DnDetailType::Rx(local_98,local_298);
+          bVar6 = local_80;
+          local_res20[0] = local_80;
+          if (1 < **(uint **)(this + 0x68)) {
+            QMap<unsigned_char,DnDetailType>::detach_helper
+                      ((QMap<unsigned_char,DnDetailType> *)(this + 0x68));
+          }
+          lVar4 = *(longlong *)(this + 0x68);
+          lVar13 = lVar4 + 8;
+          lVar11 = 0;
+          bVar7 = true;
+          lVar10 = *(longlong *)(lVar4 + 0x10);
+          if (*(longlong *)(lVar4 + 0x10) == 0) {
+LAB_18013de5a:
+            FUN_180050220(lVar4,local_res20,local_98,lVar13,bVar7);
+          }
+          else {
+            do {
+              lVar13 = lVar10;
+              bVar7 = *(byte *)(lVar13 + 0x18) < bVar6;
+              if (bVar7) {
+                lVar10 = *(longlong *)(lVar13 + 0x10);
+              }
+              else {
+                lVar10 = *(longlong *)(lVar13 + 8);
+                lVar11 = lVar13;
+              }
+              bVar7 = !bVar7;
+            } while (lVar10 != 0);
+            if ((lVar11 == 0) || (bVar6 < *(byte *)(lVar11 + 0x18))) goto LAB_18013de5a;
+            DnDetailType::operator=((DnDetailType *)(lVar11 + 0x20),local_98);
+          }
+          DnDetailType::~DnDetailType(local_98);
+        }
+        piVar3 = *(int **)(this + 0x70);
+        *(code **)(this + 0x70) = shared_null_exref;
+        if (*piVar3 == 0) {
+LAB_18013deb4:
+          FUN_180051220();
+        }
+        else if (*piVar3 != -1) {
+          LOCK();
+          *piVar3 = *piVar3 + -1;
+          UNLOCK();
+          if (*piVar3 == 0) goto LAB_18013deb4;
+        }
+        QDataStream::operator>>(local_298,local_2d4);
+        while (local_2d4[0] != 0) {
+          local_2d4[0] = local_2d4[0] + -1;
+          DnRoomType::DnRoomType(local_108);
+          DnRoomType::Rx(local_108,local_298);
+          DVar5 = local_108[0];
+          uVar12 = (uint)(byte)local_108[0];
+          local_244 = uVar12;
+          if (1 < **(uint **)(this + 0x70)) {
+            QMap<unsigned_int,DnRoomType>::detach_helper
+                      ((QMap<unsigned_int,DnRoomType> *)(this + 0x70));
+          }
+          lVar4 = *(longlong *)(this + 0x70);
+          lVar13 = lVar4 + 8;
+          lVar11 = 0;
+          bVar7 = true;
+          lVar10 = *(longlong *)(lVar4 + 0x10);
+          if (*(longlong *)(lVar4 + 0x10) == 0) {
+LAB_18013df70:
+            FUN_1800502a0(lVar4,&local_244,local_108,lVar13,bVar7);
+          }
+          else {
+            do {
+              lVar13 = lVar10;
+              bVar7 = *(uint *)(lVar13 + 0x18) < uVar12;
+              if (bVar7) {
+                lVar10 = *(longlong *)(lVar13 + 0x10);
+              }
+              else {
+                lVar10 = *(longlong *)(lVar13 + 8);
+                lVar11 = lVar13;
+              }
+              bVar7 = !bVar7;
+            } while (lVar10 != 0);
+            if ((lVar11 == 0) || ((uint)(byte)DVar5 < *(uint *)(lVar11 + 0x18))) goto LAB_18013df70;
+            DnRoomType::operator=((DnRoomType *)(lVar11 + 0x20),local_108);
+          }
+          DnRoomType::~DnRoomType(local_108);
+        }
+        QList<DbCommodity>::QList<DbCommodity>((QList<DbCommodity> *)&local_270);
+        DbCommodityArray::operator<<((DbCommodityArray *)&local_270,local_298);
+        lVar13 = *(longlong *)(*(longlong *)gp_AuGlobal_exref + 0x10);
+        if ((*(int *)(lVar13 + 0xc) == *(int *)(lVar13 + 8)) ||
+           (*(int *)(lVar13 + 0xc) - *(int *)(lVar13 + 8) !=
+            *(int *)(local_270 + 0xc) - *(int *)(local_270 + 8))) {
+          QList<DbCommodity>::operator=
+                    ((QList<DbCommodity> *)(*(longlong *)gp_AuGlobal_exref + 0x10),
+                     (QList<class_DbCommodity> *)&local_270);
+        }
+        QVector<DbIndustry>::clear((QVector<DbIndustry> *)(this + 0x10));
+        QDataStream::operator>>(local_298,local_2c4);
+        while (local_2c4[0] != 0) {
+          local_2c4[0] = local_2c4[0] + -1;
+          DbIndustry::DbIndustry(local_190);
+          DbIndustry::operator<<(local_190,local_298);
+          QVector<DbIndustry>::append((QVector<DbIndustry> *)(this + 0x10),local_190);
+          AuKnownEmpire::~AuKnownEmpire((AuKnownEmpire *)local_190);
+        }
+        QVector<DbManufacturingProcess>::clear((QVector<DbManufacturingProcess> *)(this + 0x20));
+        QDataStream::operator>>(local_298,local_2e8);
+        while (local_2e8[0] != 0) {
+          local_2e8[0] = local_2e8[0] + -1;
+          DbManufacturingProcess::DbManufacturingProcess(local_e0);
+          DbManufacturingProcess::Rx(local_e0,local_298);
+          QVector<DbManufacturingProcess>::append
+                    ((QVector<DbManufacturingProcess> *)(this + 0x20),local_e0);
+          AuKnownEmpire::~AuKnownEmpire((AuKnownEmpire *)local_e0);
+        }
+        QVector<DbManufacturingComponent>::clear((QVector<DbManufacturingComponent> *)(this + 0x18))
+        ;
+        QDataStream::operator>>(local_298,local_2a8);
+        while (local_2a8[0] != 0) {
+          local_2a8[0] = local_2a8[0] + -1;
+          DbManufacturingComponent::DbManufacturingComponent(local_220);
+          DbManufacturingComponent::Rx(local_220,local_298);
+          QVector<DbManufacturingComponent>::append
+                    ((QVector<DbManufacturingComponent> *)(this + 0x18),local_220);
+          QListSpecialMethods<unsigned_int>::~QListSpecialMethods<unsigned_int>
+                    ((QListSpecialMethods<unsigned_int> *)local_220);
+        }
+        pQVar1 = (QVector<DbConstructionProcess> *)(this + 8);
+        QVector<DbConstructionProcess>::clear(pQVar1);
+        QDataStream::operator>>(local_298,local_2e0);
+        while (local_2e0[0] != 0) {
+          local_2e0[0] = local_2e0[0] + -1;
+          DbConstructionProcess::DbConstructionProcess(local_178);
+          DbConstructionProcess::Rx(local_178,local_298);
+          QVector<DbConstructionProcess>::append(pQVar1,local_178);
+          AuKnownEmpire::~AuKnownEmpire((AuKnownEmpire *)local_178);
+        }
+        QVector<DbConstructionComponent>::clear((QVector<DbConstructionComponent> *)this);
+        QDataStream::operator>>(local_298,&local_2b4);
+        while (local_2b4 != 0) {
+          local_2b4 = local_2b4 + -1;
+          DbConstructionComponent::DbConstructionComponent(local_230);
+          DbConstructionComponent::Rx(local_230,local_298);
+          QVector<DbConstructionComponent>::append
+                    ((QVector<DbConstructionComponent> *)this,local_230);
+          QListSpecialMethods<unsigned_int>::~QListSpecialMethods<unsigned_int>
+                    ((QListSpecialMethods<unsigned_int> *)local_230);
+        }
+        QFileDevice::close((QFileDevice *)local_240);
+        CalcCommodityBaseCosts(this);
+        DbIndustryArray::CalcHitPointValues
+                  ((DbIndustryArray *)(this + 0x10),(DbConstructionProcessArray *)pQVar1,
+                   (DbConstructionComponentArray *)this);
+        this[0x348] = (DgData)0x1;
+        if ((*(uint *)(*(longlong *)gp_AuGlobal_exref + 0x310) & 0x800) != 0) {
+          local_1f0 = QString::fromAscii_helper("Data: GD1 loaded",0x10);
+          uVar9 = AuGlobal::CacheDir(*(AuGlobal **)gp_AuGlobal_exref);
+          pQVar8 = (QString *)FUN_180029670(local_1a0,uVar9,"/soh.txt");
+          AuGlobal::Log(pQVar8,(QString *)&local_1f0);
+          QString::~QString(local_1a0);
+          QString::~QString(local_1a8);
+          QString::~QString((QString *)&local_1f0);
+        }
+        QList<DbCommodity>::~QList<DbCommodity>((QList<DbCommodity> *)&local_270);
+        QDataStream::~QDataStream(local_298);
+        QFile::~QFile(local_240);
+        bVar7 = true;
+        goto LAB_18013e917;
+      }
+      QFileDevice::close((QFileDevice *)local_240);
+      QDataStream::~QDataStream(local_298);
+    }
+    QFile::~QFile(local_240);
+  }
+  QString::operator=(local_2a0,"GD");
+  bVar7 = QFile::exists(local_2a0);
+  if (!bVar7) {
+    bVar7 = false;
+    goto LAB_18013e917;
+  }
+  QFile::QFile(local_1d8,local_2a0);
+  local_1c0 = 1;
+  bVar7 = QFile::open(local_1d8,1);
+  if (bVar7) {
+    QDataStream::QDataStream(local_268,(QIODevice *)local_1d8);
+    local_250 = 7;
+    QDataStream::operator>>(local_268,local_2e4);
+    QDataStream::operator>>(local_268,local_2cc);
+    if ((local_2e4[0] == '\x18') && (local_2cc[0] == ':')) {
+      piVar3 = *(int **)(this + 0x68);
+      *(code **)(this + 0x68) = shared_null_exref;
+      if (*piVar3 == 0) {
+LAB_18013e3d0:
+        FUN_1800511b0();
+      }
+      else if (*piVar3 != -1) {
+        LOCK();
+        iVar2 = *piVar3;
+        *piVar3 = *piVar3 + -1;
+        UNLOCK();
+        if (iVar2 == 1) goto LAB_18013e3d0;
+      }
+      QDataStream::operator>>(local_268,local_2d8);
+      while (local_2d8[0] != 0) {
+        local_2d8[0] = local_2d8[0] + -1;
+        DnDetailType::DnDetailType(local_60);
+        DnDetailType::Rx(local_60,local_268);
+        bVar6 = local_48;
+        local_2dc[0] = local_48;
+        if (1 < **(uint **)(this + 0x68)) {
+          QMap<unsigned_char,DnDetailType>::detach_helper
+                    ((QMap<unsigned_char,DnDetailType> *)(this + 0x68));
+        }
+        lVar4 = *(longlong *)(this + 0x68);
+        lVar13 = lVar4 + 8;
+        lVar11 = 0;
+        bVar7 = true;
+        lVar10 = *(longlong *)(lVar4 + 0x10);
+        if (*(longlong *)(lVar4 + 0x10) == 0) {
+LAB_18013e491:
+          FUN_180050220(lVar4,local_2dc,local_60,lVar13,bVar7);
+        }
+        else {
+          do {
+            lVar13 = lVar10;
+            bVar7 = *(byte *)(lVar13 + 0x18) < bVar6;
+            if (bVar7) {
+              lVar10 = *(longlong *)(lVar13 + 0x10);
+            }
+            else {
+              lVar10 = *(longlong *)(lVar13 + 8);
+              lVar11 = lVar13;
+            }
+            bVar7 = !bVar7;
+          } while (lVar10 != 0);
+          if ((lVar11 == 0) || (bVar6 < *(byte *)(lVar11 + 0x18))) goto LAB_18013e491;
+          DnDetailType::operator=((DnDetailType *)(lVar11 + 0x20),local_60);
+        }
+        DnDetailType::~DnDetailType(local_60);
+      }
+      piVar3 = *(int **)(this + 0x70);
+      *(code **)(this + 0x70) = shared_null_exref;
+      if (*piVar3 == 0) {
+LAB_18013e4e9:
+        FUN_180051220();
+      }
+      else if (*piVar3 != -1) {
+        LOCK();
+        *piVar3 = *piVar3 + -1;
+        UNLOCK();
+        if (*piVar3 == 0) goto LAB_18013e4e9;
+      }
+      QDataStream::operator>>(local_268,local_2d0);
+      while (local_2d0[0] != 0) {
+        local_2d0[0] = local_2d0[0] + -1;
+        DnRoomType::DnRoomType(local_130);
+        DnRoomType::Rx(local_130,local_268);
+        DVar5 = local_130[0];
+        uVar12 = (uint)(byte)local_130[0];
+        local_248 = uVar12;
+        if (1 < **(uint **)(this + 0x70)) {
+          QMap<unsigned_int,DnRoomType>::detach_helper
+                    ((QMap<unsigned_int,DnRoomType> *)(this + 0x70));
+        }
+        lVar4 = *(longlong *)(this + 0x70);
+        lVar13 = lVar4 + 8;
+        lVar11 = 0;
+        bVar7 = true;
+        lVar10 = *(longlong *)(lVar4 + 0x10);
+        if (*(longlong *)(lVar4 + 0x10) == 0) {
+LAB_18013e5a0:
+          FUN_1800502a0(lVar4,&local_248,local_130,lVar13,bVar7);
+        }
+        else {
+          do {
+            lVar13 = lVar10;
+            bVar7 = *(uint *)(lVar13 + 0x18) < uVar12;
+            if (bVar7) {
+              lVar10 = *(longlong *)(lVar13 + 0x10);
+            }
+            else {
+              lVar10 = *(longlong *)(lVar13 + 8);
+              lVar11 = lVar13;
+            }
+            bVar7 = !bVar7;
+          } while (lVar10 != 0);
+          if ((lVar11 == 0) || ((uint)(byte)DVar5 < *(uint *)(lVar11 + 0x18))) goto LAB_18013e5a0;
+          DnRoomType::operator=((DnRoomType *)(lVar11 + 0x20),local_130);
+        }
+        DnRoomType::~DnRoomType(local_130);
+      }
+      local_278 = shared_null_exref;
+      DbCommodityArray::operator<<((DbCommodityArray *)&local_278,local_268);
+      lVar13 = *(longlong *)(*(longlong *)gp_AuGlobal_exref + 0x10);
+      if ((*(int *)(lVar13 + 0xc) == *(int *)(lVar13 + 8)) ||
+         (*(int *)(lVar13 + 0xc) - *(int *)(lVar13 + 8) !=
+          *(int *)(local_278 + 0xc) - *(int *)(local_278 + 8))) {
+        QList<DbCommodity>::operator=
+                  ((QList<DbCommodity> *)(*(longlong *)gp_AuGlobal_exref + 0x10),
+                   (QList<class_DbCommodity> *)&local_278);
+      }
+      QVector<DbIndustry>::clear((QVector<DbIndustry> *)(this + 0x10));
+      QDataStream::operator>>(local_268,local_2c8);
+      while (local_2c8[0] != 0) {
+        local_2c8[0] = local_2c8[0] + -1;
+        DbIndustry::DbIndustry(local_160);
+        DbIndustry::operator<<(local_160,local_268);
+        QVector<DbIndustry>::append((QVector<DbIndustry> *)(this + 0x10),local_160);
+        AuKnownEmpire::~AuKnownEmpire((AuKnownEmpire *)local_160);
+      }
+      QVector<DbManufacturingProcess>::clear((QVector<DbManufacturingProcess> *)(this + 0x20));
+      QDataStream::operator>>(local_268,local_2c0);
+      while (local_2c0[0] != 0) {
+        local_2c0[0] = local_2c0[0] + -1;
+        DbManufacturingProcess::DbManufacturingProcess(local_c0);
+        DbManufacturingProcess::Rx(local_c0,local_268);
+        QVector<DbManufacturingProcess>::append
+                  ((QVector<DbManufacturingProcess> *)(this + 0x20),local_c0);
+        AuKnownEmpire::~AuKnownEmpire((AuKnownEmpire *)local_c0);
+      }
+      QVector<DbManufacturingComponent>::clear((QVector<DbManufacturingComponent> *)(this + 0x18));
+      QDataStream::operator>>(local_268,&local_2ac);
+      while (local_2ac != 0) {
+        local_2ac = local_2ac + -1;
+        DbManufacturingComponent::DbManufacturingComponent(local_200);
+        DbManufacturingComponent::Rx(local_200,local_268);
+        QVector<DbManufacturingComponent>::append
+                  ((QVector<DbManufacturingComponent> *)(this + 0x18),local_200);
+        QListSpecialMethods<unsigned_int>::~QListSpecialMethods<unsigned_int>
+                  ((QListSpecialMethods<unsigned_int> *)local_200);
+      }
+      pQVar1 = (QVector<DbConstructionProcess> *)(this + 8);
+      QVector<DbConstructionProcess>::clear(pQVar1);
+      QDataStream::operator>>(local_268,local_2b8);
+      while (local_2b8[0] != 0) {
+        local_2b8[0] = local_2b8[0] + -1;
+        DbConstructionProcess::DbConstructionProcess(local_148);
+        DbConstructionProcess::Rx(local_148,local_268);
+        QVector<DbConstructionProcess>::append(pQVar1,local_148);
+        AuKnownEmpire::~AuKnownEmpire((AuKnownEmpire *)local_148);
+      }
+      QVector<DbConstructionComponent>::clear((QVector<DbConstructionComponent> *)this);
+      QDataStream::operator>>(local_268,&local_2b0);
+      while (local_2b0 != 0) {
+        local_2b0 = local_2b0 + -1;
+        DbConstructionComponent::DbConstructionComponent(local_210);
+        DbConstructionComponent::Rx(local_210,local_268);
+        QVector<DbConstructionComponent>::append((QVector<DbConstructionComponent> *)this,local_210)
+        ;
+        QListSpecialMethods<unsigned_int>::~QListSpecialMethods<unsigned_int>
+                  ((QListSpecialMethods<unsigned_int> *)local_210);
+      }
+      QFileDevice::close((QFileDevice *)local_1d8);
+      CalcCommodityBaseCosts(this);
+      DbIndustryArray::CalcHitPointValues
+                ((DbIndustryArray *)(this + 0x10),(DbConstructionProcessArray *)pQVar1,
+                 (DbConstructionComponentArray *)this);
+      this[0x348] = (DgData)0x1;
+      if ((*(uint *)(*(longlong *)gp_AuGlobal_exref + 0x310) & 0x800) != 0) {
+        local_1e0 = QString::fromAscii_helper("Data: GD loaded",0xf);
+        uVar9 = AuGlobal::CacheDir(*(AuGlobal **)gp_AuGlobal_exref);
+        pQVar8 = (QString *)FUN_180029670(local_1b8,uVar9,"/soh.txt");
+        AuGlobal::Log(pQVar8,(QString *)&local_1e0);
+        QString::~QString(local_1b8);
+        QString::~QString(local_1b0);
+        QString::~QString((QString *)&local_1e0);
+      }
+      bVar7 = true;
+      QList<DbCommodity>::~QList<DbCommodity>((QList<DbCommodity> *)&local_278);
+    }
+    else {
+      QFileDevice::close((QFileDevice *)local_1d8);
+      bVar7 = false;
+    }
+    QDataStream::~QDataStream(local_268);
+  }
+  else {
+    bVar7 = false;
+  }
+  QFile::~QFile(local_1d8);
+LAB_18013e917:
+  QString::~QString(local_2a0);
+  QDir::~QDir(local_1c8);
+  return bVar7;
+}
+
+

@@ -56,7 +56,11 @@ struct Room
 	quint8 roomType = 0;
 	quint8 roomSubtype = 0;
 	QVector<quint16> packedVertices;
-	bool IsEllipse() const { return roomType == 0x18 && packedVertices.size() == 3; }
+	// Keep edited geometry in doubles, as the 2016 working design did. Packing
+	// coordinates is a file-format operation and must not round each paint stroke.
+	bool hasWorkingBoundary = false;
+	QPolygonF workingBoundary;
+	bool IsEllipse() const { return !hasWorkingBoundary && roomType == 0x18 && packedVertices.size() == 3; }
 };
 
 struct Detail
@@ -86,7 +90,8 @@ bool Read(const QByteArray& bytes, Design& output, QString& error);
 bool Load(const QString& fileName, Design& output, QString& error);
 QPointF DecodePoint(quint16 packedXY);
 
-// Preserves stored controls; expands ellipse rooms for display only. Degenerate
+// Uses a working boundary after edits; otherwise preserves stored controls and
+// expands ellipse rooms for display only. Degenerate
 // ellipse controls return an empty boundary and an explanatory error.
 QPolygonF RoomBoundary(const Room& room, QString* error = nullptr);
 }

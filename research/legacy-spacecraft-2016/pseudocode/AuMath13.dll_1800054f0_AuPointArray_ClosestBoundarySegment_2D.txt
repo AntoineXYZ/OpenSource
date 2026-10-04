@@ -1,0 +1,79 @@
+
+/* public: double __cdecl AuPointArray::ClosestBoundarySegment_2D(class AuPoint const &
+   __ptr64,class AuPoint & __ptr64,class AuPoint & __ptr64)const __ptr64 */
+
+double __thiscall
+AuPointArray::ClosestBoundarySegment_2D
+          (AuPointArray *this,AuPoint *param_1,AuPoint *param_2,AuPoint *param_3)
+
+{
+  longlong lVar1;
+  longlong lVar2;
+  longlong lVar3;
+  bool bVar4;
+  undefined8 *puVar5;
+  undefined4 uVar6;
+  double dVar7;
+  undefined4 uVar8;
+  double local_48;
+  double local_40;
+  
+                    /* 0x54f0  470
+                       ?ClosestBoundarySegment_2D@AuPointArray@@QEBANAEBVAuPoint@@AEAV2@1@Z */
+  lVar2 = *(longlong *)this;
+  if (1 < *(int *)(lVar2 + 4)) {
+    uVar6 = 0;
+    uVar8 = 0xbff00000;
+    puVar5 = (undefined8 *)(lVar2 + 0x18 + *(longlong *)(lVar2 + 0x10));
+    bVar4 = false;
+    if (puVar5 != (undefined8 *)
+                  (*(longlong *)(lVar2 + 0x10) + (longlong)*(int *)(lVar2 + 4) * 0x18 + lVar2)) {
+      do {
+        AuPoint::PointOnSegment_2D(param_1,(AuPoint *)&local_48,(AuPoint *)(puVar5 + -3));
+        dVar7 = sqrt((*(double *)(param_1 + 8) - local_40) * (*(double *)(param_1 + 8) - local_40) +
+                     (*(double *)param_1 - local_48) * (*(double *)param_1 - local_48));
+        if ((!bVar4) ||
+           (dVar7 <= (double)CONCAT44(uVar8,uVar6) && (double)CONCAT44(uVar8,uVar6) != dVar7)) {
+          bVar4 = true;
+          uVar6 = SUB84(dVar7,0);
+          uVar8 = (undefined4)((ulonglong)dVar7 >> 0x20);
+          *(undefined8 *)param_2 = puVar5[-3];
+          *(undefined8 *)(param_2 + 8) = puVar5[-2];
+          *(undefined8 *)(param_2 + 0x10) = puVar5[-1];
+          *(undefined8 *)param_3 = *puVar5;
+          *(undefined8 *)(param_3 + 8) = puVar5[1];
+          *(undefined8 *)(param_3 + 0x10) = puVar5[2];
+        }
+        puVar5 = puVar5 + 3;
+      } while (puVar5 != (undefined8 *)
+                         (lVar2 + (longlong)*(int *)(lVar2 + 4) * 0x18 + *(longlong *)(lVar2 + 0x10)
+                         ));
+    }
+    if (2 < *(int *)(lVar2 + 4)) {
+      AuPoint::PointOnSegment_2D
+                (param_1,(AuPoint *)&local_48,
+                 (AuPoint *)
+                 (lVar2 + -0x18 + *(longlong *)(lVar2 + 0x10) + (longlong)*(int *)(lVar2 + 4) * 0x18
+                 ));
+      dVar7 = sqrt((*(double *)(param_1 + 8) - local_40) * (*(double *)(param_1 + 8) - local_40) +
+                   (*(double *)param_1 - local_48) * (*(double *)param_1 - local_48));
+      if ((!bVar4) ||
+         (dVar7 <= (double)CONCAT44(uVar8,uVar6) && (double)CONCAT44(uVar8,uVar6) != dVar7)) {
+        uVar6 = SUB84(dVar7,0);
+        uVar8 = (undefined4)((ulonglong)dVar7 >> 0x20);
+        lVar1 = *(longlong *)(lVar2 + 0x10) + (longlong)*(int *)(lVar2 + 4) * 0x18;
+        lVar3 = *(longlong *)(lVar2 + 0x10);
+        *(undefined8 *)param_2 = *(undefined8 *)(lVar1 + -0x18 + lVar2);
+        *(undefined8 *)(param_2 + 8) = *(undefined8 *)(lVar1 + -0x10 + lVar2);
+        *(undefined8 *)(param_2 + 0x10) = *(undefined8 *)(lVar1 + -8 + lVar2);
+        *(undefined8 *)param_3 = *(undefined8 *)(lVar2 + lVar3);
+        *(undefined8 *)(param_3 + 8) = *(undefined8 *)(lVar2 + 8 + lVar3);
+        *(undefined8 *)(param_3 + 0x10) = *(undefined8 *)(lVar2 + 0x10 + lVar3);
+      }
+    }
+    return (double)CONCAT44(uVar8,uVar6);
+  }
+  return -1.0;
+}
+
+

@@ -1,0 +1,19 @@
+
+/* public: bool __cdecl AuPoint::IsOnSegment_2D(class AuPoint const & __ptr64,class AuPoint const &
+   __ptr64)const __ptr64 */
+
+bool __thiscall AuPoint::IsOnSegment_2D(AuPoint *this,AuPoint *param_1,AuPoint *param_2)
+
+{
+  double dVar1;
+  double local_28;
+  double local_20;
+  
+                    /* 0x9940  627  ?IsOnSegment_2D@AuPoint@@QEBA_NAEBV1@0@Z */
+  PointOnSegment_2D(this,(AuPoint *)&local_28,param_1);
+  dVar1 = sqrt((*(double *)this - local_28) * (*(double *)this - local_28) +
+               (*(double *)(this + 8) - local_20) * (*(double *)(this + 8) - local_20));
+  return dVar1 <= 1e-05;
+}
+
+

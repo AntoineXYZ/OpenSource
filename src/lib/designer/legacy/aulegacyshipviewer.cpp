@@ -1,8 +1,13 @@
 #include "aulegacyshipviewer.h"
 #include "aulegacyship.h"
+#include "aulegacyshipedit.h"
+#include "aulegacyshipgeometry.h"
 
 #include <QAction>
+#include <QActionGroup>
+#include <QCloseEvent>
 #include <QComboBox>
+#include <QCursor>
 #include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -21,7 +26,9 @@
 #include <QPlainTextEdit>
 #include <QSet>
 #include <QSettings>
+#include <QScrollBar>
 #include <QShowEvent>
+#include <QSpinBox>
 #include <QSplitter>
 #include <QStandardPaths>
 #include <QStatusBar>
@@ -67,6 +74,28 @@ QPointF ScenePoint(const QPointF& point)
 	return QPointF(point.x(), -point.y());
 }
 
+struct RoomChoice
+{
+	int type;
+	const char* name;
+};
+
+const RoomChoice RoomChoices[] = {
+	{ 1, "Barracks" }, { 2, "Bridge" }, { 3, "Brig" }, { 4, "Officer Cabin" },
+	{ 5, "Hold" }, { 6, "Hall" }, { 7, "Crew Cabin" }, { 8, "Engine Room" },
+	{ 9, "Fuel Cell" }, { 10, "Galley" }, { 11, "Gravity Well" }, { 13, "Vehicle Bay" },
+	{ 14, "Lounge" }, { 15, "Open to Deck Below" }, { 16, "Sensor Room" }, { 17, "Shield Room" },
+	{ 18, "Sickbay" }, { 19, "Stateroom" }, { 20, "Transporter Room" }, { 21, "Weapon Bay" }
+};
+
+QString RoomName(int type)
+{
+	for (const RoomChoice& choice : RoomChoices)
+		if (choice.type == type)
+			return QString::fromLatin1(choice.name);
+	return QStringLiteral("Type %1").arg(type);
+}
+
 class DeckView : public QGraphicsView
 {
 public:
@@ -83,8 +112,21 @@ public:
 	}
 
 	bool gridVisible = true;
+	quint8 gridMask = 5;
+	bool editing = false;
+	bool erasing = false;
 	QString emptyMessage;
 	std::function<void(const QPointF&)> cursorMoved;
+	std::function<void(const QPointF&)> cellEntered;
+
+	void SetEditing(bool active, bool erase)
+	{
+		editing = active;
+		erasing = erase;
+		setDragMode(active ? QGraphicsView::NoDrag : QGraphicsView::ScrollHandDrag);
+		viewport()->setCursor(active ? Qt::CrossCursor : Qt::ArrowCursor);
+		viewport()->update();
+	}
 
 protected:
 	void wheelEvent(QWheelEvent* event) override
@@ -100,17 +142,86 @@ protected:
 		const double bounded = std::max(0.05, std::min(200.0, requested));
 		if (currentScale > 0.0)
 			scale(bounded / currentScale, bounded / currentScale);
+		UpdateCursor(viewport()->mapFromGlobal(QCursor::pos()));
 		event->accept();
+	}
+
+	void mousePressEvent(QMouseEvent* event) override
+	{
+		UpdateCursor(event->pos());
+		if (event->button() == Qt::MiddleButton)
+		{
+			m_Panning = true;
+			m_PanPosition = event->pos();
+			viewport()->setCursor(Qt::ClosedHandCursor);
+			event->accept();
+			return;
+		}
+		if (editing && event->button() == Qt::LeftButton)
+		{
+			if (cellEntered)
+				cellEntered(m_Cursor);
+			event->accept();
+			return;
+		}
+		QGraphicsView::mousePressEvent(event);
 	}
 
 	void mouseMoveEvent(QMouseEvent* event) override
 	{
-		QGraphicsView::mouseMoveEvent(event);
-		if (cursorMoved)
+		if (m_Panning)
 		{
-			const QPointF point = mapToScene(event->pos());
-			cursorMoved(QPointF(point.x(), -point.y()));
+			const QPoint delta = event->pos() - m_PanPosition;
+			m_PanPosition = event->pos();
+			horizontalScrollBar()->setValue(horizontalScrollBar()->value() - delta.x());
+			verticalScrollBar()->setValue(verticalScrollBar()->value() - delta.y());
+			UpdateCursor(event->pos());
+			event->accept();
+			return;
 		}
+		if (editing)
+		{
+			UpdateCursor(event->pos());
+			if ((event->buttons() & Qt::LeftButton) && cellEntered)
+				cellEntered(m_Cursor);
+			event->accept();
+			return;
+		}
+		QGraphicsView::mouseMoveEvent(event);
+		UpdateCursor(event->pos());
+	}
+
+	void mouseReleaseEvent(QMouseEvent* event) override
+	{
+		if (event->button() == Qt::MiddleButton && m_Panning)
+		{
+			m_Panning = false;
+			viewport()->setCursor(editing ? Qt::CrossCursor : Qt::ArrowCursor);
+			UpdateCursor(event->pos());
+			event->accept();
+			return;
+		}
+		if (editing && event->button() == Qt::LeftButton)
+		{
+			event->accept();
+			return;
+		}
+		QGraphicsView::mouseReleaseEvent(event);
+	}
+
+	void mouseDoubleClickEvent(QMouseEvent* event) override
+	{
+		if (editing)
+			event->accept();
+		else
+			QGraphicsView::mouseDoubleClickEvent(event);
+	}
+
+	void leaveEvent(QEvent* event) override
+	{
+		m_CursorKnown = false;
+		viewport()->update();
+		QGraphicsView::leaveEvent(event);
 	}
 
 	void drawBackground(QPainter* painter, const QRectF& rect) override
@@ -119,26 +230,61 @@ protected:
 		if (!gridVisible)
 			return;
 
-		double step = AuLegacyShip::GridSpacing;
 		const double pixelsPerFoot = std::abs(transform().m11());
 		if (pixelsPerFoot <= 0.0)
 			return;
-		while (step * pixelsPerFoot < 15.0 || rect.width() / step > 300.0 || rect.height() / step > 300.0)
-			step *= 2.0;
+		const double stride = std::max(1.0, std::ceil(std::max(
+			3.0 / (AuLegacyShip::GridSpacing * pixelsPerFoot),
+			(rect.width() + rect.height()) / (AuLegacyShip::GridSpacing * 1600.0))));
+		const double step = AuLegacyShip::GridSpacing * stride;
 		QPen pen(QColor(43, 54, 67));
 		pen.setCosmetic(true);
 		painter->setPen(pen);
 		const double left = std::floor(rect.left() / step) * step;
 		const double top = std::floor(rect.top() / step) * step;
-		for (double x = left; x <= rect.right(); x += step)
-			painter->drawLine(QPointF(x, rect.top()), QPointF(x, rect.bottom()));
-		for (double y = top; y <= rect.bottom(); y += step)
-			painter->drawLine(QPointF(rect.left(), y), QPointF(rect.right(), y));
+		if (gridMask & 4)
+			for (double x = left; x <= rect.right(); x += step)
+				painter->drawLine(QPointF(x, rect.top()), QPointF(x, rect.bottom()));
+		if (gridMask & 1)
+			for (double y = top; y <= rect.bottom(); y += step)
+				painter->drawLine(QPointF(rect.left(), y), QPointF(rect.right(), y));
+		if (gridMask & 2)
+		{
+			const double first = std::floor((rect.left() + rect.top()) / step) * step;
+			for (double c = first; c <= rect.right() + rect.bottom(); c += step)
+				painter->drawLine(QPointF(rect.left(), c - rect.left()), QPointF(rect.right(), c - rect.right()));
+		}
+		if (gridMask & 8)
+		{
+			const double first = std::floor((rect.top() - rect.right()) / step) * step;
+			for (double c = first; c <= rect.bottom() - rect.left(); c += step)
+				painter->drawLine(QPointF(rect.left(), rect.left() + c), QPointF(rect.right(), rect.right() + c));
+		}
 
 		pen.setColor(QColor(91, 112, 132));
 		painter->setPen(pen);
 		painter->drawLine(QPointF(0.0, rect.top()), QPointF(0.0, rect.bottom()));
 		painter->drawLine(QPointF(rect.left(), 0.0), QPointF(rect.right(), 0.0));
+	}
+
+	void drawForeground(QPainter* painter, const QRectF& rect) override
+	{
+		QGraphicsView::drawForeground(painter, rect);
+		if (!editing || !m_CursorKnown)
+			return;
+		QPolygonF cell = AuLegacyShip::Geometry::FillShape(gridMask, m_Cursor);
+		if (cell.isEmpty())
+			return;
+		for (QPointF& point : cell)
+			point = ScenePoint(point);
+		const QColor color = erasing ? QColor(255, 116, 110) : QColor(129, 218, 255);
+		QPen pen(color, 1.5);
+		pen.setCosmetic(true);
+		painter->setPen(pen);
+		QColor fill = color;
+		fill.setAlpha(55);
+		painter->setBrush(fill);
+		painter->drawPolygon(cell);
 	}
 
 	void paintEvent(QPaintEvent* event) override
@@ -152,6 +298,21 @@ protected:
 				Qt::AlignCenter | Qt::TextWordWrap, emptyMessage);
 		}
 	}
+
+private:
+	void UpdateCursor(const QPoint& pixel)
+	{
+		m_Cursor = ScenePoint(mapToScene(pixel));
+		m_CursorKnown = viewport()->rect().contains(pixel);
+		if (cursorMoved)
+			cursorMoved(m_Cursor);
+		viewport()->update();
+	}
+
+	QPointF m_Cursor;
+	QPoint m_PanPosition;
+	bool m_CursorKnown = false;
+	bool m_Panning = false;
 };
 
 class DetailMarker : public QGraphicsItem
@@ -199,15 +360,17 @@ private:
 class AuLegacyShipViewer::Impl
 {
 public:
+	enum ToolMode { InspectMode, PaintMode, EraseMode };
+
 	explicit Impl(AuLegacyShipViewer* owner) : window(owner),
 		settings(QSettings::NativeFormat, QSettings::UserScope,
 			QStringLiteral("Hazeron Freehold"), QStringLiteral("Shores of Hazeron"))
 	{
 		scene = new QGraphicsScene(window);
 		view = new DeckView(scene, window);
-		view->emptyMessage = QStringLiteral("Open a 2016 .ship file to inspect its decks.\n\n"
-			"Mouse wheel: zoom   \u2022   Drag empty space: pan\n"
-			"Click a room or detail to inspect its stored values.");
+		view->emptyMessage = QStringLiteral("Open a 2016 .ship file to inspect or edit its decks.\n\n"
+			"Mouse wheel: zoom   \u2022   Middle drag: pan\n"
+			"Edits last for this session. Saving is not available yet.");
 		scene->setSceneRect(-40.0, -40.0, 80.0, 80.0);
 
 		QAction* openAction = new QAction(QStringLiteral("&Open .ship..."), window);
@@ -219,7 +382,7 @@ public:
 		roomsAction = new QAction(QStringLiteral("Rooms"), window);
 		detailsAction = new QAction(QStringLiteral("Details"), window);
 		gridAction = new QAction(QStringLiteral("Grid"), window);
-		gridAction->setToolTip(QStringLiteral("Full cells are 5.656854249 feet wide. The grid coarsens when zoomed out."));
+		gridAction->setToolTip(QStringLiteral("Show the selected grid line families. Lines thin at distant zoom levels; painting always uses the original grid."));
 		for (QAction* action : { roomsAction, detailsAction, gridAction })
 		{
 			action->setCheckable(true);
@@ -287,7 +450,11 @@ public:
 			"QComboBox::drop-down { subcontrol-origin: padding; subcontrol-position: top right;"
 			" width: 20px; border: 0; border-image: none; background: #24394b; }"
 			"QComboBox QAbstractItemView { background: #1d2833; color: #dce5ef;"
-			" border: 1px solid #50728f; selection-background-color: #30465b; selection-color: #ffffff; }"));
+			" border: 1px solid #50728f; selection-background-color: #30465b; selection-color: #ffffff; }"
+			"QSpinBox { color: #dce5ef; background: #1d2833; border: 1px solid #50728f;"
+			" border-radius: 3px; padding: 4px 6px; selection-background-color: #30465b; }"
+			"QSpinBox:disabled { color: #7e8b99; border-color: #344454; }"
+			"QSpinBox::up-button, QSpinBox::down-button { background: #24394b; border: 0; }"));
 		QPalette controlsPalette = toolbar->palette();
 		for (QPalette::ColorRole role : { QPalette::WindowText, QPalette::Text, QPalette::ButtonText })
 		{
@@ -313,9 +480,60 @@ public:
 		toolbar->addAction(detailsAction);
 		toolbar->addAction(gridAction);
 
+		window->addToolBarBreak();
+		editToolbar = window->addToolBar(QStringLiteral("Legacy room cells"));
+		editToolbar->setMovable(false);
+		editToolbar->setStyleSheet(toolbar->styleSheet());
+		editToolbar->setPalette(controlsPalette);
+		QActionGroup* tools = new QActionGroup(window);
+		tools->setExclusive(true);
+		const QString toolNames[] = { QStringLiteral("Inspect"), QStringLiteral("Paint"), QStringLiteral("Erase Cells") };
+		for (int mode = InspectMode; mode <= EraseMode; ++mode)
+		{
+			QAction* action = editToolbar->addAction(toolNames[mode]);
+			action->setCheckable(true);
+			action->setChecked(mode == InspectMode);
+			tools->addAction(action);
+			QObject::connect(action, &QAction::triggered, window, [this, mode]() { SetToolMode(ToolMode(mode)); });
+		}
+		editToolbar->addSeparator();
+		editToolbar->addWidget(new QLabel(QStringLiteral("Room: "), editToolbar));
+		roomType = new QComboBox(editToolbar);
+		roomType->setAccessibleName(QStringLiteral("Room type to paint"));
+		for (const RoomChoice& choice : RoomChoices)
+			roomType->addItem(QString::fromLatin1(choice.name), choice.type);
+		roomType->setCurrentIndex(roomType->findData(2));
+		editToolbar->addWidget(roomType);
+		editToolbar->addWidget(new QLabel(QStringLiteral("Number: "), editToolbar));
+		roomNumber = new QSpinBox(editToolbar);
+		roomNumber->setRange(0, 255);
+		roomNumber->setWrapping(true);
+		roomNumber->setValue(0);
+		roomNumber->setAccessibleName(QStringLiteral("Room number to paint"));
+		roomNumber->setToolTip(QStringLiteral("Distinguishes rooms of the same type on this deck. This is the room subtype, not its record ID."));
+		editToolbar->addWidget(roomNumber);
+		editToolbar->addSeparator();
+		editToolbar->addWidget(new QLabel(QStringLiteral("Grid: "), editToolbar));
+		const QString lineNames[] = { QStringLiteral("0\u00b0"), QStringLiteral("45\u00b0"),
+			QStringLiteral("90\u00b0"), QStringLiteral("135\u00b0") };
+		const QString lineTips[] = { QStringLiteral("Lateral grid lines (on the beam)"),
+			QStringLiteral("Diagonal grid lines (port quarter)"), QStringLiteral("Longitudinal grid lines (fore and aft)"),
+			QStringLiteral("Diagonal grid lines (starboard quarter)") };
+		for (int i = 0; i < 4; ++i)
+		{
+			lineActions[i] = editToolbar->addAction(lineNames[i]);
+			lineActions[i]->setCheckable(true);
+			lineActions[i]->setChecked((5 & (1 << i)) != 0);
+			lineActions[i]->setToolTip(lineTips[i]);
+			QObject::connect(lineActions[i], &QAction::toggled, window, [this](bool) { UpdateGrid(); });
+		}
+		editToolbar->setEnabled(false);
+		roomType->setEnabled(false);
+		roomNumber->setEnabled(false);
+
 		QWidget* central = new QWidget(window);
 		QVBoxLayout* layout = new QVBoxLayout(central);
-		summary = new QLabel(QStringLiteral("Offline legacy spacecraft viewer \u2014 read-only"), central);
+		summary = new QLabel(QStringLiteral("Legacy spacecraft designer \u2014 session edits only; saving is not available yet"), central);
 		summary->setTextFormat(Qt::PlainText);
 		summary->setWordWrap(true);
 		layout->addWidget(summary);
@@ -340,6 +558,7 @@ public:
 		view->cursorMoved = [this](const QPointF& point) {
 			coordinates->setText(QStringLiteral("X %1   Y %2 ft").arg(point.x(), 0, 'f', 2).arg(point.y(), 0, 'f', 2));
 		};
+		view->cellEntered = [this](const QPointF& point) { EditAt(point); };
 		QObject::connect(scene, &QGraphicsScene::selectionChanged, window, [this]() { ShowSelection(); });
 		ShowOverview();
 	}
@@ -348,11 +567,64 @@ public:
 	{
 		QObject::disconnect(scene, nullptr, window, nullptr);
 		view->cursorMoved = std::function<void(const QPointF&)>();
+		view->cellEntered = std::function<void(const QPointF&)>();
 	}
 
 	void FitDeck()
 	{
-		view->fitInView(scene->sceneRect(), Qt::KeepAspectRatio);
+		view->fitInView(deckBounds, Qt::KeepAspectRatio);
+	}
+
+	void SetToolMode(ToolMode mode)
+	{
+		toolMode = mode;
+		view->SetEditing(loaded && mode != InspectMode, mode == EraseMode);
+		roomType->setEnabled(loaded && mode == PaintMode);
+		roomNumber->setEnabled(loaded && mode == PaintMode);
+		window->statusBar()->showMessage(mode == InspectMode
+			? QStringLiteral("Click a room or detail to inspect it. Middle drag pans; the wheel zooms.")
+			: QStringLiteral("Left click or drag to %1 cells. Middle drag pans. Edits are not saved.")
+				.arg(mode == EraseMode ? QStringLiteral("erase") : QStringLiteral("paint")));
+	}
+
+	void UpdateGrid()
+	{
+		quint8 mask = 0;
+		for (int i = 0; i < 4; ++i)
+			if (lineActions[i]->isChecked())
+				mask |= quint8(1 << i);
+		view->gridMask = mask;
+		view->viewport()->update();
+		if (mask == 0 || mask == 1 || mask == 2 || mask == 4 || mask == 8)
+			window->statusBar()->showMessage(QStringLiteral("These grid lines do not form closed cells. Enable another direction to paint or erase."));
+		else
+			window->statusBar()->showMessage(QStringLiteral("Grid directions updated. The highlighted cell follows the original 2016 shape rules."));
+	}
+
+	void EditAt(const QPointF& cursor)
+	{
+		if (!loaded || toolMode == InspectMode || deckCombo->currentIndex() < 0)
+			return;
+		const int deck = deckCombo->currentData().toInt();
+		const int type = toolMode == EraseMode ? -1 : roomType->currentData().toInt();
+		const AuLegacyShip::CellEditResult result = AuLegacyShip::EditCell(design, deck, cursor,
+			view->gridMask, type, quint8(roomNumber->value()));
+		if (!result.accepted)
+		{
+			window->statusBar()->showMessage(result.error.isEmpty()
+				? QStringLiteral("This cell edit could not be applied.") : result.error);
+			return;
+		}
+		if (result.changed)
+		{
+			modified = true;
+			IndexDecks(deck);
+			UpdateSummary();
+			ShowDeck(deck, false);
+		}
+		window->statusBar()->showMessage(result.error.isEmpty()
+			? (result.changed ? QStringLiteral("Cell updated. Session edits are not saved.")
+				: QStringLiteral("No change at this cell.")) : result.error);
 	}
 
 	void SetLayerVisible(int kind, bool visible)
@@ -367,9 +639,10 @@ public:
 	QString DesignInformation() const
 	{
 		if (!loaded)
-			return QStringLiteral("This viewer displays recovered room boundaries and detail positions from 2016 .ship files.\n\n"
-				"It works offline. It does not edit, save, or convert designs.\n\n"
-				"Room and detail names have not yet been recovered. Numeric values are shown without assigning names or behavior.");
+			return QStringLiteral("Open a 2016 .ship design to inspect its room boundaries and equipment positions.\n\n"
+				"Paint and Erase Cells edit the loaded design in memory. Saving is not available yet.\n\n"
+				"The four grid directions combine to form the original squares, triangles, diamonds and parallelograms.\n\n"
+				"Left click or drag applies the selected tool. Middle drag pans; the wheel zooms.");
 		const AuLegacyShip::Header& header = design.header;
 		QString text = QStringLiteral("%1\n\nFile: %2\nDesign ID: %3\nArchitect: %4\nArchitect ID: %5\n"
 			"Format version: %6\nState: %7\nStreamline: %8\nArmor: %9\n")
@@ -379,12 +652,14 @@ public:
 		const bool hasExtendedHeader = header.version > 1;
 		const QString absent = QStringLiteral("(not stored in this format version)");
 		text += QStringLiteral("Minimum tech level: %1\nHull volume: %2\nStructure: %3\nTech level: %4\n\n"
-			"Stored rooms: %5\nStored details: %6\nDecks with geometry: %7\nBytes read: %8\n")
+			"Current rooms: %5\nCurrent details: %6\nDecks with geometry: %7\nSource bytes read: %8\n")
 			.arg(header.minimumTechLevel).arg(hasExtendedHeader ? QString::number(header.hullVolume) : absent)
 			.arg(hasExtendedHeader ? QString::number(header.structure) : absent)
 			.arg(hasExtendedHeader ? QString::number(header.techLevel) : absent)
-			.arg(design.rooms.size()).arg(design.details.size()).arg(deckCombo->count()).arg(design.bytesConsumed);
-		text += QStringLiteral("\nSelect a room or detail for its record. Room and detail types use numeric labels. "
+			.arg(design.rooms.size()).arg(design.details.size()).arg(occupiedDeckCount).arg(design.bytesConsumed);
+		text += modified ? QStringLiteral("\nThis design has session edits. Saving is not available yet.\n")
+			: QStringLiteral("\nNo session edits. Saving is not available yet.\n");
+		text += QStringLiteral("\nUse Inspect to select a room or detail for its record. "
 			"Marker shapes and colors distinguish records; they do not represent recovered equipment shapes.\n");
 		if (!geometryWarnings.isEmpty())
 			text += QStringLiteral("\nGeometry warnings for this deck:\n") + geometryWarnings.join(QLatin1Char('\n'));
@@ -404,13 +679,15 @@ public:
 	QString RoomInformation(int index) const
 	{
 		const AuLegacyShip::Room& room = design.rooms[index];
-		QString text = QStringLiteral("Room %1\n\nNumeric room type: %2 (%3)\nDeck: %4\nZ: %5 ft\n"
-			"Design ID: %6\nRecord index: %7\nStream offset: %8\nStored vertices: %9\n")
+		QString text = QStringLiteral("Room record %1\n\nNumeric room type: %2 (%3)\nDeck: %4\nZ: %5 ft\n"
+			"Design ID: %6\nRecord index: %7\nSource stream offset: %8\nCurrent vertices: %9\n")
 			.arg(room.roomId).arg(room.roomType).arg(Hex(room.roomType)).arg(int(room.deck))
 			.arg(int(room.deck) * AuLegacyShip::DeckHeight).arg(room.designId).arg(index)
-			.arg(Hex(room.streamOffset, 8)).arg(room.packedVertices.size());
-		text += QStringLiteral("Room subtype: %1\nBoundary: %2\n\nStored points (X, Y feet):\n")
-			.arg(Hex(room.roomSubtype)).arg(room.IsEllipse() ? QStringLiteral("ellipse from three control points") : QStringLiteral("polygon"));
+			.arg(room.streamOffset < 0 ? QStringLiteral("new room") : Hex(room.streamOffset, 8))
+			.arg(room.packedVertices.size());
+		text += QStringLiteral("Room type: %1\nRoom number (subtype): %2 (%3)\nBoundary: %4\n\nPoints (X, Y feet):\n")
+			.arg(RoomName(room.roomType)).arg(room.roomSubtype).arg(Hex(room.roomSubtype))
+			.arg(room.IsEllipse() ? QStringLiteral("ellipse from three control points") : QStringLiteral("polygon"));
 		const int limit = std::min(room.packedVertices.size(), 64);
 		for (int i = 0; i < limit; ++i)
 		{
@@ -435,7 +712,7 @@ public:
 			+ QStringLiteral("\nNumeric detail type: %1\nHidden byte (raw): %2\n"
 				"Room ID: %3\nCommodity ID (raw): %4\n"
 				"Commodity ID after legacy normalization: %5\n\n"
-				"Type names and equipment shapes have not yet been recovered. Hidden details are included in this inspection view.")
+				"This view uses numeric equipment types and marker symbols. Hidden details are included in this inspection view.")
 				.arg(Hex(detail.detailType)).arg(Hex(detail.hiddenRaw)).arg(detail.roomId)
 				.arg(Hex(detail.commodityIdRaw, 4)).arg(Hex(detail.commodityIdNormalized, 4));
 	}
@@ -457,8 +734,11 @@ public:
 			inspector->setPlainText(DetailInformation(index));
 	}
 
-	void ShowDeck(int deck)
+	void ShowDeck(int deck, bool fit = true)
 	{
+		const QTransform previousTransform = view->transform();
+		const int previousHorizontal = view->horizontalScrollBar()->value();
+		const int previousVertical = view->verticalScrollBar()->value();
 		scene->clear();
 		geometryWarnings.clear();
 		QRectF bounds;
@@ -488,8 +768,9 @@ public:
 			item->setFlag(QGraphicsItem::ItemIsSelectable);
 			item->setData(RecordKind, RoomKind);
 			item->setData(RecordIndex, index);
-			item->setToolTip(QStringLiteral("Room %1 | numeric type %2 (%3) | deck %4")
-				.arg(room.roomId).arg(room.roomType).arg(Hex(room.roomType)).arg(deck));
+			item->setToolTip(QStringLiteral("%1 %2 | record %3 | type %4 (%5) | deck %6")
+				.arg(RoomName(room.roomType)).arg(room.roomSubtype).arg(room.roomId)
+				.arg(room.roomType).arg(Hex(room.roomType)).arg(deck));
 			item->setVisible(roomsAction->isChecked());
 			bounds = hasBounds ? bounds.united(polygon.boundingRect()) : polygon.boundingRect();
 			hasBounds = true;
@@ -514,15 +795,75 @@ public:
 		if (warningCount > geometryWarnings.size())
 			geometryWarnings.append(QStringLiteral("... and %1 more invalid boundaries").arg(warningCount - geometryWarnings.size()));
 		const double margin = AuLegacyShip::GridSpacing * 1.5;
-		scene->setSceneRect(hasBounds ? bounds.adjusted(-margin, -margin, margin, margin) : QRectF(-40.0, -40.0, 80.0, 80.0));
-		view->emptyMessage = hasBounds ? QString() : QStringLiteral("No displayable geometry on this deck.");
+		deckBounds = hasBounds ? bounds.adjusted(-margin, -margin, margin, margin) : QRectF(-40.0, -40.0, 80.0, 80.0);
+		const double extent = AuLegacyShip::GridSpacing * 66.0;
+		scene->setSceneRect(QRectF(-extent, -extent, extent * 2.0, extent * 2.0).united(deckBounds));
+		view->emptyMessage = hasBounds ? QString() : (warningCount
+			? QStringLiteral("No displayable geometry on this deck. See the inspector for boundary warnings.")
+			: QStringLiteral("This deck is empty. Select Paint to add room cells."));
 		QString message = QStringLiteral("Deck %1 (Z %2 ft): %3 room boundaries, %4 details")
 			.arg(deck).arg(deck * AuLegacyShip::DeckHeight).arg(visibleRooms).arg(detailDecks.value(deck).size());
 		if (warningCount)
 			message += QStringLiteral("; %1 geometry warnings (see inspector)").arg(warningCount);
 		window->statusBar()->showMessage(message);
 		ShowOverview();
-		FitDeck();
+		if (fit)
+			FitDeck();
+		else
+		{
+			view->setTransform(previousTransform);
+			view->horizontalScrollBar()->setValue(previousHorizontal);
+			view->verticalScrollBar()->setValue(previousVertical);
+		}
+		view->viewport()->update();
+	}
+
+	void IndexDecks(int selectedDeck)
+	{
+		roomDecks.clear();
+		detailDecks.clear();
+		QSet<int> decks;
+		QSet<int> occupied;
+		for (int deck = -28; deck <= 28; ++deck)
+			decks.insert(deck);
+		for (int i = 0; i < design.rooms.size(); ++i)
+		{
+			const AuLegacyShip::Room& room = design.rooms[i];
+			decks.insert(int(room.deck));
+			if (!room.packedVertices.isEmpty())
+			{
+				roomDecks[int(room.deck)].append(i);
+				occupied.insert(int(room.deck));
+			}
+		}
+		for (int i = 0; i < design.details.size(); ++i)
+		{
+			const int deck = design.details[i].deck;
+			detailDecks[deck].append(i);
+			decks.insert(deck);
+			occupied.insert(deck);
+		}
+		occupiedDeckCount = occupied.size();
+		decks.insert(selectedDeck);
+		QList<int> sortedDecks = decks.values();
+		std::sort(sortedDecks.begin(), sortedDecks.end());
+		deckCombo->blockSignals(true);
+		deckCombo->clear();
+		for (int deck : sortedDecks)
+			deckCombo->addItem(QStringLiteral("%1  (Z %2 ft)%3").arg(deck).arg(deck * AuLegacyShip::DeckHeight)
+				.arg(occupied.contains(deck) ? QString() : QStringLiteral(" \u2014 empty")), deck);
+		deckCombo->setCurrentIndex(deckCombo->findData(selectedDeck));
+		deckCombo->setEnabled(true);
+		deckCombo->blockSignals(false);
+	}
+
+	void UpdateSummary()
+	{
+		window->setWindowTitle(QStringLiteral("%1%2 \u2014 Legacy Spacecraft Designer")
+			.arg(modified ? QStringLiteral("*") : QString(), DisplayName()));
+		summary->setText(QStringLiteral("%1 \u2014 %2 rooms, %3 details, %4 occupied decks \u2014 %5; saving is not available yet")
+			.arg(DisplayName()).arg(design.rooms.size()).arg(design.details.size()).arg(occupiedDeckCount)
+			.arg(modified ? QStringLiteral("session edits") : QStringLiteral("no session edits")));
 	}
 
 	void SetDesign(const QString& path, AuLegacyShip::Design&& incoming)
@@ -531,48 +872,12 @@ public:
 		design = std::move(incoming);
 		fileName = QFileInfo(path).absoluteFilePath();
 		loaded = true;
-		roomDecks.clear();
-		detailDecks.clear();
-		geometryWarnings.clear();
-		QSet<int> decks;
-		for (int i = 0; i < design.rooms.size(); ++i)
-		{
-			const AuLegacyShip::Room& room = design.rooms[i];
-			if (!room.packedVertices.isEmpty())
-			{
-				roomDecks[int(room.deck)].append(i);
-				decks.insert(int(room.deck));
-			}
-		}
-		for (int i = 0; i < design.details.size(); ++i)
-		{
-			const int deck = design.details[i].deck;
-			detailDecks[deck].append(i);
-			decks.insert(deck);
-		}
-		QList<int> sortedDecks = decks.values();
-		std::sort(sortedDecks.begin(), sortedDecks.end());
-		deckCombo->blockSignals(true);
-		deckCombo->clear();
-		for (int deck : sortedDecks)
-			deckCombo->addItem(QStringLiteral("%1  (Z %2 ft)").arg(deck).arg(deck * AuLegacyShip::DeckHeight), deck);
-		const int initial = std::max(0, deckCombo->findData(0));
-		deckCombo->setCurrentIndex(sortedDecks.isEmpty() ? -1 : initial);
-		deckCombo->setEnabled(!sortedDecks.isEmpty());
-		deckCombo->blockSignals(false);
-		window->setWindowTitle(QStringLiteral("%1 \u2014 Legacy Spacecraft Viewer (read-only)").arg(DisplayName()));
-		summary->setText(QStringLiteral("%1 \u2014 %2 stored rooms, %3 details, %4 decks \u2014 read-only")
-			.arg(DisplayName()).arg(design.rooms.size()).arg(design.details.size()).arg(decks.size()));
-		if (!sortedDecks.isEmpty())
-			ShowDeck(sortedDecks[initial]);
-		else
-		{
-			scene->setSceneRect(-40.0, -40.0, 80.0, 80.0);
-			view->emptyMessage = QStringLiteral("This design contains no room boundaries or details.");
-			window->statusBar()->showMessage(QStringLiteral("No decks with geometry; empty room records are omitted as in the legacy loader."));
-			ShowOverview();
-			FitDeck();
-		}
+		modified = false;
+		IndexDecks(0);
+		UpdateSummary();
+		editToolbar->setEnabled(true);
+		SetToolMode(toolMode);
+		ShowDeck(0);
 	}
 
 	AuLegacyShipViewer* window;
@@ -581,6 +886,9 @@ public:
 	QGraphicsScene* scene;
 	DeckView* view;
 	QComboBox* deckCombo;
+	QComboBox* roomType;
+	QSpinBox* roomNumber;
+	QToolBar* editToolbar;
 	QLabel* summary;
 	QLabel* coordinates;
 	QPlainTextEdit* inspector;
@@ -588,20 +896,25 @@ public:
 	QAction* detailsAction;
 	QAction* gridAction;
 	QAction* closeAction;
+	QAction* lineActions[4];
 	std::function<void()> exitHandler;
 	AuLegacyShip::Design design;
 	QString fileName;
 	QStringList geometryWarnings;
 	QMap<int, QVector<int> > roomDecks;
 	QMap<int, QVector<int> > detailDecks;
+	QRectF deckBounds = QRectF(-40.0, -40.0, 80.0, 80.0);
+	ToolMode toolMode = InspectMode;
+	int occupiedDeckCount = 0;
 	bool loaded = false;
+	bool modified = false;
 	bool fittedOnShow = false;
 };
 
 AuLegacyShipViewer::AuLegacyShipViewer(QWidget* parent)
 	: QMainWindow(parent), m_Impl(new Impl(this))
 {
-	setWindowTitle(QStringLiteral("Legacy Spacecraft Viewer (read-only)"));
+	setWindowTitle(QStringLiteral("Legacy Spacecraft Designer"));
 	resize(1200, 800);
 }
 
@@ -628,6 +941,26 @@ void AuLegacyShipViewer::showEvent(QShowEvent* event)
 	}
 }
 
+bool AuLegacyShipViewer::ConfirmDiscardChanges()
+{
+	if (!m_Impl->modified)
+		return true;
+	return QMessageBox::question(this, QStringLiteral("Discard session edits?"),
+		QStringLiteral("This design has unsaved room edits. Saving .ship files is not available yet.\n\n"
+			"Discard these edits and continue?"), QMessageBox::Discard | QMessageBox::Cancel,
+		QMessageBox::Cancel) == QMessageBox::Discard;
+}
+
+void AuLegacyShipViewer::closeEvent(QCloseEvent* event)
+{
+	if (!ConfirmDiscardChanges())
+	{
+		event->ignore();
+		return;
+	}
+	QMainWindow::closeEvent(event);
+}
+
 bool AuLegacyShipViewer::OpenFile(const QString& fileName)
 {
 	AuLegacyShip::Design incoming;
@@ -638,6 +971,8 @@ bool AuLegacyShipViewer::OpenFile(const QString& fileName)
 			QStringLiteral("%1\n\n%2").arg(fileName, error));
 		return false;
 	}
+	if (!ConfirmDiscardChanges())
+		return false;
 	m_Impl->SetDesign(fileName, std::move(incoming));
 	m_Impl->settings.setValue(QStringLiteral("LegacySpacecraft/LastOpenDirectory"),
 		QFileInfo(fileName).absolutePath());

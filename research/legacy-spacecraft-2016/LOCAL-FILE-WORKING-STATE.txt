@@ -1,0 +1,48 @@
+Original 2016 local-file load creates a writable working design
+================================================================
+
+Captured read-only 2026-10-04. No production source was changed and no build
+or original-client execution was performed for this evidence.
+
+The local-file path previously traced in Shores of Hazeron.exe runs from
+AuView::OpenShipFile 0x1402ec270 through FUN_14023f7a0 to
+DaAtom::DesignSpaceShipLoaded. The following original AuAtom/AuData functions
+establish that the file's stored state is not the working design's state.
+
+1. AuAtom13.dll 0x180207cb0, DaAtom::DesignSpaceShipLoaded(header), checks
+   the design-environment owner, calls DaDesignEnvironment::NewDesign, gets
+   WorkingDesignId, then calls DgData::SpaceShipDesignLoaded with that ID.
+   The offline arrays overload 0x180207d90 does the same for environment
+   type 1, then loads each room and detail and signals DesignLoadCompleted.
+
+2. AuAtom13.dll 0x1802fae60, DaDesignEnvironment::NewDesign, calls the ship's
+   DesignNew 0x1803e46a0. DesignNew obtains a fresh nonzero design ID,
+   removes the previous working design if present, and calls
+   DgData::SpaceShipDesignNew 0x180148020.
+
+3. AuData13.dll 0x180148020 constructs DnSpaceShip with the new ID and the
+   current owner/name before adding it. The constructor at 0x180178f70
+   explicitly writes a 32-bit zero to the object's state at offset 0x18.
+
+4. AuData13.dll 0x180147690, DgData::SpaceShipDesignLoaded, finds the new
+   design and calls DnSpaceShip::DesignLoaded 0x18017a350. That final method
+   only copies source bytes at offsets 0x14, 0x15 and 0x30 and the module
+   collection at 0x38. It never copies state offset 0x18 (nor source ID,
+   owner or architect fields).
+
+5. The already captured DgData::SpaceShipDesignIsReadOnly 0x180146ff0
+   returns state != 0 for an existing design. Its node expression
+   *(int *)(node + 6) addresses the DnSpaceShip state: the object starts
+   at node + 3, so the difference is 3*8 = 0x18.
+
+Therefore a successful original local-file load operates on state zero,
+independent of the state embedded in the file header. Native session editing
+may retain that header as source metadata while treating its in-memory
+working design as editable. This evidence does not define a new save format
+or authorize silently rewriting source metadata on disk.
+
+Full decompiler captures for steps 1-4 are in pseudocode with the addresses
+above in their filenames. Decompiler signatures/call arguments remain raw
+tool output; the state conclusion rests on the explicit constructor store,
+the small DesignLoaded copy routine and the existing read-only predicate.
+

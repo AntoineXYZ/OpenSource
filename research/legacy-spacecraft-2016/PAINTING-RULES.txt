@@ -1,6 +1,10 @@
 2016 spacecraft room painting: recovered behavior
 Captured 2026-10-04. No build or original-client edit was run for this recovery.
 
+Follow-up: PAINTING-MILESTONE.txt describes the subsequent native in-memory
+cell editor. ROOM-RASTER-PORT.txt and EQUIPMENT-RECONCILIATION.txt resolve the
+implementation dependencies left open in this initial recovery report.
+
 Scope and evidence
 ------------------
 This is an implementation specification from read-only static analysis of the

@@ -1,0 +1,115 @@
+Ghidra decompiler output; descriptive helper names are inferred, not original symbols.
+Captured 2026-10-04 from the module/address in this filename. Read-only query.
+
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* private: bool __cdecl Au3dsGLSLModel::LoadEditorChunk(class QDataStream & __ptr64,int,double)
+   __ptr64 */
+
+bool __thiscall
+Au3dsGLSLModel::LoadEditorChunk
+          (Au3dsGLSLModel *this,QDataStream *param_1,int param_2,double param_3)
+
+{
+  bool bVar1;
+  undefined2 uVar2;
+  char cVar3;
+  undefined8 *puVar4;
+  short sVar5;
+  int iVar6;
+  undefined1 auStack_618 [32];
+  undefined8 *local_5f8;
+  undefined4 local_5f0;
+  double local_5e8;
+  undefined2 local_5d8;
+  char local_5d6;
+  char local_5d5 [5];
+  undefined8 local_5d0;
+  undefined8 uStack_5c8;
+  undefined8 local_5c0;
+  undefined8 local_5b8;
+  undefined8 uStack_5b0;
+  undefined8 local_5a8;
+  undefined8 local_5a0;
+  AuPoint local_598 [24];
+  AuPoint local_580 [24];
+  undefined1 local_568 [104];
+  QString local_500 [104];
+  QString local_498 [16];
+  undefined1 local_488 [1056];
+  ulonglong local_68;
+  
+                    /* 0x15b70  280  ?LoadEditorChunk@Au3dsGLSLModel@@AEAA_NAEAVQDataStream@@HN@Z */
+  local_5a0 = 0xfffffffffffffffe;
+  local_68 = DAT_1801310c0 ^ (ulonglong)auStack_618;
+  bVar1 = false;
+  do {
+    QDataStream::operator>>(param_1,local_5d5);
+    QDataStream::operator>>(param_1,&local_5d6);
+    sVar5 = CONCAT11(local_5d6,local_5d5[0]);
+    QDataStream::operator>>(param_1,(char *)&local_5d8);
+    QDataStream::operator>>(param_1,(char *)((longlong)&local_5d8 + 1));
+    uVar2 = local_5d8;
+    QDataStream::operator>>(param_1,(char *)&local_5d8);
+    QDataStream::operator>>(param_1,(char *)((longlong)&local_5d8 + 1));
+    iVar6 = CONCAT22(local_5d8,uVar2);
+    param_2 = param_2 - iVar6;
+    if ((sVar5 == 0x1200) || (sVar5 == 0x2100)) {
+LAB_180015e06:
+      QDataStream::skipRawData(param_1,iVar6 + -6);
+    }
+    else if (sVar5 == 0x4000) {
+      local_5d0 = 0;
+      uStack_5c8 = 0;
+      local_5c0 = 0;
+      local_5b8 = 0;
+      uStack_5b0 = 0;
+      local_5a8 = 0;
+      FUN_180006a30(local_488);
+      local_5f0 = *(undefined4 *)(this + 0x48);
+      local_5f8 = &local_5b8;
+      local_5e8 = param_3;
+      cVar3 = FUN_180014cf0(local_488,param_1,iVar6 + -6,&local_5d0);
+      if (cVar3 != '\0') {
+        cVar3 = FUN_180026330(local_488,*(undefined4 *)(this + 0x48));
+        if (cVar3 != '\0') {
+          if (bVar1) {
+            puVar4 = (undefined8 *)AuPoint::Min((AuPoint *)(this + 0x18),local_598);
+            *(undefined8 *)(this + 0x18) = *puVar4;
+            *(undefined8 *)(this + 0x20) = puVar4[1];
+            *(undefined8 *)(this + 0x28) = puVar4[2];
+            puVar4 = (undefined8 *)AuPoint::Max((AuPoint *)(this + 0x30),local_580);
+            *(undefined8 *)(this + 0x30) = *puVar4;
+            *(undefined8 *)(this + 0x38) = puVar4[1];
+            *(undefined8 *)(this + 0x40) = puVar4[2];
+          }
+          else {
+            *(undefined8 *)(this + 0x18) = local_5d0;
+            *(undefined8 *)(this + 0x20) = uStack_5c8;
+            *(undefined8 *)(this + 0x28) = local_5c0;
+            *(undefined8 *)(this + 0x30) = local_5b8;
+            *(undefined8 *)(this + 0x38) = uStack_5b0;
+            *(undefined8 *)(this + 0x40) = local_5a8;
+            bVar1 = true;
+          }
+        }
+        FUN_180029080(this + 8,local_488);
+      }
+      FUN_180008770(local_488);
+    }
+    else {
+      if ((sVar5 == 0x7001) || (sVar5 != -0x5001)) goto LAB_180015e06;
+      FUN_180005220(local_568);
+      cVar3 = FUN_180014770(local_568,param_1,iVar6 + -6,*(undefined4 *)(this + 0x48));
+      if (cVar3 != '\0') {
+        FUN_180028f50(this,local_568);
+      }
+      QString::~QString(local_498);
+      QString::~QString(local_500);
+    }
+    if (param_2 < 1) {
+      return true;
+    }
+  } while( true );
+}
+
+

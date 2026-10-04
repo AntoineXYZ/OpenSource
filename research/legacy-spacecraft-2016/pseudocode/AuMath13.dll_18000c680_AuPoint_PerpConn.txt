@@ -1,0 +1,95 @@
+
+/* public: bool __cdecl AuPoint::PerpConn(class AuPoint const & __ptr64,class AuPoint const &
+   __ptr64,class AuPoint const & __ptr64,class AuPoint & __ptr64,class AuPoint &
+   __ptr64,double)const __ptr64 */
+
+bool __thiscall
+AuPoint::PerpConn(AuPoint *this,AuPoint *param_1,AuPoint *param_2,AuPoint *param_3,AuPoint *param_4,
+                 AuPoint *param_5,double param_6)
+
+{
+  double dVar1;
+  double dVar2;
+  double dVar3;
+  double dVar4;
+  double dVar5;
+  bool bVar6;
+  double dVar7;
+  double dVar8;
+  double dVar9;
+  double dVar10;
+  double dVar11;
+  double dVar12;
+  double dVar13;
+  double dVar14;
+  double dVar15;
+  double local_c8;
+  double dStack_c0;
+  double local_b8;
+  
+                    /* 0xc680  691  ?PerpConn@AuPoint@@QEBA_NAEBV1@00AEAV1@1N@Z */
+  dVar1 = *(double *)(this + 8);
+  dVar2 = *(double *)this;
+  dVar3 = *(double *)(this + 0x10);
+  dVar4 = *(double *)(param_3 + 8) - *(double *)(param_2 + 8);
+  dVar15 = *(double *)param_3 - *(double *)param_2;
+  dVar5 = *(double *)(param_3 + 0x10) - *(double *)(param_2 + 0x10);
+  dStack_c0 = *(double *)(param_1 + 8) - dVar1;
+  local_c8 = *(double *)param_1 - dVar2;
+  local_b8 = *(double *)(param_1 + 0x10) - dVar3;
+  dVar7 = *(double *)param_2 - dVar2;
+  dVar13 = *(double *)(param_2 + 8) - dVar1;
+  dVar8 = local_c8 * local_c8 + dStack_c0 * dStack_c0 + local_b8 * local_b8;
+  dVar11 = local_c8 * dVar15 + dVar4 * dStack_c0 + dVar5 * local_b8;
+  dVar9 = dVar4 * dVar4 + dVar15 * dVar15 + dVar5 * dVar5;
+  dVar10 = *(double *)(param_2 + 0x10) - dVar3;
+  dVar12 = dVar9 * dVar8;
+  dVar14 = dVar11 * dVar11 - dVar12;
+  if ((ABS(dVar12) + ABS(dVar11 * dVar11)) * param_6 < ABS(dVar14)) {
+    dVar12 = dVar13 * dVar4 + dVar7 * dVar15 + dVar10 * dVar5;
+    dVar10 = dVar7 * local_c8 + dVar13 * dStack_c0 + dVar10 * local_b8;
+    dVar7 = (dVar12 * dVar11 - dVar10 * dVar9) / dVar14;
+    if (dVar7 == 0.0) {
+      local_b8 = 0.0;
+      local_c8 = 0.0;
+      dStack_c0 = 0.0;
+    }
+    else {
+      local_c8 = local_c8 * dVar7;
+      dStack_c0 = dStack_c0 * dVar7;
+      local_b8 = local_b8 * dVar7;
+    }
+    *(double *)param_4 = dVar2 + local_c8;
+    *(double *)(param_4 + 8) = dVar1 + dStack_c0;
+    dVar14 = (dVar12 * dVar8 - dVar10 * dVar11) / dVar14;
+    *(double *)(param_4 + 0x10) = dVar3 + local_b8;
+    if (dVar14 == 0.0) {
+      local_b8 = 0.0;
+      local_c8 = 0.0;
+      dStack_c0 = 0.0;
+    }
+    else {
+      local_c8 = dVar15 * dVar14;
+      dStack_c0 = dVar4 * dVar14;
+      local_b8 = dVar5 * dVar14;
+    }
+    dVar1 = *(double *)(param_2 + 8);
+    dVar2 = *(double *)(param_2 + 0x10);
+    *(double *)param_5 = local_c8 + *(double *)param_2;
+    *(double *)(param_5 + 8) = dStack_c0 + dVar1;
+    *(double *)(param_5 + 0x10) = local_b8 + dVar2;
+    bVar6 = true;
+  }
+  else {
+    *(undefined8 *)param_4 = 0;
+    *(undefined8 *)(param_4 + 8) = 0;
+    *(undefined8 *)(param_4 + 0x10) = 0;
+    *(undefined8 *)param_5 = 0;
+    *(undefined8 *)(param_5 + 8) = 0;
+    *(undefined8 *)(param_5 + 0x10) = 0;
+    bVar6 = false;
+  }
+  return bVar6;
+}
+
+

@@ -1,0 +1,134 @@
+Ghidra decompiler output; not recovered compilable source.
+Captured 2026-10-04 for in-memory cell editing. Read-only query.
+
+undefined8 FUN_1402ec270(undefined8 param_1)
+
+{
+  longlong lVar1;
+  bool bVar2;
+  int iVar3;
+  QString *pQVar4;
+  undefined8 uVar5;
+  longlong local_res10;
+  code *local_res18;
+  code *local_res20;
+  QTypedArrayData<unsigned_short> **ppQVar6;
+  undefined4 uVar7;
+  ulonglong uVar8;
+  undefined4 uVar9;
+  QTypedArrayData<unsigned_short> *local_1a8;
+  longlong local_1a0;
+  QFileInfo local_198 [8];
+  QTypedArrayData<unsigned_short> *local_190;
+  QTypedArrayData<unsigned_short> *local_188;
+  QTypedArrayData<unsigned_short> *local_180;
+  QFile local_178 [16];
+  QString local_168 [8];
+  QDataStream local_160 [24];
+  undefined4 local_148;
+  QMessageBox local_140 [48];
+  undefined8 local_110;
+  DnSpaceShip local_108 [240];
+  
+  local_110 = 0xfffffffffffffffe;
+  local_190 = QString::fromAscii_helper("",0);
+  local_188 = QString::fromAscii_helper("/DesignStudio/LastShipFile",0x1a);
+  AuSettings::readEntry
+            ((AuSettings *)(*(longlong *)gp_AuGlobal_exref + 0x218),(QString *)&local_res10,
+             (QString *)&local_188);
+  QString::~QString((QString *)&local_188);
+  QString::~QString((QString *)&local_190);
+  if (*(int *)(local_res10 + 4) == 0) {
+    pQVar4 = (QString *)QDir::currentPath();
+    QString::operator=((QString *)&local_res10,pQVar4);
+    QString::~QString((QString *)&local_res18);
+  }
+  QFileInfo::QFileInfo(local_198,(QString *)&local_res10);
+  bVar2 = QFileInfo::exists(local_198);
+  if (!bVar2) {
+    pQVar4 = (QString *)QFileInfo::absolutePath(local_198);
+    QString::operator=((QString *)&local_res10,pQVar4);
+    QString::~QString((QString *)&local_res18);
+  }
+  local_180 = QString::fromAscii_helper("Spacecraft Designs (*.ship);;All Files (*.*)",0x2c);
+  uVar5 = FUN_140310230(local_168,"Spacecraft Design File",0,0xffffffff);
+  uVar8 = 0;
+  ppQVar6 = &local_180;
+  QFileDialog::getOpenFileName(&local_1a0,param_1,uVar5,&local_res10,ppQVar6,0,0);
+  uVar7 = (undefined4)((ulonglong)ppQVar6 >> 0x20);
+  QString::~QString(local_168);
+  QString::~QString((QString *)&local_180);
+  if (*(int *)(local_1a0 + 4) == 0) {
+    uVar5 = 0;
+    goto LAB_1402ec6ee;
+  }
+  QFile::QFile(local_178,(QString *)&local_1a0);
+  bVar2 = QFile::open(local_178,1);
+  if (bVar2) {
+    local_1a8 = QString::fromAscii_helper("/DesignStudio/LastShipFile",0x1a);
+    AuSettings::writeEntry
+              ((AuSettings *)(*(longlong *)gp_AuGlobal_exref + 0x218),(QString *)&local_1a8,
+               (QString *)&local_1a0);
+    QString::~QString((QString *)&local_1a8);
+    QDataStream::QDataStream(local_160,(QIODevice *)local_178);
+    local_148 = 7;
+    DnSpaceShip::DnSpaceShip(local_108);
+    local_res20 = shared_null_exref;
+    local_res18 = shared_null_exref;
+    DgData::LoadSpaceShipDesign
+              (local_160,local_108,(DnDetailArray *)&local_res20,(DnRoomArray *)&local_res18);
+    QFileDevice::close((QFileDevice *)local_178);
+    uVar9 = (undefined4)(uVar8 >> 0x20);
+    if (*(int *)(local_res18 + 0xc) == *(int *)(local_res18 + 8)) {
+      uVar5 = FUN_140310230(&local_1a8,"No spacecraft design was loaded from the file.",0,0xffffffff
+                           );
+      QMessageBox::QMessageBox
+                (local_140,*(longlong *)gp_AuGlobal_exref + 0x20,uVar5,2,CONCAT44(uVar7,0x400),
+                 uVar8 & 0xffffffff00000000,0,*(undefined8 *)(*(longlong *)self_exref + 0x20),0x103)
+      ;
+      QString::~QString((QString *)&local_1a8);
+      FUN_14020f0b0(*(undefined8 *)(*(longlong *)self_exref + 0x20),local_140);
+      QMessageBox::~QMessageBox(local_140);
+    }
+    else {
+      lVar1 = *(longlong *)gp_AuGlobal_exref;
+      QReadWriteLock::lockForRead((QReadWriteLock *)(lVar1 + 0x1e0));
+      bVar2 = DgData::SpaceShipDesignValidate
+                        (*(DgData **)(lVar1 + 0x68),local_108,(DnDetailArray *)&local_res20,
+                         (DnRoomArray *)&local_res18);
+      QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1e0));
+      if (!bVar2) {
+        uVar5 = FUN_140310230(&local_1a8,
+                              "<html>A spacecraft design was loaded from the file. Invalid data was discarded or modified. A careful review of the result is recommended.</html>"
+                              ,0,0xffffffff);
+        QMessageBox::QMessageBox
+                  (local_140,*(longlong *)gp_AuGlobal_exref + 0x20,uVar5,2,CONCAT44(uVar7,0x400),
+                   CONCAT44(uVar9,0x400000),0,*(undefined8 *)(*(longlong *)self_exref + 0x20),0x103)
+        ;
+        QString::~QString((QString *)&local_1a8);
+        iVar3 = FUN_14020f0b0(*(undefined8 *)(*(longlong *)self_exref + 0x20),local_140);
+        QMessageBox::~QMessageBox(local_140);
+        if (iVar3 != 0x400) goto LAB_1402ec6ac;
+      }
+      uVar5 = FUN_14020ffa0(*(undefined8 *)(*(longlong *)self_exref + 0x20));
+      FUN_14023f7a0(uVar5,local_108,&local_res18,&local_res20);
+    }
+LAB_1402ec6ac:
+    QList<DnRoom>::~QList<DnRoom>((QList<DnRoom> *)&local_res18);
+    QList<DnDetail>::~QList<DnDetail>((QList<DnDetail> *)&local_res20);
+    DnSpaceShip::~DnSpaceShip(local_108);
+    QDataStream::~QDataStream(local_160);
+    uVar5 = 1;
+  }
+  else {
+    uVar5 = 0;
+  }
+  QFile::~QFile(local_178);
+LAB_1402ec6ee:
+  QString::~QString((QString *)&local_1a0);
+  QFileInfo::~QFileInfo(local_198);
+  QString::~QString((QString *)&local_res10);
+  return uVar5;
+}
+
+

@@ -1,0 +1,67 @@
+Ghidra decompiler output; not recovered compilable source.
+Captured read-only 2026-10-04 with explicit program /AuAtom13.dll.
+
+/* public: void __cdecl DaDesignEnvironment::NewDesign(class AuId const & __ptr64,class QString
+   const & __ptr64) __ptr64 */
+
+void __thiscall
+DaDesignEnvironment::NewDesign(DaDesignEnvironment *this,AuId *param_1,QString *param_2)
+
+{
+  DaSpaceShip *this_00;
+  undefined8 uVar1;
+  DaSpaceShip *local_res8;
+  
+                    /* 0x2fae60  5248
+                       ?NewDesign@DaDesignEnvironment@@QEAAXAEBVAuId@@AEBVQString@@@Z */
+  QReadWriteLock::lockForWrite((QReadWriteLock *)(this + 0x3b8));
+  if (this[0x3b0] == (DaDesignEnvironment)0x1) {
+    this_00 = DaAtom::FindSpaceShip((DaAtom *)this);
+    if (this_00 == (DaSpaceShip *)0x0) {
+      local_res8 = operator_new(0x2268);
+      if (local_res8 == (DaSpaceShip *)0x0) {
+        this_00 = (DaSpaceShip *)0x0;
+      }
+      else {
+        this_00 = (DaSpaceShip *)DaSpaceShip::DaSpaceShip(local_res8);
+      }
+      DaAtom::AddAtomW((DaAtom *)this,(DaAtom *)this_00);
+      DaSpaceShip::Create(this_00);
+      local_res8 = (DaSpaceShip *)((ulonglong)local_res8 & 0xffffffff00000000);
+      DaAtom::QueryEnvironment((DaAtom *)this_00,(AuId *)&local_res8);
+      (**(code **)(**(longlong **)gp_AuGlobal_exref + 0x60))
+                (*(longlong **)gp_AuGlobal_exref,this_00 + 0x14);
+    }
+    DaSpaceShip::DesignNew(this_00,param_1,param_2);
+    if ((this_00[0x18] != (DaSpaceShip)0x1) && (this_00[0x18] != (DaSpaceShip)0x6)) {
+      this_00[0x18] = (DaSpaceShip)0x0;
+    }
+  }
+  else {
+    if (this[0x3b0] != (DaDesignEnvironment)0x2) {
+      QReadWriteLock::unlock((QReadWriteLock *)(this + 0x3b8));
+      return;
+    }
+    if (*(longlong *)(this + 0x3c8) == 0) {
+      local_res8 = operator_new(0x450);
+      uVar1 = 0;
+      if (local_res8 != (DaSpaceShip *)0x0) {
+        uVar1 = DpBuilding::DpBuilding((DpBuilding *)local_res8);
+      }
+      *(undefined8 *)(this + 0x3c8) = uVar1;
+    }
+    DpBuilding::DesignNew(*(DpBuilding **)(this + 0x3c8),param_1,param_2);
+  }
+  QString::operator=((QString *)(this + 0x3c0),param_2);
+  QString::operator=((QString *)(this + 0x3d0),"");
+  *(undefined4 *)(this + 0x3d8) = *(undefined4 *)param_1;
+  *(undefined4 *)(this + 0x3dc) = 0;
+  *(undefined4 *)(this + 0x3e0) = *(undefined4 *)param_1;
+  QReadWriteLock::unlock((QReadWriteLock *)(this + 0x3b8));
+  this[0x3b1] = (DaDesignEnvironment)0x0;
+  InitDesignPlane(this,(AuId *)(this + 0x3e0));
+  ResetPositions(this);
+  (**(code **)(*(longlong *)this + 0x1a0))(this,1);
+  return;
+}
+

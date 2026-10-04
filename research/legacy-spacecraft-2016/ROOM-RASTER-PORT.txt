@@ -1,0 +1,98 @@
+2016 room raster port
+====================
+
+Implemented in src/lib/data/designs/aulegacyshipgeometry.h/.cpp. These files
+only provide cell selection and room-boundary geometry. Room IDs, command
+dispatch, equipment reconciliation, user interaction and persistence belong
+to their callers. No client or test-harness build was run by the assistant.
+
+The port preserves the recovered buffer's 516 by 516 samples and quarter-grid
+spacing 1.41421356225 feet, sign-step perimeter walks, marker addition, scanline
+corner cases, erase-boundary repair, corner and center edge tests, single
+boundary trace, visited-corner count and exact ordered-double comparison.
+QPainterPath polygon unions and differences are not used.
+
+Primary evidence remains the individual AuData13.dll pseudocode captures
+listed in PAINTING-RULES.txt. The additional read-only AuMath13.dll capture in
+pseudocode/AuMath13.dll_geometry_segment_tests.txt establishes that boundary
+self-contact uses distance <= 1e-5 feet from emitted open-array segments. The
+projection divides by segment length twice; the implementation preserves that
+operation order. The trace's existing 10,000-step termination behavior is also
+preserved, including its final tests when the limit is reached.
+
+Exact points, order and failure behavior matter. QPolygonF/QPointF equality
+uses Qt fuzzy point comparisons, so the port explicitly compares x/y doubles
+in order, matching AuPointArray. FillShape keeps the original half-grid table,
+negative integer snapping quirk and floating comparison order.
+
+Safety boundary
+---------------
+
+Original routines assume a supported grid polygon. Their sign-step edge loop
+does not terminate for edges that are neither horizontal nor vertical nor
+45-degree after raster rounding. This port first rejects those inputs, fewer
+than three points, nonfinite coordinates, and coordinates outside the buffer
+with its two-sample neighbor margin. These are explicit safety guards, not a
+polygon approximation. Normal cell generation and the authoring coordinate
+range (+/-120 half-grid units, or +/-240 raster units) are inside that margin.
+Expanded ellipses and arbitrary imported boundaries may therefore be rejected
+if the caller includes them in a partial geometry operation. No unsupported
+boundary is silently flattened or altered. A QString error distinguishes these
+guards and trace failures from a normal unchanged merge/subtraction return.
+
+Raster reads outside the buffer return zero as a defensive guard; validated
+ordinary cell polygons do not need that guard. A failed merge/subtraction
+leaves the supplied polygon unchanged. CanSubtract accepts unchanged occupancy
+and successful complete erasure; Subtract returns true with an empty polygon
+for complete erasure.
+
+Validation performed without building
+-------------------------------------
+
+  python3 -B research/legacy-spacecraft-2016/room_raster.py --self-test
+
+room_raster.py is an executable translation of the same recovered algorithm
+in integer quarter-grid coordinates. Its independent exact ray-crossing oracle
+checks 19,160 occupied-sample and traced-boundary points across all 44 shape/
+sector entries at five positive/negative/boundary-near translations. It checks
+220 complete erasures and 105,840 interior sample differences from every pair
+of the 21 distinct cell polygons at three offsets. The latter checks use the
+interior points of the four minimum triangles, independent of the port's erase
+perimeter repair. All sixteen scanline crossing predicates are checked against
+the original decompiler branch structure.
+
+Thirteen explicit topology fixtures exercise unchanged, adjacent, disconnected
+and corner-only additions; full, partial, outside and edge-contact erases;
+bridge and hole rejection; half-square triangle merging/erasing; and closing a
+loop. The reconstructed addition does fill the enclosed void in that last case,
+as predicted by its single outer trace and disabled all-corners check. This
+remains a static reconstruction result, not an observed old-client edit.
+
+The 84 room boundaries in the three supplied .ship samples were independently
+loaded read-only through inspect_ship.py, rasterized and successfully traced.
+No sample was modified. These checks do not validate equipment side effects.
+
+Manual C++ harness
+------------------
+
+The harness is deliberately outside client targets. The user must build it.
+On WSL/Linux with Qt 5 development packages, from the repository root:
+
+  c++ -std=c++11 -fPIC -no-pie -Isrc/lib/data/designs \
+    research/legacy-spacecraft-2016/tests/native_ship_geometry.cpp \
+    src/lib/data/designs/aulegacyshipgeometry.cpp \
+    $(pkg-config --cflags --libs Qt5Core Qt5Gui) \
+    -o /tmp/native_ship_geometry
+
+Then run the already-built harness:
+
+  /tmp/native_ship_geometry \
+    research/legacy-spacecraft-2016/room-raster-fixtures.json \
+    research/legacy-spacecraft-2016/cell-shapes.json
+
+The native harness checks all thirteen exact fixture outputs and return values,
+failure atomicity, 3,072 cell table outputs across every byte mask, the exact
+negative seam, and guards against nonfinite/out-of-range/unsupported edges.
+The JSON fixture provenance explicitly identifies reconstructed results. The
+harness has not been compiled or executed by the assistant. Controlled saves
+from the original 2016 UI remain the strongest end-to-end comparison fixtures.

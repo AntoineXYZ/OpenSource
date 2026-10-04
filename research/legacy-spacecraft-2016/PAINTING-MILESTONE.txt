@@ -1,0 +1,115 @@
+2016 spacecraft designer: cell painting and erasing
+2026-10-04
+
+Implemented in source
+---------------------
+The legacy designer can now add and erase room cells in a loaded .ship design.
+All edits are in memory. Saving is deliberately deferred; source files are
+opened read-only, and opening another design or leaving a modified session
+requires an explicit Discard/Cancel choice. Cancel is the default.
+
+Source header metadata is retained for inspection. Original local-file loading
+creates a fresh writable working design and does not import the saved header's
+state into that working state. The local editor likewise permits session edits
+without treating the source state byte as a read-only lock; see
+LOCAL-FILE-WORKING-STATE.txt for the constructor and load-chain evidence.
+
+Use after manually building
+--------------------------
+Enter Legacy Spacecraft from the designer chooser, or use the existing
+-legacy-spacecraft launch argument. Open a .ship file, select a deck, then
+choose Paint or Erase Cells. Left click or drag applies the highlighted cell.
+Middle drag pans; the wheel zooms; Inspect restores record selection.
+
+Paint uses the selected room type and Room Number (0..255). Number is the
+original subtype, not a persistent room ID. Cells with the same deck, type
+and number belong to the same room. Choose another number when starting a
+separate room of that type. The initial selection is Bridge, number 0.
+
+The 0/45/90/135-degree grid buttons select the original four line families.
+Their eleven bounded combinations produce the recovered squares, triangles,
+diamonds and parallelograms. Zero or one enabled direction cannot form a cell.
+The default is the square grid (0 and 90 degrees). The preview and editing
+engine share the same cell-selection function, including negative seams and
+cursor ties. Dragging processes mouse positions without interpolating cells.
+
+Every paintable deck from -28 through +28 is available, including empty decks.
+Loaded rooms/details on other decks remain inspectable; adding there is
+rejected. Erasing follows the original separate deck rule. Painting does not
+refit the camera. A title asterisk and summary identify session changes.
+
+Recovered behavior
+------------------
+aulegacyshipgeometry.cpp ports DnFloorBuffer8 and GetFillShapeAt, preserving
+the quarter-grid byte raster, scanline repair, boundary trace and original
+failure conditions. It does not use unrestricted polygon union/difference.
+aulegacyshipedit.cpp performs the original add/erase transaction:
+
+  - Check the selected cell's signed half-grid coordinates against +/-120.
+  - Grow the first matching room key, preserving its persistent ID.
+  - Reject unchanged or disconnected same-key additions as the original did.
+  - Preflight competing rooms before changing anything. Repainting subtracts
+    the entire proposed room boundary from competitors, not only the new cell.
+  - Retain surviving room IDs; delete rooms whose changed boundary disappears.
+    A new room receives the lowest unused nonzero 16-bit ID after deletions.
+  - Exclude existing roof types 0x16..0x18 from ordinary paint overlaps; include
+    them in cell erasure. Topologically invalid erasure rejects the whole edit.
+  - Keep working boundary doubles between strokes; byte packing is not used
+    as the input to subsequent strokes.
+  - Reconcile equipment after success, even for erasure with no area removed.
+
+aulegacyshipdetails.cpp reproduces placement categories, room association,
+turret corrections, duplicates/spacing, stair checks and vehicle footprints.
+It uses 143 original equipment-type placement/bridge definitions extracted
+from GD. Here "bridge" means permission to occupy the spacecraft's bridge
+room, not the MCP bridge. The definitions are shared rules for types, not
+143 placed items. The fifteen original vehicle commodities use dimensions
+recovered from the old model resources, including four missing-model fallbacks.
+Earlier equipment corrections/removals affect later checks in original order.
+Geometry and equipment changes commit together, so a rejected operation cannot
+leave a partially edited design.
+
+Supporting evidence
+-------------------
+CELL-SHAPES.txt and CONTROL-MAPPING.txt: ordered cells and original gestures.
+PAINTING-RULES.txt: original dispatch, room identity and mutation chain.
+ROOM-RASTER-PORT.txt: native raster, guards and reference fixtures.
+EQUIPMENT-RECONCILIATION.txt: placement definitions and detail side effects.
+VEHICLE-BOUNDS.txt: asset extraction, precision and missing-model evidence.
+tests/NATIVE-EDIT-TESTS.txt: manual end-to-end harness instructions.
+
+Validation and limits
+---------------------
+The Python raster reference passed independent occupancy/subtraction checks
+and thirteen topology fixtures. All 84 sample room boundaries traced. All
+8,328 sample details passed the independent categorical placement audit.
+The 143 placement entries and fifteen vehicle bounds were compared with the
+original data. Independent source reviews covered geometry, edit sequencing,
+UI integration and equipment behavior. Native harnesses are provided, but
+no build, compiler or native test execution was initiated by the assistant.
+These checks do not establish old-client/native end-to-end runtime parity.
+
+Manual regression checks after the user's build:
+  1. On an empty deck, add adjacent cells with one type/number, then try a
+     disconnected cell with the same key. The disconnected add must fail.
+  2. Paint with another number; inspect the resulting room IDs and boundaries.
+     Repaint the middle of a three-cell bar to confirm atomic rejection when
+     the competitor would split into disconnected regions.
+  3. Erase an edge and an entire room; try erasing the middle of a three-cell
+     bar and an interior hole. Inspect equipment removal and room association.
+  4. Exercise diagonal grids, negative coordinates, empty decks and +/-28.
+     Compare controlled edits with the original 2016 designer when possible.
+  5. Confirm Cancel preserves edits when opening another file, exiting to the
+     launch screen and closing the standalone or embedded window. Discard
+     should leave the original file unchanged. Failed opens preserve edits.
+
+Unsupported raster edges (neither axis-aligned nor 45-degree after rounding),
+nonfinite coordinates and unsafe buffer accesses are rejected explicitly.
+The original sign-step raster assumes supported edges and can fail to finish
+for arbitrary imported boundaries. Expanded ellipse roofs may therefore block
+erasure on their deck; they are never silently approximated. A vehicle detail
+using an unexpected commodity without recovered model evidence also rejects
+the edit atomically rather than guessing its footprint.
+
+This milestone does not add saving, undo/redo, equipment placement, whole-room
+deletion/type replacement, original equipment artwork or 3D rendering.

@@ -1,0 +1,20 @@
+Ghidra decompiler output; not recovered compilable source.
+Captured 2026-10-04 for in-memory cell editing. Read-only query.
+
+/* public: void __cdecl DnRoomType::Rx(class QDataStream & __ptr64) __ptr64 */
+
+void __thiscall DnRoomType::Rx(DnRoomType *this,QDataStream *param_1)
+
+{
+                    /* 0x1789d0  5343  ?Rx@DnRoomType@@QEAAXAEAVQDataStream@@@Z */
+  QDataStream::operator>>(param_1,(int *)this);
+  ::operator>>(param_1,(QString *)(this + 0x18));
+  ::operator>>(param_1,(QString *)(this + 8));
+  ::operator>>(param_1,(QString *)(this + 0x20));
+                    /* WARNING: Could not recover jumptable at 0x000180178a24. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  ::operator>>(param_1,(QString *)(this + 0x10));
+  return;
+}
+
+

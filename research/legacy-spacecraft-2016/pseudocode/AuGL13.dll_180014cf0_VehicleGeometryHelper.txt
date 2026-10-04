@@ -1,0 +1,57 @@
+Ghidra decompiler output; descriptive helper names are inferred, not original symbols.
+Captured 2026-10-04 from the module/address in this filename. Read-only query.
+
+void FUN_180014cf0(longlong param_1,QDataStream *param_2,int param_3,undefined8 param_4,
+                  undefined8 param_5,undefined4 param_6,undefined8 param_7)
+
+{
+  int iVar1;
+  QString *pQVar2;
+  QMessageLogger *this;
+  undefined2 uVar3;
+  short sVar4;
+  QTypedArrayData<unsigned_short> *local_res8;
+  char local_res18 [8];
+  undefined8 local_res20;
+  char local_78;
+  char local_77 [7];
+  undefined8 local_70;
+  QMessageLogger local_68 [48];
+  
+  local_70 = 0xfffffffffffffffe;
+  local_res20 = param_4;
+  pQVar2 = (QString *)Au3dsGLSL::LoadStringW((QDataStream *)&local_res8);
+  QString::operator=((QString *)(param_1 + 0x108),pQVar2);
+  QString::~QString((QString *)&local_res8);
+  param_3 = param_3 + (-1 - *(int *)(*(longlong *)(param_1 + 0x108) + 4));
+  local_res8 = QString::fromAscii_helper("Light",5);
+  iVar1 = QString::indexOf((QString *)(param_1 + 0x108),(QString *)&local_res8,0,1);
+  QString::~QString((QString *)&local_res8);
+  if (iVar1 != -1) {
+    *(undefined1 *)(param_1 + 0x3b2) = 1;
+  }
+  do {
+    QDataStream::operator>>(param_2,local_77);
+    QDataStream::operator>>(param_2,&local_78);
+    sVar4 = CONCAT11(local_78,local_77[0]);
+    QDataStream::operator>>(param_2,(char *)&local_res8);
+    QDataStream::operator>>(param_2,local_res18);
+    uVar3 = CONCAT11(local_res18[0],local_res8._0_1_);
+    QDataStream::operator>>(param_2,(char *)&local_res8);
+    QDataStream::operator>>(param_2,local_res18);
+    iVar1 = CONCAT22(CONCAT11(local_res18[0],local_res8._0_1_),uVar3);
+    param_3 = param_3 - iVar1;
+    if (sVar4 == 0x4100) {
+      FUN_1800173d0(param_1,param_2,iVar1 + -6,local_res20,param_5,param_6,param_7);
+    }
+    else {
+      this = (QMessageLogger *)QMessageLogger::QMessageLogger(local_68,(char *)0x0,0,(char *)0x0);
+      QMessageLogger::warning(this,"Au3dsGLSLObject::LoadChunk skipping %04x subchunk of %d bytes");
+      QDataStream::skipRawData(param_2,iVar1 + -6);
+    }
+  } while (0 < param_3);
+  FUN_180013a90(param_1,param_6);
+  return;
+}
+
+

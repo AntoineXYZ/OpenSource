@@ -1,0 +1,27 @@
+Ghidra decompiler output; not recovered compilable source.
+Captured read-only 2026-10-04. Explicit program /AuData13.dll.
+
+/* public: bool __cdecl DnDetailType::IsLimitOnePerRoom(void)const __ptr64 */
+
+bool __thiscall DnDetailType::IsLimitOnePerRoom(DnDetailType *this)
+
+{
+                    /* 0x339f0  4516  ?IsLimitOnePerRoom@DnDetailType@@QEBA_NXZ */
+  switch(this[0x18]) {
+  case (DnDetailType)0x1:
+  case (DnDetailType)0x4:
+  case (DnDetailType)0x6:
+  case (DnDetailType)0x7:
+  case (DnDetailType)0xb:
+  case (DnDetailType)0xc:
+  case (DnDetailType)0xd:
+  case (DnDetailType)0xf:
+  case (DnDetailType)0x11:
+  case (DnDetailType)0x13:
+    return true;
+  default:
+    return false;
+  }
+}
+
+

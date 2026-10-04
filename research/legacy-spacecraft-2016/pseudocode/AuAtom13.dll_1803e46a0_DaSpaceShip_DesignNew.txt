@@ -1,0 +1,50 @@
+Ghidra decompiler output; not recovered compilable source.
+Captured read-only 2026-10-04 with explicit program /AuAtom13.dll.
+
+/* public: void __cdecl DaSpaceShip::DesignNew(class AuId const & __ptr64,class QString const &
+   __ptr64) __ptr64 */
+
+void __thiscall DaSpaceShip::DesignNew(DaSpaceShip *this,AuId *param_1,QString *param_2)
+
+{
+  QReadWriteLock *this_00;
+  int iVar1;
+  uint uVar2;
+  longlong lVar3;
+  DgData *this_01;
+  uint uVar4;
+  
+                    /* 0x3e46a0  2607  ?DesignNew@DaSpaceShip@@QEAAXAEBVAuId@@AEBVQString@@@Z */
+  uVar4 = (**(code **)(**(longlong **)gp_AuGlobal_exref + 400))(*(longlong **)gp_AuGlobal_exref,1);
+  if (uVar4 != 0) {
+    this_00 = (QReadWriteLock *)(this + 0x4c0);
+    QReadWriteLock::lockForRead(this_00);
+    iVar1 = *(int *)(this + 0x514);
+    QReadWriteLock::unlock(this_00);
+    if (iVar1 != 0) {
+      lVar3 = *(longlong *)gp_AuGlobal_exref;
+      QReadWriteLock::lockForWrite((QReadWriteLock *)(lVar3 + 0x1e0));
+      this_01 = *(DgData **)(lVar3 + 0x68);
+      QReadWriteLock::lockForRead(this_00);
+      uVar2 = *(uint *)(this + 0x514);
+      QReadWriteLock::unlock(this_00);
+      DgData::DeleteSpaceShipDesign(this_01,uVar2);
+      QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1e0));
+      InvalidatePathCache(this);
+    }
+    QReadWriteLock::lockForWrite(this_00);
+    *(uint *)(this + 0x514) = uVar4;
+    QReadWriteLock::unlock(this_00);
+    lVar3 = *(longlong *)gp_AuGlobal_exref;
+    QReadWriteLock::lockForWrite((QReadWriteLock *)(lVar3 + 0x1e0));
+    DgData::SpaceShipDesignNew(*(DgData **)(lVar3 + 0x68),uVar4,param_1,param_2);
+    QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1e0));
+    QReadWriteLock::lockForWrite((QReadWriteLock *)(this + 0x770));
+    this[0xa08] = (DaSpaceShip)0x0;
+    AuPath::Clear((AuPath *)(this + 0x8f8));
+    QReadWriteLock::unlock((QReadWriteLock *)(this + 0x770));
+    (**(code **)(*(longlong *)this + 0x1a0))(this,1);
+  }
+  return;
+}
+

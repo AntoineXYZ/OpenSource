@@ -1,0 +1,932 @@
+{
+  "gd_sha256": "dac1d7b576a8405d55a85f9eb2723d757d0cce0ba7dc49aeb88f7be8e34f9106",
+  "model_dll_sha256": "0785e5c33475290850a1698e9a3dd01570798d0ce1590072fe3c1bc535aa286a",
+  "missing_resource_names": [
+    "mCommercialShip.3dsX",
+    "mMineMachinery.3dsX",
+    "mNavalShip.3dsX",
+    "mTank.3dsX"
+  ],
+  "missing_resource_binary_audit": [
+    {
+      "file": "AuAtom13.dll",
+      "sha256": "c88246a924d8288ab50b3a355f7a23a3bc5a7523679fce381e6207d148bf562c"
+    },
+    {
+      "file": "AuAtomRes13.dll",
+      "sha256": "09f8bc5987153ef41593b59818421a3811903a8dd553e54e9ee59e4ca6df3a37"
+    },
+    {
+      "file": "AuBodyPartsRes13.dll",
+      "sha256": "ae0a7dcbc6e93fcd67f87f761d0bc8ff361360a78b8c2bb18482f24dc5e33cf6"
+    },
+    {
+      "file": "AuData13.dll",
+      "sha256": "6155a0fbb047065ea6ef72727d039d62d32184d24285d1ea94c5237b87c9f440"
+    },
+    {
+      "file": "AuGL13.dll",
+      "sha256": "c8eb263efa03e50d18c17e77ee19aafb67fac4e45129c2fae9446f9f395ab75f"
+    },
+    {
+      "file": "AuGlobal13.dll",
+      "sha256": "959f705c8af7081a30ddffcb4c9c281090e9975e40c96952c481cb0743be4c47"
+    },
+    {
+      "file": "AuLoginClient13.dll",
+      "sha256": "4758622ea8b97be9fd115c6856ae2b7c1c78d31764fdc3d4db81185b7f37769e"
+    },
+    {
+      "file": "AuMail13.dll",
+      "sha256": "0bba9ae045eb9e24ece36393bb558937a122d94816323e4b0ca19ec1d024e553"
+    },
+    {
+      "file": "AuMath13.dll",
+      "sha256": "05bb1c0f34ddd7c98e288ec52032033a129e132120aa671e6302f54579238c6a"
+    },
+    {
+      "file": "AuModelRes13.dll",
+      "sha256": "0785e5c33475290850a1698e9a3dd01570798d0ce1590072fe3c1bc535aa286a"
+    },
+    {
+      "file": "AuSceneClientRes13.dll",
+      "sha256": "709de99cca4bdbd43e3be3300f97d72a8d0e1c81d7bb519bd340c7b18b507fea"
+    },
+    {
+      "file": "Hazeron Mail.exe",
+      "sha256": "21d10ed2cd9173533a1aac0d7b31308b4efc65b79ab3c8ae7075cb281264d85c"
+    },
+    {
+      "file": "Qt5Core.dll",
+      "sha256": "93c03009bc4fdad6ec41c1d78ee0e3c959c1d8cd350381dbe46697a91d046575"
+    },
+    {
+      "file": "Qt5Gui.dll",
+      "sha256": "39d80fcf249d12891987e4f814ee47b070cfcec1265816dadedc48512c2faed1"
+    },
+    {
+      "file": "Qt5Network.dll",
+      "sha256": "734965378c4afbd0f251e2ab0e9c3df906645c4e92170fff5fe3d184637e50fb"
+    },
+    {
+      "file": "Qt5Sql.dll",
+      "sha256": "4dbc18f5242f431a134387b3cb6afc142d7845f386ac5ab8be6c07988e29caba"
+    },
+    {
+      "file": "Qt5Svg.dll",
+      "sha256": "3bcee3e95fe9a43841fec5853ea7c9466ba697a5531c1db1e26d3e84acd70dba"
+    },
+    {
+      "file": "Qt5Widgets.dll",
+      "sha256": "00dbe471fdb022c85b0d220b048f1151fbc8f081680c962001fa6fe1e60e3065"
+    },
+    {
+      "file": "SDL2.dll",
+      "sha256": "9f9342702b845002c053236d0458cc8a5fc45b4ac9d283cae881b161c69686bb"
+    },
+    {
+      "file": "Shores of Hazeron.exe",
+      "sha256": "0a38f9311cc366cfce98c7cdf25a63d15c55102b0b78f7096462b04d61d568ae"
+    }
+  ],
+  "room_types": [
+    {
+      "room_type": 0,
+      "strings": [
+        "None",
+        "Place holder for 0th entry.",
+        null,
+        null
+      ]
+    },
+    {
+      "room_type": 1,
+      "strings": [
+        "Barracks",
+        "Quarters for troops. Provides access to armory.",
+        "Barracks",
+        "Quarters for troops."
+      ]
+    },
+    {
+      "room_type": 2,
+      "strings": [
+        "Bridge",
+        "Command and control center.",
+        "Command Center",
+        "Command and control center."
+      ]
+    },
+    {
+      "room_type": 3,
+      "strings": [
+        "Brig",
+        "Confinement facility for prisoners and animals.",
+        "Cell",
+        "Confinement facility for prisoners and animals."
+      ]
+    },
+    {
+      "room_type": 4,
+      "strings": [
+        "Officer Cabin",
+        "Quarters for ship's captain and other officers.",
+        null,
+        null
+      ]
+    },
+    {
+      "room_type": 5,
+      "strings": [
+        "Hold",
+        "Cargo storage space. Provides access to all cargo. All holds are considered parts of the same cargo storage space.",
+        "Storage",
+        "Area for storing commodities."
+      ]
+    },
+    {
+      "room_type": 6,
+      "strings": [
+        "Hall",
+        "Access between rooms.",
+        "Hall",
+        "Access between rooms."
+      ]
+    },
+    {
+      "room_type": 7,
+      "strings": [
+        "Crew Cabin",
+        "Quarters for crew. Third class passenger accomodation.",
+        null,
+        null
+      ]
+    },
+    {
+      "room_type": 8,
+      "strings": [
+        "Engine Room",
+        "Location of power plant and drives. Provides access to fuel coupling.",
+        "Shop",
+        "General purpose work area."
+      ]
+    },
+    {
+      "room_type": 9,
+      "strings": [
+        "Fuel Cell",
+        "Fuel storage for power plant. All fuel cells are considered parts of the same fuel storage space.",
+        "Liquid Storage",
+        "Containment for storing liquids."
+      ]
+    },
+    {
+      "room_type": 10,
+      "strings": [
+        "Galley",
+        "Food preparation and consumption area. Required for passengers. Provides access to pantry.",
+        "Kitchen",
+        "Food preparation and consumption area."
+      ]
+    },
+    {
+      "room_type": 11,
+      "strings": [
+        "Gravity Well",
+        "Vertical column with no gravity for movement between decks.",
+        "Gravity Well",
+        "Vertical column with no gravity for movement between floors."
+      ]
+    },
+    {
+      "room_type": 12,
+      "strings": [
+        "",
+        "",
+        null,
+        null
+      ]
+    },
+    {
+      "room_type": 13,
+      "strings": [
+        "Vehicle Bay",
+        "Take-off, landing and parking area for vehicles that fit inside. One deck height needed for fighters and ground vehicles. Vehicle bay must be at least one deck higher than spacecraft that land inside.",
+        "Garage",
+        "Parking area for vehicles that fit inside."
+      ]
+    },
+    {
+      "room_type": 14,
+      "strings": [
+        "Lounge",
+        "Area for rest and relaxation of passengers and crew. Required for first class passengers. Provides access to bar.",
+        "Living Room",
+        "Area for rest and relaxation."
+      ]
+    },
+    {
+      "room_type": 15,
+      "strings": [
+        "Open to Deck Below",
+        "Extends height of room below.",
+        "Open to Story Below",
+        "Extends height of room below."
+      ]
+    },
+    {
+      "room_type": 16,
+      "strings": [
+        "Sensor Room",
+        "Space for remote sensing equipment and controls. All sensor rooms are considered parts of the same sensor system.",
+        "Radar Room",
+        "Space for remote sensing equipment and controls."
+      ]
+    },
+    {
+      "room_type": 17,
+      "strings": [
+        "Shield Room",
+        "Space for shield generators and controls. All shield rooms are considered parts of the same shield system.",
+        "Shield Room",
+        "Space for shield generators and controls."
+      ]
+    },
+    {
+      "room_type": 18,
+      "strings": [
+        "Sickbay",
+        "Medical treatment facility. Provides access to pharmacy.",
+        "Doctor's Office",
+        "Medical treatment room."
+      ]
+    },
+    {
+      "room_type": 19,
+      "strings": [
+        "Stateroom",
+        "Quarters for passengers. Required for first and second class passengers.",
+        "Bedroom",
+        "Home for people."
+      ]
+    },
+    {
+      "room_type": 20,
+      "strings": [
+        "Transporter Room",
+        "Matter transmission facility. Room number determines activation order when requesting beam-over; if more than one transporter room has the same number, the order is ambiguous.",
+        "Transporter Room",
+        "Matter transmission facility."
+      ]
+    },
+    {
+      "room_type": 21,
+      "strings": [
+        "Weapon Bay",
+        "Integrated weapon system and fire control facility. All weapon bays with the same room number are considered part of the same weapon system, allowing a single system to be split across multiple decks.",
+        "Weapon Room",
+        "Integrated weapon system and fire control facility."
+      ]
+    },
+    {
+      "room_type": 22,
+      "strings": [
+        "Roof, Gable",
+        "Roof section with gable ends.",
+        "Roof, Gable",
+        "Roof section with gable ends."
+      ]
+    },
+    {
+      "room_type": 23,
+      "strings": [
+        "Roof, Hip",
+        "Roof section with hip ends.",
+        "Roof, Hip",
+        "Roof section with hip ends."
+      ]
+    },
+    {
+      "room_type": 24,
+      "strings": [
+        "Roof, Round",
+        "Roof section that is round or oval shaped.",
+        "Roof, Round",
+        "Roof section that is round or oval shaped."
+      ]
+    }
+  ],
+  "vehicles": [
+    {
+      "commodity": 6,
+      "stream_offset": 60255,
+      "model": ":data/mHelicopter.3dsN",
+      "name": "Helicopter",
+      "asset_sha256": "0ee1d4ad7c08fc62edb2bcf5cf29edf615e3561c412db1d92b69c275d3a5121f",
+      "asset_bytes": 402186,
+      "minimum": [
+        -8.49461841583252,
+        -14.339750289916992,
+        -2.9328479766845703
+      ],
+      "maximum": [
+        8.144865989685059,
+        9.28695011138916,
+        4.963751792907715
+      ],
+      "half_xy": [
+        8.319742202758789,
+        11.813350200653076
+      ],
+      "half_xy_float32": [
+        8.319742202758789,
+        11.813350677490234
+      ],
+      "identity_matrix_chunks": 0,
+      "symmetrica_vertex_scale": 1,
+      "included_objects": [
+        "lights",
+        "window",
+        "Helicopter"
+      ],
+      "excluded_objects": [
+        "@140",
+        "@040"
+      ]
+    },
+    {
+      "commodity": 7,
+      "stream_offset": 60519,
+      "model": ":data/mRocketShip.3dsX",
+      "name": "Space Rocket",
+      "asset_sha256": "489cbb3d746c6931a40f378e9f8bde4a950e92c7959b3fd038d83f826360a682",
+      "asset_bytes": 90955,
+      "minimum": [
+        -10.208333015441895,
+        -5.583333492279053,
+        -10.208333015441895
+      ],
+      "maximum": [
+        10.208333015441895,
+        33.91666793823242,
+        10.208333015441895
+      ],
+      "half_xy": [
+        10.208333015441895,
+        19.750000715255737
+      ],
+      "half_xy_float32": [
+        10.208333015441895,
+        19.75
+      ],
+      "identity_matrix_chunks": 20,
+      "symmetrica_vertex_scale": 0.08333333333333333,
+      "included_objects": [
+        "Canopy4916",
+        "Canopy4917",
+        "Cockpi5101",
+        "Consol5197",
+        "Consol5335",
+        "Dashbo5195",
+        "Exhaus4844",
+        "Fins4647",
+        "Inner 5066",
+        "Joysti4016",
+        "Joysti4017",
+        "Outer 5332",
+        "Pedals5168",
+        "Seat A4357",
+        "Seat A4358",
+        "Seats 4354",
+        "Seats 4355",
+        "Seats 4356"
+      ],
+      "excluded_objects": [
+        "@0405074",
+        "@1405072"
+      ]
+    },
+    {
+      "commodity": 8,
+      "stream_offset": 60789,
+      "model": ":data/mSpacefighter.3dsN",
+      "name": "Space Fighter F1",
+      "asset_sha256": "665f45d9e27d5ec49e5cf84873b5019cb0a5c982892447a7a260a7754632127a",
+      "asset_bytes": 132913,
+      "minimum": [
+        -14.045523643493652,
+        -8.966850280761719,
+        -2.866642951965332
+      ],
+      "maximum": [
+        14.043696403503418,
+        20.611270904541016,
+        4.638357162475586
+      ],
+      "half_xy": [
+        14.044610023498535,
+        14.789060592651367
+      ],
+      "half_xy_float32": [
+        14.044610023498535,
+        14.789060592651367
+      ],
+      "identity_matrix_chunks": 0,
+      "symmetrica_vertex_scale": 1,
+      "included_objects": [
+        "SF1 Canopy",
+        "SF1 Body",
+        "Lights"
+      ],
+      "excluded_objects": [
+        "@040",
+        "!0",
+        "!2",
+        "!3",
+        "!1"
+      ]
+    },
+    {
+      "commodity": 9,
+      "stream_offset": 61073,
+      "model": ":data/mFlyingAT.3dsN",
+      "name": "Space Transport",
+      "asset_sha256": "f59bdae46e21698dedb2365e53c6f3980d7cf6b3184702aa9aec0e72b21c1f46",
+      "asset_bytes": 267055,
+      "minimum": [
+        -18.63735008239746,
+        -16.883811950683594,
+        -3.1560206413269043
+      ],
+      "maximum": [
+        18.659828186035156,
+        10.43178939819336,
+        4.674839496612549
+      ],
+      "half_xy": [
+        18.64858913421631,
+        13.657800674438477
+      ],
+      "half_xy_float32": [
+        18.648590087890625,
+        13.657800674438477
+      ],
+      "identity_matrix_chunks": 0,
+      "symmetrica_vertex_scale": 1,
+      "included_objects": [
+        "Transport Engines",
+        "Transport Windows",
+        "Lights",
+        "Transport Body"
+      ],
+      "excluded_objects": [
+        "@240",
+        "@440",
+        "@640",
+        "@540",
+        "@340",
+        "@140",
+        "@040"
+      ]
+    },
+    {
+      "commodity": 28,
+      "stream_offset": 65995,
+      "model": ":data/mFarmEquipment.3dsN",
+      "name": "Farm Machinery",
+      "asset_sha256": "334f333c00fe8ce9bc89339696ea677e9d85752c597c3416ad0856757e0a9677",
+      "asset_bytes": 225285,
+      "minimum": [
+        -4.357069969177246,
+        -9.379335403442383,
+        -5.274816036224365
+      ],
+      "maximum": [
+        4.455655574798584,
+        6.327828884124756,
+        6.36511754989624
+      ],
+      "half_xy": [
+        4.406362771987915,
+        7.853582143783569
+      ],
+      "half_xy_float32": [
+        4.406362533569336,
+        7.853582382202148
+      ],
+      "identity_matrix_chunks": 0,
+      "symmetrica_vertex_scale": 1,
+      "included_objects": [
+        "Tractor Cab",
+        "lights",
+        "Tractor Body"
+      ],
+      "excluded_objects": [
+        "@040"
+      ]
+    },
+    {
+      "commodity": 54,
+      "stream_offset": 72429,
+      "model": ":data/mMineMachinery.3dsX",
+      "name": "Mine Machinery",
+      "minimum": [
+        0,
+        0,
+        0
+      ],
+      "maximum": [
+        0,
+        0,
+        0
+      ],
+      "half_xy": [
+        0,
+        0
+      ],
+      "half_xy_float32": [
+        0,
+        0
+      ],
+      "original_missing_model_fallback": true,
+      "resource_name_absent": true
+    },
+    {
+      "commodity": 70,
+      "stream_offset": 76775,
+      "model": ":data/mCommercialShip.3dsX",
+      "name": "Commercial Ship",
+      "minimum": [
+        0,
+        0,
+        0
+      ],
+      "maximum": [
+        0,
+        0,
+        0
+      ],
+      "half_xy": [
+        0,
+        0
+      ],
+      "half_xy_float32": [
+        0,
+        0
+      ],
+      "original_missing_model_fallback": true,
+      "resource_name_absent": true
+    },
+    {
+      "commodity": 71,
+      "stream_offset": 77065,
+      "model": ":data/mNavalShip.3dsX",
+      "name": "Naval Ship",
+      "minimum": [
+        0,
+        0,
+        0
+      ],
+      "maximum": [
+        0,
+        0,
+        0
+      ],
+      "half_xy": [
+        0,
+        0
+      ],
+      "half_xy_float32": [
+        0,
+        0
+      ],
+      "original_missing_model_fallback": true,
+      "resource_name_absent": true
+    },
+    {
+      "commodity": 77,
+      "stream_offset": 78623,
+      "model": ":data/mNeptune.3dsX",
+      "name": "Submarine",
+      "asset_sha256": "141ab2d2a338f0ae2662c0a1902316fe52352c1a5c3ea84af9b6a4b07b99a42a",
+      "asset_bytes": 441834,
+      "minimum": [
+        -7.3586649894714355,
+        -12.373929023742676,
+        -4.201516628265381
+      ],
+      "maximum": [
+        7.348470687866211,
+        8.650153160095215,
+        5.835760593414307
+      ],
+      "half_xy": [
+        7.353567838668823,
+        10.512041091918945
+      ],
+      "half_xy_float32": [
+        7.353568077087402,
+        10.512041091918945
+      ],
+      "identity_matrix_chunks": 64,
+      "symmetrica_vertex_scale": 0.08333333333333333,
+      "included_objects": [
+        "Balla74175",
+        "Balla74176",
+        "Balla74177",
+        "Balla74178",
+        "Centr77378",
+        "Conn 71765",
+        "Conn 71767",
+        "Conn 71768",
+        "Conn 72032",
+        "Conn 78516",
+        "Conn 78517",
+        "Conn 78518",
+        "Conn 78833",
+        "Conn 78834",
+        "Conn 78835",
+        "Conn 78836",
+        "Conso77397",
+        "Conso78490",
+        "Engin69036",
+        "Engin74172",
+        "Engin74173",
+        "Engin74174",
+        "Floor79245",
+        "Floor79246",
+        "Gauge78822",
+        "Hatch74655",
+        "Hatch74656",
+        "Hatch74657",
+        "Hull 71769",
+        "Hull 71770",
+        "Hull 72466",
+        "Impel69034",
+        "Impel69035",
+        "Insid78820",
+        "Joyst77375",
+        "Joyst77376",
+        "Joyst78488",
+        "Joyst78489",
+        "Light70480",
+        "Light70481",
+        "Light70482",
+        "Light70483",
+        "Light70524",
+        "Porth72806",
+        "Porth72807",
+        "Prope69032",
+        "Prope69033",
+        "Rails69549",
+        "Rails77822",
+        "Scree78821",
+        "Seat 80542",
+        "Seat 80543",
+        "Seats80540",
+        "Seats80541",
+        "Seats80544",
+        "Windo74888",
+        "Windo74889",
+        "Windo74890",
+        "Windo74891",
+        "Windo74892"
+      ],
+      "excluded_objects": [
+        "@04078828",
+        "@14078830",
+        "@24058705",
+        "@34078838"
+      ]
+    },
+    {
+      "commodity": 82,
+      "stream_offset": 79885,
+      "model": ":data/mSUV.3dsN",
+      "name": "SUV",
+      "asset_sha256": "8916a790dc220f6551ca686d28b61eead3919b064646257b8f8c2bc88a781e53",
+      "asset_bytes": 281489,
+      "minimum": [
+        -8.187225341796875,
+        -9.763938903808594,
+        -2.5580050945281982
+      ],
+      "maximum": [
+        8.216368675231934,
+        8.541072845458984,
+        4.463321208953857
+      ],
+      "half_xy": [
+        8.201797008514404,
+        9.152505874633789
+      ],
+      "half_xy_float32": [
+        8.201797485351562,
+        9.152505874633789
+      ],
+      "identity_matrix_chunks": 0,
+      "symmetrica_vertex_scale": 1,
+      "included_objects": [
+        "Cube.002",
+        "Guages",
+        "Cube.001"
+      ],
+      "excluded_objects": [
+        "@040",
+        "@240",
+        "@140",
+        "@340"
+      ]
+    },
+    {
+      "commodity": 103,
+      "stream_offset": 85321,
+      "model": ":data/mTank.3dsX",
+      "name": "Tank",
+      "minimum": [
+        0,
+        0,
+        0
+      ],
+      "maximum": [
+        0,
+        0,
+        0
+      ],
+      "half_xy": [
+        0,
+        0
+      ],
+      "half_xy_float32": [
+        0,
+        0
+      ],
+      "original_missing_model_fallback": true,
+      "resource_name_absent": true
+    },
+    {
+      "commodity": 104,
+      "stream_offset": 85549,
+      "model": ":data/mAT.3dsN",
+      "name": "APC",
+      "asset_sha256": "c5df8333e800e6937470756042b3bcae69c403b6d8c33393327e3ec4ca6d5ad4",
+      "asset_bytes": 324302,
+      "minimum": [
+        -6.393074035644531,
+        -9.097599029541016,
+        -3.3686234951019287
+      ],
+      "maximum": [
+        6.0419921875,
+        7.906282424926758,
+        4.462023735046387
+      ],
+      "half_xy": [
+        6.217533111572266,
+        8.501940727233887
+      ],
+      "half_xy_float32": [
+        6.217533111572266,
+        8.501940727233887
+      ],
+      "identity_matrix_chunks": 0,
+      "symmetrica_vertex_scale": 1,
+      "included_objects": [
+        "AT Windows",
+        "Turret Left",
+        "Turret Right",
+        "Lights",
+        "AT"
+      ],
+      "excluded_objects": [
+        "@040",
+        "@140",
+        "@340",
+        "@540",
+        "@640",
+        "@440",
+        "@240"
+      ]
+    },
+    {
+      "commodity": 132,
+      "stream_offset": 92631,
+      "model": ":data/mWoodenBoat.3dsX",
+      "name": "Sailboat",
+      "asset_sha256": "87fa25e8d07e7429e6fcf979d5e56ed421a13d11102a81e140dae433ca60da5b",
+      "asset_bytes": 13112,
+      "minimum": [
+        -5,
+        -17.126848220825195,
+        -2.153001070022583
+      ],
+      "maximum": [
+        5,
+        15.053367614746094,
+        3.607841730117798
+      ],
+      "half_xy": [
+        5,
+        16.090107917785645
+      ],
+      "half_xy_float32": [
+        5,
+        16.090106964111328
+      ],
+      "identity_matrix_chunks": 10,
+      "symmetrica_vertex_scale": 0.08333333333333333,
+      "included_objects": [
+        "Deck279",
+        "Hull135"
+      ],
+      "excluded_objects": [
+        "-Masts386",
+        "-Sails427",
+        "@01fHel310",
+        "@11f311",
+        "@21f312",
+        "@31f313",
+        "@41f314",
+        "@51f315"
+      ]
+    },
+    {
+      "commodity": 133,
+      "stream_offset": 92887,
+      "model": ":data/mMotorBike.3dsN",
+      "name": "Motor Bike",
+      "asset_sha256": "41281faa3f287528de902ab6652a6008d5a1c2538dd2edf30c85894357409b01",
+      "asset_bytes": 155339,
+      "minimum": [
+        -1.4996016025543213,
+        -4.113692760467529,
+        -1.438218116760254
+      ],
+      "maximum": [
+        1.4972909688949585,
+        4.528156757354736,
+        2.720642328262329
+      ],
+      "half_xy": [
+        1.49844628572464,
+        4.320924758911133
+      ],
+      "half_xy_float32": [
+        1.4984462261199951,
+        4.320924758911133
+      ],
+      "identity_matrix_chunks": 0,
+      "symmetrica_vertex_scale": 1,
+      "included_objects": [
+        "Windshield.001",
+        "Windshield",
+        "Lights",
+        "Bike"
+      ],
+      "excluded_objects": [
+        "@020"
+      ]
+    },
+    {
+      "commodity": 231,
+      "stream_offset": 120137,
+      "model": ":data/mSpaceFighter2.3dsN",
+      "name": "Space Fighter F2",
+      "asset_sha256": "e5523ef332b8fdc67b2088cf868f39400c3e24e23f98d66d205bacb0097d7912",
+      "asset_bytes": 195972,
+      "minimum": [
+        -12.443229675292969,
+        -14.148162841796875,
+        -3.4835526943206787
+      ],
+      "maximum": [
+        13.083049774169922,
+        13.72155475616455,
+        4.163676738739014
+      ],
+      "half_xy": [
+        12.763139724731445,
+        13.934858798980713
+      ],
+      "half_xy_float32": [
+        12.763139724731445,
+        13.934858322143555
+      ],
+      "identity_matrix_chunks": 0,
+      "symmetrica_vertex_scale": 1,
+      "included_objects": [
+        "SF2 Canopy",
+        "Lights",
+        "SF2 Body"
+      ],
+      "excluded_objects": [
+        "!3",
+        "!1",
+        "!0",
+        "@040"
+      ]
+    }
+  ],
+  "provenance": "Static replay of original 2016 GD and embedded model resources; no DLL execution",
+  "supported_transform_domain": "Original eleven present vehicle assets: no matrix or identity matrix only; other transforms rejected"
+}

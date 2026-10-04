@@ -1,0 +1,43 @@
+Ghidra decompiler output; not recovered compilable source.
+Captured 2026-10-04 for in-memory cell editing. Read-only query.
+
+/* protected: bool __cdecl DaSpaceShip::CanDesignBeModified(void)const __ptr64 */
+
+bool __thiscall DaSpaceShip::CanDesignBeModified(DaSpaceShip *this)
+
+{
+  int iVar1;
+  longlong lVar2;
+  longlong *plVar3;
+  longlong local_res10;
+  
+                    /* 0x3ce630  1559  ?CanDesignBeModified@DaSpaceShip@@IEBA_NXZ */
+  QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x4c0));
+  iVar1 = *(int *)(this + 0x514);
+  QReadWriteLock::unlock((QReadWriteLock *)(this + 0x4c0));
+  if (iVar1 != 0) {
+    lVar2 = *(longlong *)gp_AuGlobal_exref;
+    QReadWriteLock::lockForRead((QReadWriteLock *)(lVar2 + 0x1e0));
+    lVar2 = *(longlong *)(lVar2 + 0x68);
+    QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x4c0));
+    QReadWriteLock::unlock((QReadWriteLock *)(this + 0x4c0));
+    std::
+    _Hash<std::_Umap_traits<unsigned_int,DnSpaceShip,std::_Uhash_compare<unsigned_int,AuDesignIdHash,std::equal_to<unsigned_int>_>,std::allocator<std::pair<unsigned_int_const_,DnSpaceShip>_>,0>_>
+    ::find((_Hash<std::_Umap_traits<unsigned_int,DnSpaceShip,std::_Uhash_compare<unsigned_int,AuDesignIdHash,std::equal_to<unsigned_int>_>,std::allocator<std::pair<unsigned_int_const_,DnSpaceShip>_>,0>_>
+            *)(lVar2 + 0x1b8),(uint *)&local_res10);
+    plVar3 = (longlong *)
+             std::
+             _Hash<std::_Umap_traits<unsigned_int,DnSpaceShip,std::_Uhash_compare<unsigned_int,AuDesignIdHash,std::equal_to<unsigned_int>_>,std::allocator<std::pair<unsigned_int_const_,DnSpaceShip>_>,0>_>
+             ::end((_Hash<std::_Umap_traits<unsigned_int,DnSpaceShip,std::_Uhash_compare<unsigned_int,AuDesignIdHash,std::equal_to<unsigned_int>_>,std::allocator<std::pair<unsigned_int_const_,DnSpaceShip>_>,0>_>
+                    *)(lVar2 + 0x1b8));
+    if (local_res10 != *plVar3) {
+      iVar1 = *(int *)(local_res10 + 0x30);
+      QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1e0));
+      return iVar1 != 3;
+    }
+    QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1e0));
+  }
+  return false;
+}
+
+

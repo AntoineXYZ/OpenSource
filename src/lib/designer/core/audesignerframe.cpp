@@ -1693,6 +1693,12 @@ void AuDesignerFrame::ListOpenChannels(QStringList& channelNames) const
 
 void AuDesignerFrame::closeEvent(QCloseEvent* event)
 {
+	if(m_LegacyDesigner && !m_LegacyDesigner->ConfirmDiscardChanges())
+	{
+		event->ignore();
+		return;
+	}
+
 	// Qt example code does not depict them calling this base class implementation. I am guessing it just accepts the event.
 	if(m_View && !m_View->DesignerConfirmLoseChanges())
 	{
@@ -5651,6 +5657,8 @@ void AuDesignerFrame::LaunchLegacyDesigner()
 void AuDesignerFrame::ExitLegacyDesigner()
 {
 	if(!m_LegacyDesigner)
+		return;
+	if(!m_LegacyDesigner->ConfirmDiscardChanges())
 		return;
 
 	AuLegacyShipViewer* viewer = m_LegacyDesigner;

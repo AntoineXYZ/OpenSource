@@ -1,0 +1,137 @@
+Ghidra decompiler output; descriptive helper names are inferred, not original symbols.
+Captured 2026-10-04 from the module/address in this filename. Read-only query.
+
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+
+undefined8
+FUN_1800170e0(AuMatrix4x4 *param_1,QDataStream *param_2,int param_3,int param_4,double param_5)
+
+{
+  AuMatrix4x4 AVar1;
+  undefined8 uVar2;
+  bool bVar3;
+  undefined8 *puVar4;
+  QMessageLogger *this;
+  uint uVar5;
+  float fVar6;
+  undefined4 uVar7;
+  undefined4 uVar8;
+  undefined1 auStack_1c8 [32];
+  QMessageLogger local_1a8 [32];
+  AuMatrix4x4 local_188 [272];
+  float local_78;
+  float local_74;
+  float local_70;
+  undefined4 local_6c;
+  float local_68;
+  float local_64;
+  float local_60;
+  undefined4 local_5c;
+  float local_58;
+  float local_54;
+  float local_50;
+  undefined4 local_4c;
+  float local_48;
+  float local_44;
+  float local_40;
+  undefined4 local_3c;
+  ulonglong local_38;
+  
+  local_38 = DAT_1801310c0 ^ (ulonglong)auStack_1c8;
+  uVar7 = 0;
+  uVar8 = 0x3ff00000;
+  if (param_4 == 3) {
+    uVar7 = 0x55555555;
+    uVar8 = 0x3fb55555;
+    FUN_180024b40(param_1 + 0x130,0x55555555);
+  }
+  param_5 = (double)CONCAT44(uVar8,uVar7) / param_5;
+  local_78 = Au3dsGLSL::LoadFloat(param_2);
+  local_74 = Au3dsGLSL::LoadFloat(param_2);
+  local_70 = Au3dsGLSL::LoadFloat(param_2);
+  local_6c = 0;
+  local_68 = Au3dsGLSL::LoadFloat(param_2);
+  local_64 = Au3dsGLSL::LoadFloat(param_2);
+  local_60 = Au3dsGLSL::LoadFloat(param_2);
+  local_5c = 0;
+  local_58 = Au3dsGLSL::LoadFloat(param_2);
+  local_54 = Au3dsGLSL::LoadFloat(param_2);
+  local_50 = Au3dsGLSL::LoadFloat(param_2);
+  local_4c = 0;
+  fVar6 = Au3dsGLSL::LoadFloat(param_2);
+  local_48 = (float)((double)fVar6 * param_5);
+  fVar6 = Au3dsGLSL::LoadFloat(param_2);
+  local_44 = (float)((double)fVar6 * param_5);
+  fVar6 = Au3dsGLSL::LoadFloat(param_2);
+  uVar5 = param_3 - 0x30;
+  local_3c = 0x3f800000;
+  local_40 = (float)((double)fVar6 * param_5);
+  puVar4 = (undefined8 *)AuMatrix4x4::AuMatrix4x4(local_188,&local_78);
+  uVar2 = puVar4[1];
+  *(undefined8 *)param_1 = *puVar4;
+  *(undefined8 *)(param_1 + 8) = uVar2;
+  uVar2 = puVar4[3];
+  *(undefined8 *)(param_1 + 0x10) = puVar4[2];
+  *(undefined8 *)(param_1 + 0x18) = uVar2;
+  uVar2 = puVar4[5];
+  *(undefined8 *)(param_1 + 0x20) = puVar4[4];
+  *(undefined8 *)(param_1 + 0x28) = uVar2;
+  uVar2 = puVar4[7];
+  *(undefined8 *)(param_1 + 0x30) = puVar4[6];
+  *(undefined8 *)(param_1 + 0x38) = uVar2;
+  uVar2 = puVar4[9];
+  *(undefined8 *)(param_1 + 0x40) = puVar4[8];
+  *(undefined8 *)(param_1 + 0x48) = uVar2;
+  uVar2 = puVar4[0xb];
+  *(undefined8 *)(param_1 + 0x50) = puVar4[10];
+  *(undefined8 *)(param_1 + 0x58) = uVar2;
+  uVar2 = puVar4[0xd];
+  *(undefined8 *)(param_1 + 0x60) = puVar4[0xc];
+  *(undefined8 *)(param_1 + 0x68) = uVar2;
+  uVar2 = puVar4[0xf];
+  *(undefined8 *)(param_1 + 0x70) = puVar4[0xe];
+  *(undefined8 *)(param_1 + 0x78) = uVar2;
+  AVar1 = *(AuMatrix4x4 *)(puVar4 + 0x20);
+  param_1[0x100] = AVar1;
+  if (AVar1 != (AuMatrix4x4)0x0) {
+    uVar2 = puVar4[0x11];
+    *(undefined8 *)(param_1 + 0x80) = puVar4[0x10];
+    *(undefined8 *)(param_1 + 0x88) = uVar2;
+    uVar2 = puVar4[0x13];
+    *(undefined8 *)(param_1 + 0x90) = puVar4[0x12];
+    *(undefined8 *)(param_1 + 0x98) = uVar2;
+    uVar2 = puVar4[0x15];
+    *(undefined8 *)(param_1 + 0xa0) = puVar4[0x14];
+    *(undefined8 *)(param_1 + 0xa8) = uVar2;
+    uVar2 = puVar4[0x17];
+    *(undefined8 *)(param_1 + 0xb0) = puVar4[0x16];
+    *(undefined8 *)(param_1 + 0xb8) = uVar2;
+    uVar2 = puVar4[0x19];
+    *(undefined8 *)(param_1 + 0xc0) = puVar4[0x18];
+    *(undefined8 *)(param_1 + 200) = uVar2;
+    uVar2 = puVar4[0x1b];
+    *(undefined8 *)(param_1 + 0xd0) = puVar4[0x1a];
+    *(undefined8 *)(param_1 + 0xd8) = uVar2;
+    uVar2 = puVar4[0x1d];
+    *(undefined8 *)(param_1 + 0xe0) = puVar4[0x1c];
+    *(undefined8 *)(param_1 + 0xe8) = uVar2;
+    uVar2 = puVar4[0x1f];
+    *(undefined8 *)(param_1 + 0xf0) = puVar4[0x1e];
+    *(undefined8 *)(param_1 + 0xf8) = uVar2;
+  }
+  bVar3 = AuMatrix4x4::IsIdentity(param_1);
+  if (!bVar3) {
+    AuMatrix4x4::Inverse(param_1);
+    FUN_180021640(param_1 + 0x130);
+  }
+  if (uVar5 != 0) {
+    this = (QMessageLogger *)QMessageLogger::QMessageLogger(local_1a8,(char *)0x0,0,(char *)0x0);
+    QMessageLogger::warning
+              (this,"Au3dsGLSLObject::LoadMatrixChunk skipping remaining %d bytes",(ulonglong)uVar5)
+    ;
+    QDataStream::skipRawData(param_2,uVar5);
+  }
+  return 1;
+}
+
+

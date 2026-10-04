@@ -1,0 +1,29 @@
+
+/* public: bool __cdecl AuPointArray::DoesContain(class AuPoint const & __ptr64)const __ptr64 */
+
+bool __thiscall AuPointArray::DoesContain(AuPointArray *this,AuPoint *param_1)
+
+{
+  longlong lVar1;
+  int iVar2;
+  double *pdVar3;
+  
+                    /* 0x6fa0  528  ?DoesContain@AuPointArray@@QEBA_NAEBVAuPoint@@@Z */
+  lVar1 = *(longlong *)this;
+  iVar2 = *(int *)(lVar1 + 4);
+  pdVar3 = (double *)(*(longlong *)(lVar1 + 0x10) + lVar1);
+  if (iVar2 != 0) {
+    do {
+      if (((ABS(*pdVar3 - *(double *)param_1) <= 1e-05) &&
+          (ABS(pdVar3[1] - *(double *)(param_1 + 8)) <= 1e-05)) &&
+         (ABS(pdVar3[2] - *(double *)(param_1 + 0x10)) <= 1e-05)) {
+        return true;
+      }
+      pdVar3 = pdVar3 + 3;
+      iVar2 = iVar2 + -1;
+    } while (iVar2 != 0);
+  }
+  return false;
+}
+
+
