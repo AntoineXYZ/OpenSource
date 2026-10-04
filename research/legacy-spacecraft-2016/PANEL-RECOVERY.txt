@@ -168,14 +168,14 @@ when loading, changing decks or editing boundaries. No 3D renderer is required.
 Assets and native scope
 ------------------------
 AuLegacyShipIcon in src/lib/designer/legacy/aulegacyshipicons.h/.cpp supplies
-111 exact original PNG payloads, all 103 dp_ icons plus the eight non-dp icons
+112 exact original PNG payloads, all 103 dp_ icons plus the nine non-dp icons
 used by the panel. It accepts base names, .png filenames or :data/ paths and
 works without Qt resource initialization or external legacy DLLs.
 No recoloring, image editing, scaling or PNG rewriting was performed.
 
 inspect_panel_icons.py statically decodes version-1 Qt resource trees from:
   AuSceneClientRes13.dll registration 0x1030: 103 dp_ icons.
-  AuData13.dll registration 0x1140: Troop and six vehicle icons.
+  AuData13.dll registration 0x1140: Troop, six vehicle icons and c_DesignDisk.
   AuGlobal13.dll registration 0x28d0: UpgradeModule.
 panel-icons.json records original DLL SHA-256, per-icon SHA-256, dimensions,
 byte counts and resource names. Existing modern dp_ resources are under
@@ -189,3 +189,33 @@ are omitted in this offline session. Unimplemented tools stay disabled with
 explanatory tooltips; Draw selects painting and Room Number selects the brush
 subtype rather than reassigning an existing room. README.txt lists current
 scope; TESTING.txt contains the manual panel checks.
+
+Dock title icon and status bar
+------------------------------
+AuSpacecraftDesignDock constructor 0x14020b6b0 in Shores of Hazeron.exe passes
+:data/c_DesignDisk.png, <b>Spacecraft Design</b>, and Ship Design to AuDockWidget,
+then installs AuTabDesign (0x1402c91e0) as its content. The Ghidra capture is in
+pseudocode/Shores_of_Hazeron.exe_14020b6b0_AuSpacecraftDesignDock_ctor.txt.
+This is the F6 tool interface's icon, distinct from the main game window icon.
+
+The recovered 16x16 PNG is 871 bytes, SHA-256
+22c1c873f587ef0e332265345c63f127fc7699c32c65ecc3d3bd8961855c2612.
+resources/client/mail/data/c_DesignDisk.png has identical decoded RGBA pixels
+but is encoded as an indexed PNG. The original bytes are included with the
+other offline panel icons so neither launch path needs extra resource bundles.
+The Qt-only title widget displays it docked and floating, retaining drag,
+double-click docking, Dock/Float, close/hide and F6 behavior. The application
+window icon is unchanged. This title implementation avoids AuDockTitle's live
+AuGlobal dependency in the standalone QApplication path.
+
+AuMainFrame constructor 0x14020ac00 creates a QMainWindow and central widget,
+without creating or attaching a status bar. The designer dock likewise has no
+status bar. The original EXE's imported/string symbols contain no QStatusBar,
+QMainWindow::statusBar or setStatusBar. The offline editor's added bottom bar
+and cursor-coordinate display have therefore been removed. Editing feedback
+uses the existing tools-panel label, and current deck/Z remain in the inspector.
+This does not make any claim about in-world HUD overlays.
+
+Read-only verification matched all 112 embedded icons against original Qt
+resources and the metadata; git diff --check passed. No build or native UI
+execution was initiated. Docking/title behavior requires the user's manual check.

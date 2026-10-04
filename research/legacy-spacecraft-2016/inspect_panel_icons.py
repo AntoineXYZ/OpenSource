@@ -17,7 +17,7 @@ from pathlib import Path
 
 EXTRAS = ('UpgradeModule.png', 'Troop.png', 'c_SpaceFighter.png',
           'c_SpaceFighter2.png', 'c_MotorBike.png', 'c_Suv.png', 'c_APC.png',
-          'c_CommercialAircraft.png')
+          'c_CommercialAircraft.png', 'c_DesignDisk.png')
 
 
 def resources(data, init=0x1030):

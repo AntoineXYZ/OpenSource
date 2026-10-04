@@ -56,6 +56,15 @@
       "sha256": "47990205eb73002aeb9e9c9a3e527d597820f34a562b527674728a570cc463c5"
     },
     {
+      "name": "c_DesignDisk.png",
+      "resource": ":/data/c_DesignDisk.png",
+      "source": "AuData13.dll",
+      "bytes": 871,
+      "width": 16,
+      "height": 16,
+      "sha256": "22c1c873f587ef0e332265345c63f127fc7699c32c65ecc3d3bd8961855c2612"
+    },
+    {
       "name": "c_MotorBike.png",
       "resource": ":/data/c_MotorBike.png",
       "source": "AuData13.dll",

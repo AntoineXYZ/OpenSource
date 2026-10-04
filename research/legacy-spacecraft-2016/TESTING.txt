@@ -91,6 +91,12 @@ task. Paths must match the executable's platform (Windows uses C:\ paths).
 
 Check the right-docked palette, F6 hide/float/redock, icon availability without
 legacy DLLs, dark controls, selected tools, pan/zoom/fit and record inspection.
+Check the original design-disk icon appears at the left of the F6 panel title,
+both docked and floating; the application window icon must remain unchanged.
+Drag and double-click the title, use Dock/Float and close, then reopen with F6.
+The bottom status bar and cursor-coordinate readout must be absent in both
+launch paths. Rejected edits and grid warnings must appear in the tools panel;
+the inspector must still show current deck/Z after switching decks.
 Check New and loaded designs show a finite 80x80-cell grid, with no lines outside
 +/-226.27416996 feet and brighter lines every ten cells. Exercise all four grid
 directions at the edges; disabling them leaves the square boundary and labels.

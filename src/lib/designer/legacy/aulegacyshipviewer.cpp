@@ -43,9 +43,9 @@
 #include <QShowEvent>
 #include <QSpinBox>
 #include <QStandardPaths>
-#include <QStatusBar>
 #include <QStackedWidget>
 #include <QStringList>
+#include <QStyle>
 #include <QStyleOptionGraphicsItem>
 #include <QTabWidget>
 #include <QTextBrowser>
@@ -232,6 +232,43 @@ protected:
 	}
 };
 
+QWidget* DesignerDockTitle(QDockWidget* dock, const QIcon& icon)
+{
+	QWidget* title = new QWidget(dock);
+	title->setObjectName(QStringLiteral("LegacyDockTitle"));
+	QHBoxLayout* layout = new QHBoxLayout(title);
+	layout->setContentsMargins(4, 2, 2, 2);
+	layout->setSpacing(4);
+	QLabel* image = new QLabel(title);
+	image->setPixmap(icon.pixmap(16, 16));
+	image->setFixedSize(16, 16);
+	image->setAttribute(Qt::WA_TransparentForMouseEvents);
+	layout->addWidget(image);
+	QLabel* label = new QLabel(dock->windowTitle(), title);
+	label->setAttribute(Qt::WA_TransparentForMouseEvents);
+	layout->addWidget(label, 1);
+	QObject::connect(dock, &QWidget::windowTitleChanged, label, &QLabel::setText);
+	const auto button = [&](QStyle::StandardPixmap symbol, const QString& text)
+	{
+		QToolButton* control = new QToolButton(title);
+		control->setIcon(dock->style()->standardIcon(symbol));
+		control->setToolTip(text);
+		control->setAccessibleName(text);
+		control->setAutoRaise(true);
+		control->setFocusPolicy(Qt::NoFocus);
+		control->setFixedSize(18, 18);
+		layout->addWidget(control);
+		return control;
+	};
+	QToolButton* floating = button(QStyle::SP_TitleBarNormalButton, QStringLiteral("Dock/float tools"));
+	QObject::connect(floating, &QToolButton::clicked, dock, [dock]() { dock->setFloating(!dock->isFloating()); });
+	QToolButton* close = button(QStyle::SP_TitleBarCloseButton, QStringLiteral("Hide tools (F6)"));
+	QObject::connect(close, &QToolButton::clicked, dock, &QWidget::close);
+	// Unhandled title-bar mouse events propagate to QDockWidget for dragging
+	// and double-click docking; only the two controls consume their clicks.
+	return title;
+}
+
 QString RoomName(int type)
 {
 	for (const RoomChoice& choice : RoomChoices)
@@ -328,7 +365,6 @@ public:
 	QIcon equipmentIcon;
 	QRectF equipmentFootprint;
 	QString emptyMessage;
-	std::function<void(const QPointF&)> cursorMoved;
 	std::function<void(const QPointF&)> cellEntered;
 	std::function<void(int)> rotateEquipment;
 
@@ -588,8 +624,6 @@ private:
 	{
 		m_Cursor = ScenePoint(mapToScene(pixel));
 		m_CursorKnown = viewport()->rect().contains(pixel);
-		if (cursorMoved)
-			cursorMoved(m_Cursor);
 		viewport()->update();
 	}
 
@@ -779,10 +813,14 @@ public:
 
 		toolDock = new QDockWidget(QStringLiteral("Spacecraft Design (F6)"), window);
 		toolDock->setObjectName(QStringLiteral("LegacySpacecraftTools"));
+		const QIcon designerIcon = AuLegacyShipIcon(QStringLiteral("c_DesignDisk"));
+		toolDock->setWindowIcon(designerIcon);
+		toolDock->setTitleBarWidget(DesignerDockTitle(toolDock, designerIcon));
 		toolDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 		toolDock->setStyleSheet(QStringLiteral(
 			"QDockWidget { color: #d5e3fa; background: #000000; font-size: 12px; }"
 			"QDockWidget::title { background: #07152d; border: 1px solid #315986; padding: 4px; }"
+			"QWidget#LegacyDockTitle { background: #07152d; border: 1px solid #315986; }"
 			"QWidget#LegacyPalette { background: #000000; color: #d5e3fa; }"
 			"QToolButton { background: transparent; color: #d5e3fa; border: 1px solid transparent; border-radius: 2px; padding: 0; }"
 			"QToolButton:hover { border-color: #668fc8; background: #10233e; }"
@@ -870,16 +908,12 @@ public:
 		window->resizeDocks(QList<QDockWidget*>() << toolDock, QList<int>() << 380, Qt::Horizontal);
 		QAction* showTools = toolDock->toggleViewAction();
 		showTools->setText(QStringLiteral("Spacecraft Design tools"));
+		showTools->setIcon(designerIcon);
 		showTools->setShortcut(QKeySequence(Qt::Key_F6));
 		toolDock->addAction(showTools);
 		toolDock->addAction(closeAction);
 		window->addAction(showTools);
 
-		coordinates = new QLabel(QStringLiteral("X \u2014   Y \u2014 ft"), window);
-		window->statusBar()->addPermanentWidget(coordinates);
-		view->cursorMoved = [this](const QPointF& point) {
-			coordinates->setText(QStringLiteral("X %1   Y %2 ft").arg(point.x(), 0, 'f', 2).arg(point.y(), 0, 'f', 2));
-		};
 		view->cellEntered = [this](const QPointF& point) { EditAt(point); };
 		view->rotateEquipment = [this](int steps) {
 			if (toolMode != EquipmentMode || !EquipmentCanRotate(selectedEquipmentType)) return;
@@ -893,7 +927,6 @@ public:
 	~Impl()
 	{
 		QObject::disconnect(scene, nullptr, window, nullptr);
-		view->cursorMoved = std::function<void(const QPointF&)>();
 		view->cellEntered = std::function<void(const QPointF&)>();
 		view->rotateEquipment = std::function<void(int)>();
 	}
@@ -1103,7 +1136,7 @@ public:
 		RefreshHeaderControls();
 		UpdateTitle();
 		ShowOverview();
-		window->statusBar()->showMessage(QStringLiteral("Design settings updated. Session edits are not saved."));
+		toolLabel->setText(QStringLiteral("Design settings updated. Session edits are not saved."));
 	}
 
 	void FitDeck()
@@ -1147,10 +1180,10 @@ public:
 	{
 		if (!renderAction->isChecked())
 			return;
-		toolLabel->setText(QStringLiteral("3D view: left drag orbits; middle/right drag pans; wheel zooms. F fits the ship."));
-		window->statusBar()->showMessage(cutaway->isChecked()
+		toolLabel->setText(QStringLiteral("3D view: left drag orbits; middle/right drag pans; wheel zooms. F fits the ship.\n")
+			+ (cutaway->isChecked()
 			? QStringLiteral("Interior cutaway at deck %1. Use the deck arrows to move the cut.").arg(currentDeck)
-			: QStringLiteral("Solid spacecraft view. Use Render Mode to return to the floor plan."));
+			: QStringLiteral("Solid spacecraft view. Use Render Mode to return to the floor plan.")));
 	}
 
 	void SetRenderMode(bool solid)
@@ -1159,7 +1192,6 @@ public:
 			RefreshRendering();
 		views->setCurrentWidget(solid ? static_cast<QWidget*>(renderView) : static_cast<QWidget*>(view));
 		cutaway->setVisible(solid);
-		coordinates->setVisible(!solid);
 		if (solid)
 		{
 			renderView->setFocus();
@@ -1213,17 +1245,12 @@ public:
 					? QStringLiteral("Erase Equipment Area: click equipment to remove that type within the brush.")
 					: QStringLiteral("Erase Equipment: left click or drag over equipment.");
 			toolLabel->setText(text);
-			window->statusBar()->showMessage(text);
 			view->setFocus();
 			return;
 		}
 		toolLabel->setText(mode == InspectMode ? QStringLiteral("Selection tool: click a room or equipment marker.")
 			: (mode == EraseMode ? QStringLiteral("Erase Room Cells: left click or drag.")
 				: QStringLiteral("Paint %1: left click or drag.").arg(RoomName(selectedRoomType))));
-		window->statusBar()->showMessage(mode == InspectMode
-			? QStringLiteral("Click a room or detail to inspect it. Middle drag pans; the wheel zooms.")
-			: QStringLiteral("Left click or drag to %1 cells. Middle drag pans. Edits are not saved.")
-				.arg(mode == EraseMode ? QStringLiteral("erase") : QStringLiteral("paint")));
 	}
 
 	void ChangeEquipmentBrush(int delta)
@@ -1245,9 +1272,9 @@ public:
 		view->gridMask = mask;
 		view->viewport()->update();
 		if (mask == 0 || mask == 1 || mask == 2 || mask == 4 || mask == 8)
-			window->statusBar()->showMessage(QStringLiteral("These grid lines do not form closed cells. Enable another direction to paint or erase."));
+			toolLabel->setText(QStringLiteral("These grid lines do not form closed cells. Enable another direction to paint or erase."));
 		else
-			window->statusBar()->showMessage(QStringLiteral("Grid directions updated. The highlighted cell follows the original 2016 shape rules."));
+			toolLabel->setText(QStringLiteral("Grid directions updated. The highlighted cell follows the original 2016 shape rules."));
 	}
 
 	void EditAt(const QPointF& cursor)
@@ -1264,7 +1291,7 @@ public:
 				: AuLegacyShip::DeleteDetails(design, deck, cursor, view->equipmentBrushRadius);
 			if (!result.accepted)
 			{
-				window->statusBar()->showMessage(result.error.isEmpty()
+				toolLabel->setText(result.error.isEmpty()
 					? QStringLiteral("Equipment cannot be placed here.") : result.error);
 				return;
 			}
@@ -1276,7 +1303,7 @@ public:
 				UpdateTitle();
 				ShowDeck(deck, false);
 			}
-			window->statusBar()->showMessage(result.error.isEmpty()
+			toolLabel->setText(result.error.isEmpty()
 				? (result.changed ? QStringLiteral("Equipment updated (%1 added, %2 removed). Session edits are not saved.")
 					.arg(result.added).arg(result.removed) : QStringLiteral("No equipment change at this point.")) : result.error);
 			return;
@@ -1286,7 +1313,7 @@ public:
 			view->gridMask, type, quint8(roomNumber->value() - 1));
 		if (!result.accepted)
 		{
-			window->statusBar()->showMessage(result.error.isEmpty()
+			toolLabel->setText(result.error.isEmpty()
 				? QStringLiteral("This cell edit could not be applied.") : result.error);
 			return;
 		}
@@ -1298,7 +1325,7 @@ public:
 			UpdateTitle();
 			ShowDeck(deck, false);
 		}
-		window->statusBar()->showMessage(result.error.isEmpty()
+		toolLabel->setText(result.error.isEmpty()
 			? (result.changed ? QStringLiteral("Cell updated. Session edits are not saved.")
 				: QStringLiteral("No change at this cell.")) : result.error);
 	}
@@ -1333,6 +1360,8 @@ public:
 			.arg(hasExtendedHeader ? QString::number(header.structure) : absent)
 			.arg(hasExtendedHeader ? QString::number(header.techLevel) : absent)
 			.arg(design.rooms.size()).arg(design.details.size()).arg(occupiedDeckCount).arg(design.bytesConsumed);
+		text += QStringLiteral("Current deck: %1 (Z %2 ft)\n")
+			.arg(currentDeck).arg(currentDeck * AuLegacyShip::DeckHeight);
 		text += modified ? QStringLiteral("\nThis design has session edits. Saving is not available yet.\n")
 			: QStringLiteral("\nNo session edits. Saving is not available yet.\n");
 		text += QStringLiteral("\nUse Inspect to select a room or detail for its record. "
@@ -1539,7 +1568,7 @@ public:
 			.arg(deck).arg(deck * AuLegacyShip::DeckHeight).arg(visibleRooms).arg(detailDecks.value(deck).size());
 		if (warningCount)
 			message += QStringLiteral("; %1 geometry warnings (see inspector)").arg(warningCount);
-		window->statusBar()->showMessage(message);
+		toolLabel->setText(message);
 		ShowOverview();
 		if (fit && !renderAction->isChecked())
 			FitDeck();
@@ -1614,7 +1643,6 @@ public:
 	QCheckBox* cutaway;
 	QComboBox* minimumTech;
 	QLabel* toolLabel;
-	QLabel* coordinates;
 	QLabel* brushSize;
 	QPlainTextEdit* inspector;
 	QAction* roomsAction;
