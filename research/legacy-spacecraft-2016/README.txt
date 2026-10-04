@@ -13,6 +13,9 @@ The 2D editor supports fresh/New designs, loading, inspection, cell painting
 and erasing, equipment reconciliation after room edits, and header controls.
 Rooms have fixed-size name/number labels at their first boundary vertex, using
 the original label colors and black shadow; see PANEL-RECOVERY.txt.
+The grid is the original finite 80x80-cell square with eight direction labels
+and brighter ten-cell lines (CELL-SHAPES.txt). Fit includes its edges and labels.
+The canvas has no visible scrollbars or top summary strip; middle drag pans.
 The original icon panel docks on the right by default and toggles with F6.
 Deck arrows cover -28..28 (57 decks); there is no deck dropdown. The footer
 dropdown is minimum tech level. Room Number displays subtype+1 (1..256), not

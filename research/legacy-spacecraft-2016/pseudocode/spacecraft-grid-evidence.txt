@@ -1,0 +1,212 @@
+Original 2016 spacecraft grid: focused decompiler excerpts
+========================================================
+AuAtom13.dll DaDesignPlane::RenderSpacecraftGrid 0x180301980.
+Read-only recovery; original binary hash is in sources.json. Local names/types
+are uncorrected decompiler output. Boilerplate locals, GL resource cleanup and
+3D cage construction are omitted. The cage uses XY +/-226.27416996 and Z
++/-224 relative to the current design-plane elevation; only its XY footprint
+is relevant to the current 2D view.
+
+The common XY radius is binary64 0x406c48c6001477dc = 226.27416996,
+exactly 40 * 5.656854249. Minor lines use RGB (0.1,0.2,0.3), major lines
+(0.2,0.3,0.4), labels (0.3,0.4,0.5), each multiplied by text brightness.
+Each grid family uses the same loop in two passes, selecting i%10 !=0 or ==0.
+The major pass repeats the minor endpoints below. Horizontal/vertical indices
+run -40..40 inclusive; diagonal indices run -40..39, with a second segment
+except at -40. No camera-dependent thinning or grid extension is performed.
+
+Minor-line endpoints and grid-mask dispatch (verbatim decompiler excerpt):
+  iVar9 = -0x28;
+  if (((byte)this[0x3b1] & 4) != 0) {
+    iVar11 = -0x28;
+    do {
+      if (iVar11 != (iVar11 / 10) * 10) {
+        local_440 = 0x1477dc;
+        uStack_43c = 0x406c48c6;
+        uStack_438 = 0;
+        uStack_434 = 0;
+        local_430 = 0x3f800000;
+        local_448 = (double)iVar11 * 5.656854249;
+        FUN_1801fdc10(&local_7f8,&local_448);
+        local_400 = 0x1477dc;
+        uStack_3fc = 0xc06c48c6;
+        uStack_3f8 = 0;
+        uStack_3f4 = 0;
+        local_3f0 = 0x3f800000;
+        local_408 = (double)iVar11 * 5.656854249;
+        FUN_1801fdc10(&local_7f8,&local_408);
+      }
+      iVar11 = iVar11 + 1;
+    } while (iVar11 < 0x29);
+  }
+  if (((byte)this[0x3b1] & 1) != 0) {
+    iVar11 = -0x28;
+    do {
+      if (iVar11 != (iVar11 / 10) * 10) {
+        local_610 = 0x406c48c6001477dc;
+        local_600 = 0;
+        local_5f8 = 0x3f800000;
+        local_608 = (double)iVar11 * 5.656854249;
+        FUN_1801fdc10(&local_7f8,&local_610);
+        local_6d0 = 0xc06c48c6001477dc;
+        local_6c0 = 0;
+        local_6b8 = 0x3f800000;
+        local_6c8 = (double)iVar11 * 5.656854249;
+        FUN_1801fdc10(&local_7f8,&local_6d0);
+      }
+      iVar11 = iVar11 + 1;
+    } while (iVar11 < 0x29);
+  }
+  if (((byte)this[0x3b1] & 2) != 0) {
+    iVar11 = -0x28;
+    do {
+      if (iVar11 != (iVar11 / 10) * 10) {
+        dVar13 = (double)iVar11 * 5.656854249;
+        local_3c0 = 0x1477dc;
+        uStack_3bc = 0xc06c48c6;
+        uStack_3b8 = 0;
+        uStack_3b4 = 0;
+        local_3b0 = 0x3f800000;
+        local_3c8 = dVar13;
+        FUN_1801fdc10(&local_7f8,&local_3c8);
+        local_650 = 0x406c48c6001477dc;
+        local_648 = -dVar13;
+        local_640 = 0;
+        local_638 = 0x3f800000;
+        FUN_1801fdc10(&local_7f8,&local_650);
+        if (iVar11 != -0x28) {
+          local_690 = 0xc06c48c6001477dc;
+          local_680 = 0;
+          local_678 = 0x3f800000;
+          local_688 = dVar13;
+          FUN_1801fdc10(&local_7f8,&local_690);
+          local_388 = -dVar13;
+          local_380 = 0x1477dc;
+          uStack_37c = 0x406c48c6;
+          uStack_378 = 0;
+          uStack_374 = 0;
+          local_370 = 0x3f800000;
+          FUN_1801fdc10(&local_7f8,&local_388);
+        }
+      }
+      iVar11 = iVar11 + 1;
+    } while (iVar11 < 0x28);
+  }
+  if (((byte)this[0x3b1] & 8) != 0) {
+    iVar11 = -0x28;
+    do {
+      if (iVar11 != (iVar11 / 10) * 10) {
+        dVar13 = (double)iVar11 * 5.656854249;
+        local_340 = 0x1477dc;
+        uStack_33c = 0x406c48c6;
+        uStack_338 = 0;
+        uStack_334 = 0;
+        local_330 = 0x3f800000;
+        local_348 = dVar13;
+        FUN_1801fdc10(&local_7f8,&local_348);
+        local_730 = 0x406c48c6001477dc;
+        local_720 = 0;
+        local_718 = 0x3f800000;
+        local_728 = dVar13;
+        FUN_1801fdc10(&local_7f8,&local_730);
+        if (iVar11 != -0x28) {
+          local_6f0 = 0xc06c48c6001477dc;
+          local_6e0 = 0;
+          local_6d8 = 0x3f800000;
+          local_6e8 = -dVar13;
+          FUN_1801fdc10(&local_7f8,&local_6f0);
+          local_300 = 0x1477dc;
+          uStack_2fc = 0xc06c48c6;
+          uStack_2f8 = 0;
+          uStack_2f4 = 0;
+          local_2f0 = 0x3f800000;
+          local_308 = -dVar13;
+          FUN_1801fdc10(&local_7f8,&local_308);
+        }
+      }
+      iVar11 = iVar11 + 1;
+    } while (iVar11 < 0x28);
+  }
+
+Edge/corner label positions and alignment (verbatim decompiler excerpt):
+  QColor::invalidate(local_100);
+  QColor::setRgbF(local_100,(double)fVar3,(double)(param_5 * 0.4),(double)(param_5 * 0.5),1.0);
+  local_7f0 = 0;
+  uStack_7e8 = 0x406c48c6001477dc;
+  local_7e0 = 0x4018000000000000;
+  pQVar8 = (QString *)DaAtom::tr((char *)local_760,"Fore",0);
+  pQVar6 = local_758;
+  pQVar5 = local_768;
+  pAVar4 = local_7a0;
+  AuGLEffects::RenderText
+            (param_3,param_1,local_7a0,(AuPoint *)&local_7f0,pQVar8,local_758,local_100,
+             (*(int *)(*(longlong *)(local_768 + 0x28) + 0x20) -
+             *(int *)(*(longlong *)(local_768 + 0x28) + 0x18)) + 1,0x84,1);
+  QString::~QString(local_760);
+  local_7f0 = 0;
+  uStack_7e8 = 0xc06c48c6001477dc;
+  local_7e0 = 0x4018000000000000;
+  pQVar8 = (QString *)DaAtom::tr((char *)local_7b0,"Aft",0);
+  AuGLEffects::RenderText
+            (param_3,param_1,pAVar4,(AuPoint *)&local_7f0,pQVar8,pQVar6,local_100,
+             (*(int *)(*(longlong *)(pQVar5 + 0x28) + 0x20) -
+             *(int *)(*(longlong *)(pQVar5 + 0x28) + 0x18)) + 1,0x84,1);
+  QString::~QString(local_7b0);
+  local_7f0 = 0xc06c48c6001477dc;
+  uStack_7e8 = 0;
+  local_7e0 = 0x4018000000000000;
+  pQVar8 = (QString *)DaAtom::tr((char *)local_770,"Port",0);
+  AuGLEffects::RenderText
+            (param_3,param_1,pAVar4,(AuPoint *)&local_7f0,pQVar8,pQVar6,local_100,
+             (*(int *)(*(longlong *)(pQVar5 + 0x28) + 0x20) -
+             *(int *)(*(longlong *)(pQVar5 + 0x28) + 0x18)) + 1,0x84,1);
+  QString::~QString(local_770);
+  local_7f0 = 0x406c48c6001477dc;
+  uStack_7e8 = 0;
+  local_7e0 = 0x4018000000000000;
+  pQVar8 = (QString *)DaAtom::tr((char *)local_780,"Starboard",0);
+  AuGLEffects::RenderText
+            (param_3,param_1,pAVar4,(AuPoint *)&local_7f0,pQVar8,pQVar6,local_100,
+             (*(int *)(*(longlong *)(pQVar5 + 0x28) + 0x20) -
+             *(int *)(*(longlong *)(pQVar5 + 0x28) + 0x18)) + 1,0x84,1);
+  QString::~QString(local_780);
+  local_7f0 = 0xc06c48c6001477dc;
+  uStack_7e8 = 0xc06c48c6001477dc;
+  local_7e0 = 0x4018000000000000;
+  pQVar8 = (QString *)DaAtom::tr((char *)local_7a8,"Port Quarter",0);
+  AuGLEffects::RenderText
+            (param_3,param_1,pAVar4,(AuPoint *)&local_7f0,pQVar8,pQVar6,local_100,
+             (*(int *)(*(longlong *)(pQVar5 + 0x28) + 0x20) -
+             *(int *)(*(longlong *)(pQVar5 + 0x28) + 0x18)) + 1,0x84,1);
+  QString::~QString(local_7a8);
+  local_7f0 = 0x406c48c6001477dc;
+  uStack_7e8 = 0xc06c48c6001477dc;
+  local_7e0 = 0x4018000000000000;
+  pQVar8 = (QString *)DaAtom::tr((char *)local_798,"Starboard Quarter",0);
+  AuGLEffects::RenderText
+            (param_3,param_1,pAVar4,(AuPoint *)&local_7f0,pQVar8,pQVar6,local_100,
+             (*(int *)(*(longlong *)(pQVar5 + 0x28) + 0x20) -
+             *(int *)(*(longlong *)(pQVar5 + 0x28) + 0x18)) + 1,0x84,1);
+  QString::~QString(local_798);
+  local_7f0 = 0xc06c48c6001477dc;
+  uStack_7e8 = 0x406c48c6001477dc;
+  local_7e0 = 0x4018000000000000;
+  pQVar8 = (QString *)DaAtom::tr((char *)local_788,"Port Fore",0);
+  AuGLEffects::RenderText
+            (param_3,param_1,pAVar4,(AuPoint *)&local_7f0,pQVar8,pQVar6,local_100,
+             (*(int *)(*(longlong *)(pQVar5 + 0x28) + 0x20) -
+             *(int *)(*(longlong *)(pQVar5 + 0x28) + 0x18)) + 1,0x84,1);
+  QString::~QString(local_788);
+  local_7f0 = 0x406c48c6001477dc;
+  uStack_7e8 = 0x406c48c6001477dc;
+  local_7e0 = 0x4018000000000000;
+  pQVar8 = (QString *)DaAtom::tr((char *)local_778,"Starboard Fore",0);
+  AuGLEffects::RenderText
+            (param_3,param_1,pAVar4,(AuPoint *)&local_7f0,pQVar8,pQVar6,local_100,
+             (*(int *)(*(longlong *)(pQVar5 + 0x28) + 0x20) -
+             *(int *)(*(longlong *)(pQVar5 + 0x28) + 0x18)) + 1,0x84,1);
+  QString::~QString(local_778);
+
+The labels' Z is binary64 0x4018000000000000 = 6 feet above the grid;
+XY is used directly in the top-down view. Flags 0x84 mean centered horizontally
+and vertically; the strings and coordinates above are original, not inferred.

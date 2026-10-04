@@ -124,6 +124,29 @@ byte value outside 0..15 also yields no vertices through the switch default,
 although DoesGridFormBoundaries returns true for those values. Normal toggles
 preserve the four-bit range; the helper does not mask corrupt input to 0x0F.
 
+Visible grid and direction labels
+----------------------------------
+AuAtom13.dll DaDesignPlane::RenderSpacecraftGrid at 0x180301980 draws a fixed
+80 by 80 full-cell square. Radius is 40*G = 226.27416996 feet; the literal's
+binary64 bits are 0x406c48c6001477dc. This is a display extent, separate from
+the authoring XY limit +/-120 half-grid units (+/-60 full cells). Preserve
+that distinction rather than tightening the recovered painting validation.
+
+Horizontal/vertical indices run -40..40 inclusive. Each diagonal family uses
+-40..39, drawing two edge-to-edge segments except at -40 (one main diagonal).
+Every tenth line is brighter; the original does not thin or extend lines with
+zoom. A square boundary remains when the direction toggles are off. The native
+2D view draws this footprint; the original's vertical cage remains deferred.
+
+Eight labels are centered on the original world-XY positions:
+  Fore (0,+R), Aft (0,-R), Port (-R,0), Starboard (+R,0),
+  Port Quarter (-R,-R), Starboard Quarter (+R,-R),
+  Port Fore (-R,+R), Starboard Fore (+R,+R).
+Original text lies 6 feet above the grid with alignment 0x84 (centered in both
+axes); the 2D view uses XY only and fixed-size screen-aligned text. At brightness
+1, minor/major/label RGB values are (0.1,0.2,0.3), (0.2,0.3,0.4), (0.3,0.4,0.5).
+Focused original excerpts are in pseudocode/spacecraft-grid-evidence.txt.
+
 Reference use and limits
 -------------------------
 Run from the repository root (no client build):

@@ -91,6 +91,14 @@ task. Paths must match the executable's platform (Windows uses C:\ paths).
 
 Check the right-docked palette, F6 hide/float/redock, icon availability without
 legacy DLLs, dark controls, selected tools, pan/zoom/fit and record inspection.
+Check New and loaded designs show a finite 80x80-cell grid, with no lines outside
++/-226.27416996 feet and brighter lines every ten cells. Exercise all four grid
+directions at the edges; disabling them leaves the square boundary and labels.
+Fore/Port Fore/Starboard Fore must be at the top; Aft/Port Quarter/Starboard
+Quarter at the bottom; Port left and Starboard right. Fit must leave all labels
+visible, and zoom must preserve their text size. The grid's scrollbars and top
+summary strip must be absent; middle-drag must still pan. The title's dirty
+asterisk and discard confirmation must still work after painting/header edits.
 Check room labels (e.g. Engine Room 1/2/3): name and subtype+1, first-boundary
 vertex anchor, original label color and black shadow. Pan/zoom must move their
 anchors without scaling the text. Switch decks, paint/grow/repaint/erase rooms,

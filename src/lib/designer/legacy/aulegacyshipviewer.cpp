@@ -19,6 +19,7 @@
 #include <QFrame>
 #include <QGraphicsItem>
 #include <QGraphicsScene>
+#include <QGraphicsSimpleTextItem>
 #include <QGraphicsView>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -61,8 +62,18 @@ enum ItemData
 enum Kind
 {
 	RoomKind = 1,
-	DetailKind
+	DetailKind,
+	GridLabelKind
 };
+
+// AuAtom13.dll RenderSpacecraftGrid: 40 full grid cells either side of origin.
+constexpr int GridHalfCells = 40;
+constexpr double GridRadius = GridHalfCells * AuLegacyShip::GridSpacing;
+
+QRectF GridBounds()
+{
+	return QRectF(-GridRadius, -GridRadius, GridRadius * 2.0, GridRadius * 2.0);
+}
 
 QString Hex(unsigned int value, int width = 2)
 {
@@ -180,6 +191,8 @@ public:
 		setDragMode(QGraphicsView::ScrollHandDrag);
 		setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
 		setResizeAnchor(QGraphicsView::AnchorViewCenter);
+		setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+		setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 		setMouseTracking(true);
 		setBackgroundBrush(QColor(20, 27, 35));
 		setAccessibleName(QStringLiteral("Legacy spacecraft deck plan"));
@@ -301,44 +314,47 @@ protected:
 	void drawBackground(QPainter* painter, const QRectF& rect) override
 	{
 		painter->fillRect(rect, backgroundBrush());
-		if (!gridVisible)
+		if (!gridVisible || !rect.intersects(GridBounds()))
 			return;
 
-		const double pixelsPerFoot = std::abs(transform().m11());
-		if (pixelsPerFoot <= 0.0)
-			return;
-		const double stride = std::max(1.0, std::ceil(std::max(
-			3.0 / (AuLegacyShip::GridSpacing * pixelsPerFoot),
-			(rect.width() + rect.height()) / (AuLegacyShip::GridSpacing * 1600.0))));
-		const double step = AuLegacyShip::GridSpacing * stride;
-		QPen pen(QColor(43, 54, 67));
+		QPen pen(QColor::fromRgbF(0.1, 0.2, 0.3));
 		pen.setCosmetic(true);
 		painter->setPen(pen);
-		const double left = std::floor(rect.left() / step) * step;
-		const double top = std::floor(rect.top() / step) * step;
-		if (gridMask & 4)
-			for (double x = left; x <= rect.right(); x += step)
-				painter->drawLine(QPointF(x, rect.top()), QPointF(x, rect.bottom()));
-		if (gridMask & 1)
-			for (double y = top; y <= rect.bottom(); y += step)
-				painter->drawLine(QPointF(rect.left(), y), QPointF(rect.right(), y));
-		if (gridMask & 2)
+		painter->setBrush(Qt::NoBrush);
+		painter->drawRect(GridBounds());
+		const auto line = [painter](double x1, double y1, double x2, double y2) {
+			painter->drawLine(ScenePoint(QPointF(x1, y1)), ScenePoint(QPointF(x2, y2)));
+		};
+		// Draw the original finite segments, with every tenth line in a brighter pass.
+		for (bool major : { false, true })
 		{
-			const double first = std::floor((rect.left() + rect.top()) / step) * step;
-			for (double c = first; c <= rect.right() + rect.bottom(); c += step)
-				painter->drawLine(QPointF(rect.left(), c - rect.left()), QPointF(rect.right(), c - rect.right()));
+			pen.setColor(major ? QColor::fromRgbF(0.2, 0.3, 0.4) : QColor::fromRgbF(0.1, 0.2, 0.3));
+			painter->setPen(pen);
+			for (int i = -GridHalfCells; i <= GridHalfCells; ++i)
+			{
+				if ((i % 10 == 0) != major)
+					continue;
+				const double position = i * AuLegacyShip::GridSpacing;
+				if (gridMask & 4)
+					line(position, GridRadius, position, -GridRadius);
+				if (gridMask & 1)
+					line(GridRadius, position, -GridRadius, position);
+				if (i == GridHalfCells)
+					continue;
+				if (gridMask & 2)
+				{
+					line(position, -GridRadius, GridRadius, -position);
+					if (i != -GridHalfCells)
+						line(-GridRadius, position, -position, GridRadius);
+				}
+				if (gridMask & 8)
+				{
+					line(position, GridRadius, GridRadius, position);
+					if (i != -GridHalfCells)
+						line(-GridRadius, -position, -position, -GridRadius);
+				}
+			}
 		}
-		if (gridMask & 8)
-		{
-			const double first = std::floor((rect.top() - rect.right()) / step) * step;
-			for (double c = first; c <= rect.bottom() - rect.left(); c += step)
-				painter->drawLine(QPointF(rect.left(), rect.left() + c), QPointF(rect.right(), rect.right() + c));
-		}
-
-		pen.setColor(QColor(91, 112, 132));
-		painter->setPen(pen);
-		painter->drawLine(QPointF(0.0, rect.top()), QPointF(0.0, rect.bottom()));
-		painter->drawLine(QPointF(rect.left(), 0.0), QPointF(rect.right(), 0.0));
 	}
 
 	void drawForeground(QPainter* painter, const QRectF& rect) override
@@ -442,7 +458,7 @@ public:
 	{
 		scene = new QGraphicsScene(window);
 		view = new DeckView(scene, window);
-		scene->setSceneRect(-40.0, -40.0, 80.0, 80.0);
+		scene->setSceneRect(GridBounds());
 
 		QAction* newAction = MakeAction("New spacecraft", "dp_New", "Start a new spacecraft (Ctrl+N).");
 		newAction->setShortcut(QKeySequence::New);
@@ -466,6 +482,7 @@ public:
 		QObject::connect(detailsAction, &QAction::toggled, window, [this](bool visible) { SetLayerVisible(DetailKind, visible); });
 		QObject::connect(gridAction, &QAction::toggled, window, [this](bool visible) {
 			view->gridVisible = visible;
+			SetLayerVisible(GridLabelKind, visible);
 			view->viewport()->update();
 		});
 
@@ -535,10 +552,6 @@ public:
 		QWidget* central = new QWidget(window);
 		QVBoxLayout* layout = new QVBoxLayout(central);
 		layout->setContentsMargins(6, 4, 6, 4);
-		summary = new QLabel(central);
-		summary->setTextFormat(Qt::PlainText);
-		summary->setWordWrap(true);
-		layout->addWidget(summary);
 		layout->addWidget(view, 1);
 		window->setCentralWidget(central);
 
@@ -825,7 +838,7 @@ public:
 	{
 		modified = true;
 		RefreshHeaderControls();
-		UpdateSummary();
+		UpdateTitle();
 		ShowOverview();
 		window->statusBar()->showMessage(QStringLiteral("Design settings updated. Session edits are not saved."));
 	}
@@ -833,6 +846,18 @@ public:
 	void FitDeck()
 	{
 		view->fitInView(deckBounds, Qt::KeepAspectRatio);
+		// Leave screen-space room for labels centered on the grid's outer corners.
+		QFont labelFont = window->font();
+		labelFont.setPixelSize(16);
+		const QFontMetricsF metrics(labelFont);
+		const double horizontalPadding = metrics.boundingRect(QStringLiteral("Starboard Quarter")).width() * 0.5 + 12.0;
+		const double verticalPadding = metrics.height() * 0.5 + 12.0;
+		const double width = std::max(1, view->viewport()->width());
+		const double height = std::max(1, view->viewport()->height());
+		const double scale = std::max(0.1, std::min((width - horizontalPadding * 2.0) / width,
+			(height - verticalPadding * 2.0) / height));
+		view->scale(scale, scale);
+		view->centerOn(deckBounds.center());
 	}
 
 	void SetToolMode(ToolMode mode)
@@ -885,7 +910,7 @@ public:
 		{
 			modified = true;
 			IndexDecks();
-			UpdateSummary();
+			UpdateTitle();
 			ShowDeck(deck, false);
 		}
 		window->statusBar()->showMessage(result.error.isEmpty()
@@ -1008,6 +1033,30 @@ public:
 		}
 	}
 
+	void AddGridLabels(const QFont& font)
+	{
+		struct GridLabel { const char* text; int x; int y; };
+		static const GridLabel labels[] = {
+			{ "Fore", 0, 1 }, { "Aft", 0, -1 },
+			{ "Port", -1, 0 }, { "Starboard", 1, 0 },
+			{ "Port Quarter", -1, -1 }, { "Starboard Quarter", 1, -1 },
+			{ "Port Fore", -1, 1 }, { "Starboard Fore", 1, 1 }
+		};
+		for (const GridLabel& entry : labels)
+		{
+			QGraphicsSimpleTextItem* label = scene->addSimpleText(QString::fromLatin1(entry.text), font);
+			label->setFlag(QGraphicsItem::ItemIgnoresTransformations);
+			label->setAcceptedMouseButtons(Qt::NoButton);
+			label->setBrush(QColor::fromRgbF(0.3, 0.4, 0.5));
+			label->setZValue(30.0);
+			const QPointF center = label->boundingRect().center();
+			label->setTransform(QTransform::fromTranslate(-center.x(), -center.y()));
+			label->setPos(ScenePoint(QPointF(entry.x * GridRadius, entry.y * GridRadius)));
+			label->setData(RecordKind, GridLabelKind);
+			label->setVisible(view->gridVisible);
+		}
+	}
+
 	void ShowDeck(int deck, bool fit = true)
 	{
 		deck = std::max(AuLegacyShip::MinimumDeck, std::min(AuLegacyShip::MaximumDeck, deck));
@@ -1025,6 +1074,7 @@ public:
 		int warningCount = 0;
 		QFont labelFont = window->font();
 		labelFont.setPixelSize(16);
+		AddGridLabels(labelFont);
 		for (int index : roomDecks.value(deck))
 		{
 			const AuLegacyShip::Room& room = design.rooms[index];
@@ -1083,7 +1133,7 @@ public:
 		if (warningCount > geometryWarnings.size())
 			geometryWarnings.append(QStringLiteral("... and %1 more invalid boundaries").arg(warningCount - geometryWarnings.size()));
 		const double margin = AuLegacyShip::GridSpacing * 1.5;
-		deckBounds = hasBounds ? bounds.adjusted(-margin, -margin, margin, margin) : QRectF(-40.0, -40.0, 80.0, 80.0);
+		deckBounds = (hasBounds ? GridBounds().united(bounds) : GridBounds()).adjusted(-margin, -margin, margin, margin);
 		const double extent = AuLegacyShip::GridSpacing * 66.0;
 		scene->setSceneRect(QRectF(-extent, -extent, extent * 2.0, extent * 2.0).united(deckBounds));
 		view->emptyMessage = hasBounds ? QString() : (warningCount
@@ -1129,13 +1179,10 @@ public:
 		occupiedDeckCount = occupied.size();
 	}
 
-	void UpdateSummary()
+	void UpdateTitle()
 	{
 		window->setWindowTitle(QStringLiteral("%1%2 \u2014 Legacy Spacecraft Designer")
 			.arg(modified ? QStringLiteral("*") : QString(), DisplayName()));
-		summary->setText(QStringLiteral("%1 \u2014 %2 rooms, %3 details, %4 occupied decks \u2014 %5; saving is not available yet")
-			.arg(DisplayName()).arg(design.rooms.size()).arg(design.details.size()).arg(occupiedDeckCount)
-			.arg(modified ? QStringLiteral("session edits") : QStringLiteral("no session edits")));
 	}
 
 	void SetDesign(const QString& path, AuLegacyShip::Design&& incoming)
@@ -1146,7 +1193,7 @@ public:
 		loaded = true;
 		modified = false;
 		IndexDecks();
-		UpdateSummary();
+		UpdateTitle();
 		editPanel->setEnabled(true);
 		RefreshHeaderControls();
 		SetToolMode(toolMode);
@@ -1165,7 +1212,6 @@ public:
 	QCheckBox* streamline;
 	QComboBox* minimumTech;
 	QLabel* toolLabel;
-	QLabel* summary;
 	QLabel* coordinates;
 	QPlainTextEdit* inspector;
 	QAction* roomsAction;
@@ -1186,7 +1232,7 @@ public:
 	QStringList geometryWarnings;
 	QMap<int, QVector<int> > roomDecks;
 	QMap<int, QVector<int> > detailDecks;
-	QRectF deckBounds = QRectF(-40.0, -40.0, 80.0, 80.0);
+	QRectF deckBounds = GridBounds();
 	ToolMode toolMode = InspectMode;
 	int selectedRoomType = 2;
 	int currentDeck = 0;
