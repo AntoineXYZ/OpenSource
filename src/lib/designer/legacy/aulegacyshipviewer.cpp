@@ -2,18 +2,24 @@
 #include "aulegacyship.h"
 #include "aulegacyshipedit.h"
 #include "aulegacyshipgeometry.h"
+#include "aulegacyshipicons.h"
 
 #include <QAction>
 #include <QActionGroup>
 #include <QCloseEvent>
 #include <QComboBox>
+#include <QCheckBox>
 #include <QCursor>
 #include <QDir>
+#include <QDockWidget>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFrame>
 #include <QGraphicsItem>
 #include <QGraphicsScene>
 #include <QGraphicsView>
+#include <QGridLayout>
+#include <QHBoxLayout>
 #include <QKeySequence>
 #include <QLabel>
 #include <QMap>
@@ -22,19 +28,20 @@
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QPainter>
-#include <QPalette>
 #include <QPlainTextEdit>
 #include <QSet>
 #include <QSettings>
 #include <QScrollBar>
+#include <QScrollArea>
 #include <QShowEvent>
 #include <QSpinBox>
-#include <QSplitter>
 #include <QStandardPaths>
 #include <QStatusBar>
 #include <QStringList>
 #include <QStyleOptionGraphicsItem>
-#include <QToolBar>
+#include <QTabWidget>
+#include <QTextBrowser>
+#include <QToolButton>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QWheelEvent>
@@ -78,14 +85,20 @@ struct RoomChoice
 {
 	int type;
 	const char* name;
+	const char* icon;
 };
 
 const RoomChoice RoomChoices[] = {
-	{ 1, "Barracks" }, { 2, "Bridge" }, { 3, "Brig" }, { 4, "Officer Cabin" },
-	{ 5, "Hold" }, { 6, "Hall" }, { 7, "Crew Cabin" }, { 8, "Engine Room" },
-	{ 9, "Fuel Cell" }, { 10, "Galley" }, { 11, "Gravity Well" }, { 13, "Vehicle Bay" },
-	{ 14, "Lounge" }, { 15, "Open to Deck Below" }, { 16, "Sensor Room" }, { 17, "Shield Room" },
-	{ 18, "Sickbay" }, { 19, "Stateroom" }, { 20, "Transporter Room" }, { 21, "Weapon Bay" }
+	{ 1, "Barracks", "dp_Barracks" }, { 2, "Bridge", "dp_Bridge" },
+	{ 3, "Brig", "dp_Brig" }, { 4, "Officer Cabin", "dp_CaptCabin" },
+	{ 5, "Hold", "dp_Cargo" }, { 6, "Hall", "dp_Corridor" },
+	{ 7, "Crew Cabin", "dp_CrewCabin" }, { 8, "Engine Room", "dp_EngineRoom" },
+	{ 9, "Fuel Cell", "dp_Fuel" }, { 10, "Galley", "dp_Galley" },
+	{ 11, "Gravity Well", "dp_GravityWell" }, { 13, "Vehicle Bay", "dp_LandingBay" },
+	{ 14, "Lounge", "dp_Lounge" }, { 15, "Open to Deck Below", "dp_OpenToBelow" },
+	{ 16, "Sensor Room", "dp_SensorRoom" }, { 17, "Shield Room", "dp_ShieldRoom" },
+	{ 18, "Sickbay", "dp_SickBay" }, { 19, "Stateroom", "dp_Stateroom" },
+	{ 20, "Transporter Room", "dp_TransporterRoom" }, { 21, "Weapon Bay", "dp_WeaponBay" }
 };
 
 QString RoomName(int type)
@@ -370,19 +383,19 @@ public:
 		view = new DeckView(scene, window);
 		scene->setSceneRect(-40.0, -40.0, 80.0, 80.0);
 
-		QAction* newAction = new QAction(QStringLiteral("&New spacecraft"), window);
+		QAction* newAction = MakeAction("New spacecraft", "dp_New", "Start a new spacecraft (Ctrl+N).");
 		newAction->setShortcut(QKeySequence::New);
 		QObject::connect(newAction, &QAction::triggered, window, &AuLegacyShipViewer::NewDesign);
-		QAction* openAction = new QAction(QStringLiteral("&Open .ship..."), window);
+		QAction* openAction = MakeAction("Open .ship...", "dp_Load", "Open a 2016 spacecraft design (Ctrl+O).");
 		openAction->setShortcut(QKeySequence::Open);
 		QObject::connect(openAction, &QAction::triggered, window, &AuLegacyShipViewer::ChooseFile);
-		QAction* fitAction = new QAction(QStringLiteral("&Fit deck"), window);
+		QAction* saveAction = UnavailableAction("Save spacecraft", "dp_Save", "Saving .ship files is not available yet.");
+		QAction* fitAction = MakeAction("Fit deck", "dp_ShowDesignPlane", "Fit the current deck in the view (F).");
 		fitAction->setShortcut(QKeySequence(QStringLiteral("F")));
 		QObject::connect(fitAction, &QAction::triggered, window, [this]() { FitDeck(); });
 		roomsAction = new QAction(QStringLiteral("Rooms"), window);
-		detailsAction = new QAction(QStringLiteral("Details"), window);
-		gridAction = new QAction(QStringLiteral("Grid"), window);
-		gridAction->setToolTip(QStringLiteral("Show the selected grid line families. Lines thin at distant zoom levels; painting always uses the original grid."));
+		detailsAction = new QAction(QStringLiteral("Equipment markers"), window);
+		gridAction = MakeAction("Grid", "dp_ShowDesignPlane", "Show the selected grid line families.");
 		for (QAction* action : { roomsAction, detailsAction, gridAction })
 		{
 			action->setCheckable(true);
@@ -395,23 +408,76 @@ public:
 			view->viewport()->update();
 		});
 
+		QActionGroup* tools = new QActionGroup(window);
+		tools->setExclusive(true);
+		inspectAction = MakeAction("Inspect", "dp_Select", "Select a room or equipment marker to inspect it.");
+		eraseAction = MakeAction("Erase room cells", "dp_DelRoomCells", "Erase cells from the current deck.");
+		for (QAction* action : { inspectAction, eraseAction })
+		{
+			action->setCheckable(true);
+			tools->addAction(action);
+		}
+		inspectAction->setChecked(true);
+		QObject::connect(inspectAction, &QAction::triggered, window, [this]() { SetToolMode(InspectMode); });
+		QObject::connect(eraseAction, &QAction::triggered, window, [this]() { SetToolMode(EraseMode); });
+		for (const RoomChoice& choice : RoomChoices)
+		{
+			QAction* action = MakeAction(choice.name, choice.icon,
+				qPrintable(QStringLiteral("Paint %1 cells on the current deck. Room Number distinguishes rooms of the same type.").arg(QString::fromLatin1(choice.name))));
+			action->setCheckable(true);
+			tools->addAction(action);
+			roomActions.insert(choice.type, action);
+			const int type = choice.type;
+			QObject::connect(action, &QAction::triggered, window, [this, type]() {
+				selectedRoomType = type;
+				SetToolMode(PaintMode);
+			});
+		}
+
+		roomNumber = new QSpinBox(window);
+		roomNumber->setRange(1, 256);
+		roomNumber->setWrapping(true);
+		roomNumber->setButtonSymbols(QAbstractSpinBox::NoButtons);
+		roomNumber->setAlignment(Qt::AlignCenter);
+		roomNumber->setAccessibleName(QStringLiteral("Room number"));
+		roomNumber->setToolTip(QStringLiteral("Room Number: distinguishes rooms of the same type on the same deck. Values wrap from 256 to 1."));
+		deckCombo = new QComboBox(window);
+		deckCombo->setAccessibleName(QStringLiteral("Current deck"));
+		deckCombo->setMinimumContentsLength(12);
+		QObject::connect(deckCombo, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
+			window, [this](int index) { if (index >= 0) ShowDeck(deckCombo->itemData(index).toInt()); });
+		deckUpAction = MakeAction("Raise design grid", "dp_DeckAbove", "Move the design grid up one deck.");
+		deckDownAction = MakeAction("Lower design grid", "dp_DeckBelow", "Move the design grid down one deck.");
+		QObject::connect(deckUpAction, &QAction::triggered, window, [this]() { ChangeDeck(1); });
+		QObject::connect(deckDownAction, &QAction::triggered, window, [this]() { ChangeDeck(-1); });
+		const char* lineIcons[] = { "dp_Grid0", "dp_Grid45", "dp_Grid90", "dp_Grid135" };
+		const char* lineTips[] = { "Lateral grid lines (on the beam).", "Diagonal grid lines (to the port quarter).",
+			"Longitudinal grid lines (fore and aft).", "Diagonal grid lines (to the starboard quarter)." };
+		for (int i = 0; i < 4; ++i)
+		{
+			lineActions[i] = MakeAction(lineTips[i], lineIcons[i], lineTips[i]);
+			lineActions[i]->setCheckable(true);
+			lineActions[i]->setChecked((5 & (1 << i)) != 0);
+			QObject::connect(lineActions[i], &QAction::toggled, window, [this](bool) { UpdateGrid(); });
+		}
+
 		window->menuBar()->setNativeMenuBar(false);
 		const QString menuStyle = QStringLiteral(
-			"QMenuBar, QMenu { background: #141b23; color: #dce5ef; }"
-			"QMenuBar { border-bottom: 1px solid #344454; }"
+			"QMenuBar, QMenu { background: #080b12; color: #dce5ef; }"
+			"QMenuBar { border-bottom: 1px solid #38577e; }"
 			"QMenuBar::item { background: transparent; padding: 5px 10px; }"
-			"QMenuBar::item:selected { background: #30465b; }"
-			"QMenuBar::item:pressed { background: #3c5972; }"
-			"QMenu { border: 1px solid #344454; padding: 4px; }"
+			"QMenuBar::item:selected, QMenu::item:selected { background: #183254; }"
+			"QMenu { border: 1px solid #38577e; padding: 4px; }"
 			"QMenu::item { padding: 6px 28px; }"
-			"QMenu::item:selected { background: #30465b; color: #ffffff; }"
-			"QMenu::separator { height: 1px; background: #344454; margin: 4px 8px; }"
-			"QMenuBar::item:disabled, QMenu::item:disabled { color: #7e8b99; }");
+			"QMenu::separator { height: 1px; background: #38577e; margin: 4px 8px; }"
+			"QMenu::item:disabled { color: #657285; }");
 		window->menuBar()->setStyleSheet(menuStyle);
 		QMenu* fileMenu = window->menuBar()->addMenu(QStringLiteral("&File"));
 		fileMenu->setStyleSheet(menuStyle);
 		fileMenu->addAction(newAction);
 		fileMenu->addAction(openAction);
+		fileMenu->addAction(saveAction);
+		fileMenu->addSeparator();
 		closeAction = fileMenu->addAction(QStringLiteral("&Close"));
 		closeAction->setShortcut(QKeySequence::Close);
 		QObject::connect(closeAction, &QAction::triggered, window, [this]() {
@@ -426,135 +492,106 @@ public:
 		QMenu* viewMenu = window->menuBar()->addMenu(QStringLiteral("&View"));
 		viewMenu->setStyleSheet(menuStyle);
 		viewMenu->addAction(fitAction);
+		viewMenu->addAction(inspectAction);
 		viewMenu->addSeparator();
 		viewMenu->addAction(roomsAction);
 		viewMenu->addAction(detailsAction);
 		viewMenu->addAction(gridAction);
 
-		QToolBar* toolbar = window->addToolBar(QStringLiteral("Legacy spacecraft"));
-		toolbar->setMovable(false);
-		toolbar->setStyleSheet(QStringLiteral(
-			"QToolBar { background: #141b23; border: 0; border-bottom: 1px solid #344454; spacing: 4px; padding: 4px; }"
-			"QToolBar QLabel { color: #dce5ef; background: transparent; }"
-			"QToolBar::separator { background: #344454; width: 1px; margin: 4px 6px; }"
-			"QToolButton { color: #dce5ef; background: transparent; border-image: none;"
-			" border: 1px solid transparent; border-radius: 3px; padding: 5px 8px; }"
-			"QToolButton:checked { background: #24394b; border-color: #50728f; }"
-			"QToolButton:hover { background: #30465b; border-color: #6084a3; }"
-			"QToolButton:pressed { background: #3c5972; }"
-			"QToolButton:disabled { color: #7e8b99; background: transparent; border-color: transparent; }"
-			"QComboBox { color: #dce5ef; background: #1d2833; border-image: none;"
-			" border: 1px solid #50728f; border-radius: 3px; padding: 4px 24px 4px 8px; }"
-			"QComboBox:hover, QComboBox:focus { border-color: #89b9de; }"
-			"QComboBox:on { background: #30465b; }"
-			"QComboBox:disabled { color: #7e8b99; border-color: #344454; }"
-			"QComboBox::drop-down { subcontrol-origin: padding; subcontrol-position: top right;"
-			" width: 20px; border: 0; border-image: none; background: #24394b; }"
-			"QComboBox QAbstractItemView { background: #1d2833; color: #dce5ef;"
-			" border: 1px solid #50728f; selection-background-color: #30465b; selection-color: #ffffff; }"
-			"QSpinBox { color: #dce5ef; background: #1d2833; border: 1px solid #50728f;"
-			" border-radius: 3px; padding: 4px 6px; selection-background-color: #30465b; }"
-			"QSpinBox:disabled { color: #7e8b99; border-color: #344454; }"
-			"QSpinBox::up-button, QSpinBox::down-button { background: #24394b; border: 0; }"));
-		QPalette controlsPalette = toolbar->palette();
-		for (QPalette::ColorRole role : { QPalette::WindowText, QPalette::Text, QPalette::ButtonText })
-		{
-			controlsPalette.setColor(role, QColor(220, 229, 239));
-			controlsPalette.setColor(QPalette::Disabled, role, QColor(126, 139, 153));
-		}
-		toolbar->setPalette(controlsPalette);
-		fileMenu->setPalette(controlsPalette);
-		viewMenu->setPalette(controlsPalette);
-		toolbar->addAction(newAction);
-		toolbar->addAction(openAction);
-		toolbar->addAction(fitAction);
-		toolbar->addSeparator();
-		toolbar->addWidget(new QLabel(QStringLiteral("  Deck: "), toolbar));
-		deckCombo = new QComboBox(toolbar);
-		deckCombo->setAccessibleName(QStringLiteral("Displayed deck"));
-		deckCombo->setMinimumContentsLength(16);
-		deckCombo->setEnabled(false);
-		toolbar->addWidget(deckCombo);
-		QObject::connect(deckCombo, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
-			window, [this](int index) { if (index >= 0) ShowDeck(deckCombo->itemData(index).toInt()); });
-		toolbar->addSeparator();
-		toolbar->addAction(roomsAction);
-		toolbar->addAction(detailsAction);
-		toolbar->addAction(gridAction);
-
-		window->addToolBarBreak();
-		editToolbar = window->addToolBar(QStringLiteral("Legacy room cells"));
-		editToolbar->setMovable(false);
-		editToolbar->setStyleSheet(toolbar->styleSheet());
-		editToolbar->setPalette(controlsPalette);
-		QActionGroup* tools = new QActionGroup(window);
-		tools->setExclusive(true);
-		const QString toolNames[] = { QStringLiteral("Inspect"), QStringLiteral("Paint"), QStringLiteral("Erase Cells") };
-		for (int mode = InspectMode; mode <= EraseMode; ++mode)
-		{
-			QAction* action = editToolbar->addAction(toolNames[mode]);
-			action->setCheckable(true);
-			action->setChecked(mode == InspectMode);
-			tools->addAction(action);
-			QObject::connect(action, &QAction::triggered, window, [this, mode]() { SetToolMode(ToolMode(mode)); });
-		}
-		editToolbar->addSeparator();
-		editToolbar->addWidget(new QLabel(QStringLiteral("Room: "), editToolbar));
-		roomType = new QComboBox(editToolbar);
-		roomType->setAccessibleName(QStringLiteral("Room type to paint"));
-		for (const RoomChoice& choice : RoomChoices)
-			roomType->addItem(QString::fromLatin1(choice.name), choice.type);
-		roomType->setCurrentIndex(roomType->findData(2));
-		editToolbar->addWidget(roomType);
-		editToolbar->addWidget(new QLabel(QStringLiteral("Number: "), editToolbar));
-		roomNumber = new QSpinBox(editToolbar);
-		roomNumber->setRange(0, 255);
-		roomNumber->setWrapping(true);
-		roomNumber->setValue(0);
-		roomNumber->setAccessibleName(QStringLiteral("Room number to paint"));
-		roomNumber->setToolTip(QStringLiteral("Distinguishes rooms of the same type on this deck. This is the room subtype, not its record ID."));
-		editToolbar->addWidget(roomNumber);
-		editToolbar->addSeparator();
-		editToolbar->addWidget(new QLabel(QStringLiteral("Grid: "), editToolbar));
-		const QString lineNames[] = { QStringLiteral("0\u00b0"), QStringLiteral("45\u00b0"),
-			QStringLiteral("90\u00b0"), QStringLiteral("135\u00b0") };
-		const QString lineTips[] = { QStringLiteral("Lateral grid lines (on the beam)"),
-			QStringLiteral("Diagonal grid lines (port quarter)"), QStringLiteral("Longitudinal grid lines (fore and aft)"),
-			QStringLiteral("Diagonal grid lines (starboard quarter)") };
-		for (int i = 0; i < 4; ++i)
-		{
-			lineActions[i] = editToolbar->addAction(lineNames[i]);
-			lineActions[i]->setCheckable(true);
-			lineActions[i]->setChecked((5 & (1 << i)) != 0);
-			lineActions[i]->setToolTip(lineTips[i]);
-			QObject::connect(lineActions[i], &QAction::toggled, window, [this](bool) { UpdateGrid(); });
-		}
-		editToolbar->setEnabled(false);
-		roomType->setEnabled(false);
-		roomNumber->setEnabled(false);
-
 		QWidget* central = new QWidget(window);
 		QVBoxLayout* layout = new QVBoxLayout(central);
-		summary = new QLabel(QStringLiteral("Legacy spacecraft designer \u2014 session edits only; saving is not available yet"), central);
+		layout->setContentsMargins(6, 4, 6, 4);
+		summary = new QLabel(central);
 		summary->setTextFormat(Qt::PlainText);
 		summary->setWordWrap(true);
 		layout->addWidget(summary);
-		QSplitter* splitter = new QSplitter(Qt::Horizontal, central);
-		splitter->addWidget(view);
-		inspector = new QPlainTextEdit(splitter);
-		inspector->setReadOnly(true);
-		inspector->setAccessibleName(QStringLiteral("Legacy design and selected record information"));
-		inspector->setMinimumWidth(240);
-		splitter->addWidget(inspector);
-		splitter->setStretchFactor(0, 1);
-		splitter->setStretchFactor(1, 0);
-		splitter->setSizes(QList<int>() << 850 << 310);
-		layout->addWidget(splitter, 1);
-		QLabel* legend = new QLabel(QStringLiteral("X right, Y up; coordinates in feet. Full grid cells: 5.656854249 ft. "
-			"Colors group numeric room types; detail colors and shapes group numeric detail types."), central);
-		legend->setWordWrap(true);
-		layout->addWidget(legend);
+		layout->addWidget(view, 1);
 		window->setCentralWidget(central);
+
+		toolDock = new QDockWidget(QStringLiteral("Spacecraft Design (F6)"), window);
+		toolDock->setObjectName(QStringLiteral("LegacySpacecraftTools"));
+		toolDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+		toolDock->setStyleSheet(QStringLiteral(
+			"QDockWidget { color: #d5e3fa; background: #000000; font-size: 12px; }"
+			"QDockWidget::title { background: #07152d; border: 1px solid #315986; padding: 4px; }"
+			"QWidget#LegacyPalette { background: #000000; color: #d5e3fa; }"
+			"QToolButton { background: transparent; color: #d5e3fa; border: 1px solid transparent; border-radius: 2px; padding: 0; }"
+			"QToolButton:hover { border-color: #668fc8; background: #10233e; }"
+			"QToolButton:checked { border-color: #8da7d0; background: #1e3459; }"
+			"QToolButton:pressed { background: #294c7b; }"
+			"QToolButton:disabled { color: #606979; }"
+			"QSpinBox, QComboBox { background: #102442; color: #d5e3fa; border: 1px solid #40618d; padding: 2px; }"
+			"QComboBox QAbstractItemView { background: #0a1c3b; color: #d5e3fa; selection-background-color: #294c7b; }"
+			"QLabel, QCheckBox { color: #d5e3fa; background: transparent; }"
+			"QTabWidget::pane { border: 1px solid #55709a; }"
+			"QTabBar::tab { color: #b7cff3; background: #081834; padding: 3px 9px; }"
+			"QTabBar::tab:selected { background: #16305c; }"
+			"QTextBrowser, QPlainTextEdit { background: #081a40; color: #b8cef5; border: 0; padding: 3px; }"));
+		QWidget* panel = new QWidget(toolDock);
+		panel->setObjectName(QStringLiteral("LegacyPalette"));
+		QVBoxLayout* panelLayout = new QVBoxLayout(panel);
+		panelLayout->setContentsMargins(4, 4, 4, 4);
+		panelLayout->setSpacing(4);
+		editPanel = new QWidget(panel);
+		editPanel->setObjectName(QStringLiteral("LegacyPalette"));
+		BuildPalette(editPanel, newAction, openAction, saveAction);
+		panelLayout->addWidget(editPanel);
+		QHBoxLayout* deckRow = new QHBoxLayout;
+		deckRow->addWidget(new QLabel(QStringLiteral("Deck"), panel));
+		deckRow->addWidget(deckCombo, 1);
+		QToolButton* fit = new QToolButton(panel);
+		fit->setDefaultAction(fitAction);
+		fit->setToolButtonStyle(Qt::ToolButtonTextOnly);
+		deckRow->addWidget(fit);
+		QToolButton* inspect = new QToolButton(panel);
+		inspect->setDefaultAction(inspectAction);
+		inspect->setIconSize(QSize(16, 16));
+		inspect->setAccessibleName(QStringLiteral("Inspect rooms and equipment"));
+		deckRow->addWidget(inspect);
+		panelLayout->addLayout(deckRow);
+		toolLabel = new QLabel(panel);
+		toolLabel->setWordWrap(true);
+		panelLayout->addWidget(toolLabel);
+		informationTabs = new QTabWidget(panel);
+		QTextBrowser* tips = new QTextBrowser(informationTabs);
+		tips->setOpenExternalLinks(false);
+		tips->setHtml(QStringLiteral(
+			"<b>NEW SPACECRAFT DESIGN TIPS</b><br>"
+			"- All the buttons on this window have tooltips.<br>"
+			"- Start by painting the floor of a room, such as the Bridge.<br>"
+			"- Move the design grid up and down using the deck buttons.<br>"
+			"- Combine the four grid directions to change the cell shape.<br>"
+			"- Room Number distinguishes rooms of the same type on the same deck. Change it before painting a separate room.<br>"
+			"- Left click or drag to paint. Select Erase Room Cells to erase.<br>"
+			"- Middle drag pans; the mouse wheel zooms.<br>"
+			"- Use the selection arrow to inspect rooms and equipment.<br><br>"
+			"<b>CURRENT EDITOR</b><br>"
+			"Room painting and erasing are available. Equipment placement, saving, and 3D viewing are not available yet; their buttons are disabled.<br><br>"
+			"<b>WHEN FINISHED</b><br>"
+			"Edits last for this session. New, Open and Exit ask before discarding changes.<br>"
+			"F6 hides or shows this panel. Drag its title to dock it elsewhere or float it beside the deck view."));
+		informationTabs->addTab(tips, QStringLiteral("Tips"));
+		inspector = new QPlainTextEdit(informationTabs);
+		inspector->setReadOnly(true);
+		inspector->setAccessibleName(QStringLiteral("Selected room or equipment record"));
+		informationTabs->addTab(inspector, QStringLiteral("Selection"));
+		informationTabs->setMinimumHeight(130);
+		panelLayout->addWidget(informationTabs, 1);
+		QScrollArea* panelScroll = new QScrollArea(toolDock);
+		panelScroll->setFrameShape(QFrame::NoFrame);
+		panelScroll->setWidgetResizable(true);
+		panelScroll->setWidget(panel);
+		toolDock->setWidget(panelScroll);
+		toolDock->setMinimumWidth(380);
+		window->addDockWidget(Qt::LeftDockWidgetArea, toolDock);
+		window->resizeDocks(QList<QDockWidget*>() << toolDock, QList<int>() << 380, Qt::Horizontal);
+		QAction* showTools = toolDock->toggleViewAction();
+		showTools->setText(QStringLiteral("Spacecraft Design tools"));
+		showTools->setShortcut(QKeySequence(Qt::Key_F6));
+		toolDock->addAction(showTools);
+		viewMenu->addSeparator();
+		viewMenu->addAction(showTools);
+
 		coordinates = new QLabel(QStringLiteral("X \u2014   Y \u2014 ft"), window);
 		window->statusBar()->addPermanentWidget(coordinates);
 		view->cursorMoved = [this](const QPointF& point) {
@@ -572,6 +609,193 @@ public:
 		view->cellEntered = std::function<void(const QPointF&)>();
 	}
 
+	QAction* MakeAction(const char* text, const char* icon, const char* tip)
+	{
+		QAction* action = new QAction(AuLegacyShipIcon(QString::fromLatin1(icon)), QString::fromLatin1(text), window);
+		action->setToolTip(QString::fromLatin1(tip));
+		return action;
+	}
+
+	QAction* UnavailableAction(const char* text, const char* icon, const char* reason)
+	{
+		QAction* action = MakeAction(text, icon, reason);
+		action->setToolTip(QStringLiteral("%1\n%2").arg(QString::fromLatin1(text), QString::fromLatin1(reason)));
+		action->setEnabled(false);
+		return action;
+	}
+
+	void AddButton(QGridLayout* layout, QAction* action, int row, int column)
+	{
+		QToolButton* button = new QToolButton(layout->parentWidget());
+		button->setDefaultAction(action);
+		button->setAccessibleName(action->text());
+		button->setIconSize(QSize(16, 16));
+		button->setFixedSize(22, 22);
+		button->setToolButtonStyle(Qt::ToolButtonIconOnly);
+		layout->addWidget(button, row, column, Qt::AlignCenter);
+	}
+
+	void BuildPalette(QWidget* parent, QAction* newAction, QAction* openAction, QAction* saveAction)
+	{
+		QGridLayout* outer = new QGridLayout(parent);
+		outer->setContentsMargins(0, 0, 0, 0);
+		outer->setSpacing(2);
+		AddButton(outer, newAction, 0, 1);
+		AddButton(outer, openAction, 0, 2);
+		AddButton(outer, saveAction, 0, 3);
+		AddButton(outer, UnavailableAction("Rendering mode", "dp_RenderMode", "3D viewing is not available yet."), 1, 0);
+		AddButton(outer, UnavailableAction("Gravity", "dp_Gravity", "Avatar movement is not available in the deck view."), 1, 1);
+		AddButton(outer, UnavailableAction("Check paths", "dp_Check", "Path checking is not available yet."), 1, 2);
+		AddButton(outer, UnavailableAction("Burn design CD", "dp_BurnCD", "In-world design publishing is not available here."), 1, 3);
+		AddButton(outer, deckUpAction, 2, 0);
+		AddButton(outer, lineActions[2], 2, 1);
+		AddButton(outer, lineActions[0], 2, 2);
+		AddButton(outer, UnavailableAction("Erase current deck", "dp_DelDeck", "Whole-deck erasure is not available yet. Use Erase Room Cells."), 2, 4);
+		AddButton(outer, deckDownAction, 3, 0);
+		AddButton(outer, lineActions[1], 3, 1);
+		AddButton(outer, lineActions[3], 3, 2);
+		AddButton(outer, UnavailableAction("Move or copy", "dp_Move", "Moving and copying rooms is not available yet."), 3, 4);
+
+		QWidget* roomPalette = new QWidget(parent);
+		QGridLayout* rooms = new QGridLayout(roomPalette);
+		rooms->setContentsMargins(0, 0, 0, 0);
+		rooms->setSpacing(2);
+		rooms->setColumnMinimumWidth(8, 6);
+		rooms->setColumnStretch(8, 1);
+		QAction* drawMode = MakeAction("Room mode: draw", "dp_RoomMode0", "Draw room cells using the selected room type. Changing a whole room's type is not available yet.");
+		QObject::connect(drawMode, &QAction::triggered, window, [this]() { SetToolMode(PaintMode); });
+		AddButton(rooms, drawMode, 0, 0);
+		AddButton(rooms, eraseAction, 1, 0);
+		AddButton(rooms, UnavailableAction("Erase room", "dp_DelRoom", "Whole-room erasure is not available yet. Use Erase Room Cells."), 2, 0);
+		const int roomTypes[3][7] = { {1, 2, 3, 7, 8, 13, 9}, {10, 11, 6, 5, 4, 15, 14}, {16, 17, 18, 19, 20, 21, 0} };
+		for (int row = 0; row < 3; ++row)
+			for (int column = 0; column < 7; ++column)
+				if (roomTypes[row][column])
+					AddButton(rooms, roomActions.value(roomTypes[row][column]), row, column + 1);
+		QAction* roomUp = MakeAction("Increase room number", "dp_RoomIdUp", "Increase Room Number; wraps after 256.");
+		QAction* roomDown = MakeAction("Decrease room number", "dp_RoomIdDown", "Decrease Room Number; wraps before 1.");
+		QObject::connect(roomUp, &QAction::triggered, roomNumber, &QSpinBox::stepUp);
+		QObject::connect(roomDown, &QAction::triggered, roomNumber, &QSpinBox::stepDown);
+		AddButton(rooms, roomUp, 0, 9);
+		rooms->addWidget(roomNumber, 1, 9);
+		AddButton(rooms, roomDown, 2, 9);
+		outer->addWidget(roomPalette, 0, 6, 4, 8);
+
+		QFrame* equipmentPalette = new QFrame(parent);
+		equipmentPalette->setStyleSheet(QStringLiteral("QFrame { border-top: 1px solid #2e466f; } QToolButton, QLabel { border-top: 0; }"));
+		QGridLayout* equipment = new QGridLayout(equipmentPalette);
+		equipment->setContentsMargins(0, 6, 0, 3);
+		equipment->setSpacing(2);
+		struct EquipmentButton { const char* name; const char* icon; int row; int column; };
+		const EquipmentButton buttons[] = {
+			{"Erase equipment", "dp_DelDetail", 0, 0}, {"Captain's chair", "dp_CmdConsole", 0, 1},
+			{"Helm", "dp_PilotConsole", 0, 2}, {"Engineer station", "dp_EngineerConsole", 0, 3},
+			{"Shield station", "dp_ShieldConsole", 0, 4}, {"Sensor station", "dp_SensorConsole", 0, 5},
+			{"Navigator station", "dp_NavConsole", 0, 6}, {"Fire control station", "dp_FireControlConsole", 0, 7},
+			{"Power relay station", "dp_PowerConsole", 0, 8}, {"Medic station", "dp_SurgeryConsole", 0, 9},
+			{"Transporter station", "dp_TransporterConsole", 0, 10}, {"Top/bottom turret", "dp_TurretTopBottom", 0, 11},
+			{"Side turret", "dp_TurretSide", 0, 12}, {"Increase equipment brush size", "dp_BrushSzUp", 0, 14},
+			{"Erase equipment area", "dp_DelDetails", 1, 0}, {"Maneuver drive", "dp_ManeuverDrive", 1, 2},
+			{"Power plant", "dp_PowerPlant", 1, 3}, {"Shields", "dp_Shield", 1, 4},
+			{"Sensors", "dp_Sensor", 1, 5}, {"FTL drive", "dp_WormholeDrive", 1, 6},
+			{"Weapon system", "dp_Weapon", 1, 7}, {"Life support", "dp_LifeSupport", 1, 8},
+			{"Surgery unit", "dp_OperatingTable", 1, 9}, {"Transporter pad", "dp_TransporterPad", 1, 10},
+			{"Single berth", "dp_Berth0", 1, 11}, {"Double berth", "dp_Berth2", 1, 12},
+			{"Hull door", "dp_HullDoor", 2, 1}, {"Crew door", "dp_CrewDoor", 2, 2},
+			{"Door", "dp_Door", 2, 3}, {"Large hull door", "dp_CargoDoor", 2, 4},
+			{"Large crew door", "dp_LargeCrewDoor", 2, 5}, {"Large door", "dp_LargeDoor", 2, 6},
+			{"Hull hatch", "dp_HullHatch", 2, 7}, {"Crew hatch", "dp_CrewHatch", 2, 8},
+			{"Hatch", "dp_Hatch", 2, 9}, {"Wall opening", "dp_WallOpening", 2, 10},
+			{"Hull opening", "dp_HullOpening", 2, 11}, {"Railing", "dp_Railing", 2, 12},
+			{"Decrease equipment brush size", "dp_BrushSzDown", 2, 14}, {"Troop station", "Troop", 3, 6},
+			{"Straight stairs", "dp_StairsStraight", 3, 8}, {"Stairs turning left", "dp_StairsTurnLeft", 3, 9},
+			{"Stairs turning right", "dp_StairsTurnRight", 3, 10}, {"Stairs U-turn left", "dp_StairsUTurnLeft", 3, 11},
+			{"Stairs U-turn right", "dp_StairsUTurnRight", 3, 12}, {"Pivot point", "dp_PivotPoint", 4, 0},
+			{"Contrail emitter", "dp_ContrailEmitter", 4, 1}, {"Weapon emitter", "dp_WeaponEmitter", 4, 2},
+			{"Game table", "dp_GameTable", 4, 4}, {"Space transport", "c_CommercialAircraft", 4, 6},
+			{"Space fighter F1", "c_SpaceFighter", 4, 7}, {"Space fighter F2", "c_SpaceFighter2", 4, 8},
+			{"APC", "c_APC", 4, 10}, {"Motorbike", "c_MotorBike", 4, 11}, {"SUV", "c_Suv", 4, 12}
+		};
+		for (const EquipmentButton& button : buttons)
+			AddButton(equipment, UnavailableAction(button.name, button.icon, "Equipment placement and erasure are not available yet."), button.row, button.column);
+		QLabel* brushSize = new QLabel(QStringLiteral("1"), equipmentPalette);
+		brushSize->setAlignment(Qt::AlignCenter);
+		brushSize->setToolTip(QStringLiteral("Equipment brush size. Equipment editing is not available yet."));
+		equipment->addWidget(brushSize, 1, 13, 1, 2);
+		outer->addWidget(equipmentPalette, 4, 0, 1, 14);
+
+		AddButton(outer, UnavailableAction("System modules", "UpgradeModule", "Module allocation is not available yet."), 5, 0);
+		armorUpAction = MakeAction("Increase armor", "dp_ArmorIncrease", "Increase armor, up to 10.");
+		armorDownAction = MakeAction("Decrease armor", "dp_ArmorDecrease", "Decrease armor, down to 0.");
+		QObject::connect(armorUpAction, &QAction::triggered, window, [this]() { ChangeArmor(1); });
+		QObject::connect(armorDownAction, &QAction::triggered, window, [this]() { ChangeArmor(-1); });
+		AddButton(outer, armorUpAction, 5, 2);
+		AddButton(outer, armorDownAction, 5, 3);
+		streamline = new QCheckBox(QStringLiteral("Streamline Hull"), parent);
+		streamline->setToolTip(QStringLiteral("Use a streamlined hull. Changes the design setting; 3D rendering is not available yet."));
+		QObject::connect(streamline, &QCheckBox::toggled, window, [this](bool enabled) {
+			if (loaded && bool(design.header.streamline) != enabled)
+			{
+				design.header.streamline = enabled ? 1 : 0;
+				HeaderChanged();
+			}
+		});
+		outer->addWidget(streamline, 5, 5, 1, 7);
+		minimumTech = new QComboBox(parent);
+		minimumTech->setAccessibleName(QStringLiteral("Minimum tech level"));
+		minimumTech->setToolTip(QStringLiteral("Minimum technology level for manufacturing. The displayed levels are 1 through 32."));
+		for (int level = 31; level >= 0; --level)
+			minimumTech->addItem(QString::number(level + 1), level);
+		QObject::connect(minimumTech, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), window, [this](int index) {
+			if (loaded && index >= 0 && design.header.minimumTechLevel != minimumTech->itemData(index).toInt())
+			{
+				design.header.minimumTechLevel = quint8(minimumTech->itemData(index).toInt());
+				HeaderChanged();
+			}
+		});
+		outer->addWidget(minimumTech, 5, 12, 1, 2);
+	}
+
+	void ChangeDeck(int delta)
+	{
+		const int index = deckCombo->currentIndex();
+		if (index < 0) return;
+		const int next = deckCombo->findData(deckCombo->itemData(index).toInt() + delta);
+		if (next >= 0) deckCombo->setCurrentIndex(next);
+	}
+
+	void ChangeArmor(int delta)
+	{
+		if (!loaded || (delta > 0 && design.header.armor >= 10) || (delta < 0 && design.header.armor == 0))
+			return;
+		design.header.armor = quint8(int(design.header.armor) + delta);
+		HeaderChanged();
+	}
+
+	void RefreshHeaderControls()
+	{
+		streamline->blockSignals(true);
+		streamline->setChecked(design.header.streamline != 0);
+		streamline->blockSignals(false);
+		minimumTech->blockSignals(true);
+		minimumTech->setCurrentIndex(minimumTech->findData(design.header.minimumTechLevel));
+		minimumTech->blockSignals(false);
+		armorUpAction->setEnabled(loaded && design.header.armor < 10);
+		armorDownAction->setEnabled(loaded && design.header.armor > 0);
+		const QString armor = QStringLiteral("Current armor: %1 (0-10).").arg(design.header.armor);
+		armorUpAction->setToolTip(QStringLiteral("Increase armor\n") + armor);
+		armorDownAction->setToolTip(QStringLiteral("Decrease armor\n") + armor);
+	}
+
+	void HeaderChanged()
+	{
+		modified = true;
+		RefreshHeaderControls();
+		UpdateSummary();
+		ShowOverview();
+		window->statusBar()->showMessage(QStringLiteral("Design settings updated. Session edits are not saved."));
+	}
+
 	void FitDeck()
 	{
 		view->fitInView(deckBounds, Qt::KeepAspectRatio);
@@ -581,8 +805,14 @@ public:
 	{
 		toolMode = mode;
 		view->SetEditing(loaded && mode != InspectMode, mode == EraseMode);
-		roomType->setEnabled(loaded && mode == PaintMode);
-		roomNumber->setEnabled(loaded && mode == PaintMode);
+		inspectAction->setChecked(mode == InspectMode);
+		eraseAction->setChecked(mode == EraseMode);
+		if (mode == PaintMode)
+			roomActions.value(selectedRoomType)->setChecked(true);
+		roomNumber->setEnabled(loaded);
+		toolLabel->setText(mode == InspectMode ? QStringLiteral("Selection tool: click a room or equipment marker.")
+			: (mode == EraseMode ? QStringLiteral("Erase Room Cells: left click or drag.")
+				: QStringLiteral("Paint %1: left click or drag.").arg(RoomName(selectedRoomType))));
 		window->statusBar()->showMessage(mode == InspectMode
 			? QStringLiteral("Click a room or detail to inspect it. Middle drag pans; the wheel zooms.")
 			: QStringLiteral("Left click or drag to %1 cells. Middle drag pans. Edits are not saved.")
@@ -608,9 +838,9 @@ public:
 		if (!loaded || toolMode == InspectMode || deckCombo->currentIndex() < 0)
 			return;
 		const int deck = deckCombo->currentData().toInt();
-		const int type = toolMode == EraseMode ? -1 : roomType->currentData().toInt();
+		const int type = toolMode == EraseMode ? -1 : selectedRoomType;
 		const AuLegacyShip::CellEditResult result = AuLegacyShip::EditCell(design, deck, cursor,
-			view->gridMask, type, quint8(roomNumber->value()));
+			view->gridMask, type, quint8(roomNumber->value() - 1));
 		if (!result.accepted)
 		{
 			window->statusBar()->showMessage(result.error.isEmpty()
@@ -655,7 +885,7 @@ public:
 		const QString absent = QStringLiteral("(not stored in this format version)");
 		text += QStringLiteral("Minimum tech level: %1\nHull volume: %2\nStructure: %3\nTech level: %4\n\n"
 			"Current rooms: %5\nCurrent details: %6\nDecks with geometry: %7\nSource bytes read: %8\n")
-			.arg(header.minimumTechLevel).arg(hasExtendedHeader ? QString::number(header.hullVolume) : absent)
+			.arg(int(header.minimumTechLevel) + 1).arg(hasExtendedHeader ? QString::number(header.hullVolume) : absent)
 			.arg(hasExtendedHeader ? QString::number(header.structure) : absent)
 			.arg(hasExtendedHeader ? QString::number(header.techLevel) : absent)
 			.arg(design.rooms.size()).arg(design.details.size()).arg(occupiedDeckCount).arg(design.bytesConsumed);
@@ -689,8 +919,8 @@ public:
 			.arg(int(room.deck) * AuLegacyShip::DeckHeight).arg(room.designId).arg(index)
 			.arg(room.streamOffset < 0 ? QStringLiteral("new room") : Hex(room.streamOffset, 8))
 			.arg(room.packedVertices.size());
-		text += QStringLiteral("Room type: %1\nRoom number (subtype): %2 (%3)\nBoundary: %4\n\nPoints (X, Y feet):\n")
-			.arg(RoomName(room.roomType)).arg(room.roomSubtype).arg(Hex(room.roomSubtype))
+		text += QStringLiteral("Room type: %1\nRoom Number: %2\nStored subtype: %3\nBoundary: %4\n\nPoints (X, Y feet):\n")
+			.arg(RoomName(room.roomType)).arg(int(room.roomSubtype) + 1).arg(Hex(room.roomSubtype))
 			.arg(room.IsEllipse() ? QStringLiteral("ellipse from three control points") : QStringLiteral("polygon"));
 		const int limit = std::min(room.packedVertices.size(), 64);
 		for (int i = 0; i < limit; ++i)
@@ -733,13 +963,21 @@ public:
 		const int kind = item->data(RecordKind).toInt();
 		const int index = item->data(RecordIndex).toInt();
 		if (kind == RoomKind && index >= 0 && index < design.rooms.size())
+		{
 			inspector->setPlainText(RoomInformation(index));
+			informationTabs->setCurrentWidget(inspector);
+		}
 		else if (kind == DetailKind && index >= 0 && index < design.details.size())
+		{
 			inspector->setPlainText(DetailInformation(index));
+			informationTabs->setCurrentWidget(inspector);
+		}
 	}
 
 	void ShowDeck(int deck, bool fit = true)
 	{
+		deckUpAction->setEnabled(loaded && deck < AuLegacyShip::MaximumDeck);
+		deckDownAction->setEnabled(loaded && deck > AuLegacyShip::MinimumDeck);
 		const QTransform previousTransform = view->transform();
 		const int previousHorizontal = view->horizontalScrollBar()->value();
 		const int previousVertical = view->verticalScrollBar()->value();
@@ -773,7 +1011,7 @@ public:
 			item->setData(RecordKind, RoomKind);
 			item->setData(RecordIndex, index);
 			item->setToolTip(QStringLiteral("%1 %2 | record %3 | type %4 (%5) | deck %6")
-				.arg(RoomName(room.roomType)).arg(room.roomSubtype).arg(room.roomId)
+				.arg(RoomName(room.roomType)).arg(int(room.roomSubtype) + 1).arg(room.roomId)
 				.arg(room.roomType).arg(Hex(room.roomType)).arg(deck));
 			item->setVisible(roomsAction->isChecked());
 			bounds = hasBounds ? bounds.united(polygon.boundingRect()) : polygon.boundingRect();
@@ -872,7 +1110,8 @@ public:
 		modified = false;
 		IndexDecks(0);
 		UpdateSummary();
-		editToolbar->setEnabled(true);
+		editPanel->setEnabled(true);
+		RefreshHeaderControls();
 		SetToolMode(toolMode);
 		ShowDeck(0);
 	}
@@ -883,9 +1122,13 @@ public:
 	QGraphicsScene* scene;
 	DeckView* view;
 	QComboBox* deckCombo;
-	QComboBox* roomType;
 	QSpinBox* roomNumber;
-	QToolBar* editToolbar;
+	QWidget* editPanel;
+	QDockWidget* toolDock;
+	QTabWidget* informationTabs;
+	QCheckBox* streamline;
+	QComboBox* minimumTech;
+	QLabel* toolLabel;
 	QLabel* summary;
 	QLabel* coordinates;
 	QPlainTextEdit* inspector;
@@ -893,6 +1136,13 @@ public:
 	QAction* detailsAction;
 	QAction* gridAction;
 	QAction* closeAction;
+	QAction* inspectAction;
+	QAction* eraseAction;
+	QAction* deckUpAction;
+	QAction* deckDownAction;
+	QAction* armorUpAction;
+	QAction* armorDownAction;
+	QMap<int, QAction*> roomActions;
 	QAction* lineActions[4];
 	std::function<void()> exitHandler;
 	AuLegacyShip::Design design;
@@ -902,6 +1152,7 @@ public:
 	QMap<int, QVector<int> > detailDecks;
 	QRectF deckBounds = QRectF(-40.0, -40.0, 80.0, 80.0);
 	ToolMode toolMode = InspectMode;
+	int selectedRoomType = 2;
 	int occupiedDeckCount = 0;
 	bool loaded = false;
 	bool modified = false;
@@ -944,7 +1195,7 @@ bool AuLegacyShipViewer::ConfirmDiscardChanges()
 	if (!m_Impl->modified)
 		return true;
 	return QMessageBox::question(this, QStringLiteral("Discard session edits?"),
-		QStringLiteral("This design has unsaved room edits. Saving .ship files is not available yet.\n\n"
+		QStringLiteral("This design has unsaved edits. Saving .ship files is not available yet.\n\n"
 			"Discard these edits and continue?"), QMessageBox::Discard | QMessageBox::Cancel,
 		QMessageBox::Cancel) == QMessageBox::Discard;
 }
@@ -966,6 +1217,7 @@ void AuLegacyShipViewer::NewDesign()
 	AuLegacyShip::Design incoming;
 	incoming.header.version = 2;
 	incoming.header.versionStateRaw = 0x20;
+	incoming.header.streamline = 1;
 	incoming.header.scalarSlots.fill(0, 8);
 	m_Impl->SetDesign(QString(), std::move(incoming));
 }

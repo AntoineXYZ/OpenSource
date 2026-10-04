@@ -7,7 +7,9 @@ Read-only recovery from the fully analyzed x64 Shores of Hazeron.exe and
 AuAtom13.dll. Raw decompilation, embedded UI strings, vtable bytes, and the
 previous IDA baseline's Qt metadata-labelled action handlers are preserved in
 ghidra-control-evidence.json. No old executable, Ghidra database, game database,
-or design file was modified. These findings do not enable editing in the viewer.
+or design file was modified during recovery. The later native editing and panel
+milestones are documented separately in PAINTING-MILESTONE.txt and
+PANEL-RECOVERY.txt.
 
 Addresses below are virtual addresses in the indicated original binary. Qt slot
 names come from the old executable's QMetaObject data and its dispatcher. The
@@ -113,8 +115,11 @@ Embedded UI strings describe the two modes as "Room Mode - Draw" (1404788e0)
 and "Room Mode - Change Room Type" (spacecraft version 1404e0b10). Draw fills
 new room cells and replaces existing ones. Change Room Type acts on an existing
 room and is prohibited if the result would duplicate the room type and room
-number on the same deck. Use backend FillRoomCell recovery to associate the
-numeric mode values with these labels; the toggle alone does not prove that.
+number on the same deck. The toggle alone does not associate numeric values
+with the two labels.
+The later AuTabDesign::TimerUpdate recovery at 1402d33e0 establishes the UI
+mapping directly: mode 0 displays dp_RoomMode0 and "Room Mode - Draw";
+mode 1 displays dp_RoomMode1 and "Room Mode - Change Room Type".
 
 The user-facing number is NOT the 16-bit persistent room record ID:
 
@@ -129,8 +134,14 @@ The user-facing number is NOT the 16-bit persistent room record ID:
   DaAtom::DesignRoomIdUp/Down, then environment Increment/DecrementRoomId.
 * DaDesignPlane::IncrementRoomId (1802fdfb0) and DecrementRoomId (1802fd070)
   increment/decrement the byte at plane+0x3ba with no range clamp, then request
-  an update. The storage therefore wraps modulo 256. This establishes the
-  underlying byte range; a distinct formatted display offset is not assumed.
+  an update. The storage therefore wraps modulo 256.
+* The later panel recovery resolves the display offset. AuTabDesign::TimerUpdate
+  (1402d33e0) reads the byte through 1402edc80, formats value + 1, and sets the
+  Room Number button at panel+0xb8. Visible Room Numbers are therefore 1..256,
+  corresponding to stored subtype 0..255. Initial subtype 0 is shown as 1;
+  incrementing visible 256 wraps to 1 and decrementing visible 1 wraps to 256.
+  See pseudocode/Shores_of_Hazeron.exe_1402d33e0_AuTabDesign_TimerUpdate_IDA.txt
+  and PANEL-RECOVERY.txt for the captured evidence and exact panel layout.
 * The recovered data layer identifies the value carried into room painting as
   the 8-bit subtype (rsub). In explanatory UI it can be called room number,
   while the file/model must preserve subtype and persistent room ID separately.

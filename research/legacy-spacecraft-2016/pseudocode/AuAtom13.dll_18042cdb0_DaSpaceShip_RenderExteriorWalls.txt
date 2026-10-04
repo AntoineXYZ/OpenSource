@@ -1,0 +1,765 @@
+Read-only Ghidra capture for 3D surface recovery, 2026-10-05. Not original source.
+
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* protected: void __cdecl DaSpaceShip::RenderExteriorWalls(class QList<class AuTriSpacecraft> &
+   __ptr64,enum DaSpaceShip::SHIP_TEXTURE,enum DnRoom::WALLTYPE,class QList<class AuPointArray>
+   const & __ptr64,class QList<class QList<unsigned short> > const & __ptr64,class QList<class
+   QList<unsigned int> > const & __ptr64,bool,class DnSpaceShip const & __ptr64)const __ptr64 */
+
+void __thiscall
+DaSpaceShip::RenderExteriorWalls
+          (DaSpaceShip *this,QList<AuTriSpacecraft> *param_1,SHIP_TEXTURE param_2,WALLTYPE param_3,
+          QList<AuPointArray> *param_4,QList<QList<unsigned_short>_> *param_5,
+          QList<QList<unsigned_int>_> *param_6,bool param_7,DnSpaceShip *param_8)
+
+{
+  Data *pDVar1;
+  ushort uVar2;
+  WALLTYPE WVar3;
+  uint uVar4;
+  Data *pDVar5;
+  DaSpaceShip *this_00;
+  uint *puVar6;
+  AuPoint *pAVar7;
+  AuPoint *pAVar8;
+  undefined8 *puVar9;
+  double *pdVar10;
+  longlong lVar11;
+  longlong lVar12;
+  longlong lVar13;
+  QVector<AuPoint> *pQVar14;
+  undefined8 *puVar15;
+  QList<unsigned_int> *this_01;
+  longlong *plVar16;
+  longlong lVar17;
+  int *piVar18;
+  int iVar19;
+  int iVar20;
+  double *pdVar21;
+  QList<AuTriSpacecraft> *pQVar22;
+  Data *pDVar23;
+  WALLTYPE WVar24;
+  float fVar25;
+  float fVar26;
+  float fVar27;
+  float fVar28;
+  double dVar29;
+  double dVar30;
+  float fVar31;
+  float fVar32;
+  float fVar33;
+  float fVar34;
+  float fVar35;
+  float fVar36;
+  float fVar37;
+  float fVar38;
+  float fVar39;
+  undefined1 auStackY_628 [32];
+  int local_588;
+  int local_584;
+  ushort local_580;
+  int local_56c;
+  longlong local_568;
+  int local_560;
+  WALLTYPE local_55c;
+  float local_558 [2];
+  undefined8 local_550;
+  float local_548;
+  float local_544;
+  uint local_540;
+  float local_53c;
+  float local_538;
+  float local_534;
+  Data *local_530;
+  float local_528;
+  float local_524;
+  QList<AuTriSpacecraft> *local_520;
+  double local_518;
+  double local_510;
+  double local_508;
+  double local_500;
+  double local_4f8;
+  double local_4f0;
+  double local_4e8;
+  double local_4e0;
+  longlong local_4d8;
+  double local_4d0;
+  double local_4c8;
+  double local_4c0;
+  double local_4b8;
+  AuPoint local_4b0 [24];
+  double local_498;
+  double local_490;
+  double local_488;
+  DaSpaceShip *local_480;
+  double local_478;
+  int local_470;
+  undefined8 local_468;
+  double local_460;
+  undefined8 local_458;
+  undefined8 local_450;
+  undefined8 uStack_448;
+  longlong *local_440;
+  DnSpaceShip *local_438;
+  QList<unsigned_int> *local_430;
+  double local_428;
+  undefined8 *local_420;
+  double local_418;
+  undefined8 local_410;
+  undefined8 local_408;
+  undefined8 uStack_400;
+  double local_3f8;
+  double local_3f0;
+  double local_3e8;
+  double local_3e0;
+  double local_3d8;
+  double local_3d0;
+  double local_3c8;
+  double local_3c0;
+  double local_3b8;
+  double local_3b0;
+  double local_3a8;
+  double local_3a0;
+  double local_398;
+  double local_390;
+  double local_388;
+  double local_380;
+  double local_378;
+  double local_370;
+  undefined8 local_368;
+  AuPoint local_360 [96];
+  undefined8 local_300;
+  undefined4 local_2f8;
+  undefined8 local_2e8;
+  double adStack_2e0 [2];
+  undefined8 uStack_2d0;
+  undefined8 local_2c8;
+  undefined8 uStack_2c0;
+  undefined8 local_2b8;
+  undefined8 uStack_2b0;
+  undefined8 local_2a8;
+  undefined8 uStack_2a0;
+  undefined8 local_298;
+  undefined8 uStack_290;
+  undefined8 local_288;
+  undefined8 uStack_280;
+  undefined8 local_278;
+  undefined8 uStack_270;
+  undefined8 local_268;
+  undefined8 uStack_260;
+  undefined8 local_258;
+  undefined8 uStack_250;
+  undefined8 local_248;
+  undefined8 uStack_240;
+  undefined8 local_238;
+  undefined8 uStack_230;
+  undefined8 local_228;
+  undefined8 uStack_220;
+  undefined8 local_218;
+  undefined8 uStack_210;
+  undefined8 local_208;
+  undefined8 uStack_200;
+  undefined8 local_1f8;
+  undefined8 uStack_1f0;
+  undefined8 local_1e8;
+  undefined8 uStack_1e0;
+  undefined8 local_1d8;
+  undefined8 uStack_1d0;
+  undefined8 local_1c8;
+  undefined8 uStack_1c0;
+  undefined8 local_1b8;
+  undefined8 local_1a8;
+  undefined8 uStack_1a0;
+  undefined8 local_198;
+  undefined8 uStack_190;
+  undefined8 local_188;
+  undefined8 uStack_180;
+  undefined8 local_178;
+  undefined8 uStack_170;
+  undefined8 local_168;
+  undefined8 uStack_160;
+  undefined8 local_158;
+  undefined8 uStack_150;
+  undefined8 local_148;
+  undefined8 uStack_140;
+  undefined8 local_138;
+  undefined8 uStack_130;
+  undefined8 local_128;
+  undefined8 uStack_120;
+  undefined8 local_118;
+  undefined8 uStack_110;
+  undefined8 local_108;
+  undefined8 uStack_100;
+  undefined8 local_f8;
+  undefined8 uStack_f0;
+  ulonglong local_e8;
+  
+                    /* 0x42cdb0  5931
+                       ?RenderExteriorWalls@DaSpaceShip@@IEBAXAEAV?$QList@VAuTriSpacecraft@@@@W4SHIP_TEXTURE@1@W4WALLTYPE@DnRoom@@AEBV?$QList@VAuPointArray@@@@AEBV?$QList@V?$QList@G@@@@AEBV?$QList@V?$QList@I@@@@_NAEBVDnSpaceShip@@@Z
+                        */
+  local_368 = 0xfffffffffffffffe;
+  local_e8 = DAT_180a0ecf0 ^ (ulonglong)auStackY_628;
+  local_438 = param_8;
+  local_55c = param_3;
+  local_520 = param_1;
+  local_480 = this;
+  ShipTexture(param_2,local_558,&local_524,&local_534,&local_538);
+  fVar39 = 50.0;
+  local_56c = 0;
+  local_300 = 0;
+  local_2f8 = 3;
+  if (param_7) {
+    local_2f8 = 0;
+    fVar39 = 0.0;
+  }
+  EffectTexture(this,0x1f,&local_544,&local_528,&local_53c,&local_548);
+  fVar25 = (local_534 - local_558[0]) * 0.6767767 + local_558[0];
+  fVar26 = (local_538 - local_524) * 0.6767767 + local_524;
+  fVar27 = (local_53c - local_544) * 0.6767767 + local_544;
+  fVar28 = (local_548 - local_528) * 0.6767767 + local_528;
+  lVar17 = *(longlong *)param_4;
+  puVar15 = (undefined8 *)(lVar17 + ((longlong)*(int *)(lVar17 + 8) + 2) * 8);
+  plVar16 = (longlong *)
+            (*(longlong *)param_5 + 0x10 + (longlong)*(int *)(*(longlong *)param_5 + 8) * 8);
+  this_01 = (QList<unsigned_int> *)
+            (*(longlong *)param_6 + ((longlong)*(int *)(*(longlong *)param_6 + 8) + 2) * 8);
+  fVar31 = local_534;
+  fVar32 = local_538;
+  fVar33 = local_53c;
+  fVar34 = local_548;
+  fVar35 = local_558[0];
+  fVar36 = local_524;
+  fVar37 = local_544;
+  fVar38 = local_528;
+  if (puVar15 != (undefined8 *)(lVar17 + ((longlong)*(int *)(lVar17 + 0xc) + 2) * 8)) {
+    do {
+      if (plVar16 ==
+          (longlong *)
+          (*(longlong *)param_5 + ((longlong)*(int *)(*(longlong *)param_5 + 0xc) + 2) * 8)) {
+        return;
+      }
+      if (this_01 ==
+          (QList<unsigned_int> *)
+          (*(longlong *)param_6 + ((longlong)*(int *)(*(longlong *)param_6 + 0xc) + 2) * 8)) {
+        return;
+      }
+      iVar20 = *(int *)(*(longlong *)*puVar15 + 4);
+      iVar19 = iVar20 + -1;
+      local_580 = *(ushort *)
+                   (*plVar16 + 0x10 + ((longlong)*(int *)(*plVar16 + 8) + (longlong)iVar19) * 8);
+      local_440 = plVar16;
+      local_430 = this_01;
+      local_420 = puVar15;
+      puVar6 = QList<unsigned_int>::operator[](this_01,iVar19);
+      local_540 = *puVar6;
+      AuPointArray::AuPointArray((AuPointArray *)&local_568);
+      local_530 = (Data *)shared_null_exref;
+      DnRoom::WallProfile((byte)(local_580 >> 8) & 0x1f,(uchar)local_438[0x15],
+                          (AuPointArray *)&local_568,(QList<DnRoom::WALLTYPE> *)&local_530);
+      pAVar7 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)*puVar15,iVar19);
+      local_4e0 = *(double *)pAVar7;
+      local_4b8 = *(double *)(pAVar7 + 8);
+      local_460 = *(double *)(pAVar7 + 0x10);
+      pAVar7 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)*puVar15,iVar20 + -2);
+      dVar29 = local_4b8 - *(double *)(pAVar7 + 8);
+      dVar30 = local_4e0 - *(double *)pAVar7;
+      if (ABS(dVar30) <= 1e-05) {
+        dVar30 = 0.0;
+      }
+      if (ABS(dVar29) <= 1e-05) {
+        dVar29 = 0.0;
+      }
+      if (dVar30 <= 0.0) {
+LAB_18042d118:
+        if ((dVar30 != 0.0) || (dVar29 <= 0.0)) {
+          if (0.0 <= dVar30) {
+LAB_18042d16a:
+            if ((dVar30 != 0.0) || (local_588 = 6, 0.0 <= dVar29)) {
+              local_588 = 7;
+            }
+          }
+          else if (dVar29 <= 0.0) {
+            if (dVar29 == 0.0) {
+              local_588 = 4;
+            }
+            else {
+              if (0.0 <= dVar29) goto LAB_18042d16a;
+              local_588 = 5;
+            }
+          }
+          else {
+            local_588 = 3;
+          }
+        }
+        else {
+          local_588 = 2;
+        }
+      }
+      else if (dVar29 == 0.0) {
+        local_588 = 0;
+      }
+      else {
+        if (dVar29 <= 0.0) goto LAB_18042d118;
+        local_588 = 1;
+      }
+      local_560 = 0;
+      local_4d8 = 0;
+      pQVar14 = (QVector<AuPoint> *)*puVar15;
+      if (0 < *(int *)(*(longlong *)pQVar14 + 4)) {
+        do {
+          iVar20 = local_560;
+          pAVar7 = QVector<AuPoint>::operator[](pQVar14,local_560);
+          local_428 = *(double *)pAVar7 - local_4e0;
+          local_418 = *(double *)(pAVar7 + 8) - local_4b8;
+          local_518 = *(double *)(pAVar7 + 0x10) - local_460;
+          if (ABS(local_428) <= 1e-05) {
+            local_428 = 0.0;
+          }
+          if (ABS(local_418) <= 1e-05) {
+            local_418 = 0.0;
+          }
+          if (ABS(local_518) <= 1e-05) {
+            local_518 = 0.0;
+          }
+          if (local_428 <= 0.0) {
+LAB_18042d26f:
+            if ((local_428 != 0.0) || (local_418 <= 0.0)) {
+              if (0.0 <= local_428) {
+LAB_18042d2e4:
+                if ((local_428 != 0.0) || (0.0 <= local_418)) {
+                  local_584 = 7;
+                  local_550 = 0x4015fdbbe9bba775;
+                }
+                else {
+                  local_584 = 6;
+                  local_550 = 0x4012d97c7f3321d2;
+                }
+              }
+              else if (local_418 <= 0.0) {
+                if (local_418 == 0.0) {
+                  local_584 = 4;
+                  local_550 = 0x400921fb54442d18;
+                }
+                else {
+                  if (0.0 <= local_418) goto LAB_18042d2e4;
+                  local_584 = 5;
+                  local_550 = 0x400f6a7a2955385e;
+                }
+              }
+              else {
+                local_584 = 3;
+                local_550 = 0x4002d97c7f3321d2;
+              }
+            }
+            else {
+              local_584 = 2;
+              local_550 = 0x3ff921fb54442d18;
+            }
+          }
+          else if (local_418 == 0.0) {
+            local_584 = 0;
+            local_550 = 0;
+          }
+          else {
+            if (local_418 <= 0.0) goto LAB_18042d26f;
+            local_584 = 1;
+            local_550 = 0x3fe921fb54442d18;
+          }
+          local_470 = iVar20 + 1;
+          pQVar14 = (QVector<AuPoint> *)*puVar15;
+          iVar19 = local_470;
+          if (*(int *)(*(longlong *)pQVar14 + 4) <= local_470) {
+            iVar19 = 0;
+          }
+          pAVar7 = QVector<AuPoint>::operator[](pQVar14,iVar20);
+          pAVar8 = QVector<AuPoint>::operator[](pQVar14,iVar19);
+          dVar30 = *(double *)pAVar8 - *(double *)pAVar7;
+          dVar29 = *(double *)(pAVar8 + 8) - *(double *)(pAVar7 + 8);
+          if (ABS(dVar30) <= 1e-05) {
+            dVar30 = 0.0;
+          }
+          if (ABS(dVar29) <= 1e-05) {
+            dVar29 = 0.0;
+          }
+          if (dVar30 <= 0.0) {
+LAB_18042d3be:
+            if ((dVar30 != 0.0) || (dVar29 <= 0.0)) {
+              if (0.0 <= dVar30) {
+LAB_18042d40c:
+                if ((dVar30 != 0.0) || (iVar20 = 6, 0.0 <= dVar29)) {
+                  iVar20 = 7;
+                }
+              }
+              else if (dVar29 <= 0.0) {
+                if (dVar29 == 0.0) {
+                  iVar20 = 4;
+                }
+                else {
+                  if (0.0 <= dVar29) goto LAB_18042d40c;
+                  iVar20 = 5;
+                }
+              }
+              else {
+                iVar20 = 3;
+              }
+            }
+            else {
+              iVar20 = 2;
+            }
+          }
+          else if (dVar29 == 0.0) {
+            iVar20 = 0;
+          }
+          else {
+            if (dVar29 <= 0.0) goto LAB_18042d3be;
+            iVar20 = 1;
+          }
+          local_588 = local_584 - local_588;
+          if (local_588 < 0) {
+            local_588 = local_588 + 8;
+          }
+          iVar20 = iVar20 - local_584;
+          if (iVar20 < 0) {
+            iVar20 = iVar20 + 8;
+          }
+          local_410 = *(undefined8 *)(&DAT_180a0e750 + (longlong)local_588 * 8);
+          local_408 = 0x3ff0000000000000;
+          uStack_400 = 0;
+          puVar9 = (undefined8 *)AuPoint::RotateZ((AuPoint *)&local_410,1.0);
+          local_410 = *puVar9;
+          local_408 = puVar9[1];
+          uStack_400 = puVar9[2];
+          local_458 = *(undefined8 *)(&DAT_180a0e750 + (longlong)iVar20 * 8);
+          local_450 = 0x3ff0000000000000;
+          uStack_448 = 0;
+          puVar9 = (undefined8 *)AuPoint::RotateZ((AuPoint *)&local_458,1.0);
+          this_00 = local_480;
+          uVar4 = local_540;
+          local_458 = *puVar9;
+          local_450 = puVar9[1];
+          uStack_448 = puVar9[2];
+          if ((local_540 != 0) && (local_55c - 1 < 2)) {
+            QReadWriteLock::lockForRead((QReadWriteLock *)(local_480 + 0x770));
+            iVar20 = DoorIndexDesignLocked(this_00,uVar4);
+            QReadWriteLock::unlock((QReadWriteLock *)(this_00 + 0x770));
+            if (-1 < iVar20) {
+              local_56c = AnimatedDoors(this_00);
+              if (iVar20 < local_56c) {
+                local_56c = iVar20 + 10;
+              }
+              else {
+                local_56c = local_56c + 9;
+              }
+              local_300 = CONCAT44(local_300._4_4_,local_56c);
+            }
+          }
+          local_468 = 0;
+          local_478 = 0.0;
+          WVar24 = 0;
+          local_3e0 = local_428;
+          local_3d8 = local_418;
+          local_3d0 = local_518;
+          dVar29 = local_518;
+          AuPoint::Unit((AuPoint *)&local_3e0);
+          local_588 = 0;
+          local_518 = 0.0;
+          if (0 < *(int *)(local_568 + 4)) {
+            do {
+              dVar30 = local_518;
+              WVar3 = local_55c;
+              if ((local_588 != 0) && (WVar24 == local_55c)) {
+                AuPoint::operator*((AuPoint *)&local_410,dVar29);
+                local_4c0 = local_478;
+                QVector<AuPoint>::operator[]((QVector<AuPoint> *)&local_568,local_588);
+                AuPoint::operator*((AuPoint *)&local_410,dVar29);
+                pAVar7 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)&local_568,local_588);
+                local_488 = *(double *)(pAVar7 + 0x10);
+                AuPoint::operator*((AuPoint *)&local_458,dVar29);
+                local_500 = local_478;
+                QVector<AuPoint>::operator[]((QVector<AuPoint> *)&local_568,local_588);
+                AuPoint::operator*((AuPoint *)&local_458,dVar29);
+                pAVar7 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)&local_568,local_588);
+                local_4e8 = *(double *)(pAVar7 + 0x10);
+                local_4d0 = local_4d0 + local_4e0;
+                local_4c8 = local_4c8 + local_4b8;
+                local_4c0 = local_4c0 + local_460;
+                local_498 = local_498 + local_4e0;
+                local_490 = local_490 + local_4b8;
+                local_488 = local_488 + local_460;
+                pAVar7 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)*puVar15,local_560);
+                local_510 = local_510 + *(double *)pAVar7;
+                local_508 = local_508 + *(double *)(pAVar7 + 8);
+                local_500 = local_500 + *(double *)(pAVar7 + 0x10);
+                pAVar7 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)*puVar15,local_560);
+                local_4f8 = local_4f8 + *(double *)pAVar7;
+                local_4f0 = local_4f0 + *(double *)(pAVar7 + 8);
+                local_4e8 = local_4e8 + *(double *)(pAVar7 + 0x10);
+                local_3f8 = local_4f8 - local_510;
+                dVar29 = local_4f0 - local_508;
+                local_3e8 = local_4e8 - local_500;
+                local_3f0 = dVar29;
+                AuPoint::Unit((AuPoint *)&local_3f8);
+                AuPoint::Cross((AuPoint *)&local_3f8,local_4b0);
+                AuPoint::Unit(local_4b0);
+                if (WVar3 == 3) {
+                  local_2e8 = 0x4006a09e6676c64a;
+                  adStack_2e0[0] = 0.0;
+                  adStack_2e0[1] = 0.0;
+                  uStack_2d0 = 0x4000000000000000;
+                  local_2c8 = 0;
+                  uStack_2c0 = 0xc000000000000000;
+                  local_2b8 = 0;
+                  uStack_2b0 = 0;
+                  local_2a8 = 0xc006a09e6676c64a;
+                  uStack_2a0 = 0xc000000000000000;
+                  local_298 = 0;
+                  uStack_290 = 0xc000000000000000;
+                  local_288 = 0xc006a09e6676c64a;
+                  uStack_280 = 0;
+                  local_278 = 0;
+                  uStack_270 = 0xc000000000000000;
+                  local_268 = 0;
+                  uStack_260 = 0x4000000000000000;
+                  local_258 = 0;
+                  uStack_250 = 0;
+                  local_248 = 0x4006a09e6676c64a;
+                  uStack_240 = 0x4000000000000000;
+                  local_238 = 0;
+                  uStack_230 = 0x4000000000000000;
+                  local_228 = 0x4000000000000000;
+                  uStack_220 = 0x4000000000000000;
+                  local_218 = 0;
+                  uStack_210 = 0;
+                  local_208 = 0x4000000000000000;
+                  uStack_200 = 0xc000000000000000;
+                  local_1f8 = 0xc000000000000000;
+                  uStack_1f0 = 0x4000000000000000;
+                  local_1e8 = 0;
+                  uStack_1e0 = 0;
+                  local_1d8 = 0x4000000000000000;
+                  uStack_1d0 = 0x4000000000000000;
+                  local_1c8 = 0;
+                  uStack_1c0 = 0x4006a09e6676c64a;
+                  local_1b8 = 0;
+                  local_380 = local_4f8 + local_4d0;
+                  dVar29 = local_4f0 + local_4c8;
+                  local_370 = local_4e8 + local_4c0;
+                  local_378 = dVar29;
+                  AuPoint::operator/((AuPoint *)&local_380,dVar29);
+                  pdVar21 = adStack_2e0 + 1;
+                  pAVar7 = (AuPoint *)&local_2e8;
+                  lVar17 = 0xd;
+                  do {
+                    pdVar10 = (double *)AuPoint::RotateZ(pAVar7,dVar29);
+                    pQVar22 = local_520;
+                    pdVar21[-2] = *pdVar10;
+                    pdVar21[-1] = pdVar10[1];
+                    *pdVar21 = pdVar10[2];
+                    pdVar21[-2] = local_398 + pdVar21[-2];
+                    dVar29 = local_390 + pdVar21[-1];
+                    pdVar21[-1] = dVar29;
+                    *pdVar21 = local_388 + *pdVar21;
+                    pAVar7 = pAVar7 + 0x18;
+                    pdVar21 = pdVar21 + 3;
+                    lVar17 = lVar17 + -1;
+                  } while (lVar17 != 0);
+                  local_1a8 = 0xc00000008;
+                  uStack_1a0 = 0x100000009;
+                  local_198 = 0x900000008;
+                  uStack_190 = 0x100000008;
+                  local_188 = 0x800000000;
+                  uStack_180 = 0x700000000;
+                  local_178 = 0xc00000009;
+                  uStack_170 = 0x30000000a;
+                  local_168 = 0xa00000009;
+                  uStack_160 = 0x300000009;
+                  local_158 = 0x900000002;
+                  uStack_150 = 0x100000002;
+                  local_148 = 0xc0000000a;
+                  uStack_140 = 0x50000000b;
+                  local_138 = 0xb0000000a;
+                  uStack_130 = 0x50000000a;
+                  local_128 = 0xa00000004;
+                  uStack_120 = 0x300000004;
+                  local_118 = 0xc0000000b;
+                  uStack_110 = 0x700000008;
+                  local_108 = 0x80000000b;
+                  uStack_100 = 0x70000000b;
+                  local_f8 = 0xb00000006;
+                  uStack_f0 = 0x500000006;
+                  ModelAdd(local_520,local_4b0,(int *)&local_300,fVar39,param_7,fVar31,fVar32,fVar33
+                           ,fVar34,(AuPoint *)&local_510,fVar31,fVar36,fVar33,fVar38,
+                           (AuPoint *)&local_2e8,fVar25,fVar26,fVar27,fVar28,(AuPoint *)&uStack_2d0)
+                  ;
+                  fVar35 = local_558[0];
+                  ModelAdd(pQVar22,local_4b0,(int *)&local_300,fVar39,param_7,fVar31,fVar32,fVar33,
+                           fVar34,(AuPoint *)&local_510,fVar25,fVar26,fVar27,fVar28,
+                           (AuPoint *)&uStack_2d0,local_558[0],fVar32,fVar37,fVar34,
+                           (AuPoint *)&local_2b8);
+                  ModelAdd(pQVar22,local_4b0,(int *)&local_300,fVar39,param_7,fVar31,fVar32,fVar33,
+                           fVar34,(AuPoint *)&local_4f8,fVar31,fVar36,fVar33,fVar38,
+                           (AuPoint *)&local_258,fVar25,fVar26,fVar27,fVar28,(AuPoint *)&uStack_240)
+                  ;
+                  ModelAdd(pQVar22,local_4b0,(int *)&local_300,fVar39,param_7,fVar31,fVar32,fVar33,
+                           fVar34,(AuPoint *)&local_4f8,fVar25,fVar26,fVar27,fVar28,
+                           (AuPoint *)&uStack_240,fVar35,fVar32,fVar37,fVar34,(AuPoint *)&local_2e8)
+                  ;
+                  ModelAdd(pQVar22,local_4b0,(int *)&local_300,fVar39,param_7,fVar31,fVar32,fVar33,
+                           fVar34,(AuPoint *)&local_498,fVar31,fVar36,fVar33,fVar38,
+                           (AuPoint *)&local_288,fVar25,fVar26,fVar27,fVar28,(AuPoint *)&uStack_270)
+                  ;
+                  ModelAdd(pQVar22,local_4b0,(int *)&local_300,fVar39,param_7,fVar31,fVar32,fVar33,
+                           fVar34,(AuPoint *)&local_498,fVar25,fVar26,fVar27,fVar28,
+                           (AuPoint *)&uStack_270,fVar35,fVar32,fVar37,fVar34,(AuPoint *)&local_258)
+                  ;
+                  ModelAdd(pQVar22,local_4b0,(int *)&local_300,fVar39,param_7,fVar31,fVar32,fVar33,
+                           fVar34,(AuPoint *)&local_4d0,fVar31,fVar36,fVar33,fVar38,
+                           (AuPoint *)&local_2b8,fVar25,fVar26,fVar27,fVar28,(AuPoint *)&uStack_2a0)
+                  ;
+                  ModelAdd(pQVar22,local_4b0,(int *)&local_300,fVar39,param_7,fVar31,fVar32,fVar33,
+                           fVar34,(AuPoint *)&local_4d0,fVar25,fVar26,fVar27,fVar28,
+                           (AuPoint *)&uStack_2a0,fVar35,fVar32,fVar37,fVar34,(AuPoint *)&local_288)
+                  ;
+                  dVar29 = AuPoint::Distance_2D((AuPoint *)&local_498,(AuPoint *)&local_4f8);
+                  if (1e-05 < dVar29 - 5.656854249) {
+                    ModelAdd(pQVar22,local_4b0,(int *)&local_300,fVar39,param_7,fVar35,fVar32,fVar37
+                             ,fVar34,(AuPoint *)&local_4d0,fVar31,fVar32,fVar33,fVar34,
+                             (AuPoint *)&local_288,fVar31,fVar36,fVar33,fVar38,(AuPoint *)&local_498
+                            );
+                    ModelAdd(pQVar22,local_4b0,(int *)&local_300,fVar39,param_7,fVar35,fVar32,fVar37
+                             ,fVar34,(AuPoint *)&local_4f8,fVar31,fVar32,fVar33,fVar34,
+                             (AuPoint *)&local_2e8,fVar31,fVar36,fVar33,fVar38,(AuPoint *)&local_510
+                            );
+                  }
+                  pQVar22 = local_520;
+                  piVar18 = (int *)&uStack_1a0;
+                  lVar17 = 0x10;
+                  do {
+                    lVar11 = (longlong)piVar18[-2];
+                    pAVar7 = (AuPoint *)(&local_2e8 + lVar11 * 3);
+                    lVar12 = (longlong)piVar18[-1];
+                    lVar13 = (longlong)*piVar18;
+                    local_3c8 = *(double *)(&local_2e8 + lVar13 * 3) - *(double *)pAVar7;
+                    local_3c0 = adStack_2e0[lVar13 * 3] - adStack_2e0[lVar11 * 3];
+                    local_3b8 = adStack_2e0[lVar13 * 3 + 1] - adStack_2e0[lVar11 * 3 + 1];
+                    AuPoint::Unit((AuPoint *)&local_3c8);
+                    local_3b0 = *(double *)(&local_2e8 + lVar12 * 3) - *(double *)pAVar7;
+                    dVar29 = adStack_2e0[lVar12 * 3] - adStack_2e0[lVar11 * 3];
+                    local_3a0 = adStack_2e0[lVar12 * 3 + 1] - adStack_2e0[lVar11 * 3 + 1];
+                    local_3a8 = dVar29;
+                    AuPoint::Unit((AuPoint *)&local_3b0);
+                    AuPoint::Cross((AuPoint *)&local_3c8,local_360);
+                    AuPoint::Unit(local_360);
+                    ModelAdd(pQVar22,local_360,(int *)&local_300,fVar39,param_7,fVar35,fVar36,fVar37
+                             ,fVar38,pAVar7,fVar35,fVar32,fVar37,fVar34,
+                             (AuPoint *)(&local_2e8 + lVar12 * 3),fVar31,fVar36,fVar33,fVar38,
+                             (AuPoint *)(&local_2e8 + lVar13 * 3));
+                    piVar18 = piVar18 + 3;
+                    lVar17 = lVar17 + -1;
+                    puVar15 = local_420;
+                    dVar30 = local_518;
+                  } while (lVar17 != 0);
+                }
+                else {
+                  ModelAdd(local_520,local_4b0,(int *)&local_300,fVar39,param_7,fVar35,fVar36,fVar37
+                           ,fVar38,(AuPoint *)&local_510,fVar35,fVar32,fVar37,fVar34,
+                           (AuPoint *)&local_4f8,fVar31,fVar32,fVar33,fVar34,(AuPoint *)&local_498);
+                  ModelAdd(local_520,local_4b0,(int *)&local_300,fVar39,param_7,fVar31,fVar32,fVar33
+                           ,fVar34,(AuPoint *)&local_498,fVar31,fVar36,fVar33,fVar38,
+                           (AuPoint *)&local_4d0,fVar35,fVar36,fVar37,fVar38,(AuPoint *)&local_510);
+                }
+              }
+              pAVar7 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)&local_568,local_588);
+              local_468 = *(undefined8 *)pAVar7;
+              local_478 = *(double *)(pAVar7 + 0x10);
+              if (1 < *(uint *)local_530) {
+                FUN_18047aa70(&local_530);
+              }
+              WVar24 = **(WALLTYPE **)
+                         (local_530 +
+                         ((longlong)(int)*(uint *)(local_530 + 8) + (longlong)dVar30) * 8 + 0x10);
+              local_588 = local_588 + 1;
+              local_518 = (double)((longlong)dVar30 + 1);
+              this_01 = local_430;
+              plVar16 = local_440;
+            } while (local_588 < *(int *)(local_568 + 4));
+          }
+          WVar24 = local_55c;
+          iVar20 = local_560;
+          if (local_540 != 0) {
+            if (local_55c - 1 < 2) {
+              local_56c = 0;
+            }
+            local_300 = CONCAT44(local_300._4_4_,local_56c);
+          }
+          if (local_580 != *(ushort *)(*plVar16 + 0x10 + (*(int *)(*plVar16 + 8) + local_4d8) * 8))
+          {
+            pQVar22 = local_520;
+            if (local_55c == 4) {
+              pAVar7 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)*puVar15,local_560);
+              pQVar22 = local_520;
+              RenderWallEndCap(local_480,local_520,(AuPointArray *)&local_568,(AuPoint *)&local_458,
+                               pAVar7,false,param_7);
+            }
+            uVar2 = *(ushort *)(*plVar16 + 0x10 + (*(int *)(*plVar16 + 8) + local_4d8) * 8);
+            if (((uVar2 ^ local_580) & 0x1f00) != 0) {
+              DnRoom::WallProfile((byte)(uVar2 >> 8) & 0x1f,(uchar)local_438[0x15],
+                                  (AuPointArray *)&local_568,(QList<DnRoom::WALLTYPE> *)&local_530);
+            }
+            local_580 = uVar2;
+            if (WVar24 == 4) {
+              pAVar7 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)*puVar15,iVar20);
+              RenderWallEndCap(local_480,pQVar22,(AuPointArray *)&local_568,(AuPoint *)&local_458,
+                               pAVar7,true,param_7);
+            }
+          }
+          pAVar7 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)*puVar15,iVar20);
+          local_4e0 = *(double *)pAVar7;
+          local_4b8 = *(double *)(pAVar7 + 8);
+          local_460 = *(double *)(pAVar7 + 0x10);
+          local_588 = local_584;
+          puVar6 = QList<unsigned_int>::operator[](this_01,iVar20);
+          local_540 = *puVar6;
+          local_560 = local_470;
+          local_4d8 = local_4d8 + 1;
+          pQVar14 = (QVector<AuPoint> *)*puVar15;
+        } while (local_470 < *(int *)(*(longlong *)pQVar14 + 4));
+      }
+      pDVar5 = local_530;
+      if (*(int *)local_530 == 0) {
+LAB_18042e691:
+        pDVar23 = local_530 + ((longlong)*(int *)(local_530 + 0xc) + 2) * 8;
+        pDVar1 = local_530 + ((longlong)*(int *)(local_530 + 8) + 2) * 8;
+        while (pDVar1 != pDVar23) {
+          pDVar23 = pDVar23 + -8;
+          operator_delete(*(void **)pDVar23);
+        }
+        QListData::dispose(pDVar5);
+      }
+      else if (*(int *)local_530 != -1) {
+        LOCK();
+        *(int *)local_530 = *(int *)local_530 + -1;
+        UNLOCK();
+        local_56c = (int)local_300;
+        fVar31 = local_534;
+        fVar32 = local_538;
+        fVar33 = local_53c;
+        fVar34 = local_548;
+        fVar35 = local_558[0];
+        fVar36 = local_524;
+        fVar37 = local_544;
+        fVar38 = local_528;
+        if (*(int *)local_530 == 0) goto LAB_18042e691;
+      }
+      AuPointArray::~AuPointArray((AuPointArray *)&local_568);
+      puVar15 = puVar15 + 1;
+      plVar16 = plVar16 + 1;
+      this_01 = this_01 + 8;
+    } while (puVar15 !=
+             (undefined8 *)
+             (*(longlong *)param_4 + (longlong)*(int *)(*(longlong *)param_4 + 0xc) * 8 + 0x10));
+  }
+  return;
+}
+
+

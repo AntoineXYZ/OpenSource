@@ -1,0 +1,561 @@
+Read-only Ghidra capture for 3D surface recovery, 2026-10-05. Not original source.
+
+/* protected: void __cdecl DaSpaceShip::RenderExterior(class QList<class AuTriSpacecraft> &
+   __ptr64,bool,class DnSpaceShip const & __ptr64,class DnDetailArray const & __ptr64,class
+   DnRoomArray const & __ptr64)const __ptr64 */
+
+void __thiscall
+DaSpaceShip::RenderExterior
+          (DaSpaceShip *this,QList<AuTriSpacecraft> *param_1,bool param_2,DnSpaceShip *param_3,
+          DnDetailArray *param_4,DnRoomArray *param_5)
+
+{
+  ushort *puVar1;
+  QList<unsigned_int> *pQVar2;
+  Data *pDVar3;
+  char cVar4;
+  undefined2 uVar5;
+  ushort uVar6;
+  uint uVar7;
+  longlong lVar8;
+  char *pcVar9;
+  int *piVar10;
+  AuPointArray *this_00;
+  bool bVar11;
+  longlong *plVar12;
+  undefined8 *puVar13;
+  AuPoint *pAVar14;
+  uint *puVar15;
+  AuPoint *pAVar16;
+  double *pdVar17;
+  uint uVar18;
+  ulonglong uVar19;
+  Data *pDVar20;
+  QList<unsigned_int> *this_01;
+  Data *pDVar21;
+  int iVar22;
+  int iVar23;
+  int iVar24;
+  ulonglong uVar25;
+  int iVar26;
+  int iVar27;
+  int iVar28;
+  double dVar29;
+  Data *local_238;
+  longlong local_230;
+  int local_228;
+  int local_224;
+  code *local_220;
+  int local_218;
+  int local_214;
+  longlong local_210;
+  longlong *local_208;
+  undefined2 local_200 [4];
+  Data *local_1f8;
+  double local_1f0;
+  double local_1e8;
+  double local_1e0;
+  Data *local_1d8;
+  Data *local_1d0;
+  undefined2 local_1c8;
+  undefined2 local_1c6;
+  undefined2 local_1c4;
+  undefined2 local_1c2;
+  undefined2 local_1c0 [2];
+  uint local_1bc;
+  longlong *local_1b8;
+  undefined4 *local_1b0;
+  uint local_1a8;
+  uint local_1a4;
+  int local_1a0;
+  uint local_19c;
+  uint local_198;
+  uint local_194;
+  uint local_190 [2];
+  double local_188;
+  double dStack_180;
+  double local_178;
+  double local_170;
+  double dStack_168;
+  double local_160;
+  double local_158;
+  double local_150;
+  double local_148;
+  Data *local_140;
+  Data *local_138;
+  undefined8 local_118;
+  
+                    /* 0x426360  5922
+                       ?RenderExterior@DaSpaceShip@@IEBAXAEAV?$QList@VAuTriSpacecraft@@@@_NAEBVDnSpaceShip@@AEBVDnDetailArray@@AEBVDnRoomArray@@@Z
+                        */
+  local_118 = 0xfffffffffffffffe;
+  DnFloorBuffer16::DnFloorBuffer16((DnFloorBuffer16 *)&local_210);
+  local_1d8 = (Data *)shared_null_exref;
+  local_1d0 = (Data *)shared_null_exref;
+  local_1f8 = (Data *)shared_null_exref;
+  iVar27 = *(int *)(this + 0x860);
+  if (iVar27 <= *(int *)(this + 0x7f8) + 1) {
+    do {
+      dVar29 = (double)iVar27 * 8.0;
+      QList<DnRoom>::cbegin((QList<DnRoom> *)param_5);
+      plVar12 = (longlong *)QList<DnRoom>::cend((QList<DnRoom> *)param_5);
+      if (local_1b8 != (longlong *)*plVar12) {
+        do {
+          lVar8 = *local_1b8;
+          if (*(char *)(lVar8 + 6) == iVar27) {
+            DnFloorBuffer16::FillFloor
+                      ((DnFloorBuffer16 *)&local_210,(AuPointArray *)(lVar8 + 0x10),
+                       (uint)*(byte *)(lVar8 + 7),*(uchar *)(lVar8 + 8));
+          }
+          local_1b8 = local_1b8 + 1;
+          puVar13 = (undefined8 *)QList<DnRoom>::cend((QList<DnRoom> *)param_5);
+        } while (local_1b8 != (longlong *)*puVar13);
+      }
+      local_218 = 0x204;
+      local_228 = 0;
+      local_214 = 0x204;
+      local_224 = 0;
+      RenderExteriorTops(this,param_1,0x19,4,dVar29,&local_218,&local_228,&local_214,&local_224,
+                         (DnFloorBuffer16 *)&local_210,param_2,param_3,param_4);
+      RenderExteriorTops(this,param_1,0x1a,5,dVar29,&local_218,&local_228,&local_214,&local_224,
+                         (DnFloorBuffer16 *)&local_210,param_2,param_3,param_4);
+      RenderExteriorTops(this,param_1,0x38,3,dVar29,&local_218,&local_228,&local_214,&local_224,
+                         (DnFloorBuffer16 *)&local_210,param_2,param_3,param_4);
+      RenderExteriorTops(this,param_1,0x17,2,dVar29,&local_218,&local_228,&local_214,&local_224,
+                         (DnFloorBuffer16 *)&local_210,param_2,param_3,param_4);
+      if (!param_2) {
+        RenderExteriorBottoms
+                  (this,param_1,0x12,4,dVar29,&local_218,&local_228,&local_214,&local_224,
+                   (DnFloorBuffer16 *)&local_210,param_2,param_3,param_4);
+      }
+      RenderExteriorBottoms
+                (this,param_1,0x1a,5,dVar29,&local_218,&local_228,&local_214,&local_224,
+                 (DnFloorBuffer16 *)&local_210,param_2,param_3,param_4);
+      RenderExteriorBottoms
+                (this,param_1,0x38,3,dVar29,&local_218,&local_228,&local_214,&local_224,
+                 (DnFloorBuffer16 *)&local_210,param_2,param_3,param_4);
+      RenderExteriorBottoms
+                (this,param_1,0x17,2,dVar29,&local_218,&local_228,&local_214,&local_224,
+                 (DnFloorBuffer16 *)&local_210,param_2,param_3,param_4);
+      iVar24 = local_214;
+      iVar22 = local_218;
+      if (((iVar27 <= *(int *)(this + 0x7f8)) && (local_228 < 0x204)) && (local_224 < 0x204)) {
+        iVar28 = local_228 + 4;
+        iVar23 = local_224 + 4;
+        local_1a0 = local_214;
+        for (iVar26 = local_214; iVar26 <= iVar23; iVar26 = iVar26 + 1) {
+          if (local_218 <= iVar28) {
+            uVar18 = local_218 * 0x204 + iVar26;
+            uVar25 = (ulonglong)((iVar28 - local_218) + 1);
+            do {
+              if ((*(ushort *)(local_210 + (ulonglong)uVar18 * 2) & 0x8000) != 0) {
+                *(undefined2 *)(local_210 + (ulonglong)uVar18 * 2) = 0;
+              }
+              uVar18 = uVar18 + 0x204;
+              uVar25 = uVar25 - 1;
+            } while (uVar25 != 0);
+          }
+        }
+        local_228 = iVar28;
+        local_224 = iVar23;
+        AuPointArray::AuPointArray((AuPointArray *)&local_230);
+        local_238 = (Data *)shared_null_exref;
+        local_220 = shared_null_exref;
+        bVar11 = DnFloorBuffer16::ChaseBoundary
+                           ((DnFloorBuffer16 *)&local_210,(AuPointArray *)&local_230,
+                            (QList<unsigned_short> *)&local_238,dVar29);
+        if (bVar11) {
+          do {
+            if (*(int *)(local_230 + 4) < *(int *)(local_220 + 0xc) - *(int *)(local_220 + 8)) {
+              do {
+                QList<unsigned_int>::removeLast((QList<unsigned_int> *)&local_220);
+              } while (*(int *)(local_230 + 4) < *(int *)(local_220 + 0xc) - *(int *)(local_220 + 8)
+                      );
+            }
+            QList<unsigned_int>::begin((QList<unsigned_int> *)&local_220);
+            puVar13 = (undefined8 *)QList<unsigned_int>::end((QList<unsigned_int> *)&local_220);
+            if (local_1b0 != (undefined4 *)*puVar13) {
+              do {
+                *local_1b0 = 0;
+                local_1b0 = local_1b0 + 2;
+                puVar13 = (undefined8 *)QList<unsigned_int>::end((QList<unsigned_int> *)&local_220);
+              } while (local_1b0 != (undefined4 *)*puVar13);
+            }
+            if (*(int *)(local_220 + 0xc) - *(int *)(local_220 + 8) < *(int *)(local_230 + 4)) {
+              do {
+                local_1a8 = 0;
+                QList<unsigned_int>::append((QList<unsigned_int> *)&local_220,&local_1a8);
+              } while (*(int *)(local_220 + 0xc) - *(int *)(local_220 + 8) < *(int *)(local_230 + 4)
+                      );
+            }
+            QList<DnDetail>::cbegin((QList<DnDetail> *)param_4);
+            puVar13 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_4);
+            if (local_208 != (longlong *)*puVar13) {
+              do {
+                uVar25 = 0;
+                pcVar9 = (char *)*local_208;
+                if ((*pcVar9 == iVar27) &&
+                   ((((byte)pcVar9[1] < 0x33 &&
+                     ((0x4000000000208U >> ((ulonglong)(byte)pcVar9[1] & 0x3f) & 1) != 0)) ||
+                    (((byte)pcVar9[1] == 0x15 || ((byte)pcVar9[1] - 0x22 < 7)))))) {
+                  pAVar14 = QVector<AuPoint>::last((QVector<AuPoint> *)&local_230);
+                  local_1f0 = *(double *)pAVar14;
+                  local_1e8 = *(double *)(pAVar14 + 8);
+                  local_1e0 = *(double *)(pAVar14 + 0x10);
+                  if (1 < *(uint *)local_238) {
+                    FUN_18047a8c0(&local_238,*(uint *)(local_238 + 4));
+                  }
+                  local_200[0] = *(undefined2 *)
+                                  (local_238 + (longlong)(int)*(uint *)(local_238 + 0xc) * 8 + 8);
+                  puVar15 = QList<unsigned_int>::last((QList<unsigned_int> *)&local_220);
+                  local_1bc = *puVar15;
+                  pAVar14 = QVector<AuPoint>::cbegin((QVector<AuPoint> *)&local_230);
+                  uVar19 = uVar25;
+                  for (; pAVar16 = QVector<AuPoint>::cend((QVector<AuPoint> *)&local_230),
+                      pAVar14 != pAVar16; pAVar14 = pAVar14 + 0x18) {
+                    bVar11 = AuPoint::FuzzyEquals
+                                       ((AuPoint *)(*local_208 + 0x10),(AuPoint *)&local_1f0);
+                    iVar24 = (int)uVar19;
+                    if (((!bVar11) &&
+                        (bVar11 = AuPoint::FuzzyEquals((AuPoint *)(*local_208 + 0x10),pAVar14),
+                        !bVar11)) &&
+                       (bVar11 = AuPoint::IsOnSegment
+                                           ((AuPoint *)(*local_208 + 0x10),(AuPoint *)&local_1f0,
+                                            pAVar14), bVar11)) {
+                      local_148 = *(double *)(pAVar14 + 0x10) - local_1e0;
+                      local_150 = *(double *)(pAVar14 + 8) - local_1e8;
+                      local_158 = *(double *)pAVar14 - local_1f0;
+                      AuPoint::Unit((AuPoint *)&local_158);
+                      AuPoint::Distance((AuPoint *)(*local_208 + 0x10),(AuPoint *)&local_1f0);
+                      local_170 = 0.0;
+                      dStack_168 = 0.0;
+                      local_160 = 0.0;
+                      local_188 = 0.0;
+                      dStack_180 = 0.0;
+                      local_178 = 0.0;
+                      uVar18 = (uint)*(byte *)(*local_208 + 1);
+                      if ((uVar18 == 0x15) || (uVar18 - 0x22 < 7)) {
+                        bVar11 = true;
+                      }
+                      else {
+                        bVar11 = false;
+                      }
+                      if (bVar11) {
+                        pdVar17 = (double *)AuPoint::operator*((AuPoint *)&local_158,0.0);
+LAB_180426b83:
+                        dStack_168 = local_1e8 + pdVar17[1];
+                        local_170 = local_1f0 + *pdVar17;
+                        local_160 = local_1e0 + pdVar17[2];
+                        pdVar17 = (double *)AuPoint::operator*((AuPoint *)&local_158,dStack_168);
+                        local_178 = local_1e0 + pdVar17[2];
+                        dStack_180 = local_1e8 + pdVar17[1];
+                        local_188 = local_1f0 + *pdVar17;
+                      }
+                      else {
+                        cVar4 = *(char *)(*local_208 + 1);
+                        if ((cVar4 != '\x03') && (cVar4 != '\t')) {
+                          pdVar17 = (double *)AuPoint::operator*((AuPoint *)&local_158,0.0);
+                          goto LAB_180426b83;
+                        }
+                        local_160 = local_148 + local_1e0;
+                        dStack_168 = local_1e8 + local_150;
+                        local_170 = local_1f0 + local_158;
+                        local_178 = *(double *)(pAVar14 + 0x10) - local_148;
+                        dStack_180 = *(double *)(pAVar14 + 8) - local_150;
+                        local_188 = *(double *)pAVar14 - local_158;
+                      }
+                      QVector<AuPoint>::insert
+                                ((QVector<AuPoint> *)&local_230,iVar24,(AuPoint *)&local_188);
+                      FUN_18047bd90(&local_238,uVar19,local_200);
+                      QList<unsigned_int>::insert
+                                ((QList<unsigned_int> *)&local_220,iVar24,&local_1bc);
+                      QVector<AuPoint>::insert
+                                ((QVector<AuPoint> *)&local_230,iVar24,(AuPoint *)&local_170);
+                      uVar18 = (uint)*(byte *)(*local_208 + 1);
+                      if ((uVar18 == 0x15) || (uVar18 - 0x22 < 7)) {
+                        local_1c2 = 0x1f00;
+                        FUN_18047bd90(&local_238,uVar19,&local_1c2);
+                        local_19c = 0;
+                        QList<unsigned_int>::insert
+                                  ((QList<unsigned_int> *)&local_220,iVar24,&local_19c);
+                        break;
+                      }
+                      cVar4 = *(char *)(*local_208 + 1);
+                      if (cVar4 == '\x03') {
+                        local_1c0[0] = 0x1c00;
+                        FUN_18047bd90(&local_238,uVar19,local_1c0);
+                        local_190[0] = *(uint *)(*local_208 + 4);
+                        puVar15 = local_190;
+                      }
+                      else {
+                        if (cVar4 == '\t') {
+                          local_1c8 = 0x1d00;
+                          FUN_18047bd90(&local_238,uVar19,&local_1c8);
+                          local_198 = 0;
+                          QList<unsigned_int>::insert
+                                    ((QList<unsigned_int> *)&local_220,iVar24,&local_198);
+                          break;
+                        }
+                        local_1c4 = 0x1e00;
+                        FUN_18047bd90(&local_238,uVar19,&local_1c4);
+                        local_194 = *(uint *)(*local_208 + 4);
+                        puVar15 = &local_194;
+                      }
+                      QList<unsigned_int>::insert((QList<unsigned_int> *)&local_220,iVar24,puVar15);
+                      break;
+                    }
+                    local_1f0 = *(double *)pAVar14;
+                    local_1e8 = *(double *)(pAVar14 + 8);
+                    local_1e0 = *(double *)(pAVar14 + 0x10);
+                    if (1 < *(uint *)local_238) {
+                      FUN_18047a8c0(&local_238,*(uint *)(local_238 + 4));
+                    }
+                    local_200[0] = *(undefined2 *)
+                                    (local_238 +
+                                    ((longlong)(int)*(uint *)(local_238 + 8) + uVar25) * 8 + 0x10);
+                    puVar15 = QList<unsigned_int>::operator[]
+                                        ((QList<unsigned_int> *)&local_220,iVar24);
+                    local_1bc = *puVar15;
+                    uVar19 = (ulonglong)(iVar24 + 1);
+                    uVar25 = uVar25 + 1;
+                  }
+                }
+                local_208 = local_208 + 1;
+                puVar13 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_4);
+              } while (local_208 != (longlong *)*puVar13);
+            }
+            pAVar14 = QVector<AuPoint>::last((QVector<AuPoint> *)&local_230);
+            pAVar16 = QVector<AuPoint>::first((QVector<AuPoint> *)&local_230);
+            bVar11 = AuPoint::FuzzyEquals(pAVar16,pAVar14);
+            if (bVar11) {
+              do {
+                QVector<AuPoint>::remove
+                          ((QVector<AuPoint> *)&local_230,*(int *)(local_230 + 4) + -1);
+                if (1 < *(uint *)local_238) {
+                  FUN_18047a8c0(&local_238,*(uint *)(local_238 + 4));
+                }
+                local_140 = local_238 + ((longlong)(int)*(uint *)(local_238 + 0xc) + 1) * 8;
+                if (1 < *(uint *)local_238) {
+                  pDVar20 = local_140 +
+                            (-(longlong)local_238 -
+                            ((longlong)(int)*(uint *)(local_238 + 8) * 8 + 0x10));
+                  if (1 < *(uint *)local_238) {
+                    FUN_18047a8c0(&local_238,*(uint *)(local_238 + 4));
+                  }
+                  local_140 = local_238 +
+                              (longlong)(int)((longlong)pDVar20 >> 3) * 8 +
+                              (longlong)(int)*(uint *)(local_238 + 8) * 8 + 0x10;
+                }
+                QListData::erase((QListData *)&local_238,(void **)local_140);
+                QList<unsigned_int>::removeLast((QList<unsigned_int> *)&local_220);
+                pAVar14 = QVector<AuPoint>::last((QVector<AuPoint> *)&local_230);
+                pAVar16 = QVector<AuPoint>::first((QVector<AuPoint> *)&local_230);
+                bVar11 = AuPoint::FuzzyEquals(pAVar16,pAVar14);
+              } while (bVar11);
+            }
+            while (iVar24 = 0, 0 < *(int *)(local_230 + 4) + -1) {
+              while( true ) {
+                iVar22 = iVar24 + 1;
+                pAVar14 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)&local_230,iVar22);
+                pAVar16 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)&local_230,iVar24);
+                bVar11 = AuPoint::FuzzyEquals(pAVar16,pAVar14);
+                if (bVar11) break;
+                iVar24 = iVar22;
+                if (*(int *)(local_230 + 4) + -1 <= iVar22) goto LAB_180426f64;
+              }
+              QVector<AuPoint>::remove((QVector<AuPoint> *)&local_230,iVar24);
+              if ((-1 < iVar24) &&
+                 (iVar24 < (int)(*(uint *)(local_238 + 0xc) - *(uint *)(local_238 + 8)))) {
+                if (1 < *(uint *)local_238) {
+                  FUN_18047a8c0(&local_238,*(uint *)(local_238 + 4));
+                }
+                QListData::remove((QListData *)&local_238,iVar24);
+              }
+              QList<unsigned_int>::removeAt((QList<unsigned_int> *)&local_220,iVar24);
+            }
+LAB_180426f64:
+            iVar24 = *(uint *)(local_238 + 0xc) - *(uint *)(local_238 + 8);
+            while( true ) {
+              iVar24 = iVar24 + -1;
+              if (1 < *(uint *)local_238) {
+                FUN_18047a8c0(&local_238,*(uint *)(local_238 + 4));
+              }
+              uVar18 = *(uint *)(local_238 + 8);
+              pDVar20 = local_238 + ((longlong)(int)uVar18 + 2) * 8;
+              uVar7 = *(uint *)(local_238 + 0xc);
+              if (1 < *(uint *)local_238) {
+                FUN_18047a8c0(&local_238,*(uint *)(local_238 + 4));
+              }
+              if ((((*(ushort *)
+                      (local_238 +
+                      ((longlong)(int)*(uint *)(local_238 + 8) + (longlong)(int)(uVar7 - uVar18)) *
+                      8 + 8) ^ *(ushort *)pDVar20) & 0x1f00) == 0) || (iVar24 == 0)) break;
+              pAVar14 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)&local_230,0);
+              QVector<AuPoint>::append((QVector<AuPoint> *)&local_230,pAVar14);
+              QVector<AuPoint>::remove((QVector<AuPoint> *)&local_230,0);
+              if (1 < *(uint *)local_238) {
+                FUN_18047a8c0(&local_238,*(uint *)(local_238 + 4));
+              }
+              uVar5 = *(undefined2 *)
+                       (local_238 + (longlong)(int)*(uint *)(local_238 + 8) * 8 + 0x10);
+              if (1 < *(uint *)local_238) {
+                FUN_18047a8c0(&local_238,*(uint *)(local_238 + 4));
+              }
+              lVar8 = (longlong)(int)*(uint *)(local_238 + 8) * 8 + 0x10;
+              local_138 = local_238 + lVar8;
+              if (1 < *(uint *)local_238) {
+                pDVar20 = local_138 + (-(longlong)local_238 - lVar8);
+                if (1 < *(uint *)local_238) {
+                  FUN_18047a8c0(&local_238,*(uint *)(local_238 + 4));
+                }
+                local_138 = local_238 +
+                            (longlong)(int)((longlong)pDVar20 >> 3) * 8 +
+                            (longlong)(int)*(uint *)(local_238 + 8) * 8 + 0x10;
+              }
+              QListData::erase((QListData *)&local_238,(void **)local_138);
+              local_1c6 = uVar5;
+              FUN_180478be0(&local_238,&local_1c6);
+              local_1a4 = QList<unsigned_int>::takeFirst((QList<unsigned_int> *)&local_220);
+              QList<unsigned_int>::append((QList<unsigned_int> *)&local_220,&local_1a4);
+            }
+            FUN_180478dd0(&local_1d8,&local_230);
+            FUN_180478c40(&local_1d0,&local_238);
+            FUN_180478cd0(&local_1f8,&local_220);
+            bVar11 = DnFloorBuffer16::ChaseBoundary
+                               ((DnFloorBuffer16 *)&local_210,(AuPointArray *)&local_230,
+                                (QList<unsigned_short> *)&local_238,dVar29);
+            iVar24 = local_1a0;
+            iVar22 = local_218;
+            iVar28 = local_228;
+            iVar23 = local_224;
+          } while (bVar11);
+        }
+        for (; iVar24 <= iVar23; iVar24 = iVar24 + 1) {
+          if (iVar22 <= iVar28) {
+            uVar18 = iVar22 * 0x204 + iVar24;
+            uVar25 = (ulonglong)((iVar28 - iVar22) + 1);
+            do {
+              uVar19 = (ulonglong)uVar18;
+              uVar6 = *(ushort *)(local_210 + uVar19 * 2);
+              if (uVar6 != 0) {
+                *(ushort *)(local_210 + uVar19 * 2) = uVar6 & 0xdfff;
+                puVar1 = (ushort *)(local_210 + uVar19 * 2);
+                *puVar1 = *puVar1 | 0x8000;
+              }
+              uVar18 = uVar18 + 0x204;
+              uVar25 = uVar25 - 1;
+            } while (uVar25 != 0);
+          }
+        }
+        QList<unsigned_int>::~QList<unsigned_int>((QList<unsigned_int> *)&local_220);
+        if (*(int *)local_238 == 0) {
+LAB_1804271c3:
+          QListData::dispose(local_238);
+        }
+        else if (*(int *)local_238 != -1) {
+          LOCK();
+          *(int *)local_238 = *(int *)local_238 + -1;
+          UNLOCK();
+          if (*(int *)local_238 == 0) goto LAB_1804271c3;
+        }
+        AuPointArray::~AuPointArray((AuPointArray *)&local_230);
+      }
+      iVar27 = iVar27 + 1;
+    } while (iVar27 <= *(int *)(this + 0x7f8) + 1);
+  }
+  if (*(int *)(*(longlong *)param_4 + 0xc) != *(int *)(*(longlong *)param_4 + 8)) {
+    RenderExteriorWalls(this,param_1,0x38,3,(QList<AuPointArray> *)&local_1d8,
+                        (QList<QList<unsigned_short>_> *)&local_1d0,
+                        (QList<QList<unsigned_int>_> *)&local_1f8,param_2,param_3);
+  }
+  RenderExteriorWalls(this,param_1,0x1b,4,(QList<AuPointArray> *)&local_1d8,
+                      (QList<QList<unsigned_short>_> *)&local_1d0,
+                      (QList<QList<unsigned_int>_> *)&local_1f8,param_2,param_3);
+  RenderExteriorWalls(this,param_1,0x1c,5,(QList<AuPointArray> *)&local_1d8,
+                      (QList<QList<unsigned_short>_> *)&local_1d0,
+                      (QList<QList<unsigned_int>_> *)&local_1f8,param_2,param_3);
+  if (*(int *)(*(longlong *)param_4 + 0xc) != *(int *)(*(longlong *)param_4 + 8)) {
+    RenderExteriorWalls(this,param_1,0x14,2,(QList<AuPointArray> *)&local_1d8,
+                        (QList<QList<unsigned_short>_> *)&local_1d0,
+                        (QList<QList<unsigned_int>_> *)&local_1f8,param_2,param_3);
+    RenderExteriorWalls(this,param_1,9,1,(QList<AuPointArray> *)&local_1d8,
+                        (QList<QList<unsigned_short>_> *)&local_1d0,
+                        (QList<QList<unsigned_int>_> *)&local_1f8,param_2,param_3);
+  }
+  pDVar20 = local_1f8;
+  if (*(int *)local_1f8 == 0) {
+LAB_180427361:
+    this_01 = (QList<unsigned_int> *)(local_1f8 + ((longlong)*(int *)(local_1f8 + 0xc) + 2) * 8);
+    pQVar2 = (QList<unsigned_int> *)(local_1f8 + ((longlong)*(int *)(local_1f8 + 8) + 2) * 8);
+    while (pQVar2 != this_01) {
+      this_01 = this_01 + -8;
+      QList<unsigned_int>::~QList<unsigned_int>(this_01);
+    }
+    QListData::dispose(pDVar20);
+  }
+  else if (*(int *)local_1f8 != -1) {
+    LOCK();
+    iVar27 = *(int *)local_1f8;
+    *(int *)local_1f8 = *(int *)local_1f8 + -1;
+    UNLOCK();
+    if (iVar27 == 1) goto LAB_180427361;
+  }
+  pDVar20 = local_1d0;
+  if (*(int *)local_1d0 == 0) {
+LAB_1804273ba:
+    pDVar21 = local_1d0 + ((longlong)*(int *)(local_1d0 + 0xc) + 2) * 8;
+    pDVar3 = local_1d0 + ((longlong)*(int *)(local_1d0 + 8) + 2) * 8;
+joined_r0x0001804273d5:
+    if (pDVar3 != pDVar21) {
+      pDVar21 = pDVar21 + -8;
+      piVar10 = *(int **)pDVar21;
+      if (*piVar10 != 0) goto code_r0x0001804273ed;
+      goto LAB_1804273fd;
+    }
+    QListData::dispose(pDVar20);
+  }
+  else if (*(int *)local_1d0 != -1) {
+    LOCK();
+    iVar27 = *(int *)local_1d0;
+    *(int *)local_1d0 = *(int *)local_1d0 + -1;
+    UNLOCK();
+    if (iVar27 == 1) goto LAB_1804273ba;
+  }
+  pDVar20 = local_1d8;
+  if (*(int *)local_1d8 != 0) {
+    if (*(int *)local_1d8 == -1) goto LAB_18042747c;
+    LOCK();
+    iVar27 = *(int *)local_1d8;
+    *(int *)local_1d8 = *(int *)local_1d8 + -1;
+    UNLOCK();
+    if (iVar27 != 1) goto LAB_18042747c;
+  }
+  pDVar21 = local_1d8 + ((longlong)*(int *)(local_1d8 + 0xc) + 2) * 8;
+  pDVar3 = local_1d8 + ((longlong)*(int *)(local_1d8 + 8) + 2) * 8;
+  while (pDVar3 != pDVar21) {
+    pDVar21 = pDVar21 + -8;
+    this_00 = *(AuPointArray **)pDVar21;
+    if (this_00 != (AuPointArray *)0x0) {
+      AuPointArray::~AuPointArray(this_00);
+      operator_delete(this_00);
+    }
+  }
+  QListData::dispose(pDVar20);
+LAB_18042747c:
+  DnFloorBuffer16::~DnFloorBuffer16((DnFloorBuffer16 *)&local_210);
+  return;
+code_r0x0001804273ed:
+  if (*piVar10 != -1) {
+    LOCK();
+    iVar27 = *piVar10;
+    *piVar10 = *piVar10 + -1;
+    UNLOCK();
+    if (iVar27 == 1) {
+LAB_1804273fd:
+      QListData::dispose(*(Data **)pDVar21);
+    }
+  }
+  goto joined_r0x0001804273d5;
+}
+
+

@@ -1,0 +1,22 @@
+Read-only Ghidra capture for 3D surface recovery, 2026-10-05. Not original source.
+
+/* public: void __cdecl DaSpaceShip::CreateModels(class QList<class AuTriSpacecraft> & __ptr64,class
+   QList<class AuTriSpacecraft> & __ptr64,class DnSpaceShip const & __ptr64,class DnDetailArray
+   const & __ptr64,class DnRoomArray const & __ptr64)const __ptr64 */
+
+void __thiscall
+DaSpaceShip::CreateModels
+          (DaSpaceShip *this,QList<AuTriSpacecraft> *param_1,QList<AuTriSpacecraft> *param_2,
+          DnSpaceShip *param_3,DnDetailArray *param_4,DnRoomArray *param_5)
+
+{
+                    /* 0x3df500  2144
+                       ?CreateModels@DaSpaceShip@@QEBAXAEAV?$QList@VAuTriSpacecraft@@@@0AEBVDnSpaceShip@@AEBVDnDetailArray@@AEBVDnRoomArray@@@Z
+                        */
+  RenderExterior(this,param_1,false,param_3,param_4,param_5);
+  RenderInterior(this,param_2,param_3,param_4,param_5);
+  RenderExterior(this,param_2,true,param_3,param_4,param_5);
+  return;
+}
+
+

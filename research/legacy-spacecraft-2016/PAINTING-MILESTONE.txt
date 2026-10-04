@@ -1,6 +1,9 @@
 2016 spacecraft designer: cell painting and erasing
 2026-10-04
 
+Follow-up: INTERFACE-MILESTONE.txt describes the restored icon panel and the
+original Room Number display offset recovered during that work.
+
 Implemented in source
 ---------------------
 The legacy designer can now add and erase room cells in a loaded .ship design.
@@ -17,14 +20,16 @@ LOCAL-FILE-WORKING-STATE.txt for the constructor and load-chain evidence.
 Use after manually building
 --------------------------
 Enter Legacy Spacecraft from the designer chooser, or use the existing
--legacy-spacecraft launch argument. Open a .ship file, select a deck, then
-choose Paint or Erase Cells. Left click or drag applies the highlighted cell.
+-legacy-spacecraft launch argument. Start with a fresh design or open a .ship
+file, select a deck, then choose a room palette icon or Erase Room Cells.
+Left click or drag applies the highlighted cell.
 Middle drag pans; the wheel zooms; Inspect restores record selection.
 
-Paint uses the selected room type and Room Number (0..255). Number is the
-original subtype, not a persistent room ID. Cells with the same deck, type
+Paint uses the selected room type and displayed Room Number (1..256), which
+maps to stored subtype 0..255, not a persistent room ID. Cells with the same deck, type
 and number belong to the same room. Choose another number when starting a
-separate room of that type. The initial selection is Bridge, number 0.
+separate room of that type. The initial paint selection is Bridge, displayed
+number 1 (stored subtype 0).
 
 The 0/45/90/135-degree grid buttons select the original four line families.
 Their eleven bounded combinations produce the recovered squares, triangles,

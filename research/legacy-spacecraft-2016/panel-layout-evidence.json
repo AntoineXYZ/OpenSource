@@ -1,0 +1,3798 @@
+{
+  "source": "Shores of Hazeron.exe",
+  "source_sha256": "0a38f9311cc366cfce98c7cdf25a63d15c55102b0b78f7096462b04d61d568ae",
+  "constructor": "0x1402c91e0",
+  "provenance": "Original x64 LEA strings and QGridLayout::addWidget call arguments; no client execution",
+  "constructor_strings": [
+    {
+      "reference": "0x1402c92b8",
+      "address": "0x140476b70",
+      "value": "1DesignDetailVehicleLoc(COMMODITYID)"
+    },
+    {
+      "reference": "0x1402c92c7",
+      "address": "0x140476b98",
+      "value": "2DesignDetailVehicleLoc(COMMODITYID)"
+    },
+    {
+      "reference": "0x1402c92fb",
+      "address": "0x1404df440",
+      "value": "1DesignSetMinTechLevel(quint8)"
+    },
+    {
+      "reference": "0x1402c9307",
+      "address": "0x1404df460",
+      "value": "2DesignMinTechLevelChanged(quint8)"
+    },
+    {
+      "reference": "0x1402c933b",
+      "address": "0x1404df490",
+      "value": "1DesignSetSystemModules(quint16, quint16, quint16, quint16, quint16, quint16, quint16, quint16, unordered_map<quint16, quint16>, unordered_map<quint16, quint16>)"
+    },
+    {
+      "reference": "0x1402c9347",
+      "address": "0x1404df540",
+      "value": "2DesignSystemModulesChanged(quint16, quint16, quint16, quint16, quint16, quint16, quint16, quint16, unordered_map<quint16, quint16>, unordered_map<quint16, quint16>)"
+    },
+    {
+      "reference": "0x1402c960a",
+      "address": "0x140476c50",
+      "value": ":/data/dp_New.png"
+    },
+    {
+      "reference": "0x1402c9695",
+      "address": "0x1404df5e8",
+      "value": "<b>New Design</b><br>Start a new spacecraft design."
+    },
+    {
+      "reference": "0x1402c96cf",
+      "address": "0x140476ca0",
+      "value": "1DesignNew()"
+    },
+    {
+      "reference": "0x1402c96de",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402c971b",
+      "address": "0x140476cb0",
+      "value": ":/data/dp_Load.png"
+    },
+    {
+      "reference": "0x1402c97ad",
+      "address": "0x1404df620",
+      "value": "<b>Load Design</b><br>Edit an existing spacecraft design."
+    },
+    {
+      "reference": "0x1402c97e7",
+      "address": "0x140476d00",
+      "value": "1DesignOpen()"
+    },
+    {
+      "reference": "0x1402c97f6",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402c9837",
+      "address": "0x140476d10",
+      "value": ":/data/dp_Save.png"
+    },
+    {
+      "reference": "0x1402c98c0",
+      "address": "0x1404df660",
+      "value": "<b>Save Design</b><br>Save the spacecraft design."
+    },
+    {
+      "reference": "0x1402c98fa",
+      "address": "0x140476d58",
+      "value": "1DesignSave()"
+    },
+    {
+      "reference": "0x1402c9909",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402c995d",
+      "address": "0x140476d68",
+      "value": ":/data/dp_Delete.png"
+    },
+    {
+      "reference": "0x1402c99f6",
+      "address": "0x1404df698",
+      "value": "<b>Delete Design</b><br>Delete a spacecraft design."
+    },
+    {
+      "reference": "0x1402c9a2d",
+      "address": "0x140476db8",
+      "value": "1DesignDelete()"
+    },
+    {
+      "reference": "0x1402c9a3c",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402c9a7a",
+      "address": "0x140476dc8",
+      "value": ":/data/dp_DelDeck.png"
+    },
+    {
+      "reference": "0x1402c9b0f",
+      "address": "0x1404df6d0",
+      "value": "<b>Erase Current Deck</b><br>Erase the current deck from the spacecraft design. All rooms and equipment on the current deck will be erased."
+    },
+    {
+      "reference": "0x1402c9b46",
+      "address": "0x140476e70",
+      "value": "1DesignDeleteDeck()"
+    },
+    {
+      "reference": "0x1402c9b55",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402c9bae",
+      "address": "0x140476e88",
+      "value": ":data/dp_DelRoom.png"
+    },
+    {
+      "reference": "0x1402c9c44",
+      "address": "0x1404df760",
+      "value": "<b>Erase Room</b><br>Erases entire rooms from the current deck when you click in them."
+    },
+    {
+      "reference": "0x1402c9c7b",
+      "address": "0x140476ef8",
+      "value": "1DesignDeleteRoom()"
+    },
+    {
+      "reference": "0x1402c9c8a",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402c9ce3",
+      "address": "0x140476f10",
+      "value": ":/data/dp_Move.png"
+    },
+    {
+      "reference": "0x1402c9d7c",
+      "address": "0x1404df7c0",
+      "value": "<b>Move/Copy Rooms And Equipment</b><br>Moves rooms and equipment of the entire design or the current deck.<br>Copies rooms and equipment of the current deck."
+    },
+    {
+      "reference": "0x1402c9db6",
+      "address": "0x140476fd8",
+      "value": "1DesignMove()"
+    },
+    {
+      "reference": "0x1402c9dc2",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402c9e24",
+      "address": "0x140476fe8",
+      "value": ":/data/dp_BurnCD.png"
+    },
+    {
+      "reference": "0x1402c9eba",
+      "address": "0x1404df860",
+      "value": "<b>Burn CD</b><br>Store the spacecraft design onto a disk. You must have a blank data disk in your inventory."
+    },
+    {
+      "reference": "0x1402c9ef1",
+      "address": "0x140477090",
+      "value": "1DesignBurnCD()"
+    },
+    {
+      "reference": "0x1402c9f00",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402c9f50",
+      "address": "0x1404770a0",
+      "value": ":/data/dp_Exit.png"
+    },
+    {
+      "reference": "0x1402c9fef",
+      "address": "0x1404df8d0",
+      "value": "<b>Depart Studio</b><br>Depart the spacecraft design studio. Your avatar emerges at the site of the design studio building."
+    },
+    {
+      "reference": "0x1402ca026",
+      "address": "0x140477140",
+      "value": "1DesignExit()"
+    },
+    {
+      "reference": "0x1402ca035",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402ca073",
+      "address": "0x140477150",
+      "value": ":/data/dp_DeckAbove.png"
+    },
+    {
+      "reference": "0x1402ca112",
+      "address": "0x1404df950",
+      "value": "<b>Move Grid Up</b><br>Move the design grid to the next deck aloft."
+    },
+    {
+      "reference": "0x1402ca149",
+      "address": "0x1404771b8",
+      "value": "1DesignDeckAbove()"
+    },
+    {
+      "reference": "0x1402ca158",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402ca196",
+      "address": "0x1404771d0",
+      "value": ":/data/dp_DeckBelow.png"
+    },
+    {
+      "reference": "0x1402ca235",
+      "address": "0x1404df9a0",
+      "value": "<b>Move Grid Down</b><br>Move the design grid to the next deck below."
+    },
+    {
+      "reference": "0x1402ca26c",
+      "address": "0x140477238",
+      "value": "1DesignDeckBelow()"
+    },
+    {
+      "reference": "0x1402ca27b",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402ca2ba",
+      "address": "0x1404df9e8",
+      "value": "Streamline Hull"
+    },
+    {
+      "reference": "0x1402ca32a",
+      "address": "0x1404dfa00",
+      "value": "<b>Streamline Hull</b><br>Hull streamlining enables greater velocity when maneuvering within an atmosphere. Streamlining increases spacecraft mass by 10%."
+    },
+    {
+      "reference": "0x1402ca361",
+      "address": "0x1404dfaa0",
+      "value": "1DesignStreamline(bool)"
+    },
+    {
+      "reference": "0x1402ca370",
+      "address": "0x140458850",
+      "value": "2clicked(bool)"
+    },
+    {
+      "reference": "0x1402ca3cc",
+      "address": "0x1404712c0",
+      "value": ":data/UpgradeModule.png"
+    },
+    {
+      "reference": "0x1402ca46b",
+      "address": "0x1404dfac0",
+      "value": "<html><b>System Modules</b><br>Configure modules for most systems. The modules for medical units and turrets are selected when they are placed.</html>"
+    },
+    {
+      "reference": "0x1402ca4a2",
+      "address": "0x1404dfb58",
+      "value": "1DesignSetSystemModules()"
+    },
+    {
+      "reference": "0x1402ca4ae",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402ca509",
+      "address": "0x140477368",
+      "value": ":data/dp_Check.png"
+    },
+    {
+      "reference": "0x1402ca5a5",
+      "address": "0x140477380",
+      "value": "<html><b>Check Paths</b><br>Tests paths through the design. Displays a report of the results.</html>"
+    },
+    {
+      "reference": "0x1402ca5db",
+      "address": "0x1404773e8",
+      "value": "1DesignCheck()"
+    },
+    {
+      "reference": "0x1402ca5e7",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402ca65a",
+      "address": "0x1404dfb80",
+      "value": "<b>Tech Level</b><br>Applies a minimum value to the tech level of the design. Configures the design for manufacturing at a higher tech level than the design requires due to its armor, equipment, and size."
+    },
+    {
+      "reference": "0x1402ca695",
+      "address": "0x14044f190",
+      "value": "%1"
+    },
+    {
+      "reference": "0x1402ca78b",
+      "address": "0x1404dfc50",
+      "value": "1DesignSetMinTechLevel(int)"
+    },
+    {
+      "reference": "0x1402ca797",
+      "address": "0x140458740",
+      "value": "2activated(int)"
+    },
+    {
+      "reference": "0x1402ca7f9",
+      "address": "0x1404773f8",
+      "value": ":/data/dp_Grid0.png"
+    },
+    {
+      "reference": "0x1402ca897",
+      "address": "0x1404dfc70",
+      "value": "<b>Lateral Grid Lines</b><br>Enable grid lines on the beam."
+    },
+    {
+      "reference": "0x1402ca8d5",
+      "address": "0x140477458",
+      "value": "1DesignGrid0()"
+    },
+    {
+      "reference": "0x1402ca8eb",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402ca929",
+      "address": "0x140477468",
+      "value": ":/data/dp_Grid45.png"
+    },
+    {
+      "reference": "0x1402ca9c2",
+      "address": "0x1404dfcb0",
+      "value": "<b>Diagonal Grid Lines</b><br>Enable diagonal grid lines to the port quarter."
+    },
+    {
+      "reference": "0x1402ca9fc",
+      "address": "0x1404774e0",
+      "value": "1DesignGrid45()"
+    },
+    {
+      "reference": "0x1402caa0b",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402caa4f",
+      "address": "0x1404774f0",
+      "value": ":/data/dp_Grid90.png"
+    },
+    {
+      "reference": "0x1402caadd",
+      "address": "0x1404dfd00",
+      "value": "<b>Longitudinal Grid Lines</b><br>Enable grid lines fore and aft."
+    },
+    {
+      "reference": "0x1402cab17",
+      "address": "0x140477560",
+      "value": "1DesignGrid90()"
+    },
+    {
+      "reference": "0x1402cab2d",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cab6c",
+      "address": "0x140477570",
+      "value": ":/data/dp_Grid135.png"
+    },
+    {
+      "reference": "0x1402cac00",
+      "address": "0x1404dfd50",
+      "value": "<b>Diagonal Grid Lines</b><br>Enable diagonal grid lines to the starboard quarter."
+    },
+    {
+      "reference": "0x1402cac3a",
+      "address": "0x1404775f0",
+      "value": "1DesignGrid135()"
+    },
+    {
+      "reference": "0x1402cac49",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cac8c",
+      "address": "0x140477608",
+      "value": ":data/dp_Gravity.png"
+    },
+    {
+      "reference": "0x1402cad1d",
+      "address": "0x140477620",
+      "value": "<b>Gravity</b><br>Switch gravity on and off."
+    },
+    {
+      "reference": "0x1402cad54",
+      "address": "0x140477650",
+      "value": "1DesignGravityToggle()"
+    },
+    {
+      "reference": "0x1402cad63",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cada3",
+      "address": "0x140477668",
+      "value": ":/data/dp_RenderMode.png"
+    },
+    {
+      "reference": "0x1402cae37",
+      "address": "0x140477690",
+      "value": "<b>Render Mode</b><br>Switch view between line drawing or solid rendering."
+    },
+    {
+      "reference": "0x1402cae71",
+      "address": "0x1404776e0",
+      "value": "1DesignRenderModeToggle()"
+    },
+    {
+      "reference": "0x1402cae80",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402caec3",
+      "address": "0x140477700",
+      "value": ":/data/dp_RoomIdUp.png"
+    },
+    {
+      "reference": "0x1402caf63",
+      "address": "0x140477718",
+      "value": "1DesignRoomIdUp()"
+    },
+    {
+      "reference": "0x1402caf72",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402caf9d",
+      "address": "0x1404dfdb0",
+      "value": "<html><b>Increase Room Number</b><br>Increases the room number. Room number is used to distinguish between rooms of the same type on the same deck.</html>"
+    },
+    {
+      "reference": "0x1402cb001",
+      "address": "0x1404777d0",
+      "value": ":/data/dp_RoomIdDown.png"
+    },
+    {
+      "reference": "0x1402cb0a3",
+      "address": "0x1404777f0",
+      "value": "1DesignRoomIdDown()"
+    },
+    {
+      "reference": "0x1402cb0b2",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cb0dd",
+      "address": "0x1404dfe50",
+      "value": "<html><b>Decrease Room Number</b><br>Decreases the room number. Room number is used to distinguish between rooms of the same type on the same deck.</html>"
+    },
+    {
+      "reference": "0x1402cb1bd",
+      "address": "0x1404dfef0",
+      "value": "<html><b>Room Number</b><br>Room number is used to distinguish between rooms of the same type on the same deck.<br><br>Push this button to change the room number of an existing room to the number shown. The room number cannot change if this would create two rooms of the same type with the same room number on the same deck.</html>"
+    },
+    {
+      "reference": "0x1402cb21b",
+      "address": "0x140477a00",
+      "value": "1DesignRoomIdChange()"
+    },
+    {
+      "reference": "0x1402cb22a",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cb26d",
+      "address": "0x140477a18",
+      "value": ":data/dp_RoomMode0.png"
+    },
+    {
+      "reference": "0x1402cb309",
+      "address": "0x140477a30",
+      "value": "1DesignRoomModeToggle()"
+    },
+    {
+      "reference": "0x1402cb318",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cb378",
+      "address": "0x140477a48",
+      "value": ":data/dp_DelRoomCells.png"
+    },
+    {
+      "reference": "0x1402cb418",
+      "address": "0x1404e0040",
+      "value": "<b>Erase Room Cells</b><br>Erases room cells from the current deck of the design."
+    },
+    {
+      "reference": "0x1402cb44f",
+      "address": "0x140477ac8",
+      "value": "1DesignDeleteRoomCells()"
+    },
+    {
+      "reference": "0x1402cb45e",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cb4b8",
+      "address": "0x140477ae8",
+      "value": ":/data/dp_Barracks.png"
+    },
+    {
+      "reference": "0x1402cb595",
+      "address": "0x140477b00",
+      "value": "1DesignRoomBarracks()"
+    },
+    {
+      "reference": "0x1402cb5a4",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cb602",
+      "address": "0x140477b18",
+      "value": ":/data/dp_Bridge.png"
+    },
+    {
+      "reference": "0x1402cb6d4",
+      "address": "0x140477b30",
+      "value": "1DesignRoomBridge()"
+    },
+    {
+      "reference": "0x1402cb6e3",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cb73b",
+      "address": "0x140477b48",
+      "value": ":/data/dp_Brig.png"
+    },
+    {
+      "reference": "0x1402cb80d",
+      "address": "0x140477b60",
+      "value": "1DesignRoomBrig()"
+    },
+    {
+      "reference": "0x1402cb81c",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cb874",
+      "address": "0x1404e0098",
+      "value": ":/data/dp_CaptCabin.png"
+    },
+    {
+      "reference": "0x1402cb946",
+      "address": "0x1404e00b0",
+      "value": "1DesignRoomCaptainsCabin()"
+    },
+    {
+      "reference": "0x1402cb955",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cb9ad",
+      "address": "0x140477b78",
+      "value": ":/data/dp_Cargo.png"
+    },
+    {
+      "reference": "0x1402cba7f",
+      "address": "0x140477b90",
+      "value": "1DesignRoomHold()"
+    },
+    {
+      "reference": "0x1402cba8e",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cbae6",
+      "address": "0x140477ba8",
+      "value": ":/data/dp_Corridor.png"
+    },
+    {
+      "reference": "0x1402cbbb8",
+      "address": "0x140477bc0",
+      "value": "1DesignRoomCorridor()"
+    },
+    {
+      "reference": "0x1402cbbc7",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cbc1f",
+      "address": "0x1404e00d0",
+      "value": ":/data/dp_CrewCabin.png"
+    },
+    {
+      "reference": "0x1402cbcf1",
+      "address": "0x1404e00e8",
+      "value": "1DesignRoomCrewCabin()"
+    },
+    {
+      "reference": "0x1402cbd00",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cbd5b",
+      "address": "0x140477bd8",
+      "value": ":/data/dp_EngineRoom.png"
+    },
+    {
+      "reference": "0x1402cbe20",
+      "address": "0x140477bf8",
+      "value": "1DesignRoomEngineRoom()"
+    },
+    {
+      "reference": "0x1402cbe2f",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cbe86",
+      "address": "0x140477c10",
+      "value": ":/data/dp_Fuel.png"
+    },
+    {
+      "reference": "0x1402cbf50",
+      "address": "0x140477c28",
+      "value": "1DesignRoomFuel()"
+    },
+    {
+      "reference": "0x1402cbf5f",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cbfb1",
+      "address": "0x140477c40",
+      "value": ":/data/dp_Galley.png"
+    },
+    {
+      "reference": "0x1402cc07d",
+      "address": "0x140477c58",
+      "value": "1DesignRoomGalley()"
+    },
+    {
+      "reference": "0x1402cc08c",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cc0de",
+      "address": "0x140477c70",
+      "value": ":/data/dp_GravityWell.png"
+    },
+    {
+      "reference": "0x1402cc1aa",
+      "address": "0x140477c90",
+      "value": "1DesignRoomGravityWell()"
+    },
+    {
+      "reference": "0x1402cc1b9",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cc20b",
+      "address": "0x140477cb0",
+      "value": ":/data/dp_LandingBay.png"
+    },
+    {
+      "reference": "0x1402cc2d8",
+      "address": "0x140477cd0",
+      "value": "1DesignRoomFlightDeck()"
+    },
+    {
+      "reference": "0x1402cc2e7",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cc339",
+      "address": "0x140477ce8",
+      "value": ":/data/dp_Lounge.png"
+    },
+    {
+      "reference": "0x1402cc40b",
+      "address": "0x140477d00",
+      "value": "1DesignRoomLounge()"
+    },
+    {
+      "reference": "0x1402cc41a",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cc46c",
+      "address": "0x140477d18",
+      "value": ":/data/dp_OpenToBelow.png"
+    },
+    {
+      "reference": "0x1402cc53e",
+      "address": "0x140477d38",
+      "value": "1DesignRoomOpenToBelow()"
+    },
+    {
+      "reference": "0x1402cc54d",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cc59f",
+      "address": "0x140477d58",
+      "value": ":/data/dp_SensorRoom.png"
+    },
+    {
+      "reference": "0x1402cc671",
+      "address": "0x140477d78",
+      "value": "1DesignRoomSensor()"
+    },
+    {
+      "reference": "0x1402cc680",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cc6d2",
+      "address": "0x140477d90",
+      "value": ":/data/dp_ShieldRoom.png"
+    },
+    {
+      "reference": "0x1402cc7a4",
+      "address": "0x140477db0",
+      "value": "1DesignRoomShield()"
+    },
+    {
+      "reference": "0x1402cc7b3",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cc805",
+      "address": "0x140477dc8",
+      "value": ":/data/dp_SickBay.png"
+    },
+    {
+      "reference": "0x1402cc8d7",
+      "address": "0x140477de0",
+      "value": "1DesignRoomSickBay()"
+    },
+    {
+      "reference": "0x1402cc8e6",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cc938",
+      "address": "0x140477df8",
+      "value": ":/data/dp_Stateroom.png"
+    },
+    {
+      "reference": "0x1402cca0a",
+      "address": "0x140477e10",
+      "value": "1DesignRoomStateroom()"
+    },
+    {
+      "reference": "0x1402cca19",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cca6b",
+      "address": "0x140477e28",
+      "value": ":/data/dp_TransporterRoom.png"
+    },
+    {
+      "reference": "0x1402ccb3d",
+      "address": "0x140477e48",
+      "value": "1DesignRoomTransporter()"
+    },
+    {
+      "reference": "0x1402ccb4c",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402ccb9e",
+      "address": "0x140477e68",
+      "value": ":/data/dp_WeaponBay.png"
+    },
+    {
+      "reference": "0x1402ccc6d",
+      "address": "0x140477e80",
+      "value": "1DesignRoomWeaponBay()"
+    },
+    {
+      "reference": "0x1402ccc7c",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cccce",
+      "address": "0x140477e98",
+      "value": ":/data/dp_DelDetail.png"
+    },
+    {
+      "reference": "0x1402ccd6b",
+      "address": "0x140477eb0",
+      "value": "<b>Erase Equipment</b><br>Erase equipment one unit at a time."
+    },
+    {
+      "reference": "0x1402ccda1",
+      "address": "0x140477ef0",
+      "value": "1DesignDeleteOneDetail()"
+    },
+    {
+      "reference": "0x1402ccdb0",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cce02",
+      "address": "0x1404e0100",
+      "value": ":/data/dp_DelDetails.png"
+    },
+    {
+      "reference": "0x1402ccea1",
+      "address": "0x1404e0120",
+      "value": "1DesignDeleteDetail()"
+    },
+    {
+      "reference": "0x1402cceb0",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cceda",
+      "address": "0x1404e0140",
+      "value": "<b>Erase Equipment in Area</b><br>Erase equipment in a brush-sized area. Only equipment that is the same type and in the same room as the equipment at the click location is erased."
+    },
+    {
+      "reference": "0x1402ccf36",
+      "address": "0x1404e01f8",
+      "value": ":/data/dp_PivotPoint.png"
+    },
+    {
+      "reference": "0x1402ccff3",
+      "address": "0x1404e0218",
+      "value": "1DesignDetailPivotPoint()"
+    },
+    {
+      "reference": "0x1402cd002",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cd054",
+      "address": "0x1404e0238",
+      "value": ":/data/dp_ContrailEmitter.png"
+    },
+    {
+      "reference": "0x1402cd107",
+      "address": "0x1404e0258",
+      "value": "1DesignDetailContrailEmitter()"
+    },
+    {
+      "reference": "0x1402cd116",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cd168",
+      "address": "0x140477f78",
+      "value": ":/data/dp_WeaponEmitter.png"
+    },
+    {
+      "reference": "0x1402cd21e",
+      "address": "0x140477f98",
+      "value": "1DesignDetailWeaponEmitter()"
+    },
+    {
+      "reference": "0x1402cd22d",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cd27f",
+      "address": "0x140477fb8",
+      "value": ":/data/dp_GameTable.png"
+    },
+    {
+      "reference": "0x1402cd334",
+      "address": "0x140477fd0",
+      "value": "1DesignDetailGameTable()"
+    },
+    {
+      "reference": "0x1402cd343",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cd395",
+      "address": "0x1404e0278",
+      "value": ":/data/dp_CmdConsole.png"
+    },
+    {
+      "reference": "0x1402cd44a",
+      "address": "0x1404e0298",
+      "value": "1DesignDetailCmdConsole()"
+    },
+    {
+      "reference": "0x1402cd459",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cd4ab",
+      "address": "0x140477ff0",
+      "value": ":/data/dp_NavConsole.png"
+    },
+    {
+      "reference": "0x1402cd561",
+      "address": "0x140478010",
+      "value": "1DesignDetailNavConsole()"
+    },
+    {
+      "reference": "0x1402cd570",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cd5c2",
+      "address": "0x140478030",
+      "value": ":/data/dp_Berth0.png"
+    },
+    {
+      "reference": "0x1402cd67d",
+      "address": "0x140478048",
+      "value": "1DesignDetailBerthSingle()"
+    },
+    {
+      "reference": "0x1402cd68c",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cd6de",
+      "address": "0x140478068",
+      "value": ":/data/dp_Berth2.png"
+    },
+    {
+      "reference": "0x1402cd799",
+      "address": "0x140478080",
+      "value": "1DesignDetailBerthDouble()"
+    },
+    {
+      "reference": "0x1402cd7a8",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cd7fa",
+      "address": "0x1404e02b8",
+      "value": ":/data/dp_EngineerConsole.png"
+    },
+    {
+      "reference": "0x1402cd8b5",
+      "address": "0x1404e02d8",
+      "value": "1DesignDetailEngineConsole()"
+    },
+    {
+      "reference": "0x1402cd8c4",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cd916",
+      "address": "0x1404780a0",
+      "value": ":/data/dp_FireControlConsole.png"
+    },
+    {
+      "reference": "0x1402cd9d1",
+      "address": "0x1404780c8",
+      "value": "1DesignDetailFireControlConsole()"
+    },
+    {
+      "reference": "0x1402cd9e0",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cda32",
+      "address": "0x1404780f0",
+      "value": ":/data/dp_Door.png"
+    },
+    {
+      "reference": "0x1402cdaed",
+      "address": "0x140478108",
+      "value": "1DesignDetailDoor()"
+    },
+    {
+      "reference": "0x1402cdafc",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cdb4e",
+      "address": "0x140478120",
+      "value": ":/data/dp_CrewDoor.png"
+    },
+    {
+      "reference": "0x1402cdc09",
+      "address": "0x140478138",
+      "value": "1DesignDetailCrewDoor()"
+    },
+    {
+      "reference": "0x1402cdc18",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cdc6a",
+      "address": "0x140478150",
+      "value": ":/data/dp_HullDoor.png"
+    },
+    {
+      "reference": "0x1402cdd25",
+      "address": "0x140478168",
+      "value": "1DesignDetailHullDoor()"
+    },
+    {
+      "reference": "0x1402cdd34",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cdd86",
+      "address": "0x1404e02f8",
+      "value": ":/data/c_SpaceFighter.png"
+    },
+    {
+      "reference": "0x1402cde22",
+      "address": "0x1404e0318",
+      "value": "<b>Space Fighter F1</b> "
+    },
+    {
+      "reference": "0x1402cde87",
+      "address": "0x1404e0338",
+      "value": "1DesignDetailFighter()"
+    },
+    {
+      "reference": "0x1402cde93",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cdee8",
+      "address": "0x1404e0350",
+      "value": ":/data/c_SpaceFighter2.png"
+    },
+    {
+      "reference": "0x1402cdf84",
+      "address": "0x1404e0370",
+      "value": "<b>Space Fighter F2</b> "
+    },
+    {
+      "reference": "0x1402cdfe9",
+      "address": "0x1404e0390",
+      "value": "1DesignDetailFighter2()"
+    },
+    {
+      "reference": "0x1402cdff5",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402ce04a",
+      "address": "0x1404e03a8",
+      "value": ":/data/c_MotorBike.png"
+    },
+    {
+      "reference": "0x1402ce0e6",
+      "address": "0x1404e03c0",
+      "value": "<b>Motor Bike</b> "
+    },
+    {
+      "reference": "0x1402ce14b",
+      "address": "0x1404e03d8",
+      "value": "1DesignDetailMotorBike()"
+    },
+    {
+      "reference": "0x1402ce157",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402ce1ac",
+      "address": "0x1404e03f8",
+      "value": ":/data/c_Suv.png"
+    },
+    {
+      "reference": "0x1402ce248",
+      "address": "0x1404e0410",
+      "value": "<b>SUV</b> "
+    },
+    {
+      "reference": "0x1402ce2ad",
+      "address": "0x1404e0420",
+      "value": "1DesignDetailSUV()"
+    },
+    {
+      "reference": "0x1402ce2b9",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402ce30e",
+      "address": "0x1404e0438",
+      "value": ":/data/c_APC.png"
+    },
+    {
+      "reference": "0x1402ce39d",
+      "address": "0x1404e0450",
+      "value": "<b>APC</b> "
+    },
+    {
+      "reference": "0x1402ce405",
+      "address": "0x1404e0460",
+      "value": "1DesignDetailAPC()"
+    },
+    {
+      "reference": "0x1402ce411",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402ce465",
+      "address": "0x1404e0478",
+      "value": ":/data/c_CommercialAircraft.png"
+    },
+    {
+      "reference": "0x1402ce501",
+      "address": "0x1404e0498",
+      "value": "<b>Space Transport</b> "
+    },
+    {
+      "reference": "0x1402ce566",
+      "address": "0x1404e04b0",
+      "value": "1DesignDetailSpaceTransport()"
+    },
+    {
+      "reference": "0x1402ce572",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402ce5c7",
+      "address": "0x140478180",
+      "value": ":/data/dp_Hatch.png"
+    },
+    {
+      "reference": "0x1402ce674",
+      "address": "0x140478198",
+      "value": "1DesignDetailHatch()"
+    },
+    {
+      "reference": "0x1402ce683",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402ce6d5",
+      "address": "0x1404781b0",
+      "value": ":/data/dp_CrewHatch.png"
+    },
+    {
+      "reference": "0x1402ce782",
+      "address": "0x1404781c8",
+      "value": "1DesignDetailCrewHatch()"
+    },
+    {
+      "reference": "0x1402ce791",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402ce7e3",
+      "address": "0x1404781e8",
+      "value": ":/data/dp_HullHatch.png"
+    },
+    {
+      "reference": "0x1402ce891",
+      "address": "0x140478200",
+      "value": "1DesignDetailHullHatch()"
+    },
+    {
+      "reference": "0x1402ce8a0",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402ce8f2",
+      "address": "0x140478220",
+      "value": ":/data/dp_LargeDoor.png"
+    },
+    {
+      "reference": "0x1402ce9a3",
+      "address": "0x140478238",
+      "value": "1DesignDetailLargeDoor()"
+    },
+    {
+      "reference": "0x1402ce9b2",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cea04",
+      "address": "0x140478258",
+      "value": ":/data/dp_LargeCrewDoor.png"
+    },
+    {
+      "reference": "0x1402ceab5",
+      "address": "0x140478278",
+      "value": "1DesignDetailLargeCrewDoor()"
+    },
+    {
+      "reference": "0x1402ceac4",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402ceb16",
+      "address": "0x140478298",
+      "value": ":/data/dp_Railing.png"
+    },
+    {
+      "reference": "0x1402cebc7",
+      "address": "0x1404782b0",
+      "value": "1DesignDetailRailingWall()"
+    },
+    {
+      "reference": "0x1402cebd6",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cec28",
+      "address": "0x1404782d0",
+      "value": ":/data/dp_CargoDoor.png"
+    },
+    {
+      "reference": "0x1402cecd9",
+      "address": "0x1404782e8",
+      "value": "1DesignDetailLargeHullDoor()"
+    },
+    {
+      "reference": "0x1402cece8",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402ced3a",
+      "address": "0x140478308",
+      "value": ":/data/dp_HullOpening.png"
+    },
+    {
+      "reference": "0x1402cedeb",
+      "address": "0x140478328",
+      "value": "1DesignDetailHullOpening()"
+    },
+    {
+      "reference": "0x1402cedfa",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cee4c",
+      "address": "0x140478348",
+      "value": ":/data/dp_WallOpening.png"
+    },
+    {
+      "reference": "0x1402ceefd",
+      "address": "0x140478368",
+      "value": "1DesignDetailWallOpening()"
+    },
+    {
+      "reference": "0x1402cef0c",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cef5e",
+      "address": "0x1404e04d0",
+      "value": ":/data/dp_LifeSupport.png"
+    },
+    {
+      "reference": "0x1402cf00f",
+      "address": "0x1404e04f0",
+      "value": "1DesignDetailLifeSupport()"
+    },
+    {
+      "reference": "0x1402cf01e",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cf070",
+      "address": "0x1404e0510",
+      "value": ":/data/dp_ManeuverDrive.png"
+    },
+    {
+      "reference": "0x1402cf121",
+      "address": "0x1404e0530",
+      "value": "1DesignDetailGravityDrive()"
+    },
+    {
+      "reference": "0x1402cf130",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cf182",
+      "address": "0x140478388",
+      "value": ":/data/dp_OperatingTable.png"
+    },
+    {
+      "reference": "0x1402cf233",
+      "address": "0x1404783a8",
+      "value": "1DesignDetailOperatingTable()"
+    },
+    {
+      "reference": "0x1402cf242",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cf294",
+      "address": "0x1404783c8",
+      "value": ":/data/dp_SurgeryConsole.png"
+    },
+    {
+      "reference": "0x1402cf345",
+      "address": "0x1404783e8",
+      "value": "1DesignDetailSurgeryConsole()"
+    },
+    {
+      "reference": "0x1402cf354",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cf3a6",
+      "address": "0x1404e0550",
+      "value": ":/data/dp_PilotConsole.png"
+    },
+    {
+      "reference": "0x1402cf457",
+      "address": "0x1404e0570",
+      "value": "1DesignDetailPilotConsole()"
+    },
+    {
+      "reference": "0x1402cf466",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cf4b8",
+      "address": "0x1404e0590",
+      "value": ":/data/dp_PowerPlant.png"
+    },
+    {
+      "reference": "0x1402cf561",
+      "address": "0x1404e05b0",
+      "value": "1DesignDetailPowerPlant()"
+    },
+    {
+      "reference": "0x1402cf570",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cf5c2",
+      "address": "0x140478408",
+      "value": ":/data/dp_SensorConsole.png"
+    },
+    {
+      "reference": "0x1402cf67b",
+      "address": "0x140478428",
+      "value": "1DesignDetailSensorConsole()"
+    },
+    {
+      "reference": "0x1402cf68a",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cf6dc",
+      "address": "0x1404e05d0",
+      "value": ":/data/dp_Sensor.png"
+    },
+    {
+      "reference": "0x1402cf787",
+      "address": "0x1404e05e8",
+      "value": "1DesignDetailSensors()"
+    },
+    {
+      "reference": "0x1402cf796",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cf7e8",
+      "address": "0x140478448",
+      "value": ":/data/dp_ShieldConsole.png"
+    },
+    {
+      "reference": "0x1402cf893",
+      "address": "0x140478468",
+      "value": "1DesignDetailShieldConsole()"
+    },
+    {
+      "reference": "0x1402cf8a2",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cf90e",
+      "address": "0x1404769a8",
+      "value": ":data/Troop.png"
+    },
+    {
+      "reference": "0x1402cf9d5",
+      "address": "0x140478488",
+      "value": "1DesignDetailTroopStation()"
+    },
+    {
+      "reference": "0x1402cf9e4",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cfa36",
+      "address": "0x1404e0600",
+      "value": ":/data/dp_Shield.png"
+    },
+    {
+      "reference": "0x1402cfade",
+      "address": "0x1404e0618",
+      "value": "1DesignDetailShields()"
+    },
+    {
+      "reference": "0x1402cfaed",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cfb3f",
+      "address": "0x1404e0630",
+      "value": ":/data/dp_PowerConsole.png"
+    },
+    {
+      "reference": "0x1402cfbe7",
+      "address": "0x1404e0650",
+      "value": "1DesignDetailPowerConsole()"
+    },
+    {
+      "reference": "0x1402cfbf6",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cfc48",
+      "address": "0x1404784a8",
+      "value": ":/data/dp_TransporterConsole.png"
+    },
+    {
+      "reference": "0x1402cfcf0",
+      "address": "0x1404784d0",
+      "value": "1DesignDetailTransporterConsole()"
+    },
+    {
+      "reference": "0x1402cfcff",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cfd51",
+      "address": "0x1404784f8",
+      "value": ":/data/dp_TransporterPad.png"
+    },
+    {
+      "reference": "0x1402cfe02",
+      "address": "0x140478518",
+      "value": "1DesignDetailTransporterPad()"
+    },
+    {
+      "reference": "0x1402cfe11",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cfe63",
+      "address": "0x140478538",
+      "value": ":/data/dp_TurretSide.png"
+    },
+    {
+      "reference": "0x1402cff14",
+      "address": "0x140478558",
+      "value": "1DesignDetailTurretSide()"
+    },
+    {
+      "reference": "0x1402cff23",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402cff75",
+      "address": "0x140478578",
+      "value": ":/data/dp_TurretTopBottom.png"
+    },
+    {
+      "reference": "0x1402d0026",
+      "address": "0x140478598",
+      "value": "1DesignDetailTurretTopBottom()"
+    },
+    {
+      "reference": "0x1402d0035",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402d0087",
+      "address": "0x1404e0670",
+      "value": ":/data/dp_Weapon.png"
+    },
+    {
+      "reference": "0x1402d0138",
+      "address": "0x1404e0688",
+      "value": "1DesignDetailWeaponSystem()"
+    },
+    {
+      "reference": "0x1402d0147",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402d0199",
+      "address": "0x1404e06a8",
+      "value": ":/data/dp_WormholeDrive.png"
+    },
+    {
+      "reference": "0x1402d024a",
+      "address": "0x1404e06c8",
+      "value": "1DesignDetailFTLDrive()"
+    },
+    {
+      "reference": "0x1402d0259",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402d02c6",
+      "address": "0x1404785b8",
+      "value": ":data/dp_StairsStraight.png"
+    },
+    {
+      "reference": "0x1402d039a",
+      "address": "0x1404785d8",
+      "value": "1DesignDetailStairsStraight()"
+    },
+    {
+      "reference": "0x1402d03a9",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402d0416",
+      "address": "0x1404785f8",
+      "value": ":data/dp_StairsTurnLeft.png"
+    },
+    {
+      "reference": "0x1402d04ea",
+      "address": "0x140478618",
+      "value": "1DesignDetailStairsTurnLeft()"
+    },
+    {
+      "reference": "0x1402d04f9",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402d0568",
+      "address": "0x140478638",
+      "value": ":data/dp_StairsTurnRight.png"
+    },
+    {
+      "reference": "0x1402d063c",
+      "address": "0x140478658",
+      "value": "1DesignDetailStairsTurnRight()"
+    },
+    {
+      "reference": "0x1402d064b",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402d06b7",
+      "address": "0x140478678",
+      "value": ":data/dp_StairsUTurnLeft.png"
+    },
+    {
+      "reference": "0x1402d0786",
+      "address": "0x140478698",
+      "value": "1DesignDetailStairsUTurnLeft()"
+    },
+    {
+      "reference": "0x1402d0795",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402d0801",
+      "address": "0x1404786b8",
+      "value": ":data/dp_StairsUTurnRight.png"
+    },
+    {
+      "reference": "0x1402d08d1",
+      "address": "0x1404786d8",
+      "value": "1DesignDetailStairsUTurnRight()"
+    },
+    {
+      "reference": "0x1402d08e0",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402d0932",
+      "address": "0x1404e06e0",
+      "value": ":/data/dp_BrushSzUp.png"
+    },
+    {
+      "reference": "0x1402d09ca",
+      "address": "0x1404e0700",
+      "value": "<b>Increase Brush Size</b><br>Increase the brush size for drawing and erasing equipment."
+    },
+    {
+      "reference": "0x1402d09fd",
+      "address": "0x1404e0760",
+      "value": "1DesignBrushSzUp()"
+    },
+    {
+      "reference": "0x1402d0a0c",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402d0a5e",
+      "address": "0x1404e0778",
+      "value": ":/data/dp_BrushSzDown.png"
+    },
+    {
+      "reference": "0x1402d0af2",
+      "address": "0x1404e07a0",
+      "value": "<b>Decrease Brush Size</b><br>Decrease the brush size for drawing and erasing equipment."
+    },
+    {
+      "reference": "0x1402d0b25",
+      "address": "0x1404e0800",
+      "value": "1DesignBrushSzDown()"
+    },
+    {
+      "reference": "0x1402d0b34",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402d0c0e",
+      "address": "0x1404e0820",
+      "value": "<b>Brush Size</b><br>Size of brush used for drawing and erasing equipment.<br>When drawing, equipment fills the brush area in the room at the click location. Only certain types of equipment fills an area of a room.<br>When erasing, only equipment that is the same type and in the same room as the equipment at the click location is erased from the brush area."
+    },
+    {
+      "reference": "0x1402d0c6f",
+      "address": "0x1404e0988",
+      "value": ":/data/dp_ArmorIncrease.png"
+    },
+    {
+      "reference": "0x1402d0d03",
+      "address": "0x1404e09b0",
+      "value": "<b>Increase Hull Armor</b><br>Increase the hull armor level. Improves defense against physical damage and increases spacecraft mass."
+    },
+    {
+      "reference": "0x1402d0d36",
+      "address": "0x1404e0a38",
+      "value": "1DesignArmorIncrease()"
+    },
+    {
+      "reference": "0x1402d0d45",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402d0d97",
+      "address": "0x1404e0a50",
+      "value": ":/data/dp_ArmorDecrease.png"
+    },
+    {
+      "reference": "0x1402d0e29",
+      "address": "0x1404e0a70",
+      "value": "<b>Decrease Hull Armor</b><br>Decrease the hull armor level. Reduces defense against physical damage and decreases spacecraft mass."
+    },
+    {
+      "reference": "0x1402d0e5c",
+      "address": "0x1404e0af8",
+      "value": "1DesignArmorDecrease()"
+    },
+    {
+      "reference": "0x1402d0e6b",
+      "address": "0x14044e350",
+      "value": "2clicked()"
+    },
+    {
+      "reference": "0x1402d0f12",
+      "address": "0x1404788c0",
+      "value": "Rooms"
+    },
+    {
+      "reference": "0x1402d13d0",
+      "address": "0x1404788c8",
+      "value": "Equipment"
+    }
+  ],
+  "offline_spacecraft_help": [
+    {
+      "reference": "0x1402e7d98",
+      "address": "0x1404eba50",
+      "value": "<b>NEW SPACECRAFT DESIGN TIPS</b><br>"
+    },
+    {
+      "reference": "0x1402e7dc7",
+      "address": "0x1404eb380",
+      "value": "- All the buttons on this window have tooltips.<br>"
+    },
+    {
+      "reference": "0x1402e7df6",
+      "address": "0x1404eba80",
+      "value": "- Start by painting the floor of a room, such as the Bridge.<br>"
+    },
+    {
+      "reference": "0x1402e7e25",
+      "address": "0x1404eb400",
+      "value": "- Move the design grid up and down using buttons on this window.<br>"
+    },
+    {
+      "reference": "0x1402e7e54",
+      "address": "0x1404eb448",
+      "value": "- Add equipment by clicking a location on the floor.<br>"
+    },
+    {
+      "reference": "0x1402e7e83",
+      "address": "0x1404eb490",
+      "value": "- Rotate beds and vehicles with arrow keys while placing them.<br>"
+    },
+    {
+      "reference": "0x1402e7eb2",
+      "address": "0x1404eb4e0",
+      "value": "- A hatch or turret is placed in the ceiling by raising the design grid and placing the hatch on the story above.<br>"
+    },
+    {
+      "reference": "0x1402e7ee1",
+      "address": "0x1404eb560",
+      "value": "- A station is made by keeping the gravity drive acceleration very low.<br>"
+    },
+    {
+      "reference": "0x1402e7f10",
+      "address": "0x1404ebad0",
+      "value": "- Room identifier distinguishes between different rooms of the same type on the same deck. To make two staterooms on the same deck, change the room id before painting the second stateroom. Room id can be the same on different decks. e.g. Deck 1 can have stateroom 4 and deck 2 can also have stateroom 4.<br>"
+    },
+    {
+      "reference": "0x1402e7f3f",
+      "address": "0x1404eb6e8",
+      "value": "<br><b>WHEN FINISHED</b><br>"
+    },
+    {
+      "reference": "0x1402e7f6e",
+      "address": "0x1404eb710",
+      "value": "1. Check Paths to find routing conditions that may need attention.<br>"
+    },
+    {
+      "reference": "0x1402e7f9d",
+      "address": "0x1404eb758",
+      "value": "2. Close this window.<br>"
+    },
+    {
+      "reference": "0x1402e7fcc",
+      "address": "0x1404eb780",
+      "value": "3. Walk through the design to be sure every room can be accessed.<br>"
+    },
+    {
+      "reference": "0x1402e7ffb",
+      "address": "0x1404eb7c8",
+      "value": "4. Save the design to a file.<br>"
+    },
+    {
+      "reference": "0x1402e802a",
+      "address": "0x1404ebc10",
+      "value": "5. Go to a design studio in the game and load the design from the file. Save the design into the spacecraft design library.<br>"
+    },
+    {
+      "reference": "0x1402e8059",
+      "address": "0x1404ebc90",
+      "value": "6. Store the design onto a blank disk in your inventory using the <b>Burn CD</b> button. The design studio sells blank disks from the city's inventory. <b>THE <i>BURN CD</i> BUTTON IS ONLY VISIBLE IF THE DESIGN IS VALID AND SAVED.</b><br>"
+    },
+    {
+      "reference": "0x1402e8088",
+      "address": "0x1404ebd80",
+      "value": "7. Take the design disk to a spacecraft factory for manufacturing.<br>"
+    },
+    {
+      "reference": "0x1402e80b7",
+      "address": "0x1404ebdd0",
+      "value": "8. Publish a spacecraft design by selling a design disk to a design studio. You earn an architect commission whenever your designs are manufactured.<br>"
+    }
+  ],
+  "layout_calls": [
+    {
+      "call": "0x1402d0fe6",
+      "assembly": [
+        "1402d0fb0: lea    rax,[rip+0x17cde1]        # 0x14044dd98",
+        "1402d0fb7: mov    QWORD PTR [rbx],rax",
+        "1402d0fba: lea    rax,[rip+0x17ce67]        # 0x14044de28",
+        "1402d0fc1: mov    QWORD PTR [rbx+0x10],rax",
+        "1402d0fc5: jmp    0x1402d0fca",
+        "1402d0fc7: mov    rbx,r13",
+        "1402d0fca: mov    DWORD PTR [rbp+0x660],r13d",
+        "1402d0fd1: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d0fd6: xor    r9d,r9d",
+        "1402d0fd9: xor    r8d,r8d",
+        "1402d0fdc: mov    rdx,QWORD PTR [rsi+0xc0]",
+        "1402d0fe3: mov    rcx,rbx",
+        "1402d0fe6: call   QWORD PTR [rip+0x16d824]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d100b",
+      "assembly": [
+        "1402d0fd1: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d0fd6: xor    r9d,r9d",
+        "1402d0fd9: xor    r8d,r8d",
+        "1402d0fdc: mov    rdx,QWORD PTR [rsi+0xc0]",
+        "1402d0fe3: mov    rcx,rbx",
+        "1402d0fe6: call   QWORD PTR [rip+0x16d824]        # 0x14043e810",
+        "1402d0fec: mov    DWORD PTR [rbp+0x1270],r13d",
+        "1402d0ff3: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d0ff8: mov    r9d,0x1",
+        "1402d0ffe: xor    r8d,r8d",
+        "1402d1001: mov    rdx,QWORD PTR [rbp+0x14a8]",
+        "1402d1008: mov    rcx,rbx",
+        "1402d100b: call   QWORD PTR [rip+0x16d7ff]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d102d",
+      "assembly": [
+        "1402d0ff3: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d0ff8: mov    r9d,0x1",
+        "1402d0ffe: xor    r8d,r8d",
+        "1402d1001: mov    rdx,QWORD PTR [rbp+0x14a8]",
+        "1402d1008: mov    rcx,rbx",
+        "1402d100b: call   QWORD PTR [rip+0x16d7ff]        # 0x14043e810",
+        "1402d1011: mov    DWORD PTR [rbp+0x670],r13d",
+        "1402d1018: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d101d: mov    r9d,0x2",
+        "1402d1023: xor    r8d,r8d",
+        "1402d1026: mov    rdx,QWORD PTR [rbp-0x38]",
+        "1402d102a: mov    rcx,rbx",
+        "1402d102d: call   QWORD PTR [rip+0x16d7dd]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d104f",
+      "assembly": [
+        "1402d1018: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d101d: mov    r9d,0x2",
+        "1402d1023: xor    r8d,r8d",
+        "1402d1026: mov    rdx,QWORD PTR [rbp-0x38]",
+        "1402d102a: mov    rcx,rbx",
+        "1402d102d: call   QWORD PTR [rip+0x16d7dd]        # 0x14043e810",
+        "1402d1033: mov    DWORD PTR [rbp+0xd50],r13d",
+        "1402d103a: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d103f: mov    r9d,0x3",
+        "1402d1045: xor    r8d,r8d",
+        "1402d1048: mov    rdx,QWORD PTR [rbp-0x28]",
+        "1402d104c: mov    rcx,rbx",
+        "1402d104f: call   QWORD PTR [rip+0x16d7bb]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1071",
+      "assembly": [
+        "1402d103a: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d103f: mov    r9d,0x3",
+        "1402d1045: xor    r8d,r8d",
+        "1402d1048: mov    rdx,QWORD PTR [rbp-0x28]",
+        "1402d104c: mov    rcx,rbx",
+        "1402d104f: call   QWORD PTR [rip+0x16d7bb]        # 0x14043e810",
+        "1402d1055: mov    DWORD PTR [rbp+0x680],r13d",
+        "1402d105c: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d1061: mov    r9d,0x4",
+        "1402d1067: xor    r8d,r8d",
+        "1402d106a: mov    rdx,QWORD PTR [rbp+0x18]",
+        "1402d106e: mov    rcx,rbx",
+        "1402d1071: call   QWORD PTR [rip+0x16d799]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1096",
+      "assembly": [
+        "1402d105c: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d1061: mov    r9d,0x4",
+        "1402d1067: xor    r8d,r8d",
+        "1402d106a: mov    rdx,QWORD PTR [rbp+0x18]",
+        "1402d106e: mov    rcx,rbx",
+        "1402d1071: call   QWORD PTR [rip+0x16d799]        # 0x14043e810",
+        "1402d1077: mov    DWORD PTR [rbp+0x10c0],r13d",
+        "1402d107e: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d1083: mov    r9d,0x5",
+        "1402d1089: xor    r8d,r8d",
+        "1402d108c: mov    rdx,QWORD PTR [rbp+0x188]",
+        "1402d1093: mov    rcx,rbx",
+        "1402d1096: call   QWORD PTR [rip+0x16d774]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d10bb",
+      "assembly": [
+        "1402d107e: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d1083: mov    r9d,0x5",
+        "1402d1089: xor    r8d,r8d",
+        "1402d108c: mov    rdx,QWORD PTR [rbp+0x188]",
+        "1402d1093: mov    rcx,rbx",
+        "1402d1096: call   QWORD PTR [rip+0x16d774]        # 0x14043e810",
+        "1402d109c: mov    DWORD PTR [rbp+0x690],r13d",
+        "1402d10a3: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d10a8: mov    r9d,0x6",
+        "1402d10ae: xor    r8d,r8d",
+        "1402d10b1: mov    rdx,QWORD PTR [rbp+0x198]",
+        "1402d10b8: mov    rcx,rbx",
+        "1402d10bb: call   QWORD PTR [rip+0x16d74f]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d10e0",
+      "assembly": [
+        "1402d10a3: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d10a8: mov    r9d,0x6",
+        "1402d10ae: xor    r8d,r8d",
+        "1402d10b1: mov    rdx,QWORD PTR [rbp+0x198]",
+        "1402d10b8: mov    rcx,rbx",
+        "1402d10bb: call   QWORD PTR [rip+0x16d74f]        # 0x14043e810",
+        "1402d10c1: mov    DWORD PTR [rbp+0xd60],r13d",
+        "1402d10c8: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d10cd: mov    r9d,0x7",
+        "1402d10d3: xor    r8d,r8d",
+        "1402d10d6: mov    rdx,QWORD PTR [rbp+0x1a8]",
+        "1402d10dd: mov    rcx,rbx",
+        "1402d10e0: call   QWORD PTR [rip+0x16d72a]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1102",
+      "assembly": [
+        "1402d10c8: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d10cd: mov    r9d,0x7",
+        "1402d10d3: xor    r8d,r8d",
+        "1402d10d6: mov    rdx,QWORD PTR [rbp+0x1a8]",
+        "1402d10dd: mov    rcx,rbx",
+        "1402d10e0: call   QWORD PTR [rip+0x16d72a]        # 0x14043e810",
+        "1402d10e6: mov    DWORD PTR [rbp+0x6a0],r13d",
+        "1402d10ed: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d10f2: mov    r9d,0x9",
+        "1402d10f8: xor    r8d,r8d",
+        "1402d10fb: mov    rdx,QWORD PTR [rbp-0x10]",
+        "1402d10ff: mov    rcx,rbx",
+        "1402d1102: call   QWORD PTR [rip+0x16d708]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1122",
+      "assembly": [
+        "1402d10ed: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d10f2: mov    r9d,0x9",
+        "1402d10f8: xor    r8d,r8d",
+        "1402d10fb: mov    rdx,QWORD PTR [rbp-0x10]",
+        "1402d10ff: mov    rcx,rbx",
+        "1402d1102: call   QWORD PTR [rip+0x16d708]        # 0x14043e810",
+        "1402d1108: mov    DWORD PTR [rbp+0x1350],r13d",
+        "1402d110f: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d1114: xor    r9d,r9d",
+        "1402d1117: lea    r8d,[r9+0x1]",
+        "1402d111b: mov    rdx,QWORD PTR [rbp-0x18]",
+        "1402d111f: mov    rcx,rbx",
+        "1402d1122: call   QWORD PTR [rip+0x16d6e8]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1147",
+      "assembly": [
+        "1402d110f: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d1114: xor    r9d,r9d",
+        "1402d1117: lea    r8d,[r9+0x1]",
+        "1402d111b: mov    rdx,QWORD PTR [rbp-0x18]",
+        "1402d111f: mov    rcx,rbx",
+        "1402d1122: call   QWORD PTR [rip+0x16d6e8]        # 0x14043e810",
+        "1402d1128: mov    DWORD PTR [rbp+0x6b0],r13d",
+        "1402d112f: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d1134: mov    r9d,0x1",
+        "1402d113a: mov    r8d,r9d",
+        "1402d113d: mov    rdx,QWORD PTR [rbp+0x1b8]",
+        "1402d1144: mov    rcx,rbx",
+        "1402d1147: call   QWORD PTR [rip+0x16d6c3]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d116d",
+      "assembly": [
+        "1402d112f: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d1134: mov    r9d,0x1",
+        "1402d113a: mov    r8d,r9d",
+        "1402d113d: mov    rdx,QWORD PTR [rbp+0x1b8]",
+        "1402d1144: mov    rcx,rbx",
+        "1402d1147: call   QWORD PTR [rip+0x16d6c3]        # 0x14043e810",
+        "1402d114d: mov    DWORD PTR [rbp+0xd70],r13d",
+        "1402d1154: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d1159: mov    r9d,0x2",
+        "1402d115f: lea    r8d,[r9-0x1]",
+        "1402d1163: mov    rdx,QWORD PTR [rbp+0x1c8]",
+        "1402d116a: mov    rcx,rbx",
+        "1402d116d: call   QWORD PTR [rip+0x16d69d]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1190",
+      "assembly": [
+        "1402d1154: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d1159: mov    r9d,0x2",
+        "1402d115f: lea    r8d,[r9-0x1]",
+        "1402d1163: mov    rdx,QWORD PTR [rbp+0x1c8]",
+        "1402d116a: mov    rcx,rbx",
+        "1402d116d: call   QWORD PTR [rip+0x16d69d]        # 0x14043e810",
+        "1402d1173: mov    DWORD PTR [rbp+0x6c0],r13d",
+        "1402d117a: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d117f: mov    r9d,0x3",
+        "1402d1185: lea    r8d,[r9-0x2]",
+        "1402d1189: mov    rdx,QWORD PTR [rbp-0x20]",
+        "1402d118d: mov    rcx,rbx",
+        "1402d1190: call   QWORD PTR [rip+0x16d67a]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d11b3",
+      "assembly": [
+        "1402d117a: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d117f: mov    r9d,0x3",
+        "1402d1185: lea    r8d,[r9-0x2]",
+        "1402d1189: mov    rdx,QWORD PTR [rbp-0x20]",
+        "1402d118d: mov    rcx,rbx",
+        "1402d1190: call   QWORD PTR [rip+0x16d67a]        # 0x14043e810",
+        "1402d1196: mov    DWORD PTR [rbp+0x10d0],r13d",
+        "1402d119d: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d11a2: mov    r9d,0x4",
+        "1402d11a8: lea    r8d,[r9-0x3]",
+        "1402d11ac: mov    rdx,QWORD PTR [rbp-0x8]",
+        "1402d11b0: mov    rcx,rbx",
+        "1402d11b3: call   QWORD PTR [rip+0x16d657]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d11d6",
+      "assembly": [
+        "1402d119d: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d11a2: mov    r9d,0x4",
+        "1402d11a8: lea    r8d,[r9-0x3]",
+        "1402d11ac: mov    rdx,QWORD PTR [rbp-0x8]",
+        "1402d11b0: mov    rcx,rbx",
+        "1402d11b3: call   QWORD PTR [rip+0x16d657]        # 0x14043e810",
+        "1402d11b9: mov    DWORD PTR [rbp+0x6d0],r13d",
+        "1402d11c0: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d11c5: mov    r9d,0x5",
+        "1402d11cb: lea    r8d,[r9-0x4]",
+        "1402d11cf: mov    rdx,QWORD PTR [rbp+0x8]",
+        "1402d11d3: mov    rcx,rbx",
+        "1402d11d6: call   QWORD PTR [rip+0x16d634]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d11fc",
+      "assembly": [
+        "1402d11c0: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d11c5: mov    r9d,0x5",
+        "1402d11cb: lea    r8d,[r9-0x4]",
+        "1402d11cf: mov    rdx,QWORD PTR [rbp+0x8]",
+        "1402d11d3: mov    rcx,rbx",
+        "1402d11d6: call   QWORD PTR [rip+0x16d634]        # 0x14043e810",
+        "1402d11dc: mov    DWORD PTR [rbp+0xd80],r13d",
+        "1402d11e3: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d11e8: mov    r9d,0x6",
+        "1402d11ee: lea    r8d,[r9-0x5]",
+        "1402d11f2: mov    rdx,QWORD PTR [rbp+0x1d8]",
+        "1402d11f9: mov    rcx,rbx",
+        "1402d11fc: call   QWORD PTR [rip+0x16d60e]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1222",
+      "assembly": [
+        "1402d11e3: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d11e8: mov    r9d,0x6",
+        "1402d11ee: lea    r8d,[r9-0x5]",
+        "1402d11f2: mov    rdx,QWORD PTR [rbp+0x1d8]",
+        "1402d11f9: mov    rcx,rbx",
+        "1402d11fc: call   QWORD PTR [rip+0x16d60e]        # 0x14043e810",
+        "1402d1202: mov    DWORD PTR [rbp+0x10f0],r13d",
+        "1402d1209: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d120e: mov    r9d,0x7",
+        "1402d1214: lea    r8d,[r9-0x6]",
+        "1402d1218: mov    rdx,QWORD PTR [rbp+0x1e8]",
+        "1402d121f: mov    rcx,rbx",
+        "1402d1222: call   QWORD PTR [rip+0x16d5e8]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1248",
+      "assembly": [
+        "1402d1209: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d120e: mov    r9d,0x7",
+        "1402d1214: lea    r8d,[r9-0x6]",
+        "1402d1218: mov    rdx,QWORD PTR [rbp+0x1e8]",
+        "1402d121f: mov    rcx,rbx",
+        "1402d1222: call   QWORD PTR [rip+0x16d5e8]        # 0x14043e810",
+        "1402d1228: mov    DWORD PTR [rbp+0xe90],r13d",
+        "1402d122f: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d1234: mov    r9d,0x9",
+        "1402d123a: lea    r8d,[r9-0x8]",
+        "1402d123e: mov    rdx,QWORD PTR [rsi+0xb8]",
+        "1402d1245: mov    rcx,rbx",
+        "1402d1248: call   QWORD PTR [rip+0x16d5c2]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1268",
+      "assembly": [
+        "1402d122f: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d1234: mov    r9d,0x9",
+        "1402d123a: lea    r8d,[r9-0x8]",
+        "1402d123e: mov    rdx,QWORD PTR [rsi+0xb8]",
+        "1402d1245: mov    rcx,rbx",
+        "1402d1248: call   QWORD PTR [rip+0x16d5c2]        # 0x14043e810",
+        "1402d124e: mov    DWORD PTR [rbp+0x920],r13d",
+        "1402d1255: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d125a: xor    r9d,r9d",
+        "1402d125d: lea    r8d,[r9+0x2]",
+        "1402d1261: mov    rdx,QWORD PTR [rsi+0x68]",
+        "1402d1265: mov    rcx,rbx",
+        "1402d1268: call   QWORD PTR [rip+0x16d5a2]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d128e",
+      "assembly": [
+        "1402d1255: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d125a: xor    r9d,r9d",
+        "1402d125d: lea    r8d,[r9+0x2]",
+        "1402d1261: mov    rdx,QWORD PTR [rsi+0x68]",
+        "1402d1265: mov    rcx,rbx",
+        "1402d1268: call   QWORD PTR [rip+0x16d5a2]        # 0x14043e810",
+        "1402d126e: mov    DWORD PTR [rbp+0x1398],r13d",
+        "1402d1275: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d127a: mov    r9d,0x1",
+        "1402d1280: lea    r8d,[r9+0x1]",
+        "1402d1284: mov    rdx,QWORD PTR [rbp+0x1f8]",
+        "1402d128b: mov    rcx,rbx",
+        "1402d128e: call   QWORD PTR [rip+0x16d57c]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d12b3",
+      "assembly": [
+        "1402d1275: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d127a: mov    r9d,0x1",
+        "1402d1280: lea    r8d,[r9+0x1]",
+        "1402d1284: mov    rdx,QWORD PTR [rbp+0x1f8]",
+        "1402d128b: mov    rcx,rbx",
+        "1402d128e: call   QWORD PTR [rip+0x16d57c]        # 0x14043e810",
+        "1402d1294: mov    DWORD PTR [rbp+0xa40],r13d",
+        "1402d129b: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d12a0: mov    r9d,0x2",
+        "1402d12a6: mov    r8d,r9d",
+        "1402d12a9: mov    rdx,QWORD PTR [rbp+0x208]",
+        "1402d12b0: mov    rcx,rbx",
+        "1402d12b3: call   QWORD PTR [rip+0x16d557]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d12d9",
+      "assembly": [
+        "1402d129b: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d12a0: mov    r9d,0x2",
+        "1402d12a6: mov    r8d,r9d",
+        "1402d12a9: mov    rdx,QWORD PTR [rbp+0x208]",
+        "1402d12b0: mov    rcx,rbx",
+        "1402d12b3: call   QWORD PTR [rip+0x16d557]        # 0x14043e810",
+        "1402d12b9: mov    DWORD PTR [rbp+0x6e0],r13d",
+        "1402d12c0: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d12c5: mov    r9d,0x3",
+        "1402d12cb: lea    r8d,[r9-0x1]",
+        "1402d12cf: mov    rdx,QWORD PTR [rbp+0x218]",
+        "1402d12d6: mov    rcx,rbx",
+        "1402d12d9: call   QWORD PTR [rip+0x16d531]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d12ff",
+      "assembly": [
+        "1402d12c0: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d12c5: mov    r9d,0x3",
+        "1402d12cb: lea    r8d,[r9-0x1]",
+        "1402d12cf: mov    rdx,QWORD PTR [rbp+0x218]",
+        "1402d12d6: mov    rcx,rbx",
+        "1402d12d9: call   QWORD PTR [rip+0x16d531]        # 0x14043e810",
+        "1402d12df: mov    DWORD PTR [rbp+0x1280],r13d",
+        "1402d12e6: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d12eb: mov    r9d,0x4",
+        "1402d12f1: lea    r8d,[r9-0x2]",
+        "1402d12f5: mov    rdx,QWORD PTR [rbp+0x228]",
+        "1402d12fc: mov    rcx,rbx",
+        "1402d12ff: call   QWORD PTR [rip+0x16d50b]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1325",
+      "assembly": [
+        "1402d12e6: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d12eb: mov    r9d,0x4",
+        "1402d12f1: lea    r8d,[r9-0x2]",
+        "1402d12f5: mov    rdx,QWORD PTR [rbp+0x228]",
+        "1402d12fc: mov    rcx,rbx",
+        "1402d12ff: call   QWORD PTR [rip+0x16d50b]        # 0x14043e810",
+        "1402d1305: mov    DWORD PTR [rbp+0x6f0],r13d",
+        "1402d130c: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d1311: mov    r9d,0x5",
+        "1402d1317: lea    r8d,[r9-0x3]",
+        "1402d131b: mov    rdx,QWORD PTR [rbp+0x238]",
+        "1402d1322: mov    rcx,rbx",
+        "1402d1325: call   QWORD PTR [rip+0x16d4e5]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1348",
+      "assembly": [
+        "1402d130c: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d1311: mov    r9d,0x5",
+        "1402d1317: lea    r8d,[r9-0x3]",
+        "1402d131b: mov    rdx,QWORD PTR [rbp+0x238]",
+        "1402d1322: mov    rcx,rbx",
+        "1402d1325: call   QWORD PTR [rip+0x16d4e5]        # 0x14043e810",
+        "1402d132b: mov    DWORD PTR [rbp+0xd90],r13d",
+        "1402d1332: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d1337: mov    r9d,0x6",
+        "1402d133d: lea    r8d,[r9-0x4]",
+        "1402d1341: mov    rdx,QWORD PTR [rbp+0x28]",
+        "1402d1345: mov    rcx,rbx",
+        "1402d1348: call   QWORD PTR [rip+0x16d4c2]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d136b",
+      "assembly": [
+        "1402d1332: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d1337: mov    r9d,0x6",
+        "1402d133d: lea    r8d,[r9-0x4]",
+        "1402d1341: mov    rdx,QWORD PTR [rbp+0x28]",
+        "1402d1345: mov    rcx,rbx",
+        "1402d1348: call   QWORD PTR [rip+0x16d4c2]        # 0x14043e810",
+        "1402d134e: mov    DWORD PTR [rbp+0x700],r13d",
+        "1402d1355: mov    DWORD PTR [rsp+0x20],r13d",
+        "1402d135a: mov    r9d,0x9",
+        "1402d1360: lea    r8d,[r9-0x7]",
+        "1402d1364: mov    rdx,QWORD PTR [rbp+0x10]",
+        "1402d1368: mov    rcx,rbx",
+        "1402d136b: call   QWORD PTR [rip+0x16d49f]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d14aa",
+      "assembly": [
+        "1402d147d: mov    QWORD PTR [rbx+0x10],rax",
+        "1402d1481: xor    edi,edi",
+        "1402d1483: jmp    0x1402d1490",
+        "1402d1485: xor    edi,edi",
+        "1402d1487: mov    ebx,edi",
+        "1402d1489: lea    r15,[rip+0x17c908]        # 0x14044dd98",
+        "1402d1490: mov    DWORD PTR [rbp+0x10e0],edi",
+        "1402d1496: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d149a: xor    r9d,r9d",
+        "1402d149d: xor    r8d,r8d",
+        "1402d14a0: mov    rdx,QWORD PTR [rbp+0x258]",
+        "1402d14a7: mov    rcx,rbx",
+        "1402d14aa: call   QWORD PTR [rip+0x16d360]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d14cd",
+      "assembly": [
+        "1402d1496: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d149a: xor    r9d,r9d",
+        "1402d149d: xor    r8d,r8d",
+        "1402d14a0: mov    rdx,QWORD PTR [rbp+0x258]",
+        "1402d14a7: mov    rcx,rbx",
+        "1402d14aa: call   QWORD PTR [rip+0x16d360]        # 0x14043e810",
+        "1402d14b0: mov    DWORD PTR [rbp+0x710],edi",
+        "1402d14b6: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d14ba: mov    r9d,0x1",
+        "1402d14c0: xor    r8d,r8d",
+        "1402d14c3: mov    rdx,QWORD PTR [rbp+0x268]",
+        "1402d14ca: mov    rcx,rbx",
+        "1402d14cd: call   QWORD PTR [rip+0x16d33d]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d14f0",
+      "assembly": [
+        "1402d14b6: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d14ba: mov    r9d,0x1",
+        "1402d14c0: xor    r8d,r8d",
+        "1402d14c3: mov    rdx,QWORD PTR [rbp+0x268]",
+        "1402d14ca: mov    rcx,rbx",
+        "1402d14cd: call   QWORD PTR [rip+0x16d33d]        # 0x14043e810",
+        "1402d14d3: mov    DWORD PTR [rbp+0xda0],edi",
+        "1402d14d9: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d14dd: mov    r9d,0x2",
+        "1402d14e3: xor    r8d,r8d",
+        "1402d14e6: mov    rdx,QWORD PTR [rbp+0x278]",
+        "1402d14ed: mov    rcx,rbx",
+        "1402d14f0: call   QWORD PTR [rip+0x16d31a]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1513",
+      "assembly": [
+        "1402d14d9: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d14dd: mov    r9d,0x2",
+        "1402d14e3: xor    r8d,r8d",
+        "1402d14e6: mov    rdx,QWORD PTR [rbp+0x278]",
+        "1402d14ed: mov    rcx,rbx",
+        "1402d14f0: call   QWORD PTR [rip+0x16d31a]        # 0x14043e810",
+        "1402d14f6: mov    DWORD PTR [rbp+0x720],edi",
+        "1402d14fc: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1500: mov    r9d,0x3",
+        "1402d1506: xor    r8d,r8d",
+        "1402d1509: mov    rdx,QWORD PTR [rbp+0x288]",
+        "1402d1510: mov    rcx,rbx",
+        "1402d1513: call   QWORD PTR [rip+0x16d2f7]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1536",
+      "assembly": [
+        "1402d14fc: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1500: mov    r9d,0x3",
+        "1402d1506: xor    r8d,r8d",
+        "1402d1509: mov    rdx,QWORD PTR [rbp+0x288]",
+        "1402d1510: mov    rcx,rbx",
+        "1402d1513: call   QWORD PTR [rip+0x16d2f7]        # 0x14043e810",
+        "1402d1519: mov    DWORD PTR [rbp+0x13cc],edi",
+        "1402d151f: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1523: mov    r9d,0x4",
+        "1402d1529: xor    r8d,r8d",
+        "1402d152c: mov    rdx,QWORD PTR [rbp+0x298]",
+        "1402d1533: mov    rcx,rbx",
+        "1402d1536: call   QWORD PTR [rip+0x16d2d4]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1559",
+      "assembly": [
+        "1402d151f: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1523: mov    r9d,0x4",
+        "1402d1529: xor    r8d,r8d",
+        "1402d152c: mov    rdx,QWORD PTR [rbp+0x298]",
+        "1402d1533: mov    rcx,rbx",
+        "1402d1536: call   QWORD PTR [rip+0x16d2d4]        # 0x14043e810",
+        "1402d153c: mov    DWORD PTR [rbp+0x730],edi",
+        "1402d1542: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1546: mov    r9d,0x5",
+        "1402d154c: xor    r8d,r8d",
+        "1402d154f: mov    rdx,QWORD PTR [rbp+0x2a8]",
+        "1402d1556: mov    rcx,rbx",
+        "1402d1559: call   QWORD PTR [rip+0x16d2b1]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d157c",
+      "assembly": [
+        "1402d1542: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1546: mov    r9d,0x5",
+        "1402d154c: xor    r8d,r8d",
+        "1402d154f: mov    rdx,QWORD PTR [rbp+0x2a8]",
+        "1402d1556: mov    rcx,rbx",
+        "1402d1559: call   QWORD PTR [rip+0x16d2b1]        # 0x14043e810",
+        "1402d155f: mov    DWORD PTR [rbp+0xdb0],edi",
+        "1402d1565: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1569: mov    r9d,0x6",
+        "1402d156f: xor    r8d,r8d",
+        "1402d1572: mov    rdx,QWORD PTR [rbp+0x2b8]",
+        "1402d1579: mov    rcx,rbx",
+        "1402d157c: call   QWORD PTR [rip+0x16d28e]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d159f",
+      "assembly": [
+        "1402d1565: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1569: mov    r9d,0x6",
+        "1402d156f: xor    r8d,r8d",
+        "1402d1572: mov    rdx,QWORD PTR [rbp+0x2b8]",
+        "1402d1579: mov    rcx,rbx",
+        "1402d157c: call   QWORD PTR [rip+0x16d28e]        # 0x14043e810",
+        "1402d1582: mov    DWORD PTR [rbp+0x740],edi",
+        "1402d1588: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d158c: mov    r9d,0x7",
+        "1402d1592: xor    r8d,r8d",
+        "1402d1595: mov    rdx,QWORD PTR [rbp+0x2c8]",
+        "1402d159c: mov    rcx,rbx",
+        "1402d159f: call   QWORD PTR [rip+0x16d26b]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d15c2",
+      "assembly": [
+        "1402d1588: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d158c: mov    r9d,0x7",
+        "1402d1592: xor    r8d,r8d",
+        "1402d1595: mov    rdx,QWORD PTR [rbp+0x2c8]",
+        "1402d159c: mov    rcx,rbx",
+        "1402d159f: call   QWORD PTR [rip+0x16d26b]        # 0x14043e810",
+        "1402d15a5: mov    DWORD PTR [rbp+0x750],edi",
+        "1402d15ab: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d15af: mov    r9d,0x8",
+        "1402d15b5: xor    r8d,r8d",
+        "1402d15b8: mov    rdx,QWORD PTR [rbp+0x2d8]",
+        "1402d15bf: mov    rcx,rbx",
+        "1402d15c2: call   QWORD PTR [rip+0x16d248]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d15e5",
+      "assembly": [
+        "1402d15ab: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d15af: mov    r9d,0x8",
+        "1402d15b5: xor    r8d,r8d",
+        "1402d15b8: mov    rdx,QWORD PTR [rbp+0x2d8]",
+        "1402d15bf: mov    rcx,rbx",
+        "1402d15c2: call   QWORD PTR [rip+0x16d248]        # 0x14043e810",
+        "1402d15c8: mov    DWORD PTR [rbp+0xdc0],edi",
+        "1402d15ce: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d15d2: mov    r9d,0x9",
+        "1402d15d8: xor    r8d,r8d",
+        "1402d15db: mov    rdx,QWORD PTR [rbp+0x2e8]",
+        "1402d15e2: mov    rcx,rbx",
+        "1402d15e5: call   QWORD PTR [rip+0x16d225]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1608",
+      "assembly": [
+        "1402d15ce: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d15d2: mov    r9d,0x9",
+        "1402d15d8: xor    r8d,r8d",
+        "1402d15db: mov    rdx,QWORD PTR [rbp+0x2e8]",
+        "1402d15e2: mov    rcx,rbx",
+        "1402d15e5: call   QWORD PTR [rip+0x16d225]        # 0x14043e810",
+        "1402d15eb: mov    DWORD PTR [rbp+0x760],edi",
+        "1402d15f1: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d15f5: mov    r9d,0xa",
+        "1402d15fb: xor    r8d,r8d",
+        "1402d15fe: mov    rdx,QWORD PTR [rbp+0x2f8]",
+        "1402d1605: mov    rcx,rbx",
+        "1402d1608: call   QWORD PTR [rip+0x16d202]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d162b",
+      "assembly": [
+        "1402d15f1: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d15f5: mov    r9d,0xa",
+        "1402d15fb: xor    r8d,r8d",
+        "1402d15fe: mov    rdx,QWORD PTR [rbp+0x2f8]",
+        "1402d1605: mov    rcx,rbx",
+        "1402d1608: call   QWORD PTR [rip+0x16d202]        # 0x14043e810",
+        "1402d160e: mov    DWORD PTR [rbp+0x1290],edi",
+        "1402d1614: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1618: mov    r9d,0xb",
+        "1402d161e: xor    r8d,r8d",
+        "1402d1621: mov    rdx,QWORD PTR [rbp+0x308]",
+        "1402d1628: mov    rcx,rbx",
+        "1402d162b: call   QWORD PTR [rip+0x16d1df]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d164e",
+      "assembly": [
+        "1402d1614: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1618: mov    r9d,0xb",
+        "1402d161e: xor    r8d,r8d",
+        "1402d1621: mov    rdx,QWORD PTR [rbp+0x308]",
+        "1402d1628: mov    rcx,rbx",
+        "1402d162b: call   QWORD PTR [rip+0x16d1df]        # 0x14043e810",
+        "1402d1631: mov    DWORD PTR [rbp+0x770],edi",
+        "1402d1637: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d163b: mov    r9d,0xc",
+        "1402d1641: xor    r8d,r8d",
+        "1402d1644: mov    rdx,QWORD PTR [rbp+0x318]",
+        "1402d164b: mov    rcx,rbx",
+        "1402d164e: call   QWORD PTR [rip+0x16d1bc]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1671",
+      "assembly": [
+        "1402d1637: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d163b: mov    r9d,0xc",
+        "1402d1641: xor    r8d,r8d",
+        "1402d1644: mov    rdx,QWORD PTR [rbp+0x318]",
+        "1402d164b: mov    rcx,rbx",
+        "1402d164e: call   QWORD PTR [rip+0x16d1bc]        # 0x14043e810",
+        "1402d1654: mov    DWORD PTR [rbp+0xdd0],edi",
+        "1402d165a: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d165e: mov    r9d,0xe",
+        "1402d1664: xor    r8d,r8d",
+        "1402d1667: mov    rdx,QWORD PTR [rbp+0x328]",
+        "1402d166e: mov    rcx,rbx",
+        "1402d1671: call   QWORD PTR [rip+0x16d199]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1692",
+      "assembly": [
+        "1402d165a: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d165e: mov    r9d,0xe",
+        "1402d1664: xor    r8d,r8d",
+        "1402d1667: mov    rdx,QWORD PTR [rbp+0x328]",
+        "1402d166e: mov    rcx,rbx",
+        "1402d1671: call   QWORD PTR [rip+0x16d199]        # 0x14043e810",
+        "1402d1677: mov    DWORD PTR [rbp+0x780],edi",
+        "1402d167d: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1681: xor    r9d,r9d",
+        "1402d1684: lea    r8d,[r9+0x1]",
+        "1402d1688: mov    rdx,QWORD PTR [rbp+0x338]",
+        "1402d168f: mov    rcx,rbx",
+        "1402d1692: call   QWORD PTR [rip+0x16d178]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d16b6",
+      "assembly": [
+        "1402d167d: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1681: xor    r9d,r9d",
+        "1402d1684: lea    r8d,[r9+0x1]",
+        "1402d1688: mov    rdx,QWORD PTR [rbp+0x338]",
+        "1402d168f: mov    rcx,rbx",
+        "1402d1692: call   QWORD PTR [rip+0x16d178]        # 0x14043e810",
+        "1402d1698: mov    DWORD PTR [rbp+0x1100],edi",
+        "1402d169e: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d16a2: mov    r9d,0x2",
+        "1402d16a8: lea    r8d,[r9-0x1]",
+        "1402d16ac: mov    rdx,QWORD PTR [rbp+0x348]",
+        "1402d16b3: mov    rcx,rbx",
+        "1402d16b6: call   QWORD PTR [rip+0x16d154]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d16da",
+      "assembly": [
+        "1402d169e: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d16a2: mov    r9d,0x2",
+        "1402d16a8: lea    r8d,[r9-0x1]",
+        "1402d16ac: mov    rdx,QWORD PTR [rbp+0x348]",
+        "1402d16b3: mov    rcx,rbx",
+        "1402d16b6: call   QWORD PTR [rip+0x16d154]        # 0x14043e810",
+        "1402d16bc: mov    DWORD PTR [rbp+0x790],edi",
+        "1402d16c2: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d16c6: mov    r9d,0x3",
+        "1402d16cc: lea    r8d,[r9-0x2]",
+        "1402d16d0: mov    rdx,QWORD PTR [rbp+0x358]",
+        "1402d16d7: mov    rcx,rbx",
+        "1402d16da: call   QWORD PTR [rip+0x16d130]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d16fe",
+      "assembly": [
+        "1402d16c2: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d16c6: mov    r9d,0x3",
+        "1402d16cc: lea    r8d,[r9-0x2]",
+        "1402d16d0: mov    rdx,QWORD PTR [rbp+0x358]",
+        "1402d16d7: mov    rcx,rbx",
+        "1402d16da: call   QWORD PTR [rip+0x16d130]        # 0x14043e810",
+        "1402d16e0: mov    DWORD PTR [rbp+0xde0],edi",
+        "1402d16e6: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d16ea: mov    r9d,0x4",
+        "1402d16f0: lea    r8d,[r9-0x3]",
+        "1402d16f4: mov    rdx,QWORD PTR [rbp+0x368]",
+        "1402d16fb: mov    rcx,rbx",
+        "1402d16fe: call   QWORD PTR [rip+0x16d10c]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1722",
+      "assembly": [
+        "1402d16e6: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d16ea: mov    r9d,0x4",
+        "1402d16f0: lea    r8d,[r9-0x3]",
+        "1402d16f4: mov    rdx,QWORD PTR [rbp+0x368]",
+        "1402d16fb: mov    rcx,rbx",
+        "1402d16fe: call   QWORD PTR [rip+0x16d10c]        # 0x14043e810",
+        "1402d1704: mov    DWORD PTR [rbp+0x7a0],edi",
+        "1402d170a: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d170e: mov    r9d,0x5",
+        "1402d1714: lea    r8d,[r9-0x4]",
+        "1402d1718: mov    rdx,QWORD PTR [rbp+0x378]",
+        "1402d171f: mov    rcx,rbx",
+        "1402d1722: call   QWORD PTR [rip+0x16d0e8]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1746",
+      "assembly": [
+        "1402d170a: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d170e: mov    r9d,0x5",
+        "1402d1714: lea    r8d,[r9-0x4]",
+        "1402d1718: mov    rdx,QWORD PTR [rbp+0x378]",
+        "1402d171f: mov    rcx,rbx",
+        "1402d1722: call   QWORD PTR [rip+0x16d0e8]        # 0x14043e810",
+        "1402d1728: mov    DWORD PTR [rbp+0x1360],edi",
+        "1402d172e: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1732: mov    r9d,0x6",
+        "1402d1738: lea    r8d,[r9-0x5]",
+        "1402d173c: mov    rdx,QWORD PTR [rbp+0x388]",
+        "1402d1743: mov    rcx,rbx",
+        "1402d1746: call   QWORD PTR [rip+0x16d0c4]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d176a",
+      "assembly": [
+        "1402d172e: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1732: mov    r9d,0x6",
+        "1402d1738: lea    r8d,[r9-0x5]",
+        "1402d173c: mov    rdx,QWORD PTR [rbp+0x388]",
+        "1402d1743: mov    rcx,rbx",
+        "1402d1746: call   QWORD PTR [rip+0x16d0c4]        # 0x14043e810",
+        "1402d174c: mov    DWORD PTR [rbp+0x7b0],edi",
+        "1402d1752: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1756: mov    r9d,0x7",
+        "1402d175c: lea    r8d,[r9-0x6]",
+        "1402d1760: mov    rdx,QWORD PTR [rbp+0x398]",
+        "1402d1767: mov    rcx,rbx",
+        "1402d176a: call   QWORD PTR [rip+0x16d0a0]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d178e",
+      "assembly": [
+        "1402d1752: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1756: mov    r9d,0x7",
+        "1402d175c: lea    r8d,[r9-0x6]",
+        "1402d1760: mov    rdx,QWORD PTR [rbp+0x398]",
+        "1402d1767: mov    rcx,rbx",
+        "1402d176a: call   QWORD PTR [rip+0x16d0a0]        # 0x14043e810",
+        "1402d1770: mov    DWORD PTR [rbp+0xdf0],edi",
+        "1402d1776: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d177a: mov    r9d,0x8",
+        "1402d1780: lea    r8d,[r9-0x7]",
+        "1402d1784: mov    rdx,QWORD PTR [rbp+0x3a8]",
+        "1402d178b: mov    rcx,rbx",
+        "1402d178e: call   QWORD PTR [rip+0x16d07c]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d17b2",
+      "assembly": [
+        "1402d1776: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d177a: mov    r9d,0x8",
+        "1402d1780: lea    r8d,[r9-0x7]",
+        "1402d1784: mov    rdx,QWORD PTR [rbp+0x3a8]",
+        "1402d178b: mov    rcx,rbx",
+        "1402d178e: call   QWORD PTR [rip+0x16d07c]        # 0x14043e810",
+        "1402d1794: mov    DWORD PTR [rbp+0x7c0],edi",
+        "1402d179a: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d179e: mov    r9d,0x9",
+        "1402d17a4: lea    r8d,[r9-0x8]",
+        "1402d17a8: mov    rdx,QWORD PTR [rbp+0x3b8]",
+        "1402d17af: mov    rcx,rbx",
+        "1402d17b2: call   QWORD PTR [rip+0x16d058]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d17d6",
+      "assembly": [
+        "1402d179a: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d179e: mov    r9d,0x9",
+        "1402d17a4: lea    r8d,[r9-0x8]",
+        "1402d17a8: mov    rdx,QWORD PTR [rbp+0x3b8]",
+        "1402d17af: mov    rcx,rbx",
+        "1402d17b2: call   QWORD PTR [rip+0x16d058]        # 0x14043e810",
+        "1402d17b8: mov    DWORD PTR [rbp+0x1110],edi",
+        "1402d17be: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d17c2: mov    r9d,0xa",
+        "1402d17c8: lea    r8d,[r9-0x9]",
+        "1402d17cc: mov    rdx,QWORD PTR [rbp+0x3c8]",
+        "1402d17d3: mov    rcx,rbx",
+        "1402d17d6: call   QWORD PTR [rip+0x16d034]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d17fa",
+      "assembly": [
+        "1402d17be: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d17c2: mov    r9d,0xa",
+        "1402d17c8: lea    r8d,[r9-0x9]",
+        "1402d17cc: mov    rdx,QWORD PTR [rbp+0x3c8]",
+        "1402d17d3: mov    rcx,rbx",
+        "1402d17d6: call   QWORD PTR [rip+0x16d034]        # 0x14043e810",
+        "1402d17dc: mov    DWORD PTR [rbp+0x7d0],edi",
+        "1402d17e2: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d17e6: mov    r9d,0xb",
+        "1402d17ec: lea    r8d,[r9-0xa]",
+        "1402d17f0: mov    rdx,QWORD PTR [rbp+0x3d8]",
+        "1402d17f7: mov    rcx,rbx",
+        "1402d17fa: call   QWORD PTR [rip+0x16d010]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d181e",
+      "assembly": [
+        "1402d17e2: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d17e6: mov    r9d,0xb",
+        "1402d17ec: lea    r8d,[r9-0xa]",
+        "1402d17f0: mov    rdx,QWORD PTR [rbp+0x3d8]",
+        "1402d17f7: mov    rcx,rbx",
+        "1402d17fa: call   QWORD PTR [rip+0x16d010]        # 0x14043e810",
+        "1402d1800: mov    DWORD PTR [rbp+0xe00],edi",
+        "1402d1806: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d180a: mov    r9d,0xc",
+        "1402d1810: lea    r8d,[r9-0xb]",
+        "1402d1814: mov    rdx,QWORD PTR [rbp+0x3e8]",
+        "1402d181b: mov    rcx,rbx",
+        "1402d181e: call   QWORD PTR [rip+0x16cfec]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d184f",
+      "assembly": [
+        "1402d1810: lea    r8d,[r9-0xb]",
+        "1402d1814: mov    rdx,QWORD PTR [rbp+0x3e8]",
+        "1402d181b: mov    rcx,rbx",
+        "1402d181e: call   QWORD PTR [rip+0x16cfec]        # 0x14043e810",
+        "1402d1824: mov    DWORD PTR [rbp+0x7e0],edi",
+        "1402d182a: mov    DWORD PTR [rsp+0x30],edi",
+        "1402d182e: mov    DWORD PTR [rsp+0x28],0x2",
+        "1402d1836: mov    DWORD PTR [rsp+0x20],0x1",
+        "1402d183e: mov    r9d,0xd",
+        "1402d1844: lea    r8d,[r9-0xc]",
+        "1402d1848: mov    rdx,QWORD PTR [rsi+0x50]",
+        "1402d184c: mov    rcx,rbx",
+        "1402d184f: call   QWORD PTR [rip+0x16cfc3]        # 0x14043e818"
+      ]
+    },
+    {
+      "call": "0x1402d1873",
+      "assembly": [
+        "1402d1836: mov    DWORD PTR [rsp+0x20],0x1",
+        "1402d183e: mov    r9d,0xd",
+        "1402d1844: lea    r8d,[r9-0xc]",
+        "1402d1848: mov    rdx,QWORD PTR [rsi+0x50]",
+        "1402d184c: mov    rcx,rbx",
+        "1402d184f: call   QWORD PTR [rip+0x16cfc3]        # 0x14043e818",
+        "1402d1855: mov    DWORD PTR [rbp+0x12a0],edi",
+        "1402d185b: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d185f: mov    r9d,0x1",
+        "1402d1865: lea    r8d,[r9+0x1]",
+        "1402d1869: mov    rdx,QWORD PTR [rbp+0x3f8]",
+        "1402d1870: mov    rcx,rbx",
+        "1402d1873: call   QWORD PTR [rip+0x16cf97]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1896",
+      "assembly": [
+        "1402d185b: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d185f: mov    r9d,0x1",
+        "1402d1865: lea    r8d,[r9+0x1]",
+        "1402d1869: mov    rdx,QWORD PTR [rbp+0x3f8]",
+        "1402d1870: mov    rcx,rbx",
+        "1402d1873: call   QWORD PTR [rip+0x16cf97]        # 0x14043e810",
+        "1402d1879: mov    DWORD PTR [rbp+0x7f0],edi",
+        "1402d187f: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1883: mov    r9d,0x2",
+        "1402d1889: mov    r8d,r9d",
+        "1402d188c: mov    rdx,QWORD PTR [rbp+0x408]",
+        "1402d1893: mov    rcx,rbx",
+        "1402d1896: call   QWORD PTR [rip+0x16cf74]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d18ba",
+      "assembly": [
+        "1402d187f: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1883: mov    r9d,0x2",
+        "1402d1889: mov    r8d,r9d",
+        "1402d188c: mov    rdx,QWORD PTR [rbp+0x408]",
+        "1402d1893: mov    rcx,rbx",
+        "1402d1896: call   QWORD PTR [rip+0x16cf74]        # 0x14043e810",
+        "1402d189c: mov    DWORD PTR [rbp+0xe10],edi",
+        "1402d18a2: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d18a6: mov    r9d,0x3",
+        "1402d18ac: lea    r8d,[r9-0x1]",
+        "1402d18b0: mov    rdx,QWORD PTR [rbp+0x418]",
+        "1402d18b7: mov    rcx,rbx",
+        "1402d18ba: call   QWORD PTR [rip+0x16cf50]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d18de",
+      "assembly": [
+        "1402d18a2: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d18a6: mov    r9d,0x3",
+        "1402d18ac: lea    r8d,[r9-0x1]",
+        "1402d18b0: mov    rdx,QWORD PTR [rbp+0x418]",
+        "1402d18b7: mov    rcx,rbx",
+        "1402d18ba: call   QWORD PTR [rip+0x16cf50]        # 0x14043e810",
+        "1402d18c0: mov    DWORD PTR [rbp+0x800],edi",
+        "1402d18c6: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d18ca: mov    r9d,0x4",
+        "1402d18d0: lea    r8d,[r9-0x2]",
+        "1402d18d4: mov    rdx,QWORD PTR [rbp+0x428]",
+        "1402d18db: mov    rcx,rbx",
+        "1402d18de: call   QWORD PTR [rip+0x16cf2c]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1902",
+      "assembly": [
+        "1402d18c6: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d18ca: mov    r9d,0x4",
+        "1402d18d0: lea    r8d,[r9-0x2]",
+        "1402d18d4: mov    rdx,QWORD PTR [rbp+0x428]",
+        "1402d18db: mov    rcx,rbx",
+        "1402d18de: call   QWORD PTR [rip+0x16cf2c]        # 0x14043e810",
+        "1402d18e4: mov    DWORD PTR [rbp+0x1120],edi",
+        "1402d18ea: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d18ee: mov    r9d,0x5",
+        "1402d18f4: lea    r8d,[r9-0x3]",
+        "1402d18f8: mov    rdx,QWORD PTR [rbp+0x438]",
+        "1402d18ff: mov    rcx,rbx",
+        "1402d1902: call   QWORD PTR [rip+0x16cf08]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1926",
+      "assembly": [
+        "1402d18ea: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d18ee: mov    r9d,0x5",
+        "1402d18f4: lea    r8d,[r9-0x3]",
+        "1402d18f8: mov    rdx,QWORD PTR [rbp+0x438]",
+        "1402d18ff: mov    rcx,rbx",
+        "1402d1902: call   QWORD PTR [rip+0x16cf08]        # 0x14043e810",
+        "1402d1908: mov    DWORD PTR [rbp+0x810],edi",
+        "1402d190e: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1912: mov    r9d,0x6",
+        "1402d1918: lea    r8d,[r9-0x4]",
+        "1402d191c: mov    rdx,QWORD PTR [rbp+0x448]",
+        "1402d1923: mov    rcx,rbx",
+        "1402d1926: call   QWORD PTR [rip+0x16cee4]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d194a",
+      "assembly": [
+        "1402d190e: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1912: mov    r9d,0x6",
+        "1402d1918: lea    r8d,[r9-0x4]",
+        "1402d191c: mov    rdx,QWORD PTR [rbp+0x448]",
+        "1402d1923: mov    rcx,rbx",
+        "1402d1926: call   QWORD PTR [rip+0x16cee4]        # 0x14043e810",
+        "1402d192c: mov    DWORD PTR [rbp+0xe20],edi",
+        "1402d1932: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1936: mov    r9d,0x7",
+        "1402d193c: lea    r8d,[r9-0x5]",
+        "1402d1940: mov    rdx,QWORD PTR [rbp+0x458]",
+        "1402d1947: mov    rcx,rbx",
+        "1402d194a: call   QWORD PTR [rip+0x16cec0]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d196e",
+      "assembly": [
+        "1402d1932: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1936: mov    r9d,0x7",
+        "1402d193c: lea    r8d,[r9-0x5]",
+        "1402d1940: mov    rdx,QWORD PTR [rbp+0x458]",
+        "1402d1947: mov    rcx,rbx",
+        "1402d194a: call   QWORD PTR [rip+0x16cec0]        # 0x14043e810",
+        "1402d1950: mov    DWORD PTR [rbp+0x820],edi",
+        "1402d1956: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d195a: mov    r9d,0x8",
+        "1402d1960: lea    r8d,[r9-0x6]",
+        "1402d1964: mov    rdx,QWORD PTR [rbp+0x468]",
+        "1402d196b: mov    rcx,rbx",
+        "1402d196e: call   QWORD PTR [rip+0x16ce9c]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1992",
+      "assembly": [
+        "1402d1956: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d195a: mov    r9d,0x8",
+        "1402d1960: lea    r8d,[r9-0x6]",
+        "1402d1964: mov    rdx,QWORD PTR [rbp+0x468]",
+        "1402d196b: mov    rcx,rbx",
+        "1402d196e: call   QWORD PTR [rip+0x16ce9c]        # 0x14043e810",
+        "1402d1974: mov    DWORD PTR [rbp+0x13c8],edi",
+        "1402d197a: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d197e: mov    r9d,0x9",
+        "1402d1984: lea    r8d,[r9-0x7]",
+        "1402d1988: mov    rdx,QWORD PTR [rbp+0x478]",
+        "1402d198f: mov    rcx,rbx",
+        "1402d1992: call   QWORD PTR [rip+0x16ce78]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d19b6",
+      "assembly": [
+        "1402d197a: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d197e: mov    r9d,0x9",
+        "1402d1984: lea    r8d,[r9-0x7]",
+        "1402d1988: mov    rdx,QWORD PTR [rbp+0x478]",
+        "1402d198f: mov    rcx,rbx",
+        "1402d1992: call   QWORD PTR [rip+0x16ce78]        # 0x14043e810",
+        "1402d1998: mov    DWORD PTR [rbp+0x830],edi",
+        "1402d199e: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d19a2: mov    r9d,0xa",
+        "1402d19a8: lea    r8d,[r9-0x8]",
+        "1402d19ac: mov    rdx,QWORD PTR [rbp+0x488]",
+        "1402d19b3: mov    rcx,rbx",
+        "1402d19b6: call   QWORD PTR [rip+0x16ce54]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d19da",
+      "assembly": [
+        "1402d199e: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d19a2: mov    r9d,0xa",
+        "1402d19a8: lea    r8d,[r9-0x8]",
+        "1402d19ac: mov    rdx,QWORD PTR [rbp+0x488]",
+        "1402d19b3: mov    rcx,rbx",
+        "1402d19b6: call   QWORD PTR [rip+0x16ce54]        # 0x14043e810",
+        "1402d19bc: mov    DWORD PTR [rbp+0xe30],edi",
+        "1402d19c2: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d19c6: mov    r9d,0xb",
+        "1402d19cc: lea    r8d,[r9-0x9]",
+        "1402d19d0: mov    rdx,QWORD PTR [rbp+0x498]",
+        "1402d19d7: mov    rcx,rbx",
+        "1402d19da: call   QWORD PTR [rip+0x16ce30]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d19fe",
+      "assembly": [
+        "1402d19c2: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d19c6: mov    r9d,0xb",
+        "1402d19cc: lea    r8d,[r9-0x9]",
+        "1402d19d0: mov    rdx,QWORD PTR [rbp+0x498]",
+        "1402d19d7: mov    rcx,rbx",
+        "1402d19da: call   QWORD PTR [rip+0x16ce30]        # 0x14043e810",
+        "1402d19e0: mov    DWORD PTR [rbp+0x840],edi",
+        "1402d19e6: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d19ea: mov    r9d,0xc",
+        "1402d19f0: lea    r8d,[r9-0xa]",
+        "1402d19f4: mov    rdx,QWORD PTR [rbp+0x4a8]",
+        "1402d19fb: mov    rcx,rbx",
+        "1402d19fe: call   QWORD PTR [rip+0x16ce0c]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1a22",
+      "assembly": [
+        "1402d19e6: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d19ea: mov    r9d,0xc",
+        "1402d19f0: lea    r8d,[r9-0xa]",
+        "1402d19f4: mov    rdx,QWORD PTR [rbp+0x4a8]",
+        "1402d19fb: mov    rcx,rbx",
+        "1402d19fe: call   QWORD PTR [rip+0x16ce0c]        # 0x14043e810",
+        "1402d1a04: mov    DWORD PTR [rbp+0x1130],edi",
+        "1402d1a0a: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1a0e: mov    r9d,0xe",
+        "1402d1a14: lea    r8d,[r9-0xc]",
+        "1402d1a18: mov    rdx,QWORD PTR [rbp+0x4b8]",
+        "1402d1a1f: mov    rcx,rbx",
+        "1402d1a22: call   QWORD PTR [rip+0x16cde8]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1a46",
+      "assembly": [
+        "1402d1a0a: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1a0e: mov    r9d,0xe",
+        "1402d1a14: lea    r8d,[r9-0xc]",
+        "1402d1a18: mov    rdx,QWORD PTR [rbp+0x4b8]",
+        "1402d1a1f: mov    rcx,rbx",
+        "1402d1a22: call   QWORD PTR [rip+0x16cde8]        # 0x14043e810",
+        "1402d1a28: mov    DWORD PTR [rbp+0x850],edi",
+        "1402d1a2e: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1a32: mov    r9d,0x6",
+        "1402d1a38: lea    r8d,[r9-0x3]",
+        "1402d1a3c: mov    rdx,QWORD PTR [rbp+0x4c8]",
+        "1402d1a43: mov    rcx,rbx",
+        "1402d1a46: call   QWORD PTR [rip+0x16cdc4]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1a6a",
+      "assembly": [
+        "1402d1a2e: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1a32: mov    r9d,0x6",
+        "1402d1a38: lea    r8d,[r9-0x3]",
+        "1402d1a3c: mov    rdx,QWORD PTR [rbp+0x4c8]",
+        "1402d1a43: mov    rcx,rbx",
+        "1402d1a46: call   QWORD PTR [rip+0x16cdc4]        # 0x14043e810",
+        "1402d1a4c: mov    DWORD PTR [rbp+0xe40],edi",
+        "1402d1a52: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1a56: mov    r9d,0x8",
+        "1402d1a5c: lea    r8d,[r9-0x5]",
+        "1402d1a60: mov    rdx,QWORD PTR [rbp+0x4d8]",
+        "1402d1a67: mov    rcx,rbx",
+        "1402d1a6a: call   QWORD PTR [rip+0x16cda0]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1a8e",
+      "assembly": [
+        "1402d1a52: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1a56: mov    r9d,0x8",
+        "1402d1a5c: lea    r8d,[r9-0x5]",
+        "1402d1a60: mov    rdx,QWORD PTR [rbp+0x4d8]",
+        "1402d1a67: mov    rcx,rbx",
+        "1402d1a6a: call   QWORD PTR [rip+0x16cda0]        # 0x14043e810",
+        "1402d1a70: mov    DWORD PTR [rbp+0x860],edi",
+        "1402d1a76: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1a7a: mov    r9d,0x9",
+        "1402d1a80: lea    r8d,[r9-0x6]",
+        "1402d1a84: mov    rdx,QWORD PTR [rbp+0x4e8]",
+        "1402d1a8b: mov    rcx,rbx",
+        "1402d1a8e: call   QWORD PTR [rip+0x16cd7c]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1ab2",
+      "assembly": [
+        "1402d1a76: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1a7a: mov    r9d,0x9",
+        "1402d1a80: lea    r8d,[r9-0x6]",
+        "1402d1a84: mov    rdx,QWORD PTR [rbp+0x4e8]",
+        "1402d1a8b: mov    rcx,rbx",
+        "1402d1a8e: call   QWORD PTR [rip+0x16cd7c]        # 0x14043e810",
+        "1402d1a94: mov    DWORD PTR [rbp+0x12b0],edi",
+        "1402d1a9a: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1a9e: mov    r9d,0xa",
+        "1402d1aa4: lea    r8d,[r9-0x7]",
+        "1402d1aa8: mov    rdx,QWORD PTR [rbp+0x4f8]",
+        "1402d1aaf: mov    rcx,rbx",
+        "1402d1ab2: call   QWORD PTR [rip+0x16cd58]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1ad6",
+      "assembly": [
+        "1402d1a9a: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1a9e: mov    r9d,0xa",
+        "1402d1aa4: lea    r8d,[r9-0x7]",
+        "1402d1aa8: mov    rdx,QWORD PTR [rbp+0x4f8]",
+        "1402d1aaf: mov    rcx,rbx",
+        "1402d1ab2: call   QWORD PTR [rip+0x16cd58]        # 0x14043e810",
+        "1402d1ab8: mov    DWORD PTR [rbp+0x870],edi",
+        "1402d1abe: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1ac2: mov    r9d,0xb",
+        "1402d1ac8: lea    r8d,[r9-0x8]",
+        "1402d1acc: mov    rdx,QWORD PTR [rbp+0x508]",
+        "1402d1ad3: mov    rcx,rbx",
+        "1402d1ad6: call   QWORD PTR [rip+0x16cd34]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1afa",
+      "assembly": [
+        "1402d1abe: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1ac2: mov    r9d,0xb",
+        "1402d1ac8: lea    r8d,[r9-0x8]",
+        "1402d1acc: mov    rdx,QWORD PTR [rbp+0x508]",
+        "1402d1ad3: mov    rcx,rbx",
+        "1402d1ad6: call   QWORD PTR [rip+0x16cd34]        # 0x14043e810",
+        "1402d1adc: mov    DWORD PTR [rbp+0xe50],edi",
+        "1402d1ae2: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1ae6: mov    r9d,0xc",
+        "1402d1aec: lea    r8d,[r9-0x9]",
+        "1402d1af0: mov    rdx,QWORD PTR [rbp+0x518]",
+        "1402d1af7: mov    rcx,rbx",
+        "1402d1afa: call   QWORD PTR [rip+0x16cd10]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1b1b",
+      "assembly": [
+        "1402d1ae2: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1ae6: mov    r9d,0xc",
+        "1402d1aec: lea    r8d,[r9-0x9]",
+        "1402d1af0: mov    rdx,QWORD PTR [rbp+0x518]",
+        "1402d1af7: mov    rcx,rbx",
+        "1402d1afa: call   QWORD PTR [rip+0x16cd10]        # 0x14043e810",
+        "1402d1b00: mov    DWORD PTR [rbp+0x880],edi",
+        "1402d1b06: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1b0a: xor    r9d,r9d",
+        "1402d1b0d: lea    r8d,[r9+0x4]",
+        "1402d1b11: mov    rdx,QWORD PTR [rbp+0x528]",
+        "1402d1b18: mov    rcx,rbx",
+        "1402d1b1b: call   QWORD PTR [rip+0x16ccef]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1b3f",
+      "assembly": [
+        "1402d1b06: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1b0a: xor    r9d,r9d",
+        "1402d1b0d: lea    r8d,[r9+0x4]",
+        "1402d1b11: mov    rdx,QWORD PTR [rbp+0x528]",
+        "1402d1b18: mov    rcx,rbx",
+        "1402d1b1b: call   QWORD PTR [rip+0x16ccef]        # 0x14043e810",
+        "1402d1b21: mov    DWORD PTR [rbp+0x1140],edi",
+        "1402d1b27: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1b2b: mov    r9d,0x1",
+        "1402d1b31: lea    r8d,[r9+0x3]",
+        "1402d1b35: mov    rdx,QWORD PTR [rbp+0x538]",
+        "1402d1b3c: mov    rcx,rbx",
+        "1402d1b3f: call   QWORD PTR [rip+0x16cccb]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1b63",
+      "assembly": [
+        "1402d1b27: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1b2b: mov    r9d,0x1",
+        "1402d1b31: lea    r8d,[r9+0x3]",
+        "1402d1b35: mov    rdx,QWORD PTR [rbp+0x538]",
+        "1402d1b3c: mov    rcx,rbx",
+        "1402d1b3f: call   QWORD PTR [rip+0x16cccb]        # 0x14043e810",
+        "1402d1b45: mov    DWORD PTR [rbp+0x890],edi",
+        "1402d1b4b: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1b4f: mov    r9d,0x2",
+        "1402d1b55: lea    r8d,[r9+0x2]",
+        "1402d1b59: mov    rdx,QWORD PTR [rbp+0x548]",
+        "1402d1b60: mov    rcx,rbx",
+        "1402d1b63: call   QWORD PTR [rip+0x16cca7]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1b86",
+      "assembly": [
+        "1402d1b4b: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1b4f: mov    r9d,0x2",
+        "1402d1b55: lea    r8d,[r9+0x2]",
+        "1402d1b59: mov    rdx,QWORD PTR [rbp+0x548]",
+        "1402d1b60: mov    rcx,rbx",
+        "1402d1b63: call   QWORD PTR [rip+0x16cca7]        # 0x14043e810",
+        "1402d1b69: mov    DWORD PTR [rbp+0xe60],edi",
+        "1402d1b6f: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1b73: mov    r9d,0x4",
+        "1402d1b79: mov    r8d,r9d",
+        "1402d1b7c: mov    rdx,QWORD PTR [rbp+0x558]",
+        "1402d1b83: mov    rcx,rbx",
+        "1402d1b86: call   QWORD PTR [rip+0x16cc84]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1baa",
+      "assembly": [
+        "1402d1b6f: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1b73: mov    r9d,0x4",
+        "1402d1b79: mov    r8d,r9d",
+        "1402d1b7c: mov    rdx,QWORD PTR [rbp+0x558]",
+        "1402d1b83: mov    rcx,rbx",
+        "1402d1b86: call   QWORD PTR [rip+0x16cc84]        # 0x14043e810",
+        "1402d1b8c: mov    DWORD PTR [rbp+0x8a0],edi",
+        "1402d1b92: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1b96: mov    r9d,0x6",
+        "1402d1b9c: lea    r8d,[r9-0x2]",
+        "1402d1ba0: mov    rdx,QWORD PTR [rbp+0x568]",
+        "1402d1ba7: mov    rcx,rbx",
+        "1402d1baa: call   QWORD PTR [rip+0x16cc60]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1bce",
+      "assembly": [
+        "1402d1b92: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1b96: mov    r9d,0x6",
+        "1402d1b9c: lea    r8d,[r9-0x2]",
+        "1402d1ba0: mov    rdx,QWORD PTR [rbp+0x568]",
+        "1402d1ba7: mov    rcx,rbx",
+        "1402d1baa: call   QWORD PTR [rip+0x16cc60]        # 0x14043e810",
+        "1402d1bb0: mov    DWORD PTR [rbp+0x1370],edi",
+        "1402d1bb6: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1bba: mov    r9d,0x7",
+        "1402d1bc0: lea    r8d,[r9-0x3]",
+        "1402d1bc4: mov    rdx,QWORD PTR [rbp+0x578]",
+        "1402d1bcb: mov    rcx,rbx",
+        "1402d1bce: call   QWORD PTR [rip+0x16cc3c]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1bf2",
+      "assembly": [
+        "1402d1bb6: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1bba: mov    r9d,0x7",
+        "1402d1bc0: lea    r8d,[r9-0x3]",
+        "1402d1bc4: mov    rdx,QWORD PTR [rbp+0x578]",
+        "1402d1bcb: mov    rcx,rbx",
+        "1402d1bce: call   QWORD PTR [rip+0x16cc3c]        # 0x14043e810",
+        "1402d1bd4: mov    DWORD PTR [rbp+0x8b0],edi",
+        "1402d1bda: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1bde: mov    r9d,0x8",
+        "1402d1be4: lea    r8d,[r9-0x4]",
+        "1402d1be8: mov    rdx,QWORD PTR [rbp+0x588]",
+        "1402d1bef: mov    rcx,rbx",
+        "1402d1bf2: call   QWORD PTR [rip+0x16cc18]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1c13",
+      "assembly": [
+        "1402d1bda: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1bde: mov    r9d,0x8",
+        "1402d1be4: lea    r8d,[r9-0x4]",
+        "1402d1be8: mov    rdx,QWORD PTR [rbp+0x588]",
+        "1402d1bef: mov    rcx,rbx",
+        "1402d1bf2: call   QWORD PTR [rip+0x16cc18]        # 0x14043e810",
+        "1402d1bf8: mov    DWORD PTR [rbp+0xe70],edi",
+        "1402d1bfe: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1c02: mov    r9d,0xa",
+        "1402d1c08: lea    r8d,[r9-0x6]",
+        "1402d1c0c: mov    rdx,QWORD PTR [rbp+0x48]",
+        "1402d1c10: mov    rcx,rbx",
+        "1402d1c13: call   QWORD PTR [rip+0x16cbf7]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1c37",
+      "assembly": [
+        "1402d1bfe: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1c02: mov    r9d,0xa",
+        "1402d1c08: lea    r8d,[r9-0x6]",
+        "1402d1c0c: mov    rdx,QWORD PTR [rbp+0x48]",
+        "1402d1c10: mov    rcx,rbx",
+        "1402d1c13: call   QWORD PTR [rip+0x16cbf7]        # 0x14043e810",
+        "1402d1c19: mov    DWORD PTR [rbp+0x8c0],edi",
+        "1402d1c1f: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1c23: mov    r9d,0xb",
+        "1402d1c29: lea    r8d,[r9-0x7]",
+        "1402d1c2d: mov    rdx,QWORD PTR [rbp+0x598]",
+        "1402d1c34: mov    rcx,rbx",
+        "1402d1c37: call   QWORD PTR [rip+0x16cbd3]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1c5b",
+      "assembly": [
+        "1402d1c1f: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1c23: mov    r9d,0xb",
+        "1402d1c29: lea    r8d,[r9-0x7]",
+        "1402d1c2d: mov    rdx,QWORD PTR [rbp+0x598]",
+        "1402d1c34: mov    rcx,rbx",
+        "1402d1c37: call   QWORD PTR [rip+0x16cbd3]        # 0x14043e810",
+        "1402d1c3d: mov    DWORD PTR [rbp+0x1150],edi",
+        "1402d1c43: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1c47: mov    r9d,0xc",
+        "1402d1c4d: lea    r8d,[r9-0x8]",
+        "1402d1c51: mov    rdx,QWORD PTR [rbp+0x5a8]",
+        "1402d1c58: mov    rcx,rbx",
+        "1402d1c5b: call   QWORD PTR [rip+0x16cbaf]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1cfb",
+      "assembly": [
+        "1402d1cd3: mov    QWORD PTR [rbx+0x10],rax",
+        "1402d1cd7: jmp    0x1402d1cdc",
+        "1402d1cd9: mov    rbx,rdi",
+        "1402d1cdc: mov    rax,QWORD PTR [rbp+0x0]",
+        "1402d1ce0: test   rax,rax",
+        "1402d1ce3: je     0x1402d1d01",
+        "1402d1ce5: mov    DWORD PTR [rbp+0x8d0],edi",
+        "1402d1ceb: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1cef: xor    r9d,r9d",
+        "1402d1cf2: xor    r8d,r8d",
+        "1402d1cf5: mov    rdx,rax",
+        "1402d1cf8: mov    rcx,rbx",
+        "1402d1cfb: call   QWORD PTR [rip+0x16cb0f]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1d1e",
+      "assembly": [
+        "1402d1ceb: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1cef: xor    r9d,r9d",
+        "1402d1cf2: xor    r8d,r8d",
+        "1402d1cf5: mov    rdx,rax",
+        "1402d1cf8: mov    rcx,rbx",
+        "1402d1cfb: call   QWORD PTR [rip+0x16cb0f]        # 0x14043e810",
+        "1402d1d01: mov    DWORD PTR [rbp+0xe80],edi",
+        "1402d1d07: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1d0b: mov    r9d,0x1",
+        "1402d1d11: xor    r8d,r8d",
+        "1402d1d14: mov    rdx,QWORD PTR [rsi+0xa8]",
+        "1402d1d1b: mov    rcx,rbx",
+        "1402d1d1e: call   QWORD PTR [rip+0x16caec]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1d41",
+      "assembly": [
+        "1402d1d07: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1d0b: mov    r9d,0x1",
+        "1402d1d11: xor    r8d,r8d",
+        "1402d1d14: mov    rdx,QWORD PTR [rsi+0xa8]",
+        "1402d1d1b: mov    rcx,rbx",
+        "1402d1d1e: call   QWORD PTR [rip+0x16caec]        # 0x14043e810",
+        "1402d1d24: mov    DWORD PTR [rbp+0x8e0],edi",
+        "1402d1d2a: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1d2e: mov    r9d,0x2",
+        "1402d1d34: xor    r8d,r8d",
+        "1402d1d37: mov    rdx,QWORD PTR [rsi+0x98]",
+        "1402d1d3e: mov    rcx,rbx",
+        "1402d1d41: call   QWORD PTR [rip+0x16cac9]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1d64",
+      "assembly": [
+        "1402d1d2a: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1d2e: mov    r9d,0x2",
+        "1402d1d34: xor    r8d,r8d",
+        "1402d1d37: mov    rdx,QWORD PTR [rsi+0x98]",
+        "1402d1d3e: mov    rcx,rbx",
+        "1402d1d41: call   QWORD PTR [rip+0x16cac9]        # 0x14043e810",
+        "1402d1d47: mov    DWORD PTR [rbp+0x12c0],edi",
+        "1402d1d4d: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1d51: mov    r9d,0x3",
+        "1402d1d57: xor    r8d,r8d",
+        "1402d1d5a: mov    rdx,QWORD PTR [rsi+0xc8]",
+        "1402d1d61: mov    rcx,rbx",
+        "1402d1d64: call   QWORD PTR [rip+0x16caa6]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1d8c",
+      "assembly": [
+        "1402d1d5a: mov    rdx,QWORD PTR [rsi+0xc8]",
+        "1402d1d61: mov    rcx,rbx",
+        "1402d1d64: call   QWORD PTR [rip+0x16caa6]        # 0x14043e810",
+        "1402d1d6a: mov    rax,QWORD PTR [rbp-0x30]",
+        "1402d1d6e: test   rax,rax",
+        "1402d1d71: je     0x1402d1d92",
+        "1402d1d73: mov    DWORD PTR [rbp+0x8f0],edi",
+        "1402d1d79: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1d7d: mov    r9d,0x4",
+        "1402d1d83: xor    r8d,r8d",
+        "1402d1d86: mov    rdx,rax",
+        "1402d1d89: mov    rcx,rbx",
+        "1402d1d8c: call   QWORD PTR [rip+0x16ca7e]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1dbb",
+      "assembly": [
+        "1402d1d83: xor    r8d,r8d",
+        "1402d1d86: mov    rdx,rax",
+        "1402d1d89: mov    rcx,rbx",
+        "1402d1d8c: call   QWORD PTR [rip+0x16ca7e]        # 0x14043e810",
+        "1402d1d92: mov    DWORD PTR [rbp+0x900],edi",
+        "1402d1d98: mov    DWORD PTR [rsp+0x30],edi",
+        "1402d1d9c: mov    DWORD PTR [rsp+0x28],0x8",
+        "1402d1da4: mov    DWORD PTR [rsp+0x20],0x4",
+        "1402d1dac: mov    r9d,0x6",
+        "1402d1db2: xor    r8d,r8d",
+        "1402d1db5: mov    rdx,r14",
+        "1402d1db8: mov    rcx,rbx",
+        "1402d1dbb: call   QWORD PTR [rip+0x16ca57]        # 0x14043e818"
+      ]
+    },
+    {
+      "call": "0x1402d1ddc",
+      "assembly": [
+        "1402d1da4: mov    DWORD PTR [rsp+0x20],0x4",
+        "1402d1dac: mov    r9d,0x6",
+        "1402d1db2: xor    r8d,r8d",
+        "1402d1db5: mov    rdx,r14",
+        "1402d1db8: mov    rcx,rbx",
+        "1402d1dbb: call   QWORD PTR [rip+0x16ca57]        # 0x14043e818",
+        "1402d1dc1: mov    DWORD PTR [rbp+0x1160],edi",
+        "1402d1dc7: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1dcb: xor    r9d,r9d",
+        "1402d1dce: lea    r8d,[r9+0x1]",
+        "1402d1dd2: mov    rdx,QWORD PTR [rsi+0xb0]",
+        "1402d1dd9: mov    rcx,rbx",
+        "1402d1ddc: call   QWORD PTR [rip+0x16ca2e]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1dfc",
+      "assembly": [
+        "1402d1dc7: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1dcb: xor    r9d,r9d",
+        "1402d1dce: lea    r8d,[r9+0x1]",
+        "1402d1dd2: mov    rdx,QWORD PTR [rsi+0xb0]",
+        "1402d1dd9: mov    rcx,rbx",
+        "1402d1ddc: call   QWORD PTR [rip+0x16ca2e]        # 0x14043e810",
+        "1402d1de2: mov    DWORD PTR [rbp+0x910],edi",
+        "1402d1de8: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1dec: mov    r9d,0x1",
+        "1402d1df2: mov    r8d,r9d",
+        "1402d1df5: mov    rdx,QWORD PTR [rsi+0x70]",
+        "1402d1df9: mov    rcx,rbx",
+        "1402d1dfc: call   QWORD PTR [rip+0x16ca0e]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1e20",
+      "assembly": [
+        "1402d1de8: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1dec: mov    r9d,0x1",
+        "1402d1df2: mov    r8d,r9d",
+        "1402d1df5: mov    rdx,QWORD PTR [rsi+0x70]",
+        "1402d1df9: mov    rcx,rbx",
+        "1402d1dfc: call   QWORD PTR [rip+0x16ca0e]        # 0x14043e810",
+        "1402d1e02: mov    DWORD PTR [rbp+0xea0],edi",
+        "1402d1e08: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1e0c: mov    r9d,0x2",
+        "1402d1e12: lea    r8d,[r9-0x1]",
+        "1402d1e16: mov    rdx,QWORD PTR [rbp+0x5b8]",
+        "1402d1e1d: mov    rcx,rbx",
+        "1402d1e20: call   QWORD PTR [rip+0x16c9ea]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1e41",
+      "assembly": [
+        "1402d1e08: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1e0c: mov    r9d,0x2",
+        "1402d1e12: lea    r8d,[r9-0x1]",
+        "1402d1e16: mov    rdx,QWORD PTR [rbp+0x5b8]",
+        "1402d1e1d: mov    rcx,rbx",
+        "1402d1e20: call   QWORD PTR [rip+0x16c9ea]        # 0x14043e810",
+        "1402d1e26: mov    DWORD PTR [rbp+0x5d0],edi",
+        "1402d1e2c: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1e30: mov    r9d,0x3",
+        "1402d1e36: lea    r8d,[r9-0x2]",
+        "1402d1e3a: mov    rdx,QWORD PTR [rsi+0x58]",
+        "1402d1e3e: mov    rcx,rbx",
+        "1402d1e41: call   QWORD PTR [rip+0x16c9c9]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1e5f",
+      "assembly": [
+        "1402d1e2c: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1e30: mov    r9d,0x3",
+        "1402d1e36: lea    r8d,[r9-0x2]",
+        "1402d1e3a: mov    rdx,QWORD PTR [rsi+0x58]",
+        "1402d1e3e: mov    rcx,rbx",
+        "1402d1e41: call   QWORD PTR [rip+0x16c9c9]        # 0x14043e810",
+        "1402d1e47: mov    DWORD PTR [rbp+0xd00],edi",
+        "1402d1e4d: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1e51: xor    r9d,r9d",
+        "1402d1e54: lea    r8d,[r9+0x2]",
+        "1402d1e58: mov    rdx,QWORD PTR [rbp+0x38]",
+        "1402d1e5c: mov    rcx,rbx",
+        "1402d1e5f: call   QWORD PTR [rip+0x16c9ab]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1e83",
+      "assembly": [
+        "1402d1e4d: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1e51: xor    r9d,r9d",
+        "1402d1e54: lea    r8d,[r9+0x2]",
+        "1402d1e58: mov    rdx,QWORD PTR [rbp+0x38]",
+        "1402d1e5c: mov    rcx,rbx",
+        "1402d1e5f: call   QWORD PTR [rip+0x16c9ab]        # 0x14043e810",
+        "1402d1e65: mov    DWORD PTR [rbp+0x5e0],edi",
+        "1402d1e6b: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1e6f: mov    r9d,0x1",
+        "1402d1e75: lea    r8d,[r9+0x1]",
+        "1402d1e79: mov    rdx,QWORD PTR [rsi+0x88]",
+        "1402d1e80: mov    rcx,rbx",
+        "1402d1e83: call   QWORD PTR [rip+0x16c987]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1ea3",
+      "assembly": [
+        "1402d1e6b: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1e6f: mov    r9d,0x1",
+        "1402d1e75: lea    r8d,[r9+0x1]",
+        "1402d1e79: mov    rdx,QWORD PTR [rsi+0x88]",
+        "1402d1e80: mov    rcx,rbx",
+        "1402d1e83: call   QWORD PTR [rip+0x16c987]        # 0x14043e810",
+        "1402d1e89: mov    DWORD PTR [rbp+0x1260],edi",
+        "1402d1e8f: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1e93: mov    r9d,0x2",
+        "1402d1e99: mov    r8d,r9d",
+        "1402d1e9c: mov    rdx,QWORD PTR [rsi+0x78]",
+        "1402d1ea0: mov    rcx,rbx",
+        "1402d1ea3: call   QWORD PTR [rip+0x16c967]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1ec4",
+      "assembly": [
+        "1402d1e8f: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1e93: mov    r9d,0x2",
+        "1402d1e99: mov    r8d,r9d",
+        "1402d1e9c: mov    rdx,QWORD PTR [rsi+0x78]",
+        "1402d1ea0: mov    rcx,rbx",
+        "1402d1ea3: call   QWORD PTR [rip+0x16c967]        # 0x14043e810",
+        "1402d1ea9: mov    DWORD PTR [rbp+0x5f0],edi",
+        "1402d1eaf: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1eb3: mov    r9d,0x4",
+        "1402d1eb9: lea    r8d,[r9-0x2]",
+        "1402d1ebd: mov    rdx,QWORD PTR [rsi+0x60]",
+        "1402d1ec1: mov    rcx,rbx",
+        "1402d1ec4: call   QWORD PTR [rip+0x16c946]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1ee2",
+      "assembly": [
+        "1402d1eaf: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1eb3: mov    r9d,0x4",
+        "1402d1eb9: lea    r8d,[r9-0x2]",
+        "1402d1ebd: mov    rdx,QWORD PTR [rsi+0x60]",
+        "1402d1ec1: mov    rcx,rbx",
+        "1402d1ec4: call   QWORD PTR [rip+0x16c946]        # 0x14043e810",
+        "1402d1eca: mov    DWORD PTR [rbp+0xd10],edi",
+        "1402d1ed0: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1ed4: xor    r9d,r9d",
+        "1402d1ed7: lea    r8d,[r9+0x3]",
+        "1402d1edb: mov    rdx,QWORD PTR [rbp-0x48]",
+        "1402d1edf: mov    rcx,rbx",
+        "1402d1ee2: call   QWORD PTR [rip+0x16c928]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1f06",
+      "assembly": [
+        "1402d1ed0: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1ed4: xor    r9d,r9d",
+        "1402d1ed7: lea    r8d,[r9+0x3]",
+        "1402d1edb: mov    rdx,QWORD PTR [rbp-0x48]",
+        "1402d1edf: mov    rcx,rbx",
+        "1402d1ee2: call   QWORD PTR [rip+0x16c928]        # 0x14043e810",
+        "1402d1ee8: mov    DWORD PTR [rbp+0x600],edi",
+        "1402d1eee: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1ef2: mov    r9d,0x1",
+        "1402d1ef8: lea    r8d,[r9+0x2]",
+        "1402d1efc: mov    rdx,QWORD PTR [rsi+0x80]",
+        "1402d1f03: mov    rcx,rbx",
+        "1402d1f06: call   QWORD PTR [rip+0x16c904]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1f2a",
+      "assembly": [
+        "1402d1eee: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1ef2: mov    r9d,0x1",
+        "1402d1ef8: lea    r8d,[r9+0x2]",
+        "1402d1efc: mov    rdx,QWORD PTR [rsi+0x80]",
+        "1402d1f03: mov    rcx,rbx",
+        "1402d1f06: call   QWORD PTR [rip+0x16c904]        # 0x14043e810",
+        "1402d1f0c: mov    DWORD PTR [rbp+0x10a0],edi",
+        "1402d1f12: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1f16: mov    r9d,0x2",
+        "1402d1f1c: lea    r8d,[r9+0x1]",
+        "1402d1f20: mov    rdx,QWORD PTR [rsi+0x90]",
+        "1402d1f27: mov    rcx,rbx",
+        "1402d1f2a: call   QWORD PTR [rip+0x16c8e0]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1f4e",
+      "assembly": [
+        "1402d1f12: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1f16: mov    r9d,0x2",
+        "1402d1f1c: lea    r8d,[r9+0x1]",
+        "1402d1f20: mov    rdx,QWORD PTR [rsi+0x90]",
+        "1402d1f27: mov    rcx,rbx",
+        "1402d1f2a: call   QWORD PTR [rip+0x16c8e0]        # 0x14043e810",
+        "1402d1f30: mov    DWORD PTR [rbp+0x610],edi",
+        "1402d1f36: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1f3a: mov    r9d,0x4",
+        "1402d1f40: lea    r8d,[r9-0x1]",
+        "1402d1f44: mov    rdx,QWORD PTR [rsi+0xa0]",
+        "1402d1f4b: mov    rcx,rbx",
+        "1402d1f4e: call   QWORD PTR [rip+0x16c8bc]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1f7b",
+      "assembly": [
+        "1402d1f40: lea    r8d,[r9-0x1]",
+        "1402d1f44: mov    rdx,QWORD PTR [rsi+0xa0]",
+        "1402d1f4b: mov    rcx,rbx",
+        "1402d1f4e: call   QWORD PTR [rip+0x16c8bc]        # 0x14043e810",
+        "1402d1f54: mov    DWORD PTR [rbp+0xd20],edi",
+        "1402d1f5a: mov    DWORD PTR [rsp+0x30],edi",
+        "1402d1f5e: mov    DWORD PTR [rsp+0x28],0xe",
+        "1402d1f66: mov    DWORD PTR [rsp+0x20],0x1",
+        "1402d1f6e: xor    r9d,r9d",
+        "1402d1f71: lea    r8d,[r9+0x4]",
+        "1402d1f75: mov    rdx,r13",
+        "1402d1f78: mov    rcx,rbx",
+        "1402d1f7b: call   QWORD PTR [rip+0x16c897]        # 0x14043e818"
+      ]
+    },
+    {
+      "call": "0x1402d1f99",
+      "assembly": [
+        "1402d1f66: mov    DWORD PTR [rsp+0x20],0x1",
+        "1402d1f6e: xor    r9d,r9d",
+        "1402d1f71: lea    r8d,[r9+0x4]",
+        "1402d1f75: mov    rdx,r13",
+        "1402d1f78: mov    rcx,rbx",
+        "1402d1f7b: call   QWORD PTR [rip+0x16c897]        # 0x14043e818",
+        "1402d1f81: mov    DWORD PTR [rbp+0x620],edi",
+        "1402d1f87: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1f8b: xor    r9d,r9d",
+        "1402d1f8e: lea    r8d,[r9+0x5]",
+        "1402d1f92: mov    rdx,QWORD PTR [rbp-0x40]",
+        "1402d1f96: mov    rcx,rbx",
+        "1402d1f99: call   QWORD PTR [rip+0x16c871]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1fbd",
+      "assembly": [
+        "1402d1f87: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1f8b: xor    r9d,r9d",
+        "1402d1f8e: lea    r8d,[r9+0x5]",
+        "1402d1f92: mov    rdx,QWORD PTR [rbp-0x40]",
+        "1402d1f96: mov    rcx,rbx",
+        "1402d1f99: call   QWORD PTR [rip+0x16c871]        # 0x14043e810",
+        "1402d1f9f: mov    DWORD PTR [rbp+0x13b8],edi",
+        "1402d1fa5: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1fa9: mov    r9d,0x2",
+        "1402d1faf: lea    r8d,[r9+0x3]",
+        "1402d1fb3: mov    rdx,QWORD PTR [rbp+0x460]",
+        "1402d1fba: mov    rcx,rbx",
+        "1402d1fbd: call   QWORD PTR [rip+0x16c84d]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d1fdf",
+      "assembly": [
+        "1402d1fa5: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1fa9: mov    r9d,0x2",
+        "1402d1faf: lea    r8d,[r9+0x3]",
+        "1402d1fb3: mov    rdx,QWORD PTR [rbp+0x460]",
+        "1402d1fba: mov    rcx,rbx",
+        "1402d1fbd: call   QWORD PTR [rip+0x16c84d]        # 0x14043e810",
+        "1402d1fc3: mov    DWORD PTR [rbp+0x630],edi",
+        "1402d1fc9: mov    DWORD PTR [rsp+0x20],edi",
+        "1402d1fcd: mov    r9d,0x3",
+        "1402d1fd3: lea    r8d,[r9+0x2]",
+        "1402d1fd7: mov    rdx,QWORD PTR [rsp+0x78]",
+        "1402d1fdc: mov    rcx,rbx",
+        "1402d1fdf: call   QWORD PTR [rip+0x16c82b]        # 0x14043e810"
+      ]
+    },
+    {
+      "call": "0x1402d200f",
+      "assembly": [
+        "1402d1fd3: lea    r8d,[r9+0x2]",
+        "1402d1fd7: mov    rdx,QWORD PTR [rsp+0x78]",
+        "1402d1fdc: mov    rcx,rbx",
+        "1402d1fdf: call   QWORD PTR [rip+0x16c82b]        # 0x14043e810",
+        "1402d1fe5: mov    DWORD PTR [rbp+0xd30],edi",
+        "1402d1feb: mov    DWORD PTR [rsp+0x30],edi",
+        "1402d1fef: mov    DWORD PTR [rsp+0x28],0x7",
+        "1402d1ff7: mov    DWORD PTR [rsp+0x20],0x1",
+        "1402d1fff: mov    r9d,0x5",
+        "1402d2005: mov    r8d,r9d",
+        "1402d2008: mov    rdx,QWORD PTR [rsi+0x48]",
+        "1402d200c: mov    rcx,rbx",
+        "1402d200f: call   QWORD PTR [rip+0x16c803]        # 0x14043e818"
+      ]
+    },
+    {
+      "call": "0x1402d2040",
+      "assembly": [
+        "1402d2005: mov    r8d,r9d",
+        "1402d2008: mov    rdx,QWORD PTR [rsi+0x48]",
+        "1402d200c: mov    rcx,rbx",
+        "1402d200f: call   QWORD PTR [rip+0x16c803]        # 0x14043e818",
+        "1402d2015: mov    DWORD PTR [rbp+0x640],edi",
+        "1402d201b: mov    DWORD PTR [rsp+0x30],edi",
+        "1402d201f: mov    DWORD PTR [rsp+0x28],0x2",
+        "1402d2027: mov    DWORD PTR [rsp+0x20],0x1",
+        "1402d202f: mov    r9d,0xc",
+        "1402d2035: lea    r8d,[r9-0x7]",
+        "1402d2039: mov    rdx,QWORD PTR [rsi+0x40]",
+        "1402d203d: mov    rcx,rbx",
+        "1402d2040: call   QWORD PTR [rip+0x16c7d2]        # 0x14043e818"
+      ]
+    },
+    {
+      "call": "0x1402d2071",
+      "assembly": [
+        "1402d2035: lea    r8d,[r9-0x7]",
+        "1402d2039: mov    rdx,QWORD PTR [rsi+0x40]",
+        "1402d203d: mov    rcx,rbx",
+        "1402d2040: call   QWORD PTR [rip+0x16c7d2]        # 0x14043e818",
+        "1402d2046: mov    DWORD PTR [rbp+0x10b0],edi",
+        "1402d204c: mov    DWORD PTR [rsp+0x30],edi",
+        "1402d2050: mov    DWORD PTR [rsp+0x28],0xe",
+        "1402d2058: mov    DWORD PTR [rsp+0x20],0x1",
+        "1402d2060: xor    r9d,r9d",
+        "1402d2063: lea    r8d,[r9+0x6]",
+        "1402d2067: mov    rdx,QWORD PTR [rsi+0xd0]",
+        "1402d206e: mov    rcx,rbx",
+        "1402d2071: call   QWORD PTR [rip+0x16c7a1]        # 0x14043e818"
+      ]
+    }
+  ]
+}

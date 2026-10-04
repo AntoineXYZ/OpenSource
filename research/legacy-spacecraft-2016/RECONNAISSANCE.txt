@@ -16,6 +16,9 @@ These are research/reference artifacts. PAINTING-MILESTONE.txt describes the
 subsequent in-memory native cell editor, equipment reconciliation and manual
 validation. Saving remains deferred.
 
+Interface recovery: INTERFACE-MILESTONE.txt describes the restored icon panel;
+PANEL-RECOVERY.txt records original layout, assets and numeric display offsets.
+
 Result
 ------
 The offline designer launch path, local .ship file handling, core room-editing

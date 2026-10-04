@@ -1,0 +1,228 @@
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuTabDesign::TimerUpdate (method 3; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x1403487e0; metadata 0x1406f2798
+// Hidden C++ exception states: #wind=21
+void __fastcall AuTabDesign__TimerUpdate(__int64 self)
+{
+  QTimer *v2; // rcx
+  bool v3; // r14
+  char v4; // al
+  char v5; // al
+  bool v6; // di
+  char v7; // al
+  __int64 v8; // rdx
+  unsigned __int8 v9; // al
+  int v10; // esi
+  __int64 v11; // rdi
+  __int64 v12; // rdx
+  _WORD *v13; // rax
+  int v14; // esi
+  __int64 v15; // rdi
+  __int64 v16; // rdx
+  _WORD *v17; // rax
+  char v18; // al
+  __int64 v19; // rcx
+  __int64 v20; // rdx
+  int v21; // eax
+  const struct QIcon *v22; // rax
+  __int64 v23; // rsi
+  __int64 v24; // rdi
+  __int64 v25; // rdx
+  const struct QString *v26; // rax
+  _BYTE *v27; // rcx
+  const struct QIcon *v28; // rax
+  __int64 v29; // rsi
+  __int64 v30; // rdx
+  __int64 v31; // rdi
+  const struct QString *v32; // rax
+  int v33; // esi
+  int Data; // edi
+  char v35; // di
+  struct QScrollBar *v36; // rax
+  int v37; // edi
+  struct QScrollBar *v38; // rax
+  __int64 v39; // rdi
+  _DWORD *v40; // rax
+  _QWORD *i; // rbx
+  int v42; // [rsp+20h] [rbp-60h]
+  _BYTE v43[8]; // [rsp+30h] [rbp-50h] BYREF
+  _BYTE v44[8]; // [rsp+38h] [rbp-48h] BYREF
+  _BYTE v45[16]; // [rsp+40h] [rbp-40h] BYREF
+  _BYTE v46[8]; // [rsp+50h] [rbp-30h] BYREF
+  _BYTE v47[8]; // [rsp+58h] [rbp-28h] BYREF
+  _BYTE v48[8]; // [rsp+60h] [rbp-20h] BYREF
+  _BYTE v49[8]; // [rsp+68h] [rbp-18h] BYREF
+  __int64 v50; // [rsp+70h] [rbp-10h]
+  __int64 v51; // [rsp+B0h] [rbp+30h] BYREF
+  char v52; // [rsp+B8h] [rbp+38h] BYREF
+  char v53; // [rsp+C0h] [rbp+40h] BYREF
+  char v54; // [rsp+C8h] [rbp+48h] BYREF
+
+  v50 = -2;
+  if ( (*(_DWORD *)(*(_QWORD *)(self + 40) + 8LL) & 0x8000) == 0 )
+  {
+    v2 = *(QTimer **)(self + 224);
+    if ( v2 )
+      QTimer::stop(v2);
+    return;
+  }
+  if ( !*(_QWORD *)(self + 56) )
+    return;
+  v3 = (unsigned __int8)sub_1402EB8B0() == 0;
+  v4 = sub_1402EB780(*(_QWORD *)(self + 56));
+  QAbstractButton::setDown(*(QAbstractButton **)(self + 112), v4);
+  v5 = sub_1402EB8D0(*(_QWORD *)(self + 56));
+  QAbstractButton::setDown(*(QAbstractButton **)(self + 176), v5);
+  v6 = (unsigned __int8)sub_1402EEFB0(*(_QWORD *)(self + 56)) != 0;
+  (*(void (__fastcall **)(_QWORD, bool))(**(_QWORD **)(self + 168) + 88LL))(*(_QWORD *)(self + 168), v6);
+  (*(void (__fastcall **)(_QWORD, bool))(**(_QWORD **)(self + 152) + 88LL))(*(_QWORD *)(self + 152), v6);
+  v7 = sub_1402EB8F0(*(_QWORD *)(self + 56));
+  if ( v6 && v7 )
+    LOBYTE(v8) = 1;
+  else
+    v8 = 0;
+  (*(void (__fastcall **)(_QWORD, __int64))(**(_QWORD **)(self + 200) + 88LL))(*(_QWORD *)(self + 200), v8);
+  v9 = sub_1402EB7A0(*(_QWORD *)(self + 56));
+  (*(void (__fastcall **)(_QWORD, _QWORD))(**(_QWORD **)(self + 88) + 88LL))(*(_QWORD *)(self + 88), v9);
+  v10 = (unsigned __int8)sub_1402EDC80(*(_QWORD *)(self + 56));
+  v11 = sub_1402D3FA0(v49, "%1", 0, 0xFFFFFFFFLL);
+  LOBYTE(v12) = 32;
+  v13 = (_WORD *)QChar::QChar(&v52, v12);
+  QString::arg(v11, v47, (unsigned int)(v10 + 1), 0, 10, *v13);
+  QString::~QString(v49);
+  QAbstractButton::setText(*(QAbstractButton **)(self + 184), (const struct QString *)v47);
+  (*(void (__fastcall **)(_QWORD, bool))(**(_QWORD **)(self + 184) + 88LL))(*(_QWORD *)(self + 184), v3);
+  v14 = *(unsigned __int8 *)(*(_QWORD *)(self + 56) + 5556LL);
+  v15 = sub_1402D3FA0(v48, "%1", 0, 0xFFFFFFFFLL);
+  LOBYTE(v16) = 32;
+  v17 = (_WORD *)QChar::QChar(&v53, v16);
+  QString::arg(v15, v46, (unsigned int)(v14 + 1), 0, 10, *v17);
+  QString::~QString(v48);
+  QLabel::setText(*(QLabel **)(self + 80), (const struct QString *)v46);
+  (*(void (__fastcall **)(_QWORD, bool))(**(_QWORD **)(self + 80) + 88LL))(*(_QWORD *)(self + 80), v3);
+  v18 = sub_1402EEE00(*(_QWORD *)(self + 56));
+  v19 = *(_QWORD *)(self + 72);
+  if ( v18 )
+  {
+    if ( (unsigned int)QCheckBox::checkState(v19) != 2 )
+    {
+      v20 = 2;
+LABEL_14:
+      QCheckBox::setCheckState(*(_QWORD *)(self + 72), v20);
+    }
+  }
+  else if ( (unsigned int)QCheckBox::checkState(v19) )
+  {
+    v20 = 0;
+    goto LABEL_14;
+  }
+  (*(void (__fastcall **)(_QWORD, bool))(**(_QWORD **)(self + 72) + 88LL))(*(_QWORD *)(self + 72), v3);
+  v21 = (unsigned __int8)sub_1402EDE10(*(_QWORD *)(self + 56));
+  if ( (_BYTE)v21 )
+  {
+    if ( (unsigned __int8)v21 == 1 )
+    {
+      v51 = QString::fromAscii_helper(":data/dp_RoomMode1.png", 22);
+      v28 = QIcon::QIcon((QIcon *)v45, (const struct QString *)&v51);
+      QAbstractButton::setIcon(*(QAbstractButton **)(self + 192), v28);
+      QIcon::~QIcon((QIcon *)v45);
+      QString::~QString(&v51);
+      v29 = AuGlobal::MiddleDotSymbol(v43);
+      v31 = sub_1402D3FA0(
+              v44,
+              "<html><b>Room Mode - Change Room Type</b><br>Current mode changes the type of rooms that are clicked. The "
+              "room type cannot change if this would create two rooms of the same type with the same room number on the s"
+              "ame deck.<br>Press this button to change drawing modes for the room buttons.<br>%1 <b>Draw</b> mode draws "
+              "new room cells and replaces existing room cells.<br>%1 <b>Change Room Type</b> mode changes the type of ex"
+              "isting rooms.<br></html>",
+              0,
+              0xFFFFFFFFLL);
+    }
+    else
+    {
+      v29 = AuGlobal::MiddleDotSymbol(v43);
+      v31 = sub_1402D3FA0(
+              v44,
+              "<html><b>Room Mode - Unknown</b><br>Current mode is an unknown mode.<br>Press this button to change drawin"
+              "g modes for the room buttons.<br>%1 <b>Draw</b> mode draws new room cells and replaces existing room cells"
+              ".<br>%1 <b>Change Room Type</b> mode changes the type of existing rooms.<br></html>",
+              0,
+              0xFFFFFFFFLL);
+    }
+    LOBYTE(v30) = 32;
+    LOWORD(v42) = *(_WORD *)QChar::QChar(&v51, v30);
+    v32 = (const struct QString *)QString::arg(v31, v45, v29, 0, v42);
+    QWidget::setToolTip(*(QWidget **)(self + 192), v32);
+    QString::~QString(v45);
+    QString::~QString(v44);
+    v27 = v43;
+  }
+  else
+  {
+    v51 = QString::fromAscii_helper(":data/dp_RoomMode0.png", (unsigned int)(v21 + 22));
+    v22 = QIcon::QIcon((QIcon *)v43, (const struct QString *)&v51);
+    QAbstractButton::setIcon(*(QAbstractButton **)(self + 192), v22);
+    QIcon::~QIcon((QIcon *)v43);
+    QString::~QString(&v51);
+    v23 = AuGlobal::MiddleDotSymbol(v45);
+    v24 = sub_1402D3FA0(
+            v44,
+            "<html><b>Room Mode - Draw</b><br>Current mode draws rooms into the cells of the grid. Existing room cells ar"
+            "e replaced when drawn upon.<br>Press this button to change drawing modes for the room buttons.<br>%1 <b>Draw"
+            "</b> mode draws new room cells and replaces existing room cells.<br>%1 <b>Change Room Type</b> mode changes "
+            "the type of existing rooms.<br></html>",
+            0,
+            0xFFFFFFFFLL);
+    LOBYTE(v25) = 32;
+    LOWORD(v42) = *(_WORD *)QChar::QChar(&v51, v25);
+    v26 = (const struct QString *)QString::arg(v24, v43, v23, 0, v42);
+    QWidget::setToolTip(*(QWidget **)(self + 192), v26);
+    QString::~QString(v43);
+    QString::~QString(v44);
+    v27 = v45;
+  }
+  QString::~QString(v27);
+  v33 = (unsigned __int8)sub_1402EC730(*(_QWORD *)(self + 56));
+  QVariant::QVariant((QVariant *)v45, v33);
+  Data = QComboBox::findData(*(_QWORD *)(self + 64), v45, 256, 16);
+  QVariant::~QVariant((QVariant *)v45);
+  if ( Data >= 0 )
+    QComboBox::setCurrentIndex(*(QComboBox **)(self + 64), Data);
+  v35 = sub_1402EB740(*(_QWORD *)(self + 56));
+  QAbstractButton::setDown(*(QAbstractButton **)(self + 120), (v35 & 1) != 0);
+  QAbstractButton::setDown(*(QAbstractButton **)(self + 128), (v35 & 2) != 0);
+  QAbstractButton::setDown(*(QAbstractButton **)(self + 136), (v35 & 4) != 0);
+  QAbstractButton::setDown(*(QAbstractButton **)(self + 144), (v35 & 8) != 0);
+  sub_1402E7810(*(_QWORD *)(self + 56), &v54, (unsigned __int8)v33);
+  if ( !(unsigned __int8)operator==(&v54, self + 232) )
+  {
+    QString::operator=(self + 232, &v54);
+    v36 = QAbstractScrollArea::verticalScrollBar(*(QAbstractScrollArea **)(self + 208));
+    if ( v36 && (*(_DWORD *)(*((_QWORD *)v36 + 5) + 8LL) & 0x8000) != 0 )
+    {
+      v37 = QAbstractSlider::value(v36);
+      QTextEdit::setHtml(*(QTextEdit **)(self + 208), (const struct QString *)&v54);
+      v38 = QAbstractScrollArea::verticalScrollBar(*(QAbstractScrollArea **)(self + 208));
+      if ( v38 && (*(_DWORD *)(*((_QWORD *)v38 + 5) + 8LL) & 0x8000) != 0 )
+        QAbstractSlider::setValue(v38, v37);
+    }
+    else
+    {
+      QTextEdit::setHtml(*(QTextEdit **)(self + 208), (const struct QString *)&v54);
+    }
+  }
+  v39 = self + 48;
+  v40 = *(_DWORD **)(self + 48);
+  if ( *v40 > 1u )
+    sub_14017CBA0(self + 48, (unsigned int)v40[1]);
+  for ( i = (_QWORD *)(*(_QWORD *)v39 + 8 * (*(int *)(*(_QWORD *)v39 + 8LL) + 2LL)); ; ++i )
+  {
+    if ( **(_DWORD **)v39 > 1u )
+      sub_14017CBA0(v39, *(unsigned int *)(*(_QWORD *)v39 + 4LL));
+    if ( i == (_QWORD *)(*(_QWORD *)v39 + 8 * (*(int *)(*(_QWORD *)v39 + 12LL) + 2LL)) )
+      break;
+    (*(void (__fastcall **)(_QWORD, bool))(*(_QWORD *)*i + 88LL))(*i, v3);
+  }
+  QString::~QString(&v54);
+  QString::~QString(v46);
+  QString::~QString(v47);
+}

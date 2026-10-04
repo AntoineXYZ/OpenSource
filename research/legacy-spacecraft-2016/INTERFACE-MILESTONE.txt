@@ -1,0 +1,83 @@
+2016 spacecraft designer: original control panel
+2026-10-04
+
+Scope
+-----
+The user requested the original interface shown in their screenshot and an
+in-world 3D view, then explicitly deferred 3D to focus on the interface.
+This change restores the compact control panel around the existing 2D deck
+view. It adds no 3D renderer, GL requirement, avatar or world session.
+Early surface research is retained in SURFACE-RECOVERY-NOTES.txt for later.
+
+Implemented interface
+---------------------
+The two wide text toolbars and separate inspector are replaced by a dockable
+Spacecraft Design (F6) panel. It uses a black icon palette, blue tips area,
+original room/equipment group ordering and 16-pixel original artwork. F6 or
+View > Spacecraft Design tools hides/restores it; its title supports floating
+and docking. Closing the panel leaves the design open.
+
+All 111 embedded PNG payloads are byte-for-byte original resources. Their
+source hashes, dimensions and resource paths are in panel-icons.json. The
+AuLegacyShipIcon helper needs no resource DLL or external file at runtime,
+including in the standalone QApplication launch path. No bitmaps were edited.
+PANEL-RECOVERY.txt and panel-layout-evidence.json establish actual Qt layout
+arguments rather than guessing action order from icon resemblance.
+
+Available controls:
+  - New/Open, room-purpose palette, Draw, Erase Room Cells and Inspect.
+  - Four independent grid directions, deck up/down and the restricted -28..28
+    selector. Deck arrows disable at their respective limits. Fit remains F.
+  - Room Number and its wrapping arrows: displayed 1..256, stored subtype
+    0..255. The original TimerUpdate proves the +1 display offset. Loaded
+    room tooltips and the inspector now use that same displayed number.
+  - Streamline Hull, armor decrease/increase, and minimum Tech Level. These
+    change actual in-memory header fields and participate in discard prompts.
+    New ships default to streamline enabled and armor 0, as in the original.
+    Armor controls allow 0..10; minimum TL displays 32..1 and stores 31..0.
+    Displaying loaded settings preserves the existing bytes without silently
+    normalizing them or marking the design modified.
+  - A Selection tab retains the record inspector; selecting a scene item
+    opens that tab. Tips remain accessible separately.
+
+An explicit deck selector, Fit/Inspect row and current-tool description are
+retained beside the recovered palette for the existing 2D workflow. The help
+text describes implemented behavior, rather than advertising the original
+avatar walkthrough, save or Burn CD workflows that are not available here.
+
+Unavailable original controls remain disabled with explanatory tooltips:
+equipment placement/erasure and brush size; room type/number reassignment;
+whole-room/deck erasure; move/copy; path checks; gravity; render mode; modules;
+Save and Burn CD. Conditional original Depart Studio and Delete Design buttons
+are omitted because this is an offline working session, not a studio database.
+The Draw button selects cell painting; whole-room type-change mode is deferred.
+Room Number edits the paint brush parameter, not an existing room's number.
+
+The right-hand equipment arrows are brush size, not deck controls. The footer
+dropdown is minimum tech level, not armor. The apparent roof icons in the
+equipment section are vehicle tools. These were resolved from original code.
+
+Validation
+----------
+An independent palette review compared all icon references, room positions,
+grid bits and numeric display/storage mappings against the recovered layout.
+All referenced icon names exist. The icon helper and manifest were compared
+with a fresh read of the original DLL resources; all 111 PNG payloads matched.
+Source review covered Qt signal connections, initialization and dirty guards.
+No build, compiler, native UI launch or screenshot comparison was performed.
+
+Manual checks after the user's build:
+  1. Open both standalone and embedded Legacy Spacecraft. Confirm the palette
+     icons appear without the old binaries beside the new client.
+  2. Paint using each room icon, switch to erasure and back to inspection, and
+     toggle each grid family. Check selected-tool highlighting and preview.
+  3. Wrap Room Number 256->1 and 1->256; inspect newly painted rooms to confirm
+     stored subtypes 255 and 0 respectively. Existing file IDs must not change.
+  4. Use both deck arrows to reach -28/+28, check they stop there, and confirm
+     the selector still has exactly 57 entries. Empty decks remain paintable.
+  5. Check new defaults: Streamline Hull on, armor 0, minimum TL displayed 1.
+     Load an existing ship and verify its values appear without a dirty mark.
+     Change only a header control and test Cancel on New/Open/Exit.
+  6. Close and restore the panel with F6; float/redock it; select records to
+     inspect them; resize the window and check that controls remain reachable.
+  7. Confirm disabled tools do not change the design and explain availability.

@@ -1,0 +1,80 @@
+Original 2016 ship surface recovery: deferred investigation
+=========================================================
+
+The user deferred 3D rendering in favor of interface work. This note
+preserves read-only recovery findings for a later rendering milestone.
+No production mesh generator or renderer is included by this work, and
+no build or comparison against the running original renderer was done.
+
+Original pipeline
+-----------------
+
+DaSpaceShip::CreateModels, AuAtom13.dll 0x1803df500, calls RenderExterior
+for the exterior model, then RenderInterior and an additional interior-
+facing RenderExterior pass for the interior model. This is substantially
+more than an extrusion of each room's 2D outline.
+
+RenderExterior (0x180426360) and RenderInterior (0x18042f410) walk decks
+using 8-foot vertical spacing and a persistent DnFloorBuffer16 with
+516 by 516 unsigned-short samples. Adjacent-room, below-deck, hatch,
+door, roof, room-type, armor, and streamline decisions participate in
+the surface construction. The modern source search found no surviving
+DnFloorBuffer16, RenderInteriorFloors, or DnRoom::WallProfile implementation.
+
+Floor occupancy evidence
+------------------------
+
+DnFloorBuffer16::FillFloor, AuData13.dll 0x1801713a0, rasterizes boundaries
+at step 1.41421356225 feet, around index origin 256, and encodes a room
+tag as ((type & 0x1f) << 8) | subtype. Higher bits track deck relationships.
+At the deck transition the rendering code clears 0x2000 and sets 0x8000
+on occupied samples. Current coverage over prior 0xc000 coverage can set
+0x4000. These flags must be ported with the consumers before assigning a
+complete independent semantic model to each bit.
+
+The open-below room types 0x0b and 0x0f have a special fill branch. Where
+there is no previous coverage, they still write the current room tag.
+Over previous fuel-room type 9 they write the current tag with 0x4000.
+Over other prior coverage they preserve the earlier low tag and set
+0x6000. Therefore a rule that always removes every open-below room's
+bottom face is not a faithful replacement for the original logic.
+
+RenderInteriorFloors (AuAtom13.dll 0x180435fd0) samples four triangles
+per full grid square, at offsets (3,2), (2,3), (1,2), and (2,1) on the
+quarter-cell raster. Its decisions also depend on neighboring samples,
+the 0x8000/0x4000/0x2000 flags, room type, armor, and hatch positions.
+RenderInteriorCeilings is 0x180432f60. Interior wall generation skips
+fuel rooms (9) and roof types (22 through 24), then uses boundary steps,
+IsExteriorWall, adjacent-room data, and door details.
+
+Wall profiles and appearance
+----------------------------
+
+DnRoom::WallProfile, AuData13.dll 0x180174d00, returns a vertical profile
+starting at (0,0,0) and ending at (0,0,8) feet. Intermediate horizontal
+insets and heights vary with room type and armor; examples include a
+1-foot cabin/barracks inset and a 2-foot bridge inset. Strip type values
+are returned alongside profile points. Their full material mapping has
+not been recovered, so this note does not equate an unverified numeric
+strip type with a particular material.
+
+RenderExteriorWalls (AuAtom13.dll 0x18042cdb0) uses those profile offsets
+with joined boundary directions and streamline-dependent paths. A mesh
+of flat room floors and straight vertical walls would be a new schematic
+preview, not restored original appearance. The interior renderer also
+emits specialized controls, berths, ladders, drives, sensors, shields,
+and stair geometry; equipment dots alone do not recover that appearance.
+
+Saved captures and next recovery boundary
+-----------------------------------------
+
+The pseudocode directory contains separate captures named by DLL/address
+for all of the functions above, plus IsExteriorWall (0x1803f9270).
+Further identified functions not yet ported include RenderExteriorBottoms
+(0x1804274c0), RenderExteriorTops (0x18042a140), and RenderInteriorNoModel
+(0x180439ac0), all in AuAtom13.dll. Additional work would need to recover
+and check their helper functions, triangulation/winding, material and
+texture mappings, door/hatch/stair openings, and adjacency behavior,
+then compare generated surfaces against representative original ships.
+
+All original executables, DLLs, and ship samples remained read-only.

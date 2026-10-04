@@ -1,0 +1,152 @@
+Original 2016 Spacecraft Design panel
+=====================================
+
+Recovered 2026-10-04 from the original Shores of Hazeron.exe constructor
+0x1402c91e0 (AuTabDesign RTTI) using direct x64 assembly. The constructor's
+decompilation exceeded the MCP time limit. panel-layout-evidence.json records
+all referenced strings and the actual QGridLayout::addWidget call arguments.
+inspect_panel_layout.py reproduces those read-only observations with objdump.
+
+Coordinates below are zero-based Qt grid rows and columns. Blank cells matter:
+constructor creation order is not the visible palette order.
+
+Outer grid (14 columns)
+-----------------------
+  row 0: c0 Depart Studio (dp_Exit, conditional), c1 New (dp_New),
+         c2 Load (dp_Load), c3 Save (dp_Save),
+         c4 Delete Design (dp_Delete, conditional).
+  row 1: c0 Render Mode (dp_RenderMode), c1 Gravity (dp_Gravity),
+         c2 Check Paths (dp_Check), c3 Burn CD (dp_BurnCD).
+  row 2: c0 Move Grid Up (dp_DeckAbove), c1 Grid90, c2 Grid0,
+         c4 Erase Current Deck (dp_DelDeck).
+  row 3: c0 Move Grid Down (dp_DeckBelow), c1 Grid45, c2 Grid135,
+         c4 Move/Copy Rooms and Equipment (dp_Move).
+  Rooms group occupies row 0, column 6, spans 4 rows and 8 outer columns.
+  Equipment group occupies row 4, column 0, spans all 14 columns.
+  row 5: c0 System Modules (UpgradeModule), c2 ArmorIncrease,
+         c3 ArmorDecrease; Streamline Hull checkbox spans c5..11;
+         minimum Tech Level dropdown spans c12..13.
+  row 6: HTML help/status area spans all 14 columns.
+
+Outer placement call addresses: 0x1402d1cfb..0x1402d2071.
+This is the compact shape shown in the user's reference. The apparent deck
+arrows on the right of Equipment are brush-size controls. Apparent roof icons
+in the last equipment row are vehicle placement tools. Actual dp_Roof* assets
+exist but are not placed by this spacecraft panel constructor.
+
+Room group (10 columns)
+------------------------
+dp_ prefix and .png suffix omitted in these rows.
+  r0: RoomMode0, Barracks, Bridge, Brig, CrewCabin, EngineRoom,
+      LandingBay, Fuel, [spacer], RoomIdUp
+  r1: DelRoomCells, Galley, GravityWell, Corridor, Cargo, CaptCabin,
+      OpenToBelow, Lounge, [spacer], [Room Number button]
+  r2: DelRoom, SensorRoom, ShieldRoom, SickBay, Stateroom,
+      TransporterRoom, WeaponBay, [empty], [spacer], RoomIdDown
+
+The mode button changes its icon to RoomMode1 when changing existing room
+types. Draw paints/replaces cells; change mode changes an existing whole room's
+type and disallows a duplicate type/number on the same deck.
+Room Number button applies the displayed number to an existing room and also
+disallows a duplicate type/number on the same deck.
+
+Room icon -> exact original GD type/name:
+  Barracks        1 Barracks          Bridge           2 Bridge
+  Brig            3 Brig             CaptCabin        4 Officer Cabin
+  Cargo           5 Hold             Corridor         6 Hall
+  CrewCabin       7 Crew Cabin        EngineRoom       8 Engine Room
+  Fuel            9 Fuel Cell         Galley          10 Galley
+  GravityWell    11 Gravity Well      LandingBay      13 Vehicle Bay
+  Lounge         14 Lounge           OpenToBelow     15 Open to Deck Below
+  SensorRoom     16 Sensor Room      ShieldRoom      17 Shield Room
+  SickBay        18 Sickbay          Stateroom       19 Stateroom
+  TransporterRoom20 Transporter Room WeaponBay       21 Weapon Bay
+
+Room placement call addresses: 0x1402d0fe6..0x1402d136b.
+Column 8 gets explicit minimum width 6 and stretch 1.
+
+Equipment group (15 columns)
+-----------------------------
+Unprefixed names below use dp_; c_ names, Troop, and UpgradeModule do not.
+  r0: c0 DelDetail, c1 CmdConsole, c2 PilotConsole, c3 EngineerConsole,
+      c4 ShieldConsole, c5 SensorConsole, c6 NavConsole, c7 FireControlConsole,
+      c8 PowerConsole, c9 SurgeryConsole, c10 TransporterConsole,
+      c11 TurretTopBottom, c12 TurretSide, c13 blank, c14 BrushSzUp.
+  r1: c0 DelDetails, c1 blank, c2 ManeuverDrive, c3 PowerPlant,
+      c4 Shield, c5 Sensor, c6 WormholeDrive, c7 Weapon, c8 LifeSupport,
+      c9 OperatingTable, c10 TransporterPad, c11 Berth0, c12 Berth2;
+      brush-size text spans c13..14.
+  r2: c0 blank, c1 HullDoor, c2 CrewDoor, c3 Door, c4 CargoDoor,
+      c5 LargeCrewDoor, c6 LargeDoor, c7 HullHatch, c8 CrewHatch, c9 Hatch,
+      c10 WallOpening, c11 HullOpening, c12 Railing, c13 blank, c14 BrushSzDown.
+  r3: c6 Troop; c8 StairsStraight, c9 StairsTurnLeft, c10 StairsTurnRight,
+      c11 StairsUTurnLeft, c12 StairsUTurnRight.
+  r4: c0 PivotPoint, c1 ContrailEmitter, c2 WeaponEmitter, c4 GameTable,
+      c6 c_CommercialAircraft, c7 c_SpaceFighter, c8 c_SpaceFighter2,
+      c10 c_APC, c11 c_MotorBike, c12 c_Suv.
+
+Equipment placement call addresses: 0x1402d14aa..0x1402d1c5b.
+Berth0 invokes DesignDetailBerthSingle; Berth2 invokes DesignDetailBerthDouble.
+CmdConsole is the Captain's Chair. SurgeryConsole is the Medic Station;
+OperatingTable is the Surgery Unit. CargoDoor is Large Hull Door.
+Vehicle tooltips identify F1, F2, Motor Bike, SUV, APC and Space Transport.
+
+Numeric values and tooltips
+----------------------------
+AuTabDesign::TimerUpdate at 0x1402d33e0 proves Room Number displays the stored
+quint8 subtype plus one, hence visible range 1..256 and initial display 1 for
+stored subtype 0. Brush Size also displays its raw byte plus one.
+See the saved Qt-metadata-labelled IDA pseudocode; the UI setter/getter field
+matches constructor button offset 0xb8 (Room Number) and label 0x50 (Brush Size).
+
+Minimum Tech Level constructor 0x1402ca689..0x1402ca77d iterates raw values
+31 down to 0, creates displayed numbers raw+1, stores the raw value in item
+data, and initially selects the last item. Visible choices 32..1 therefore
+map to header minimumTechLevel 31..0. TimerUpdate selects via findData.
+This dropdown does not control armor.
+
+Grid tooltips:
+  Grid0   Lateral Grid Lines / enable grid lines on the beam.
+  Grid45  Diagonal Grid Lines / enable to the port quarter.
+  Grid90  Longitudinal Grid Lines / enable fore and aft.
+  Grid135 Diagonal Grid Lines / enable to the starboard quarter.
+The recovered grid bits remain 1,2,4,8 respectively, default 5.
+
+Streamline Hull tooltip says atmospheric maneuvering speed increases and
+spacecraft mass rises 10%. Armor Increase/Decrease tooltips describe increasing
+or reducing physical defense and mass. The constructor itself does not prove
+the permitted armor range; do not infer a range from its two buttons.
+
+Original tips/status text is recorded in panel-layout-evidence.json's
+offline_spacecraft_help. It contains old walkthrough, save, load-in-game and
+Burn CD instructions. Those instructions describe 2016 capabilities and must
+not advertise unsupported actions in the new panel.
+
+Assets and native scope
+------------------------
+AuLegacyShipIcon in src/lib/designer/legacy/aulegacyshipicons.h/.cpp supplies
+111 exact original PNG payloads, all 103 dp_ icons plus the eight non-dp icons
+used by the panel. It accepts base names, .png filenames or :data/ paths and
+works without Qt resource initialization or external legacy DLLs.
+No recoloring, image editing, scaling or PNG rewriting was performed.
+
+inspect_panel_icons.py statically decodes version-1 Qt resource trees from:
+  AuSceneClientRes13.dll registration 0x1030: 103 dp_ icons.
+  AuData13.dll registration 0x1140: Troop and six vehicle icons.
+  AuGlobal13.dll registration 0x28d0: UpgradeModule.
+panel-icons.json records original DLL SHA-256, per-icon SHA-256, dimensions,
+byte counts and resource names. Existing modern dp_ resources are under
+resources/client/mail/data but omit many of this panel's icons; the helper
+preserves the complete original set for both launch paths.
+
+At recovery time the native editing API implements per-event cell add/erase,
+all twenty room purposes, grid masks and stored Room Number, deck selection,
+loading and inspection. It does not yet expose room-type/number reassignment,
+whole-room/deck erase, equipment placement/erase, brush painting, move/copy,
+path checks, avatar walkthrough, gravity, 3D render switching, Burn CD or save.
+New/header controls may be wired by the parent in this interface milestone;
+that does not expand the cell-edit API. Unsupported panel actions should
+remain visibly unavailable with accurate tooltips.
+
+No compiler, application build, original binary execution or Ghidra mutation
+was performed for this panel recovery.
