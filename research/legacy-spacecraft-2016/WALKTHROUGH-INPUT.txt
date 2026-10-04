@@ -1,0 +1,55 @@
+2016 designer walkthrough input refinement
+==========================================
+
+Source evidence
+---------------
+Shores of Hazeron.exe 0x1400da300 initializes the original view controls:
+  Input Mode Toggle, Avatar vs Hand: ID 8, Return (Qt 0x1000004),
+    mouse type 7 (right button), no modifiers.
+  Hand Input Mode, Temporarily: ID 7, Control (Qt 0x1000021),
+    ControlModifier 0x4000000, continuous while held.
+  Open Door / Close Door remain Ctrl+P / Ctrl+C.
+The temporary-hand tooltip explicitly covers grabbing items, opening doors,
+using in-game consoles and operating interface windows/dialogs.
+
+The surviving modern AuDesignerView::ProcessControls, SetCursor, GrabMouse,
+ReleaseMouse and AssessInputMode retain the associated mechanism: avatar
+input hides/grabs the pointer and measures movement while recentering it;
+hand/UI mode releases it, and focus loss releases the grab. The original
+hand artwork remains in AuClientRes. Standalone Legacy now initializes the
+normal client application, including its shared resources and game globals.
+
+Local implementation
+--------------------
+AuLegacyShipRender enters captured avatar input when shown/focused. It polls
+the real pointer and recentres it each update, avoiding queued warp events
+as movement input. Return/right-click toggles hand mode; Ctrl temporarily
+releases capture. The application event filter observes Ctrl releases over
+tool windows without consuming their events. A platform modifier query also
+reconciles Ctrl after switching applications. Actual mouse-grab ownership is
+checked before applying look deltas.
+
+Hand mode uses the existing Hand.png cursor and left-click panel interaction.
+Movement keys apply in avatar mode; Ctrl+P/C still operates nearby doors while
+the hand is temporarily released. Mouse capture releases for dialogs, focus
+loss, application deactivation, hidden render views and destruction. Original
+Escape-to-exit behavior of this reimplementation is retained.
+
+The yellow crosshair uses the existing modern HudItems.png artwork and the
+layout in AuGLEffects::RenderCrosshair, adapted to the local QPainter overlay.
+It is drawn independently of mesh presence, including an empty new design.
+No crosshair artwork is extracted or generated. Native ship target/health
+behavior is documented separately in WALKTHROUGH-RECOVERY.txt.
+
+Limits and validation
+---------------------
+The original engine input/pose and scene graph are still not instantiated;
+this remains the local preview controller. Mouse sensitivity is the local
+0.2 degrees/pixel setting. Platforms that reject pointer warping, notably
+Qt 5.12 Wayland, cannot provide unlimited relative look through this QWidget
+API. Sampling the actual post-warp position prevents stationary view spin
+on those platforms; native relative-pointer integration remains separate.
+
+No build or compiler was invoked. Source review covered cursor ownership,
+focus/hide/destruction, modifier loss across application switches, modal
+dialogs, hand-click routing and separation from authored .ship data.

@@ -78,21 +78,7 @@ int main(int argc, char** argv)
 		glformat.setVersion(GLMajorVersion, GLMinorVersion);
 		QSurfaceFormat::setDefaultFormat(glformat);
 
-		if(legacySpacecraft)
-		{
-			// The offline designer uses Qt and the bundled spacecraft textures.
-			AuAtomRes auAtomRes;
-			AuModelRes auModelRes;
-			AuTexture auTexture;
-			QApplication a(argc, argv);
-			AuLegacyShipViewer viewer;
-			viewer.show();
-			if(!legacyShipFile.isEmpty())
-				viewer.OpenFile(legacyShipFile);
-			return a.exec();
-		}
-
-		// Game signal handlers depend on the AuApp instance; the viewer uses Qt only.
+		// Both launch paths use the game application and its shared services.
 		signal(SIGINT, SignalHandler);
 		signal(SIGTERM, SignalHandler);
 #if !defined(Q_OS_WIN)
@@ -115,6 +101,17 @@ int main(int argc, char** argv)
 		AuUtil auUtil;
 
 		AuClientApp a(argc, argv);
+		if(legacySpacecraft)
+		{
+			// Initialize the usual game globals and OpenAL service even when
+			// opening the legacy designer directly without the login frame.
+			AuLegacyShipViewer viewer;
+			viewer.show();
+			if(!legacyShipFile.isEmpty())
+				viewer.OpenFile(legacyShipFile);
+			return a.exec();
+		}
+
 		QStringList args = a.arguments();
 		if(args.contains("-version") || args.contains("-v"))
 		{

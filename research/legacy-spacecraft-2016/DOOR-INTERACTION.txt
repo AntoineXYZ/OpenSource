@@ -1,0 +1,126 @@
+2016 spacecraft designer: doors and hatches
+Recovered 2026-10-04 from the original 2016 Ghidra instance.
+
+Rendering and animation
+-----------------------
+AuAtom13.dll DaSpaceShip::AnimateDeviceObjects, 0x1803c9950, updates
+device animation at most once every 100 ms. It selects three atlas regions
+for doors: closed, half-open and open. When the logical door state changes,
+the next device tick selects the half-open image; the following tick selects
+the destination image. Reversing during the half-open image selects the new
+destination on the next tick. There is no moving leaf geometry in this path.
+
+The original ShipTexture families and their three consecutive indices are:
+  large interior 2/3/4; large crew 5/6/7; large hull 8/9/10;
+  crew door 11/12/13; crew hatch 14/15/16;
+  hull door 19/20/21; hull hatch 22/23/24;
+  interior door 30/31/32; interior hatch 34/35/36.
+Each sequence is closed / half-open / open. The existing embedded 2016
+spacecraft atlas already contains every image, including the alpha channels.
+RenderHatch 0x18042ee90 starts with the half-open region and assigns a
+per-door UV-offset animation index. RenderInterior 0x18042f410 and
+RenderExteriorWalls 0x18042cdb0 use the same mechanism for wall panels.
+Hull doors have different panels on their two sides: the interior uses the
+crew-door family, or large crew-door family for a large hull door. The small
+interior panel spans the full eight-foot deck height; the exterior hull-door
+panel is seven feet high beneath its projecting upper hull profile. Both
+sides share the same logical door and animation state.
+
+Hatches are flat 4 x 4 foot quads, axis-aligned or rotated 45 degrees by the
+cell orientation. A diamond therefore extends 2.8284271245 feet from its
+center. Detail rotation affects the ladder, not the panel's texture frame.
+The uppermost room deck is 28, but a ceiling hatch may be on boundary deck
+29. Its ladder extends downward from that boundary through room deck 28.
+AppendEquipment permits this additional boundary deck only for hatch ladders;
+other equipment remains limited to room decks, and hatch deck 30 is excluded.
+Wall openings and railings have no open/close animation. Neither do turret
+apertures. Logical door state changes independently of visual frame timing.
+
+Interaction and designer differences
+-----------------------------------
+DaSpaceShip::ClosestClosedDoor 0x1803d1880 and ClosestOpenDoor 0x1803d2070
+consider openings on the actor's deck or the deck immediately above. The
+horizontal squared distance must be <= 36 (six feet). Wall distances are to
+the closest point on the opening segment; hatch distances are to the hatch
+center. AuData13.dll AuOpening::Distance2_2D, 0x180072720, confirms that
+distinction. Equal-distance candidates retain the first opening in order.
+AnalyzeDesign uses center +/- 2 feet for a small wall door's operational
+segment (the drawn panel extends +/- 2.5 feet). Large door operational
+segments use an 11/12-foot inset at each wall end. These dimensions also
+apply to the nearest-door query, independently of the drawn panel edges.
+Crew/hull locks and crew privileges are world state, not saved design fields.
+
+Original executable tooltips confirm Ctrl+P for Open Door and Ctrl+C for
+Close Door. The cursor-release tooltip explicitly describes using the
+avatar's hand to open doors. These are the original actions, not an E-key
+binding. CloseDoor does not refuse a close because an actor occupies the
+opening; its implementation directly changes the door state(s).
+
+Small regular and crew doors/hatches open automatically when encountered
+by movement. AuData13.dll AuPath::TestSpacecraftPath, 0x180107210, collects
+eligible closed automatic doors and hatches; AuAtom13.dll
+DaSpaceShip::IsPathBlocked, 0x1803fa2a0, subsequently calls OpenDoor on them.
+The automatic types are exactly 5, 8, 49, 51, and 77 through 90, verified by
+AuOpening::IsAutomaticDoor, 0x1800737e0. Large doors and hull doors/hatches
+require manual operation. An automatic hatch in the cell above can also
+be opened by the movement test. This evidence concerns movement interaction,
+not the separate designer path checking tool.
+
+World automatic closing is deliberately NOT used in the designer.
+DaSpaceShip::Tock, 0x18046d6e0, returns immediately when InDesignEnvironment
+is true, before its call to CloseAutomaticDoors at 0x18046e12f. The world
+closing routine 0x1803d0640 would otherwise close automatic doors when no
+eligible person remains within three feet horizontally, subject to deck and
+pose checks. Applying that world rule in the editor would change 2016
+designer behavior.
+
+Stacked large doors
+-------------------
+AuOpening::CanOperateStack, AuData13.dll 0x180071f80, returns true only for
+large hull (3), large interior (53) and large crew (54) doors.
+DaSpaceShip::OpenDoor 0x18040a1a0 and CloseDoor 0x1803d0c60 operate contiguous
+vertical stacks at the same authored detail x/y, including mixed large-door
+families. They scan upward while each next opening is a stackable type with
+primary room type 11 or 15 and adjacent room type 0, 11 or 15. They scan
+downward only while the current opening satisfies that void-room condition,
+including the bottom stackable opening before testing its room condition.
+A missing opening, a nonstackable opening, or a disallowed room pairing
+ends the relevant scan. Merely sharing a room number or being nearby is not
+enough to link doors. The saved design is not changed by opening a door.
+AnalyzeDesign stores that authored detail location at AuOpening +0x40,
+independently of the rendered opening endpoints. AuOpening::BaseCenter,
+0x180071c90, computes the midpoint for large doors, but stack matching does
+not call BaseCenter. Different opening widths can therefore still belong
+to the same stack when the detail markers are aligned.
+
+Implementation
+--------------
+aulegacyshipequipment.h/.cpp exposes the recovered three-frame state update,
+material selection, classifications, six-foot nearest-door query, and stack
+group selection. DoorDefinitions associates each rendered panel with its
+detail ID, derives wall endpoints from the tagged panel mesh with the above
+operational endpoint adjustments, and resolves
+adjacent room types against the authored boundaries. Hidden detail bytes do
+not suppress these structural door/hatch panels, matching the earlier
+detail-hidden-surface-evidence capture. Definitions without a rendered panel
+are excluded. Renderer state and collision are separate consumers of these
+helpers; neither changes the .ship writer or serializes open states.
+
+Evidence files
+--------------
+pseudocode/AuAtom13.dll_1803c9950_DaSpaceShip_AnimateDeviceObjects.txt
+pseudocode/AuAtom13.dll_18042ee90_DaSpaceShip_RenderHatch.txt
+pseudocode/door-interaction-runtime.txt
+pseudocode/door-animation-and-operation.txt
+
+Read-only asset validation used the existing standard-library PNG decoder to
+verify the embedded original atlas SHA-256 and every family's alpha regions.
+Transparent pixel counts for closed/half/open frames at original resolution:
+  large interior 0/23275/62464; large crew 0/23275/62464;
+  large hull 5/23281/62720; crew door 0/10166/20202;
+  crew hatch 0/2995/5728; hull door 0/13932/26132;
+  hull hatch 0/2905/5602; interior door 0/10656/19488;
+  interior hatch 1/2898/5548.
+No build or native test harness was run or created for this work. Native
+rendering, blending and walking interaction require the user's manual build
+and runtime verification.

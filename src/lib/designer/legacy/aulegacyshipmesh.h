@@ -76,6 +76,9 @@ struct Batch
 	int deck = 0;
 	bool interior = false;
 	bool equipment = false;
+	// Only the animated door/hatch panel carries its persistent detail ID.
+	// Both sides share the ID; surrounding hull/frame geometry remains static.
+	quint32 doorId = 0;
 	QString textureFile;
 	QVector4D tint = QVector4D(1, 1, 1, 1);
 	float selfIllumination = 0;

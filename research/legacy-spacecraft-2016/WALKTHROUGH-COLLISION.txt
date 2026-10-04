@@ -1,0 +1,157 @@
+Legacy designer local walkthrough collision
+===========================================
+
+Implementation: src/lib/designer/legacy/aulegacyshipwalk.h/.cpp.
+This is an independent local authoring-preview controller. It does not create a
+server character, attach to the live game scene, or claim to reproduce the full
+2016 character physics implementation.
+
+Recovered behavior used
+-----------------------
+The design and render mesh use feet. Original designer gravity is32ft/s^2
+(AuAtom13!DaDesignEnvironment::Gravity,1802f91e0). Default Human standing jump
+impulse is15ft/s (AuData13!DpBody::StandingJump,1800cd730, and the Human DNA
+JumpForce path in AuGlobal13,1800092c0). Walk/run input speeds are5/12.5ft/s;
+the rendering widget supplies the desired velocity to this module.
+
+Original no-gravity motion still collides with solid ship geometry:
+DaSpaceShip::IsPathBlocked1803fa2a0 gates collision on solid rendering, rather
+than the studio gravity switch. The studio switch governs the external design
+plane. QueryEnvironment1802049a0 retains ship gravity already obtained from its
+parent even when studio gravity is disabled; ship Gravity1803f4250 returns32 in
+the studio. Gravity wells (room11) and ladder use suspend falling.
+
+The original avatar starts at x=y=0 with its standing body offset above ground,
+without looking up a spawn marker. The renderer owns initial position and mode
+switch persistence. FindSpawn is an explicit recovery helper, not an implicit
+teleport when changing floor-plan/render mode.
+
+Geometry and queries
+--------------------
+SetMesh copies collision triangles and room polygons, so it holds no dangling
+reference to the render mesh or design. Structural hulls, walls, floors,
+ceilings, glazing, railings, door/hatch panels and stairs collide. Visible
+equipment and imported model triangles are not themselves collision sources.
+Only the original blocking detail types add obstacle cells, described below.
+Ladder texture planes are climb regions, not solid planes.
+Static visual triangles remain available to Raycast even when passable, so a
+console, berth or vehicle can occlude a door or supply a visible target point.
+Raycast excludes the invisible obstacle-cell proxy boxes. Mechanically rotating
+decorative batches remain excluded from these static queries until transformed
+ray geometry is available; UV-only animated surfaces retain their static shape.
+
+Recovered detail collision classification
+----------------------------------------
+AuData13.dll AuPath::CreateSpacecraft (0x1800eb970) calls PaintFloorPlan,
+PaintOpenings, PaintObstaclesAndTurrets and PaintDiagonalHullWalls for each
+deck. It separately calls PaintStairs and connects/trims the path cells.
+TestSpacecraftPath (0x180107210) consumes those cells, room walls and door
+states; it does not intersect the rendered equipment models.
+
+PaintObstaclesAndTurrets (0x1800f25c0) has these exact detail-type groups:
+
+  Cell 0x0e, still pathable:
+    1,2,4,6,7,11,12,13,15,17,19,20,25..31,33,65..73.
+    These include the station consoles, all single/double berth orientations,
+    surgery unit 11, transporter pad 20, bottom turret 33, and captain chair 73.
+    The function updates an existing normal pathable cell from 2 to 0x0e;
+    it does not call RemovePathableCell for this group.
+
+  Cell 0x0f, blocking:
+    10 maneuver drive, 14 power plant, 16 sensors, 18 shields,
+    23 weapon system, 24 FTL drive, 32 life support,
+    74/75 game table orientations, 100 flag pole, 142 light pole.
+    These call RemovePathableCell at the detail's half-grid location.
+    Game tables additionally mark neighboring normal cells as pathable 0x0e;
+    their surrounding chairs do not become model-shaped blockers.
+
+  Connected turret cells:
+    Side turret types 21,34..40 become 0x0c and call ConnectTurretNeighbors.
+    Top turret 22 becomes 0x0d. Neither removes a pathable cell like machinery.
+    The preview retains their enclosing structural canopy/hull surfaces and
+    excludes the decorative gun/seat model from collision.
+
+  Stairs 101..140 call PaintStairs. The preview retains their casing/riser/tread
+  geometry as its local walkable representation.
+
+There is no obstacle-paint case for vehicle parking details 57..64, logical
+markers 76/98/99, troop station 141, or door/ladder details. Doors/openings
+are handled by PaintOpenings, not by general equipment obstacle painting.
+Vehicle preview model triangles are therefore excluded from local collision;
+this does not assert anything about collisions with separate live vehicles.
+
+The painter tests the detail deck but not hiddenRaw. The local obstacle pass
+matches that rule and deduplicates records sharing a half-grid/deck cell.
+DnRoom::HalfGridCoord (0x1801722e0) rounds x/y divided by 2.8284271245; its
+inverse 0x180170ca0 decodes the same centers. DnBuilding::OnDeck (0x18015b510)
+uses floor((z + 0.05)/8). Local blocking cells are thus represented by square
+boxes of side 2.8284271245 feet, from deck*8 - 0.05 to (deck+1)*8 - 0.05.
+They use the existing spatial collision grid and capsule solver. This recovers
+the authored obstacle classification and cell extent; it does not reproduce
+the original discrete path stepping or point-based person collision exactly.
+Obstacle volumes reject an initial position inside them as well as surface
+crossings, so recovery cannot choose the interior of a machinery cell.
+
+Structural queries
+------------------
+
+Closed panels carry Batch.doorId, added by the renderer integration. Opening a
+door disables only its tagged panel triangles; adjacent frame/wall triangles
+remain solid. Raycast intentionally retains open-panel targets so the same
+opening can be closed again. Closing is not rejected because a character is in
+the opening, matching the recovered CloseDoor policy; subsequent movement
+resolves any resulting overlap using the local capsule controller.
+Movement reports contacted closed IDs in WalkState.blockedDoors. The renderer
+decides which original door types automatically open on contact; the collision
+module does not infer that policy from textures. A grounded support contact
+alone is excluded from that list, so the controller's small gravity step does
+not repeatedly open a hatch beneath a stationary character. Actual falls and
+intentional downward travel do report floor panels.
+
+Eight-foot spatial grids limit triangle, room and ladder candidates. Movement uses a vertical
+capsule, segment/triangle closest-point queries, iterative separation and small
+time/displacement steps. It slides along walls and blocks at floors/ceilings.
+A bounded step-up and downward support probe make the recovered stair treads
+walkable. Gravity applies to the feet velocity, with a standing jump impulse.
+Zero-gravity travel uses the full supplied velocity, including its z component.
+The renderer supplies C/Z climb velocity near ladders and inside gravity wells.
+E explicitly attaches to a nearby ladder or detaches from it. Proximity alone
+does not disable gravity; moving out of the climb region clears attachment.
+
+Outside ship membership, enabled studio gravity uses SetDesignPlane's height.
+A character below that plane is moved up to it, even when already far below.
+This matches TickMovement180219280, assembly1802198d8..18021996f: with gravity
+and no underground capability, negative FallDist translates the character by
+GravityNormal * -FallDist. Inside/on the ship, hull/floor triangles supply the
+support instead of the external plane.
+Door states clear when SetMesh rebuilds, and the renderer reapplies its current
+per-detail logical states afterwards.
+
+Deliberate local approximations
+------------------------------
+DaSpaceShip::IsPathBlocked (AuAtom13.dll 0x1803fa2a0) sends persons/animals
+through AuPath::TestSpacecraftPath using their movement points. Its transformed
+multi-corner bounding-box tests belong to other object branches. Character eye
+height and floor queries still depend on body DNA/pose. The local preview uses
+a radius of .75ft, height of 6ft and eye height of 5.5ft, configurable through
+WalkSettings. The .75ft step threshold and
+capsule separation tolerances are controller settings, not recovered constants.
+This implementation does not simulate crouching, creatures, moving vehicles,
+forces from live equipment, water, or the original parent/peer scene graph.
+
+Ship gravity membership uses authored room volumes. A body above a supporting
+room footprint remains in ship gravity up to one body height above its roof;
+this is a bounded substitute for the original CheckPeerJoin parent query, so a
+jump on the hull does not suddenly become weightless. That proximity rule is
+not claimed to be byte-for-byte 2016 behavior. Ladder engagement uses the
+recovered rung-plane extents and a body reach margin, rather than the full
+original character pose/interaction state machine. A step-height margin above
+the ladder top lets the character climb clear of the upper floor before
+stepping off. This exit tolerance is a local controller approximation.
+
+Validation
+----------
+No build, compiler invocation, or new test harness is part of this work. The
+deleted research/tests files are not recreated. Source checks cover C++11/Qt5
+value types, API integration, finite inputs, collision step limits, copied-data
+lifetime, door identity, and winding-independent triangle collision.

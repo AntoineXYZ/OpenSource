@@ -1,0 +1,353 @@
+Read-only Ghidra MCP evidence, captured 2026-10-04. Not original source.
+Door interaction excerpts only; this does not implement the path checking tool.
+
+AuAtom13.dll 0x18046d6e0 DaSpaceShip::Tock
+Early-return excerpt, before the world-only CloseAutomaticDoors call:
+  bVar5 = DaUnit::Tock((DaUnit *)this,param_1,param_2);
+  if (!bVar5) {
+    return bVar5;
+  }
+  if (((byte)this[0x18] & 0xfb) != 0) {
+    return true;
+  }
+  *(undefined8 *)(this + 0x4a0) = 0;
+  *(undefined4 *)(this + 0x4a8) = 0;
+  *(undefined2 *)(this + 0x4ac) = 0;
+  this[0x4ae] = (DaSpaceShip)0x0;
+  bVar5 = DaAtom::InDesignEnvironment((DaAtom *)this);
+  if (bVar5) {
+    return true;
+  }
+  bVar5 = IsNew(this);
+  ...
+  CloseAutomaticDoors(this);
+The last call is at 0x18046e12f, after the above designer return.
+
+AuData13.dll
+
+/* public: bool __cdecl AuOpening::IsAutomaticDoor(void)const __ptr64 */
+
+bool __thiscall AuOpening::IsAutomaticDoor(AuOpening *this)
+
+{
+  uint uVar1;
+  QMessageLogger *this_00;
+  QMessageLogger local_28 [32];
+
+                    /* 0x737e0  4355  ?IsAutomaticDoor@AuOpening@@QEBA_NXZ */
+  uVar1 = *(uint *)(this + 4);
+  switch(uVar1) {
+  case 0:
+  case 3:
+  case 9:
+  case 10:
+  case 0x32:
+  case 0x34:
+  case 0x35:
+  case 0x36:
+  case 0x37:
+  case 0x38:
+  case 0x5b:
+  case 0x5c:
+  case 0x5d:
+  case 0x5e:
+  case 0x5f:
+  case 0x60:
+  case 0x61:
+    goto switchD_18007380f_caseD_0;
+  default:
+    this_00 = (QMessageLogger *)QMessageLogger::QMessageLogger(local_28,(char *)0x0,0,(char *)0x0);
+    QMessageLogger::warning
+              (this_00,"AuOpening::IsAutomaticDoor INVALID opening detail id %d type %d",
+               (ulonglong)*(uint *)this,(ulonglong)uVar1);
+switchD_18007380f_caseD_0:
+    return false;
+  case 5:
+  case 8:
+  case 0x31:
+  case 0x33:
+  case 0x4d:
+  case 0x4e:
+  case 0x4f:
+  case 0x50:
+  case 0x51:
+  case 0x52:
+  case 0x53:
+  case 0x54:
+  case 0x55:
+  case 0x56:
+  case 0x57:
+  case 0x58:
+  case 0x59:
+  case 0x5a:
+    return true;
+  }
+}
+
+
+AuData13.dll
+
+/* public: bool __cdecl AuOpening::CanOperateStack(void)const __ptr64 */
+
+bool __thiscall AuOpening::CanOperateStack(AuOpening *this)
+
+{
+  uint uVar1;
+  QMessageLogger *this_00;
+  QMessageLogger local_28 [32];
+
+                    /* 0x71f80  2813  ?CanOperateStack@AuOpening@@QEBA_NXZ */
+  uVar1 = *(uint *)(this + 4);
+  switch(uVar1) {
+  case 0:
+  case 5:
+  case 8:
+  case 9:
+  case 10:
+  case 0x31:
+  case 0x32:
+  case 0x33:
+  case 0x34:
+  case 0x37:
+  case 0x38:
+  case 0x4d:
+  case 0x4e:
+  case 0x4f:
+  case 0x50:
+  case 0x51:
+  case 0x52:
+  case 0x53:
+  case 0x54:
+  case 0x55:
+  case 0x56:
+  case 0x57:
+  case 0x58:
+  case 0x59:
+  case 0x5a:
+  case 0x5b:
+  case 0x5c:
+  case 0x5d:
+  case 0x5e:
+  case 0x5f:
+  case 0x60:
+  case 0x61:
+    goto switchD_180071faf_caseD_0;
+  default:
+    this_00 = (QMessageLogger *)QMessageLogger::QMessageLogger(local_28,(char *)0x0,0,(char *)0x0);
+    QMessageLogger::warning
+              (this_00,"AuOpening::CanOperateStack INVALID opening detail id %d type %d",
+               (ulonglong)*(uint *)this,(ulonglong)uVar1);
+switchD_180071faf_caseD_0:
+    return false;
+  case 3:
+  case 0x35:
+  case 0x36:
+    return true;
+  }
+}
+
+
+AuData13.dll
+
+/* public: double __cdecl AuOpening::Distance2_2D(class AuPoint const & __ptr64)const __ptr64 */
+
+double __thiscall AuOpening::Distance2_2D(AuOpening *this,AuPoint *param_1)
+
+{
+  uint uVar1;
+  QMessageLogger *this_00;
+  double dVar2;
+  AuPoint local_48 [24];
+  QMessageLogger local_30 [40];
+
+                    /* 0x72720  3693  ?Distance2_2D@AuOpening@@QEBANAEBVAuPoint@@@Z */
+  uVar1 = *(uint *)(this + 4);
+  switch(uVar1) {
+  case 0:
+  case 8:
+  case 10:
+  case 0x33:
+  case 0x34:
+  case 0x4d:
+  case 0x4e:
+  case 0x4f:
+  case 0x50:
+  case 0x51:
+  case 0x52:
+  case 0x53:
+  case 0x54:
+  case 0x55:
+  case 0x56:
+  case 0x57:
+  case 0x58:
+  case 0x59:
+  case 0x5a:
+  case 0x5b:
+  case 0x5c:
+  case 0x5d:
+  case 0x5e:
+  case 0x5f:
+  case 0x60:
+  case 0x61:
+    dVar2 = AuPoint::Distance2_2D(param_1,(AuPoint *)(this + 0x10));
+    return dVar2;
+  default:
+    this_00 = (QMessageLogger *)QMessageLogger::QMessageLogger(local_30,(char *)0x0,0,(char *)0x0);
+    QMessageLogger::warning
+              (this_00,"AuOpening::Distance2_2D INVALID opening detail id %d type %d",
+               (ulonglong)*(uint *)this,(ulonglong)uVar1);
+    return -1.0;
+  case 3:
+  case 5:
+  case 9:
+  case 0x31:
+  case 0x32:
+  case 0x35:
+  case 0x36:
+  case 0x37:
+  case 0x38:
+    AuPoint::PointOnSegment_2D(param_1,local_48,(AuPoint *)(this + 0x10));
+    dVar2 = AuPoint::Distance2_2D(param_1,local_48);
+    return dVar2;
+  }
+}
+
+
+AuData13.dll 0x180107210 AuPath::TestSpacecraftPath
+Relevant automatic-door branch, excerpt; other path decisions omitted:
+  else {
+    bVar8 = AuDoorStates::IsDoorOpen(local_218,(int)*(short *)(pAVar23 + 0x16));
+    if (!bVar8) {
+      bVar19 = (byte)*(ushort *)(pAVar23 + 0x1c);
+      if ((bVar19 >> 3 & 1) == 0) {
+        if ((((byte)pAVar23[0x1c] & 1) != 0) && ((param_3 || ((bVar19 >> 1 & 1) == 0)))) {
+          if ((*(uint *)(*(longlong *)gp_AuGlobal_exref + 0x310) & 0x40000) != 0) {
+            pQVar14 = (QMessageLogger *)
+                      QMessageLogger::QMessageLogger
+...
+      }
+      else if (((*(ushort *)(pAVar23 + 0x1c) & 1) != 0) && ((param_3 || ((bVar19 >> 1 & 1) == 0))))
+      {
+        if ((*(uint *)(*(longlong *)gp_AuGlobal_exref + 0x310) & 0x40000) != 0) {
+          pQVar14 = (QMessageLogger *)
+                    QMessageLogger::QMessageLogger
+                              ((QMessageLogger *)&local_260,(char *)0x0,0,(char *)0x0);
+          pQVar15 = (QDebug *)QMessageLogger::debug(pQVar14);
+          uVar2 = *(undefined2 *)(pAVar23 + 0x1c);
+          AVar1 = pAVar23[0x1c];
+          pQVar15 = QDebug::operator<<(pQVar15,"only step cell contains hatch");
+          pQVar15 = QDebug::operator<<(pQVar15,*(short *)(pAVar23 + 0x16));
+          pQVar15 = QDebug::operator<<(pQVar15,"isAuto");
+          pQVar15 = QDebug::operator<<(pQVar15,(bool)((byte)AVar1 & 1));
+          pQVar15 = QDebug::operator<<(pQVar15,"useCrewDoors");
+          pQVar15 = QDebug::operator<<(pQVar15,param_3);
+          pQVar15 = QDebug::operator<<(pQVar15,"isCrewDoor");
+          pQVar15 = QDebug::operator<<(pQVar15,(bool)((byte)uVar2 >> 1 & 1));
+          pQVar15 = QDebug::operator<<(pQVar15,"isHatch");
+          QDebug::operator<<(pQVar15,(bool)((byte)uVar2 >> 3 & 1));
+LAB_18010947b:
+          QDebug::~QDebug((QDebug *)&local_280);
+        }
+LAB_180109485:
+        local_278 = CONCAT22(local_278._2_2_,*(undefined2 *)(pAVar23 + 0x16));
+        FUN_18010ebc0(local_268);
+      }
+    }
+  }
+  pQVar21 = local_268;
+  if ((*(uint *)(pAVar23 + 0x10) & 0x40000) != 0) {
+    uVar30 = (int)(char)(local_274 + '\x01') << 0x10 | (uint)(byte)uStack_1e4 |
+...
+    }
+    lVar5 = *(longlong *)pAVar25;
+    if (((((*(byte *)(lVar5 + 0x1c) >> 3 & 1) != 0) &&
+         (bVar8 = AuDoorStates::IsDoorOpen(local_218,(int)*(short *)(lVar5 + 0x16)),
+         pQVar21 = local_268, !bVar8)) && ((*(byte *)(lVar5 + 0x1c) & 1) != 0)) &&
+       ((param_3 || ((*(byte *)(lVar5 + 0x1c) >> 1 & 1) == 0)))) {
+      if ((*(uint *)(*(longlong *)gp_AuGlobal_exref + 0x310) & 0x40000) != 0) {
+        pQVar14 = (QMessageLogger *)
+                  QMessageLogger::QMessageLogger
+                            ((QMessageLogger *)&local_260,(char *)0x0,0,(char *)0x0);
+
+AuAtom13.dll 0x1803fa2a0 DaSpaceShip::IsPathBlocked
+Collected automatic doors are opened after testing the attempted movement:
+  QReadWriteLock::unlock(pQVar2);
+  QReadWriteLock::unlock((QReadWriteLock *)(this + 0x770));
+LAB_1803faff1:
+  QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1e0));
+  pDVar23 = local_2eb8 + ((longlong)*(int *)(local_2eb8 + 8) + 2) * 8;
+  if (pDVar23 != local_2eb8 + (longlong)*(int *)(local_2eb8 + 0xc) * 8 + 0x10) {
+    do {
+      OpenDoor(this,(uint)*(ushort *)pDVar23);
+      pDVar23 = pDVar23 + 8;
+    } while (pDVar23 != local_2eb8 + (longlong)*(int *)(local_2eb8 + 0xc) * 8 + 0x10);
+  }
+  switch(PVar14) {
+
+Shores of Hazeron.exe original tooltip strings:
+1404e2cf0: <b>Open Door</b><br>Order the selected units to open the door at their location.<br><b>Ctrl+P</b>
+1404e1e10: <b>Close Door</b><br>Order the selected units to close the door at their location.<br><b>Ctrl+C</b>
+1404e65a0: Temporarily releases the cursor from avatar input mode. Enables quick access to your avatar's hand to grab items, open doors, activate in-game control consoles, and operate window and dialog controls.
+
+AuAtom13.dll 0x1803c63c0 DaSpaceShip::AnalyzeDesign
+Opening local_bb8 is an 88-byte AuOpening; local_b78 is its +0x40 point.
+The latter is copied from the authored DnDetail position, not its span midpoint:
+          local_be0 = local_be0 + local_bf8;
+          local_c20 = local_c20 - local_c08;
+          dStack_c18 = dStack_c18 - dStack_c00;
+          local_c10 = local_c10 - local_bf8;
+          AuOpening::AuOpening((AuOpening *)&local_bb8);
+          local_bb8 = *(undefined4 *)(*local_c28 + 4);
+          lVar39 = *local_c28;
+          local_b78 = *(undefined8 *)(lVar39 + 0x10);
+          local_b70 = *(undefined8 *)(lVar39 + 0x18);
+          local_b68 = *(undefined8 *)(lVar39 + 0x20);
+          bVar15 = *(byte *)(*local_c28 + 1);
+          local_bb0 = *(char *)*local_c28;
+          local_baf = *(char *)*local_c28;
+          local_ba8 = local_bf0;
+          dStack_ba0 = dStack_be8;
+          local_b90 = local_c20;
+          dStack_b88 = dStack_c18;
+          uVar41 = SUB84(local_c10,0);
+          uVar50 = (undefined4)((ulonglong)local_c10 >> 0x20);
+          local_b98 = local_be0;
+          goto LAB_1803c7b92;
+        case (DnDetail)0x5:
+        case (DnDetail)0x31:
+          sVar36 = 0;
+
+AuData13.dll 0x180071c90 AuOpening::BaseCenter
+Large doors (3/53/54) instead compute their geometric base center from
+opening endpoints at +0x10 and +0x28. OpenDoor/CloseDoor stack matching
+compares +0x40 directly and does not call BaseCenter.
+
+Operational span excerpts from the same AnalyzeDesign function:
+Small interior/crew door wall direction normalized to two feet:
+                AuPointArray::ClosestBoundarySegment_2D
+                          ((AuPointArray *)(lVar39 + 0x10),(AuPoint *)(pcVar5 + 0x10),
+                           (AuPoint *)&local_c20,(AuPoint *)&local_c08);
+                local_bc8 = local_bf8 - local_c10;
+                dStack_bd0 = dStack_c00 - dStack_c18;
+                local_bd8 = local_c08 - local_c20;
+                AuPoint::Unit((AuPoint *)&local_bd8,2.0);
+                sVar36 = *(short *)(*local_b28 + 4);
+          local_bb0 = *(char *)*local_c28;
+          local_baf = *(char *)*local_c28;
+          lVar39 = *local_c28;
+          local_b98 = local_bc8 + *(double *)(lVar39 + 0x20);
+          dStack_ba0 = dStack_bd0 + *(double *)(lVar39 + 0x18);
+          local_ba8 = local_bd8 + *(double *)(lVar39 + 0x10);
+          lVar39 = *local_c28;
+          local_b80 = *(double *)(lVar39 + 0x20) - local_bc8;
+          dStack_b88 = *(double *)(lVar39 + 0x18) - dStack_bd0;
+          local_b90 = *(double *)(lVar39 + 0x10) - local_bd8;
+          local_bae = sVar36;
+          local_bac = sVar33;
+Large interior/crew door endpoint clearance (11/12 foot):
+          local_c20 = (double)CONCAT44(uVar57,uVar56) + dVar42 * 0.9166666666666666;
+          dStack_c18 = (double)CONCAT44(uVar55,uVar54) + dVar43 * 0.9166666666666666;
+          local_c10 = (double)CONCAT44(uVar50,uVar41) + dVar7 * 0.9166666666666666;
+          local_bf0 = (double)CONCAT44(uVar63,uVar62) - dVar42 * 0.9166666666666666;
+          dStack_be8 = (double)CONCAT44(uVar61,uVar60) - dVar43 * 0.9166666666666666;
+          local_be0 = (double)CONCAT44(uVar59,uVar58) - dVar7 * 0.9166666666666666;

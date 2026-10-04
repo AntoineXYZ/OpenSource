@@ -182,7 +182,7 @@ Deck arrows must stop at -41/+41. New rooms must be rejected outside -28/+28,
 but cell erasure remains available there. Paint a Hold on deck 28, move to 29,
 and place a hull hatch or top turret over its interior; it must attach to the
 room below. Room painting on 29 must fail without deleting that attachment.
-Check the deck buttons in both floor-plan and rendered cutaway modes.
+Check the deck buttons in both floor-plan and rendered walkthrough modes.
 Outdoor flag/light poles and roof tools must not appear in the spacecraft
 palette. Native_ship_edit/native_detail_edit add mode-restriction cases; they
 have not been compiled or run by the assistant. See BUILDING-VS-SPACECRAFT.txt.
@@ -264,17 +264,76 @@ one/two-deck fixtures with the original client. Check Render Mode in its
 original palette position, unchanged dp_RenderMode icon/tooltip, and repeated
 floor-plan/solid switching. Check the floor-plan camera and selected tool
 survive toggling; selecting Paint/Erase/Inspect returns to the floor plan.
-Check left-drag orbit, middle/right/Shift-drag pan, wheel zoom, F/Home fit,
-resize, F6 docking/floating, and entry/exit through both launch paths.
+Check captured mouse look, walking controls, resize, F6 docking/floating, and entry/exit
+through both launch paths. The floor-plan F shortcut must not fit the 3D view.
+Home is now a recovery action that finds a clear standing position.
 
 Check armor 0..10 room silhouettes and transparent window frames; bridge,
 lounge, captain's cabin and weapon-bay glass floors/tops; neighboring room
 partitions; fuel rooms; negative decks; open-to-below and gravity-well rooms.
-The cutaway is an added orbit-inspection aid, not a recovered original mode:
-move the selected deck up/down and confirm upper surfaces are clipped while
-the current deck's floor/lower walls remain. Test hatch/door/opening fixtures
-and read the inspector's explicit rendering limitations. Animated door states
-and full original visual parity require further work.
+The cutaway and orbit camera have been replaced by the walkthrough. Changing
+the selected deck changes the outside studio plane without teleporting the
+character. Test hatch/door/opening fixtures and read the inspector's explicit
+rendering limitations. Full original visual parity still needs comparison.
+
+Walkthrough validation (user builds manually)
+--------------------------------------------
+No client build, compilation or native execution was performed for this pass.
+Read WALKTHROUGH-RECOVERY.txt, WALKTHROUGH-COLLISION.txt and DOOR-INTERACTION.txt
+for the recovered behavior and remaining local approximations.
+
+After building, exercise both standalone and embedded designer entry:
+  - New/Open, toggle Render Mode and confirm first-person entry at the origin.
+    Switch to the floor plan and back: position and facing should persist.
+    Editing geometry should retain states of unchanged doors; opening another
+    design should reset the character and all doors.
+  - Walk with WASD, move the captured mouse to look, run with Shift, toggle forward with Q, and
+    jump with Space. Release keys, focus another panel/window or leave render
+    mode: no held movement should remain. Ctrl+S/F6 must still reach the UI.
+  - Return or right-click toggles avatar input/free hand mode. Holding Ctrl
+    releases the cursor temporarily; releasing Ctrl captures it again only
+    when the scene has focus. Click a door with the hand. Verify loss of focus,
+    file dialogs, floating tools and application switching never trap the
+    cursor or apply a large stale mouse delta. Repeat after releasing Ctrl
+    in another application. Looking should not require dragging.
+  - Confirm the shared yellow crosshair appears even for an empty design.
+    Point at the ship: arms converge and the original green hull-health bar,
+    hull icon and ship name appear above. Look away: the lock decays. Return
+    from floor-plan mode and resize the viewport without losing the overlay.
+  - With studio gravity off, fly outside using C/Z and pitched forward motion.
+    Boarding a normal room must enable ship gravity; C must not fly there.
+    Gravity wells permit vertical travel. With studio gravity on, outside
+    feet land on the selected deck plane, including when it moves above them.
+  - Check walls, sloped hulls, windows, floor/ceiling corners and stairs for
+    collision. Walk through consoles, berths, surgery/transporter equipment,
+    captain chairs, parked vehicle previews and turret guns. Machinery and
+    game-table cells should still block. Walk through permanent openings. Check
+    negative decks and movement above/below open hatches without tunnelling.
+  - Press E near a ladder, climb with C/Z, exit with E or by leaving its reach.
+    Merely walking near a ladder must not suspend gravity. Include a hatch at
+    deck 29 whose ladder reaches down to the highest room deck (28).
+  - Approach automatic small doors/hatches. Verify closed -> half -> open
+    texture frames and passage once logically open; idle floor support must
+    not open an automatic hatch beneath a stationary character.
+  - Use Ctrl+P/C within six feet to open/close nearby doors or hatches on the
+    actor's deck or immediately above. Click a nearby panel to toggle it.
+    Use hand mode to click the panel. Manual hull/large doors must not open on approach. Open doors must stay
+    open while waiting in the designer. Check rapid reversal during animation.
+  - Check each door/hatch texture family from both sides, including hull doors
+    with crew textures inside. Test stacked large doors through gravity-well
+    and open-to-below rooms; unrelated nearby doors must not join the stack.
+  - Press Home on populated, empty and crowded decks. A clear position should
+    be chosen, or a failure message shown without silently moving the avatar.
+  - Save before and after walking, toggling gravity and operating doors. For
+    the same working design with no authored changes, bytes must stay equal.
+  - With the packaged sfx.har present, verify the interior, exterior, cargo
+    and hatch opening/closing sounds. Stacked doors share their sound channel.
+    Footsteps use metal aboard and hard floor outside; running changes pitch,
+    standing/jumping/flying stops the footstep loop. Test user sound settings,
+    both launch paths, and leaving/reopening the walkthrough without leaked
+    sounds. The designer must use the existing game OpenAL context and buffers;
+    returning to the launch screen must preserve its audio behavior. Also close
+    the application directly from the walkthrough to check shared-service shutdown.
 
 Equipment validation (user builds manually)
 ------------------------------------------
@@ -335,8 +394,7 @@ After building the client, exercise both standalone and embedded launch paths:
     rooms are excluded. Erase-area must remove only the clicked equipment type.
   - Repaint or erase occupied rooms and check equipment reconciliation.
   - Switch Render Mode repeatedly; inspect machinery, consoles, berths, ladders,
-    stairs, railings, turret apertures and vehicles using orbit and cutaway.
-    The current deck's equipment stays whole above the cut wall height.
+    stairs, railings, turret apertures and vehicles from the walkthrough.
   - Confirm console screens and vehicle textures load without legacy DLLs.
     Machinery effect textures should advance every 100 ms without moving geometry.
   - Check the six vehicle footprints near bay edges and after 45-degree rotation.
@@ -349,6 +407,6 @@ After building the client, exercise both standalone and embedded launch paths:
   - Drag within one snapped equipment point: one edit should occur. A fresh
     click may erase the next co-located marker; tiny movements must not do so.
 
-Doors/hatches remain closed in this orbit-only preview. Console bitmap faces
-are restored, but live ship-system readouts and interactive firing/transport,
-scene movement and contrails need world state and are outside this preview.
+Doors/hatches are interactive in the walkthrough. Console bitmap faces are
+restored, but live ship-system readouts, interactive firing/transport, vehicle
+driving and contrails need world state and are outside this preview.

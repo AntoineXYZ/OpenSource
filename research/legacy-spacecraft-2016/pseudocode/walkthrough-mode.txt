@@ -1,0 +1,1388 @@
+Read-only Ghidra MCP excerpts, captured 2026-10-04.
+Original binaries: Fresh 2016. Not recovered compilable source.
+Additional exact excerpts completing the gravity/collision chain.
+
+AuAtom13.dll 0x1801ffd70 DaAtom::Acceleration
+
+/* public: virtual class AuPoint __cdecl DaAtom::Acceleration(void)const __ptr64 */
+
+void __thiscall DaAtom::Acceleration(DaAtom *this)
+
+{
+  QReadWriteLock *this_00;
+  char cVar1;
+  uint uVar2;
+  DaAtom *this_01;
+  bool bVar3;
+  int iVar4;
+  longlong lVar5;
+  undefined8 *puVar6;
+  undefined8 *in_RDX;
+  AuPoint *this_02;
+  float fVar7;
+  double dVar8;
+  undefined4 uVar9;
+  undefined4 uVar10;
+  undefined4 uVar11;
+  undefined4 uVar12;
+  undefined4 uVar13;
+  undefined4 uVar14;
+
+                    /* 0x1ffd70  1062  ?Acceleration@DaAtom@@UEBA?AVAuPoint@@XZ */
+  this_00 = (QReadWriteLock *)(this + 0x88);
+  QReadWriteLock::lockForRead(this_00);
+  uVar2 = *(uint *)(*(longlong *)(this + 0x90) + 0x20);
+  if (((uVar2 >> 8 & 1) != 0) || (((uVar2 >> 0xd & 1) != 0 && ((uVar2 >> 0x10 & 1) == 0)))) {
+    QReadWriteLock::unlock(this_00);
+    *in_RDX = 0;
+    in_RDX[1] = 0;
+    in_RDX[2] = 0;
+    return;
+  }
+  QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x1c0));
+  this_01 = *(DaAtom **)(this + 0x1d0);
+  QReadWriteLock::unlock((QReadWriteLock *)(this + 0x1c0));
+  uVar2 = *(uint *)(*(longlong *)(this + 0x90) + 0x20);
+  if (((uVar2 >> 5 & 1) != 0) &&
+     ((((uVar2 >> 5 & 1) == 0 || (*(int *)(*(longlong *)(this + 0x90) + 0xac) == 0)) &&
+      ((uVar2 >> 10 & 1) != 0)))) {
+    bVar3 = IsInGravity(this_01);
+    if (!bVar3) {
+      QReadWriteLock::unlock(this_00);
+      *in_RDX = 0;
+      in_RDX[1] = 0;
+      in_RDX[2] = 0;
+      return;
+    }
+    bVar3 = IsOnGround(this_01);
+    if (((bVar3) &&
+        (lVar5 = __RTDynamicCast(this_01,0,&RTTI_Type_Descriptor,&DaSpaceShip::RTTI_Type_Descriptor,
+                                 0), lVar5 != 0)) &&
+       (cVar1 = *(char *)(*(longlong *)(this + 0x90) + 0xa4),
+       iVar4 = DaSpaceShip::LowestDeck((DaSpaceShip *)this_01), cVar1 < iVar4)) {
+      QReadWriteLock::unlock(this_00);
+      *in_RDX = 0;
+      in_RDX[1] = 0;
+      in_RDX[2] = 0;
+      return;
+    }
+  }
+  lVar5 = *(longlong *)(this + 0x90);
+  uVar13 = 0;
+  uVar14 = 0;
+  if ((*(uint *)(lVar5 + 0x20) >> 9 & 1) == 0) {
+    dVar8 = *(double *)(lVar5 + 0x40);
+    this_02 = (AuPoint *)(lVar5 + 0x60);
+    (**(code **)(*(longlong *)this_01 + 0x2f8))(this_01);
+  }
+  else {
+    fVar7 = (float)(**(code **)(*(longlong *)this + 0x2a0))(this,lVar5);
+    if (fVar7 == 0.0) {
+      uVar9 = 0;
+      uVar10 = 0;
+      uVar11 = 0;
+      uVar12 = 0;
+      goto LAB_1801fffaf;
+    }
+    this_02 = (AuPoint *)(*(longlong *)(this + 0x90) + 0x60);
+    dVar8 = *(double *)(*(longlong *)(this + 0x90) + 0x40);
+    if (fVar7 <= 0.0) {
+      (**(code **)(*(longlong *)this_01 + 0x2f8))(this_01);
+      dVar8 = (double)fVar7;
+    }
+    else {
+      (**(code **)(*(longlong *)this_01 + 0x2f8))();
+    }
+  }
+  puVar6 = (undefined8 *)AuPoint::operator*(this_02,dVar8);
+  uVar11 = (undefined4)*puVar6;
+  uVar12 = (undefined4)((ulonglong)*puVar6 >> 0x20);
+  uVar9 = (undefined4)puVar6[1];
+  uVar10 = (undefined4)((ulonglong)puVar6[1] >> 0x20);
+  uVar13 = (undefined4)puVar6[2];
+  uVar14 = (undefined4)((ulonglong)puVar6[2] >> 0x20);
+LAB_1801fffaf:
+  QReadWriteLock::unlock(this_00);
+  *in_RDX = CONCAT44(uVar12,uVar11);
+  in_RDX[1] = CONCAT44(uVar10,uVar9);
+  in_RDX[2] = CONCAT44(uVar14,uVar13);
+  return;
+}
+
+
+
+AuAtom13.dll 0x1803f4250 DaSpaceShip::Gravity
+
+/* public: virtual double __cdecl DaSpaceShip::Gravity(double)const __ptr64 */
+
+double __thiscall DaSpaceShip::Gravity(DaSpaceShip *this,double param_1)
+
+{
+  bool bVar1;
+  uint uVar2;
+  DaAtom *pDVar3;
+  longlong lVar4;
+  double dVar5;
+
+                    /* 0x3f4250  3476  ?Gravity@DaSpaceShip@@UEBANN@Z */
+  QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x88));
+  lVar4 = *(longlong *)(this + 0x90);
+  QReadWriteLock::unlock((QReadWriteLock *)(this + 0x88));
+  if (lVar4 == 0) {
+LAB_1803f4293:
+    dVar5 = 0.0;
+  }
+  else {
+    if (this[0xa08] != (DaSpaceShip)0x0) {
+      QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0xb08));
+      uVar2 = AuShipSystemArray::GetPowerConsumption((AuShipSystemArray *)(this + 0xb10),6);
+      QReadWriteLock::unlock((QReadWriteLock *)(this + 0xb08));
+      if (uVar2 == 0) {
+        QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x88));
+        uVar2 = *(uint *)(*(longlong *)(this + 0x90) + 0x20);
+        QReadWriteLock::unlock((QReadWriteLock *)(this + 0x88));
+        if (((uVar2 >> 4 & 1) == 0) && (bVar1 = DaAtom::InDesignEnvironment((DaAtom *)this), !bVar1)
+           ) {
+          pDVar3 = DaAtom::Parent((DaAtom *)this);
+          lVar4 = __RTDynamicCast(pDVar3,0,&DaAtom::RTTI_Type_Descriptor,&RTTI_Type_Descriptor,0);
+          if (lVar4 != 0) {
+            pDVar3 = DaAtom::Parent((DaAtom *)this);
+            dVar5 = (double)(**(code **)(*(longlong *)pDVar3 + 0x2f8))(pDVar3,SUB84(param_1,0));
+            return dVar5;
+          }
+          goto LAB_1803f4293;
+        }
+      }
+    }
+    dVar5 = 32.0;
+  }
+  return dVar5;
+}
+
+
+
+AuAtom13.dll 0x1803cfc10 DaSpaceShip::CheckChildExit
+
+/* public: virtual bool __cdecl DaSpaceShip::CheckChildExit(class AuPoint const & __ptr64,class
+   AuPoint const & __ptr64,class DaAtom const * __ptr64)const __ptr64 */
+
+bool __thiscall
+DaSpaceShip::CheckChildExit(DaSpaceShip *this,AuPoint *param_1,AuPoint *param_2,DaAtom *param_3)
+
+{
+  undefined8 uVar1;
+  bool bVar2;
+  int iVar3;
+  DaDesignEnvironment *this_00;
+
+                    /* 0x3cfc10  1675
+                       ?CheckChildExit@DaSpaceShip@@UEBA_NAEBVAuPoint@@0PEBVDaAtom@@@Z */
+  if (param_3 != (DaAtom *)0x0) {
+    QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x1c0));
+    uVar1 = *(undefined8 *)(this + 0x1d0);
+    QReadWriteLock::unlock((QReadWriteLock *)(this + 0x1c0));
+    this_00 = (DaDesignEnvironment *)
+              __RTDynamicCast(uVar1,0,&DaAtom::RTTI_Type_Descriptor,
+                              &DaDesignEnvironment::RTTI_Type_Descriptor,0);
+    if (this_00 != (DaDesignEnvironment *)0x0) {
+      bVar2 = DaDesignEnvironment::IsRenderSolid(this_00,(AuId *)(param_3 + 0x14));
+      if (!bVar2) {
+        return true;
+      }
+    }
+  }
+  iVar3 = IsInOrOnHull(this,param_2);
+  return iVar3 == 0;
+}
+
+
+
+AuAtom13.dll 0x1803cfd20 DaSpaceShip::CheckPeerJoin
+                            &DaSolarSystem::RTTI_Type_Descriptor);
+    if (lVar5 == 0) {
+      if (param_3 != (DaAtom *)0x0) {
+        pDVar7 = DaAtom::Parent((DaAtom *)this);
+        local_418 = (DaAtom *)((ulonglong)local_418 & 0xffffffff00000000);
+        this_01 = (DaDesignEnvironment *)
+                  __RTDynamicCast(pDVar7,0,&DaAtom::RTTI_Type_Descriptor,
+                                  &DaDesignEnvironment::RTTI_Type_Descriptor);
+        if (this_01 != (DaDesignEnvironment *)0x0) {
+          bVar2 = DaDesignEnvironment::IsRenderSolid(this_01,(AuId *)(param_3 + 0x14));
+          if (!bVar2) {
+            return false;
+          }
+          DaAtom::Transform((DaAtom *)this);
+          puVar8 = (undefined8 *)AuMatrix4x4::Inverse((AuMatrix4x4 *)&local_268);
+          local_268 = *puVar8;
+          uStack_260 = puVar8[1];
+          local_258 = puVar8[2];
+          uStack_250 = puVar8[3];
+          local_248 = puVar8[4];
+          uStack_240 = puVar8[5];
+          local_238 = puVar8[6];
+          uStack_230 = puVar8[7];
+          local_228 = puVar8[8];
+          uStack_220 = puVar8[9];
+          local_218 = puVar8[10];
+          uStack_210 = puVar8[0xb];
+          local_208 = puVar8[0xc];
+          uStack_200 = puVar8[0xd];
+          local_1f8 = *(undefined4 *)(puVar8 + 0xe);
+          uStack_1f4 = *(undefined4 *)((longlong)puVar8 + 0x74);
+          uStack_1f0 = *(undefined4 *)(puVar8 + 0xf);
+          uStack_1ec = *(undefined4 *)((longlong)puVar8 + 0x7c);
+          local_168 = *(char *)(puVar8 + 0x20);
+          uVar9 = local_1f8;
+          uVar10 = uStack_1f4;
+          if (local_168 != '\0') {
+            local_1e8 = puVar8[0x10];
+            uStack_1e0 = puVar8[0x11];
+            local_1d8 = puVar8[0x12];
+            uStack_1d0 = puVar8[0x13];
+            local_1c8 = puVar8[0x14];
+            uStack_1c0 = puVar8[0x15];
+            local_1b8 = puVar8[0x16];
+            uStack_1b0 = puVar8[0x17];
+            local_1a8 = puVar8[0x18];
+            uStack_1a0 = puVar8[0x19];
+            local_198 = puVar8[0x1a];
+            uStack_190 = puVar8[0x1b];
+            local_188 = puVar8[0x1c];
+            uStack_180 = puVar8[0x1d];
+            uVar9 = *(undefined4 *)(puVar8 + 0x1e);
+            uVar10 = *(undefined4 *)((longlong)puVar8 + 0xf4);
+            uStack_170 = *(undefined4 *)(puVar8 + 0x1f);
+            uStack_16c = *(undefined4 *)((longlong)puVar8 + 0xfc);
+            local_178 = uVar9;
+            uStack_174 = uVar10;
+          }
+          local_418 = *(DaAtom **)(param_2 + 0x10);
+          AuMatrix4x4::Project
+                    ((AuMatrix4x4 *)&local_268,(double)CONCAT44(uVar10,uVar9),*(double *)param_2,
+                     *(double *)(param_2 + 8));
+          iVar4 = IsInOrOnHull(this,local_3c0);
+          if (iVar4 == 0) {
+            return false;
+          }
+          local_418 = *(DaAtom **)(param_1 + 0x10);
+          AuMatrix4x4::Project
+                    ((AuMatrix4x4 *)&local_268,(double)CONCAT44(uVar10,uVar9),*(double *)param_1,
+                     *(double *)(param_1 + 8));
+
+AuAtom13.dll 0x1803fa2a0 actual door requests
+  }
+  QReadWriteLock::unlock(pQVar2);
+  QReadWriteLock::unlock((QReadWriteLock *)(this + 0x770));
+LAB_1803faff1:
+  QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1e0));
+  pDVar23 = local_2eb8 + ((longlong)*(int *)(local_2eb8 + 8) + 2) * 8;
+  if (pDVar23 != local_2eb8 + (longlong)*(int *)(local_2eb8 + 0xc) * 8 + 0x10) {
+    do {
+      OpenDoor(this,(uint)*(ushort *)pDVar23);
+      pDVar23 = pDVar23 + 8;
+    } while (pDVar23 != local_2eb8 + (longlong)*(int *)(local_2eb8 + 0xc) * 8 + 0x10);
+  }
+  switch(PVar14) {
+  case 1:
+    local_2d60 = 0;
+    uStack_2d58 = 0;
+    local_2d50 = 0;
+    AuPoint::operator=(param_3,(AuPoint *)&local_2d60);
+    break;
+  case 2:
+
+
+AuAtom13.dll 0x180207390 DaAtom::DesignGravityToggle
+
+/* public: void __cdecl DaAtom::DesignGravityToggle(void) __ptr64 */
+
+void __thiscall DaAtom::DesignGravityToggle(DaAtom *this)
+
+{
+  DaDesignEnvironment *this_00;
+  DaDesignPlane *pDVar1;
+
+                    /* 0x207390  2583  ?DesignGravityToggle@DaAtom@@QEAAXXZ */
+  this_00 = FindParentDesignEnvironment(this);
+  if (this_00 != (DaDesignEnvironment *)0x0) {
+    pDVar1 = FindDesignPlane((DaAtom *)this_00,(AuId *)(this + 0x14));
+    if (pDVar1 != (DaDesignPlane *)0x0) {
+      pDVar1[0x3b0] = (DaDesignPlane)(pDVar1[0x3b0] == (DaDesignPlane)0x0);
+                    /* WARNING: Could not recover jumptable at 0x0001802073d1. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+      (**(code **)(*(longlong *)pDVar1 + 0x1a0))(pDVar1,1);
+      return;
+    }
+  }
+  return;
+}
+
+
+AuAtom13.dll 0x1802fced0 DaDesignPlane(owner)
+
+/* public: __cdecl DaDesignPlane::DaDesignPlane(class AuId const & __ptr64) __ptr64 */
+
+DaDesignPlane * __thiscall DaDesignPlane::DaDesignPlane(DaDesignPlane *this,AuId *param_1)
+
+{
+  undefined4 uVar1;
+
+                    /* 0x2fced0  264  ??0DaDesignPlane@@QEAA@AEBVAuId@@@Z */
+  DaAtom::DaAtom((DaAtom *)this);
+  *(undefined ***)this = vftable;
+  *(undefined4 *)(this + 0x3b4) = 0;
+  *(undefined2 *)(this + 0x3b0) = 0x500;
+  uVar1 = *(undefined4 *)param_1;
+  *(undefined2 *)(this + 0x3b8) = 0;
+  *(undefined4 *)(this + 0x3b4) = uVar1;
+  this[0x3ba] = (DaDesignPlane)0x0;
+  return this;
+}
+
+
+AuAtom13.dll 0x1802f9240 InitDesignPlane
+
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* public: void __cdecl DaDesignEnvironment::InitDesignPlane(class AuId const & __ptr64) __ptr64 */
+
+void __thiscall DaDesignEnvironment::InitDesignPlane(DaDesignEnvironment *this,AuId *param_1)
+
+{
+  DaDesignPlane *pDVar1;
+  undefined1 auStack_158 [32];
+  DaDesignPlane *local_138;
+  undefined8 local_130;
+  AuMatrix4x4 local_128 [272];
+  ulonglong local_18;
+
+                    /* 0x2f9240  3831  ?InitDesignPlane@DaDesignEnvironment@@QEAAXAEBVAuId@@@Z */
+  local_130 = 0xfffffffffffffffe;
+  local_18 = DAT_180a0ecf0 ^ (ulonglong)auStack_158;
+  pDVar1 = DaAtom::FindDesignPlane((DaAtom *)this,param_1);
+  if (pDVar1 == (DaDesignPlane *)0x0) {
+    local_138 = operator_new(0x3c0);
+    if (local_138 == (DaDesignPlane *)0x0) {
+      pDVar1 = (DaDesignPlane *)0x0;
+    }
+    else {
+      pDVar1 = (DaDesignPlane *)DaDesignPlane::DaDesignPlane(local_138,param_1);
+    }
+    DaAtom::AddAtomW((DaAtom *)this,(DaAtom *)pDVar1);
+    DaDesignPlane::Create(pDVar1);
+    (**(code **)(**(longlong **)gp_AuGlobal_exref + 0x60))
+              (*(longlong **)gp_AuGlobal_exref,pDVar1 + 0x14);
+    if ((pDVar1[0x18] != (DaDesignPlane)0x1) && (pDVar1[0x18] != (DaDesignPlane)0x6)) {
+      pDVar1[0x18] = (DaDesignPlane)0x0;
+    }
+  }
+  else {
+    AuMatrix4x4::LoadIdentity(local_128);
+    DaAtom::SetTransform((DaAtom *)pDVar1,local_128);
+    if (pDVar1[0x3b8] != (DaDesignPlane)0x0) {
+      pDVar1[0x3b8] = (DaDesignPlane)0x0;
+    }
+    if (pDVar1[0x3b0] != (DaDesignPlane)0x0) {
+      pDVar1[0x3b0] = (DaDesignPlane)0x0;
+    }
+    DaDesignPlane::EnableHorizontalLines(pDVar1);
+    DaDesignPlane::EnableVerticalLines(pDVar1);
+    DaDesignPlane::DisableDiagonal45Lines(pDVar1);
+    DaDesignPlane::DisableDiagonal135Lines(pDVar1);
+    (**(code **)(*(longlong *)pDVar1 + 0x1a0))(pDVar1,1);
+  }
+  return;
+}
+
+
+AuAtom13.dll 0x1802f91e0 Designer gravity
+
+/* public: virtual double __cdecl DaDesignEnvironment::Gravity(double)const __ptr64 */
+
+double __thiscall DaDesignEnvironment::Gravity(DaDesignEnvironment *this,double param_1)
+
+{
+                    /* 0x2f91e0  3474  ?Gravity@DaDesignEnvironment@@UEBANN@Z */
+  return 32.0;
+}
+
+
+AuAtom13.dll 0x1802fb550 ResetPositions
+
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* public: void __cdecl DaDesignEnvironment::ResetPositions(void) __ptr64 */
+
+void __thiscall DaDesignEnvironment::ResetPositions(DaDesignEnvironment *this)
+
+{
+  longlong *plVar1;
+  DaCreature *this_00;
+  DaDesignEnvironment *pDVar2;
+  bool bVar3;
+  char cVar4;
+  __int64 _Var5;
+  DaSpaceShip *this_01;
+  undefined8 *puVar6;
+  float fVar7;
+  undefined1 auStack_188 [32];
+  undefined4 local_168 [2];
+  undefined8 *local_160;
+  undefined8 *puStack_158;
+  undefined8 local_150;
+  undefined8 local_148;
+  AuMatrix4x4 local_138 [272];
+  ulonglong local_28;
+
+                    /* 0x2fb550  6138  ?ResetPositions@DaDesignEnvironment@@QEAAXXZ */
+  local_148 = 0xfffffffffffffffe;
+  local_28 = DAT_180a0ecf0 ^ (ulonglong)auStack_188;
+  QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x1e0));
+  plVar1 = *(longlong **)(this + 0x1e8);
+  if ((plVar1 == (longlong *)0x0) || (*plVar1 == plVar1[1])) {
+    bVar3 = false;
+  }
+  else {
+    bVar3 = true;
+  }
+  QReadWriteLock::unlock((QReadWriteLock *)(this + 0x1e0));
+  if (bVar3) {
+    local_160 = (undefined8 *)0x0;
+    puStack_158 = (undefined8 *)0x0;
+    local_150 = 0;
+    DaAtom::FindPeopleRecursive((DaAtom *)this,(DaAtomList *)&local_160);
+    puVar6 = local_160;
+    if (local_160 != puStack_158) {
+      do {
+        this_00 = (DaCreature *)*puVar6;
+        bVar3 = DaCreature::SetGeneralPose(this_00,0x24,true);
+        if ((bVar3) && (cVar4 = (**(code **)(*(longlong *)this_00 + 0x2b8))(this_00), cVar4 != '\0')
+           ) {
+          this_00[0x11] = (DaCreature)0x0;
+          QReadWriteLock::lockForWrite((QReadWriteLock *)(this_00 + 0x220));
+          _Var5 = QDateTime::currentMSecsSinceEpoch();
+          *(__int64 *)(this_00 + 0x388) = _Var5;
+          QReadWriteLock::unlock((QReadWriteLock *)(this_00 + 0x220));
+        }
+        AuMatrix4x4::LoadIdentity(local_138);
+        fVar7 = (float)(**(code **)(*(longlong *)this_00 + 0x350))(this_00);
+        AuMatrix4x4::Translate(local_138,0.0,0.0,(double)fVar7);
+        DaAtom::SetTransformAndOrient((DaAtom *)this_00,local_138);
+        QReadWriteLock::lockForRead((QReadWriteLock *)(this_00 + 0x1c0));
+        pDVar2 = *(DaDesignEnvironment **)(this_00 + 0x1d0);
+        QReadWriteLock::unlock((QReadWriteLock *)(this_00 + 0x1c0));
+        if (pDVar2 != this) {
+          cVar4 = (**(code **)(*(longlong *)pDVar2 + 0x198))(pDVar2,this_00);
+          if (cVar4 != '\0') {
+            DaAtom::AddAtomW((DaAtom *)this,(DaAtom *)this_00);
+          }
+          local_168[0] = 0;
+          DaAtom::QueryEnvironment((DaAtom *)this_00,(AuId *)local_168);
+        }
+        (**(code **)(*(longlong *)this_00 + 0x1a0))(this_00,1);
+        puVar6 = puVar6 + 1;
+      } while (puVar6 != puStack_158);
+    }
+    if ((this[0x3b0] == (DaDesignEnvironment)0x1) &&
+       (this_01 = DaAtom::FindSpaceShip((DaAtom *)this), this_01 != (DaSpaceShip *)0x0)) {
+      AuMatrix4x4::LoadIdentity(local_138);
+      DaAtom::SetTransformAndOrient((DaAtom *)this_01,local_138);
+      (**(code **)(*(longlong *)this_01 + 0x1a0))(this_01,1);
+    }
+    if (local_160 != (undefined8 *)0x0) {
+      operator_delete(local_160);
+    }
+  }
+  return;
+}
+
+
+AuGlobal13.dll 0x180079d00 Default human DNA
+
+/* public: void __cdecl DhDNA::InitDefaultHuman(void) __ptr64 */
+
+void __thiscall DhDNA::InitDefaultHuman(DhDNA *this)
+
+{
+                    /* 0x79d00  1514  ?InitDefaultHuman@DhDNA@@QEAAXXZ */
+  *(undefined4 *)this = 0x92800d65;
+  *(undefined4 *)(this + 4) = 0x16711080;
+  *(undefined4 *)(this + 8) = 0x6a587782;
+  *(undefined4 *)(this + 0xc) = 0x82054654;
+  *(undefined4 *)(this + 0x10) = 0x72c254a2;
+  *(uint *)(this + 0x14) = *(uint *)(this + 0x14) & 0xff141456 | 0x141456;
+  return;
+}
+
+
+AuGlobal13.dll 0x1800092c0 JumpForce
+
+/* public: unsigned int __cdecl DhDNA::JumpForce(void)const __ptr64 */
+
+uint __thiscall DhDNA::JumpForce(DhDNA *this)
+
+{
+                    /* 0x92c0  1829  ?JumpForce@DhDNA@@QEBAIXZ */
+  if (((*(uint *)(this + 4) & 0x400) != 0) &&
+     (((*(uint *)this & 0x300) == 0 || ((*(uint *)this & 0x70000) < 0x10001)))) {
+    return (*(uint *)(this + 0x10) >> 8 & 0xf) * 4 + 0xe;
+  }
+  return (*(uint *)(this + 0x10) >> 8 & 0xf) + 0xb;
+}
+
+
+AuData13.dll 0x1800d0050 MovementSpeed
+
+/* public: float __cdecl DpBody::MovementSpeed(enum POSE)const __ptr64 */
+
+float __thiscall DpBody::MovementSpeed(DpBody *this,POSE param_1)
+
+{
+  float fVar1;
+
+                    /* 0xd0050  4951  ?MovementSpeed@DpBody@@QEBAMW4POSE@@@Z */
+  fVar1 = 0.0;
+  switch(param_1) {
+  case 0x11:
+  case 0x16:
+    fVar1 = 0.5;
+    break;
+  case 0x18:
+  case 0x25:
+    fVar1 = 2.5;
+    break;
+  case 0x19:
+    fVar1 = 3.0;
+    break;
+  case 0x1b:
+    fVar1 = 2.0;
+    break;
+  case 0x1c:
+  case 0x26:
+    fVar1 = 1.0;
+    break;
+  case 0x21:
+    fVar1 = 0.33333334;
+    break;
+  case 0x2a:
+  case 0x4b:
+    fVar1 = 0.75;
+    break;
+  case 0x2b:
+    fVar1 = 0.85;
+  }
+  return ((float)(*(uint *)(this + 0x1c) >> 8 & 0xf) + 1.0) * fVar1;
+}
+
+
+AuData13.dll 0x1800cd730 JumpVector
+
+/* public: class AuPoint __cdecl DpBody::JumpVector(void)const __ptr64 */
+
+void __thiscall DpBody::JumpVector(DpBody *this)
+
+{
+  uint uVar1;
+  undefined8 *in_RDX;
+  undefined8 local_68;
+  undefined8 uStack_60;
+  double local_58;
+  undefined8 local_50;
+  undefined8 uStack_48;
+  double local_40;
+  undefined8 local_38;
+  undefined8 uStack_30;
+  double local_28;
+  undefined8 local_20;
+  undefined8 uStack_18;
+  double local_10;
+
+                    /* 0xcd730  4770  ?JumpVector@DpBody@@QEBA?AVAuPoint@@XZ */
+  switch(*(undefined4 *)(this + 0x38)) {
+  case 0x10:
+    uVar1 = DhDNA::JumpForce((DhDNA *)(this + 0xc));
+    in_RDX[1] = 0;
+    *in_RDX = 0;
+    in_RDX[2] = (double)uVar1 * 1.1;
+    return;
+  case 0x11:
+    uVar1 = DhDNA::JumpForce((DhDNA *)(this + 0xc));
+    local_68 = 0;
+    uStack_60 = 0;
+    local_58 = (double)uVar1 * 1.1;
+    AuPoint::RotateX((AuPoint *)&local_68,local_58);
+    return;
+  default:
+    in_RDX[2] = 0;
+    in_RDX[1] = 0;
+    *in_RDX = 0;
+    return;
+  case 0x24:
+    uVar1 = DhDNA::JumpForce((DhDNA *)(this + 0xc));
+    in_RDX[1] = 0;
+    *in_RDX = 0;
+    in_RDX[2] = (double)uVar1;
+    return;
+  case 0x25:
+    uVar1 = DhDNA::JumpForce((DhDNA *)(this + 0xc));
+    local_38 = 0;
+    uStack_30 = 0;
+    local_28 = (double)uVar1 * 1.2;
+    AuPoint::RotateX((AuPoint *)&local_38,local_28);
+    return;
+  case 0x26:
+    uVar1 = DhDNA::JumpForce((DhDNA *)(this + 0xc));
+    local_20 = 0;
+    uStack_18 = 0;
+    local_10 = (double)uVar1;
+    AuPoint::RotateX((AuPoint *)&local_20,local_10);
+    return;
+  case 0x4a:
+  case 0x4b:
+    uVar1 = DhDNA::JumpForce((DhDNA *)(this + 0xc));
+    local_50 = 0;
+    uStack_48 = 0;
+    local_40 = (double)((float)uVar1 * 0.8);
+    AuPoint::RotateX((AuPoint *)&local_50,0.0);
+    return;
+  }
+}
+
+
+Shores of Hazeron.exe 0x140304340 Scene projection
+
+void FUN_140304340(QWidget *param_1)
+
+{
+  QWidget QVar1;
+  int iVar2;
+  int iVar3;
+  double dVar4;
+  int *piVar5;
+  longlong lVar6;
+  double dVar7;
+  double dVar8;
+
+  if (*(int *)(param_1 + 0x700) == 2) {
+    QReadWriteLock::lockForRead((QReadWriteLock *)(param_1 + 0x1818));
+    QVar1 = param_1[0x182e];
+    QReadWriteLock::unlock((QReadWriteLock *)(param_1 + 0x1818));
+    if (QVar1 != (QWidget)0x0) {
+      dVar4 = (double)(*(float *)(param_1 + 0x6e8) / 50.0);
+      goto LAB_1403043a2;
+    }
+  }
+  dVar4 = *(double *)(param_1 + 0x710);
+LAB_1403043a2:
+  AuMatrix4x4::LoadIdentity((AuMatrix4x4 *)(param_1 + 0x828));
+  piVar5 = (int *)QWidget::rect(param_1);
+  if ((piVar5[2] - *piVar5) + 1 < 1) {
+    dVar8 = *(double *)(param_1 + 0x708);
+    dVar7 = 1.0;
+  }
+  else {
+    lVar6 = QWidget::rect(param_1);
+    iVar2 = *(int *)(lVar6 + 0xc);
+    iVar3 = *(int *)(lVar6 + 4);
+    piVar5 = (int *)QWidget::rect(param_1);
+    dVar8 = *(double *)(param_1 + 0x708);
+    dVar7 = (double)((iVar2 - iVar3) + 1) / (double)((piVar5[2] - *piVar5) + 1);
+  }
+  AuMatrix4x4::Perspective((AuMatrix4x4 *)(param_1 + 0x828),0.7853981633974483,dVar7,dVar4,dVar8);
+  return;
+}
+
+
+AuAtom13.dll 0x1802049a0 CreateEnvironmentQuery: ship gravity then studio gravity
+            *(undefined8 *)(pDVar16 + 0xb8) = *puVar18;
+            *(undefined8 *)(pDVar16 + 0xc0) = puVar18[1];
+            uVar31 = puVar18[2];
+          }
+          *(undefined8 *)(pDVar16 + 200) = uVar31;
+          fVar39 = (float)(**(code **)(*(longlong *)this + 0x350))(this);
+          dVar40 = (local_6a8 - (double)fVar39) - 0.08333333333333333;
+          *(double *)(pDVar16 + 0x28) = dVar40;
+          uVar38 = *(uint *)(pDVar16 + 0x20);
+          if ((uVar38 >> 0x14 & 1) != 0) {
+            *(double *)(pDVar16 + 0x28) = dVar40 + 8.0;
+          }
+          if ((uVar38 >> 0x13 & 1) == 0) {
+            if ((uVar38 >> 10 & 1) == 0) {
+              lVar19 = Location(this);
+              dVar40 = *(double *)(lVar19 + 0x10);
+              lVar19 = Location(this);
+              dVar41 = *(double *)(lVar19 + 8);
+              pdVar21 = (double *)Location(this);
+              local_6f0 = *pdVar21;
+              dStack_6e8 = dVar41;
+              local_6e0 = dVar40 + 8.0;
+              DaSpaceShip::InsideRoomType
+                        ((DaSpaceShip *)this_00,(AuPoint *)&local_6f0,(ROOMTYPE *)&local_6f8,
+                         local_706);
+              if ((((ROOMTYPE)local_6f8 - 0xb & 0xfffffffb) == 0) ||
+                 (((ROOMTYPE)local_6f8 == 0 &&
+                  (((*(uint *)(pDVar16 + 0x20) >> 5 & 1) == 0 || (*(ROOMTYPE *)pDVar24 == 0))))))
+              goto LAB_180204f41;
+            }
+          }
+          else {
+LAB_180204f41:
+            *(float *)(pDVar16 + 0x38) = *(float *)(pDVar16 + 0x38) + 8.0;
+          }
+          in_XMM1_Qa = 0.0;
+          dVar40 = (double)(**(code **)(*(longlong *)this_00 + 0x2f8))(this_00);
+          if ((dVar40 != 0.0) &&
+             (*(uint *)(pDVar16 + 0x20) = *(uint *)(pDVar16 + 0x20) | 0x10000,
+             *(double *)(pDVar16 + 0x28) <= 0.25 && *(double *)(pDVar16 + 0x28) != 0.25)) {
+            *(undefined4 *)(pDVar16 + 0x90) = 3;
+          }
+        }
+        else {
+          local_6f0 = 0.0;
+[...]
+    pAVar22 = (AuMatrix4x4 *)Transform(this);
+    puVar18 = (undefined8 *)AuMatrix4x4::UnProjectVector(pAVar22,local_6c0);
+    *(undefined8 *)(pDVar16 + 0x60) = *puVar18;
+    *(undefined8 *)(pDVar16 + 0x68) = puVar18[1];
+    *(undefined8 *)(pDVar16 + 0x70) = puVar18[2];
+    *(undefined8 *)(pDVar16 + 0xb8) = *(undefined8 *)(pDVar16 + 0x60);
+    *(undefined8 *)(pDVar16 + 0xc0) = *(undefined8 *)(pDVar16 + 0x68);
+    *(undefined8 *)(pDVar16 + 200) = *(undefined8 *)(pDVar16 + 0x70);
+    bVar5 = DaDesignEnvironment::IsGravityOn(this_02,(AuId *)(this + 0x14));
+    if (!bVar5) {
+      return (AuQueryEnvironment *)pDVar16;
+    }
+    *(uint *)(pDVar16 + 0x20) = *(uint *)(pDVar16 + 0x20) | 0x10000;
+    if (this_00 != (DaVehicle *)0x0) {
+      return (AuQueryEnvironment *)pDVar16;
+    }
+    DaDesignEnvironment::GetDesignPlaneTransform(this_02,local_418);
+    AuMatrix4x4::Project((AuMatrix4x4 *)local_418,in_XMM1_Qa,0.0,0.0);
+    pAVar22 = (AuMatrix4x4 *)Transform(this);
+    dVar41 = dStack_6e8;
+    dVar40 = local_6f0;
+    pAVar22 = (AuMatrix4x4 *)AuMatrix4x4::Inverse(pAVar22);
+    AuMatrix4x4::Project(pAVar22,in_XMM1_Qa,dVar40,dVar41);
+    local_6f0 = (double)local_6a0._0_8_;
+    dStack_6e8 = stack0xfffffffffffff968;
+    local_6e0 = local_690;
+    if (pDVar17 == (DaCreature *)0x0) {
+      fVar39 = (float)(**(code **)(*(longlong *)this + 0x350))(this);
+      *(double *)(pDVar16 + 0x28) = (*(double *)(pDVar16 + 0x40) - (double)fVar39) - local_6e0;
+    }
+    else {
+      dVar40 = *(double *)(pDVar16 + 0x40);
+      fVar39 = (float)(**(code **)(*(longlong *)this + 0x350))();
+      *(double *)(pDVar16 + 0x28) =
+           ((dVar40 - (double)CONCAT44(uVar47,uVar46)) - (double)fVar39) - local_6e0;
+    }
+    if (0.25 < *(double *)(pDVar16 + 0x28) || *(double *)(pDVar16 + 0x28) == 0.25) {
+      return (AuQueryEnvironment *)pDVar16;
+    }
+    *(undefined4 *)(pDVar16 + 0x90) = 2;
+    return (AuQueryEnvironment *)pDVar16;
+  }
+  pDVar26 = FindParentArena(pDVar37);
+  if (pDVar26 != (DaArena *)0x0) {
+    *(uint *)(pDVar16 + 0x20) = *(uint *)(pDVar16 + 0x20) | 0x4000000;
+    bVar5 = InArenaSidelines(this);
+    if (!bVar5) {
+
+AuAtom13.dll 0x18031be50 DaPerson::Acceleration tail
+  dStack_100 = dStack_e8 + 0.0 + 0.0;
+  if (((local_108 != 0.0) || (dStack_100 != 0.0)) || (local_f8 != 0.0)) {
+    AuPoint::Unit((AuPoint *)&local_108,dVar20);
+  }
+LAB_18031c5d9:
+  QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x88));
+  bVar5 = *(byte *)(*(longlong *)(this + 0x90) + 0x22);
+  QReadWriteLock::unlock((QReadWriteLock *)(this + 0x88));
+  if ((bVar5 & 1) == 0) {
+    cVar10 = (**(code **)(*(longlong *)this + 0x558))(this);
+    if (cVar10 != '\0') {
+      fVar16 = DaSentient::MoveDistLimit((DaSentient *)this);
+      if ((fVar16 <= 0.0) || (bVar9 = DaCreature::IsMovingPose((DaCreature *)this), !bVar9)) {
+        local_f8 = 0.0;
+        local_108 = 0.0;
+        dStack_100 = 0.0;
+      }
+      else {
+        if ((dVar21 != 0.0) &&
+           ((float)((double)fVar16 / ABS(dVar21)) <= (float)(ABS(dVar21) / 15.0))) {
+          local_108 = 0.0;
+        }
+        if ((dVar2 != 0.0) && ((float)((double)fVar16 / ABS(dVar2)) <= (float)(ABS(dVar2) / 15.0)))
+        {
+          dStack_100 = 0.0;
+        }
+        if ((dVar1 != 0.0) && ((float)((double)fVar16 / ABS(dVar1)) <= (float)(ABS(dVar1) / 15.0)))
+        {
+          local_f8 = 0.0;
+        }
+      }
+    }
+  }
+  else {
+    dVar20 = ABS(dVar21);
+    if (((double)(fVar16 * 0.5) < dVar20) &&
+       (dVar20 <= ABS(local_108 + dVar21) && ABS(local_108 + dVar21) != dVar20)) {
+      local_108 = 0.0;
+    }
+    dVar21 = ABS(dVar2);
+    if (((double)fVar16 < dVar21) &&
+       (dVar21 <= ABS(dStack_100 + dVar2) && ABS(dStack_100 + dVar2) != dVar21)) {
+      dStack_100 = 0.0;
+    }
+    if ((((double)(fVar16 * 0.5) < dVar1) || (dVar1 < (double)-fVar16)) &&
+       (ABS(dVar1) <= ABS(local_f8 + dVar1) && ABS(local_f8 + dVar1) != ABS(dVar1))) {
+      local_f8 = 0.0;
+    }
+    if (((byte)this[0x4788] & 2) == 0) {
+      pdVar15 = (double *)DaCreature::Acceleration((DaCreature *)this);
+      local_108 = local_108 + *pdVar15;
+      dStack_100 = dStack_100 + pdVar15[1];
+      local_f8 = local_f8 + pdVar15[2];
+    }
+  }
+  in_RDX[2] = local_f8;
+  *in_RDX = local_108;
+  in_RDX[1] = dStack_100;
+  return;
+}
+
+
+
+AuAtom13.dll 0x1803fa2a0 IsPathBlocked mode gate
+  ulonglong local_88;
+  undefined8 local_48;
+
+                    /* 0x3fa2a0  4317
+                       ?IsPathBlocked@DaSpaceShip@@UEAA_NAEBVAuPoint@@0AEAV2@PEBVDaAtom@@@Z */
+  local_48 = 0x1803fa2bf;
+  local_2cd0 = 0xfffffffffffffffe;
+  local_88 = DAT_180a0ecf0 ^ (ulonglong)auStackY_2f18;
+  if (this[0xa08] == (DaSpaceShip)0x0) {
+    *(undefined8 *)param_3 = 0;
+    *(undefined8 *)(param_3 + 8) = 0;
+    *(undefined8 *)(param_3 + 0x10) = 0;
+    return true;
+  }
+  local_2e60 = param_2;
+  local_2e58 = param_1;
+  this_01 = (DaPerson *)
+            __RTDynamicCast(param_4,0,&DaAtom::RTTI_Type_Descriptor,&DaPerson::RTTI_Type_Descriptor)
+  ;
+  if ((this_01 != (DaPerson *)0x0) && (((byte)this_01[0x4788] & 2) != 0)) {
+    return false;
+  }
+  local_2ea0 = *(double *)param_2;
+  dStack_2e98 = *(double *)(param_2 + 8);
+  local_2e90 = *(double *)(param_2 + 0x10);
+  local_2e88 = *(double *)param_1;
+  dStack_2e80 = *(double *)(param_1 + 8);
+  local_2e78 = *(double *)(param_1 + 0x10);
+  uVar27 = SUB84(local_2e78,0);
+  uVar29 = (undefined4)((ulonglong)local_2e78 >> 0x20);
+  local_2eb0 = this_01;
+  QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x1c0));
+  uVar4 = *(undefined8 *)(this + 0x1d0);
+  QReadWriteLock::unlock((QReadWriteLock *)(this + 0x1c0));
+  local_2e68 = (DaDesignEnvironment *)
+               __RTDynamicCast(uVar4,0,&DaAtom::RTTI_Type_Descriptor,
+                               &DaDesignEnvironment::RTTI_Type_Descriptor);
+  if (local_2e68 == (DaDesignEnvironment *)0x0) {
+    QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x770));
+    AuPoint::AuPoint((AuPoint *)&local_2e08,(AuPoint *)(this + 0x7e0));
+    QReadWriteLock::unlock((QReadWriteLock *)(this + 0x770));
+    local_2ea0 = local_2ea0 + local_2e08;
+    dStack_2e98 = dStack_2e98 + local_2e00;
+    local_2e90 = local_2e90 + local_2df8;
+    QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x770));
+    AuPoint::AuPoint((AuPoint *)&local_2e38,(AuPoint *)(this + 0x7e0));
+    QReadWriteLock::unlock((QReadWriteLock *)(this + 0x770));
+    local_2e88 = local_2e88 + local_2e38;
+    dVar28 = dStack_2e80 + local_2e30;
+    local_2e78 = local_2e78 + local_2e28;
+    dStack_2e80 = dVar28;
+  }
+  else {
+    bVar10 = DaDesignEnvironment::IsRenderSolid(local_2e68,(AuId *)(param_4 + 0x14));
+    dVar28 = (double)CONCAT44(uVar29,uVar27);
+
+AuAtom13.dll 0x1803fa2a0 movement-triggered door requests
+    local_2c80 = 0;
+    AuPoint::operator=(param_3,(AuPoint *)&local_2c90);
+    break;
+  case 7:
+  case 0xf:
+  case 0x17:
+  case 0x1f:
+    local_2d90 = 0xbfe6a0902de00d1b;
+    uStack_2d88 = 0x3fe6a0902de00d1b;
+    local_2d80 = 0;
+    AuPoint::operator=(param_3,(AuPoint *)&local_2d90);
+    break;
+  case 8:
+  case 0x10:
+  case 0x18:
+  case 0x20:
+    local_2d78 = 0xbff0000000000000;
+    uStack_2d70 = 0;
+    local_2d68 = 0;
+    AuPoint::operator=(param_3,(AuPoint *)&local_2d78);
+    break;
+  case 9:
+  case 0x11:
+  case 0x19:
+  case 0x21:
+    local_2d48 = 0xbfe6a0902de00d1b;
+    uStack_2d40 = 0xbfe6a0902de00d1b;
+    local_2d38 = 0;
+    AuPoint::operator=(param_3,(AuPoint *)&local_2d48);
+    break;
+  case 10:
+  case 0x12:
+  case 0x1a:
+  case 0x22:
+    local_2d18 = 0;
+    uStack_2d10 = 0xbff0000000000000;
+    local_2d08 = 0;
+    AuPoint::operator=(param_3,(AuPoint *)&local_2d18);
+    break;
+  case 0xb:
+  case 0x13:
+
+AuAtom13.dll 0x1800652e0 original person controls
+  QString local_b0 [8];
+  QString local_a8 [8];
+  QString local_a0 [8];
+  QString local_98 [8];
+  QString local_90 [8];
+  QString local_88 [8];
+  QString local_80 [8];
+  QString local_78 [8];
+  QString local_70 [8];
+  QString local_68 [8];
+  QString local_60 [8];
+  QString local_58 [8];
+  QString local_50 [8];
+  QString local_48 [8];
+  QString local_40 [8];
+  QString local_38 [8];
+  QString local_30 [8];
+  QString local_28 [8];
+  undefined8 local_20;
+
+  local_20 = 0xfffffffffffffffe;
+  uVar1 = QObject::tr((char *)local_res8,"Look Up",0);
+  uVar6 = CONCAT31((int3)((uint)in_stack_ffffffffffffff10 >> 8),1);
+  uVar3 = CONCAT31((int3)((uint)in_stack_fffffffffffffef8 >> 8),1);
+  DiControlInput::DiControlInput
+            ((DiControlInput *)&DAT_180a33780,uVar1,0x77,0x1ffffff,0,3,0,0,0,30000,uVar3,0,0,uVar6,0
+             ,0,0);
+  QString::~QString(local_res8);
+  uVar1 = QObject::tr((char *)local_res10,"Look Down",0);
+  uVar6 = CONCAT31((int3)((uint)uVar6 >> 8),1);
+  uVar3 = CONCAT31((int3)((uint)uVar3 >> 8),1);
+  DiControlInput::DiControlInput
+            ((DiControlInput *)&DAT_180a337f8,uVar1,0x76,0x1ffffff,0,4,0,0,0,30000,uVar3,0,0,uVar6,0
+             ,0,0);
+  QString::~QString(local_res10);
+  uVar1 = QObject::tr((char *)local_res8,"Turn Left",0);
+  uVar6 = CONCAT31((int3)((uint)uVar6 >> 8),1);
+  uVar3 = CONCAT31((int3)((uint)uVar3 >> 8),1);
+  DiControlInput::DiControlInput
+            ((DiControlInput *)&DAT_180a33870,uVar1,0x9a,0x1ffffff,0,1,0,0,0,30000,uVar3,0,0,uVar6,0
+             ,0,0);
+  QString::~QString(local_res8);
+  uVar1 = QObject::tr((char *)local_res10,"Turn Right",0);
+  uVar7 = CONCAT31((int3)((uint)uVar6 >> 8),1);
+  uVar4 = CONCAT31((int3)((uint)uVar3 >> 8),1);
+  DiControlInput::DiControlInput
+            ((DiControlInput *)&DAT_180a338e8,uVar1,0x9b,0x1ffffff,0,2,0,0,0,30000,uVar4,0,0,uVar7,0
+             ,0,0);
+  QString::~QString(local_res10);
+  uVar1 = QObject::tr((char *)local_res8,"Move Forward Continuously",0);
+  uVar7 = uVar7 & 0xffffff00;
+  uVar4 = uVar4 & 0xffffff00;
+  DiControlInput::DiControlInput
+            ((DiControlInput *)&DAT_180a33960,uVar1,0xa2,0x51,0,0,0,0,0,100,uVar4,0,0,uVar7,0,0,0);
+  QString::~QString(local_res8);
+  uVar1 = QObject::tr((char *)local_res10,"Move Forward",0);
+  uVar7 = uVar7 & 0xffffff00;
+  uVar3 = CONCAT31((int3)(uVar4 >> 8),1);
+  DiControlInput::DiControlInput
+            ((DiControlInput *)&DAT_180a339d8,uVar1,0x84,0x57,0,0,0,0,0,100,uVar3,0,0,uVar7,0,0,0);
+  QString::~QString(local_res10);
+  uVar1 = QObject::tr((char *)local_res8,"Move Backward",0);
+  uVar7 = uVar7 & 0xffffff00;
+  uVar3 = CONCAT31((int3)((uint)uVar3 >> 8),1);
+  DiControlInput::DiControlInput
+            ((DiControlInput *)&DAT_180a33a50,uVar1,0x82,0x53,0,0,0,0,0,100,uVar3,0,0,uVar7,0,0,0);
+  QString::~QString(local_res8);
+  uVar1 = QObject::tr((char *)local_res10,"Move Left",0);
+  uVar7 = uVar7 & 0xffffff00;
+  uVar3 = CONCAT31((int3)((uint)uVar3 >> 8),1);
+  DiControlInput::DiControlInput
+            ((DiControlInput *)&DAT_180a33ac8,uVar1,0x85,0x41,0,0,0,0,0,30000,uVar3,0,0,uVar7,0,0,0)
+  ;
+  QString::~QString(local_res10);
+  uVar1 = QObject::tr((char *)local_res8,"Move Right",0);
+  uVar7 = uVar7 & 0xffffff00;
+  uVar3 = CONCAT31((int3)((uint)uVar3 >> 8),1);
+  DiControlInput::DiControlInput
+            ((DiControlInput *)&DAT_180a33b40,uVar1,0x86,0x44,0,0,0,0,0,30000,uVar3,0,0,uVar7,0,0,0)
+  ;
+  QString::~QString(local_res8);
+  uVar1 = QObject::tr((char *)local_res10,"Move Up",0);
+  uVar7 = uVar7 & 0xffffff00;
+  uVar3 = CONCAT31((int3)((uint)uVar3 >> 8),1);
+  DiControlInput::DiControlInput
+            ((DiControlInput *)&DAT_180a33bb8,uVar1,0x87,0x43,0,0,0,0,0,30000,uVar3,0,0,uVar7,0,0,0)
+  ;
+  QString::~QString(local_res10);
+  uVar1 = QObject::tr((char *)local_res8,"Move Down",0);
+  uVar7 = uVar7 & 0xffffff00;
+  uVar4 = CONCAT31((int3)((uint)uVar3 >> 8),1);
+  DiControlInput::DiControlInput
+            ((DiControlInput *)&DAT_180a33c30,uVar1,0x83,0x5a,0,0,0,0,0,30000,uVar4,0,0,uVar7,0,0,0)
+  ;
+  QString::~QString(local_res8);
+  uVar1 = QObject::tr((char *)local_res10,"Run Modifier",0);
+  uVar7 = uVar7 & 0xffffff00;
+  uVar4 = uVar4 & 0xffffff00;
+  DiControlInput::DiControlInput
+            ((DiControlInput *)&DAT_180a33ca8,uVar1,0x8a,0x1000020,0,0,0,0,0,100,uVar4,0,0,uVar7,0,0
+             ,0);
+  QString::~QString(local_res10);
+  uVar1 = QObject::tr((char *)local_res8,"Jump. Brake in Zero-G or When Flying.",0);
+  uVar7 = uVar7 & 0xffffff00;
+  uVar3 = CONCAT31((int3)(uVar4 >> 8),1);
+  DiControlInput::DiControlInput
+            ((DiControlInput *)&DAT_180a33d20,uVar1,0x75,0x20,0,0,0,0,0,100,uVar3,0,0,uVar7,0,0,0);
+  QString::~QString(local_res8);
+  uVar1 = QObject::tr((char *)local_res10,"Brake",0);
+  uVar7 = uVar7 & 0xffffff00;
+  uVar3 = CONCAT31((int3)((uint)uVar3 >> 8),1);
+  DiControlInput::DiControlInput
+            ((DiControlInput *)&DAT_180a33d98,uVar1,0x9f,0x1ffffff,0,0,0,0,0,100,uVar3,0,0,uVar7,0,0
+             ,0);
+  QString::~QString(local_res10);
+  uVar1 = QObject::tr((char *)local_res8,"Jump",0);
+  uVar7 = uVar7 & 0xffffff00;
+  uVar4 = CONCAT31((int3)((uint)uVar3 >> 8),1);
+  DiControlInput::DiControlInput
+            ((DiControlInput *)&DAT_180a33e10,uVar1,0xa0,0x1ffffff,0,0,0,0,0,100,uVar4,0,0,uVar7,0,0
+             ,0);
+  QString::~QString(local_res8);
+  uVar1 = QObject::tr((char *)local_res10,"Prone/Stand Toggle",0);
+  uVar7 = uVar7 & 0xffffff00;
+  uVar4 = uVar4 & 0xffffff00;
+  DiControlInput::DiControlInput
+            ((DiControlInput *)&DAT_180a33e88,uVar1,0x88,0x58,0,0,0,0,0,100,uVar4,0,0,uVar7,0,0,0);
+  QString::~QString(local_res10);
+  uVar1 = QObject::tr((char *)local_res8,"Crouch",0);
+  uVar7 = uVar7 & 0xffffff00;
+  uVar4 = CONCAT31((int3)(uVar4 >> 8),1);
+  DiControlInput::DiControlInput
+            ((DiControlInput *)&DAT_180a33f00,uVar1,0x71,0x1000024,0,0,0,0,0,100,uVar4,0,0,uVar7,0,0
+             ,0);
+  QString::~QString(local_res8);
+  uVar1 = QObject::tr((char *)local_res10,
+                      "Enter/Exit Console, Ladder, Mount or Vehicle. Drop Rider. Pick Up Body.",0);
+
+AuAtom13.dll 0x1802f1450 camera near/far
+  int local_d8 [12];
+  ulonglong local_a8;
+
+                    /* 0x2f1450  6782
+                       ?SetupCamera@DaCreature@@QEBAXAEAVAuMatrix4x4@@AEAN1AEBVAuAtomRenderInfo@@@Z
+                        */
+  local_a8 = DAT_180a0ecf0 ^ (ulonglong)auStack_108;
+  *param_3 = 297000000.0;
+  QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x1c0));
+  uVar4 = *(undefined8 *)(this + 0x1d0);
+  QReadWriteLock::unlock((QReadWriteLock *)(this + 0x1c0));
+  local_e8 = 0;
+  lVar7 = __RTDynamicCast(uVar4,0,&DaAtom::RTTI_Type_Descriptor,&DaVehicle::RTTI_Type_Descriptor);
+  if (lVar7 == 0) {
+    QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x498));
+    bVar6 = DpBody::IsPronePose((DpBody *)(this + 0x4a0));
+    QReadWriteLock::unlock((QReadWriteLock *)(this + 0x498));
+    dVar8 = 1.0;
+    if (!bVar6) {
+      dVar8 = 3.0;
+    }
+  }
+  else {
+    dVar8 = 2.0;
+  }
+  *param_2 = dVar8;
+  bVar6 = DpBody::IsTurretPose(*(POSE *)(this + 0x4d8));
+  if (bVar6) {
+    pdVar9 = (double *)WeaponLoc(this);
+    bVar6 = false;
+    dVar8 = *pdVar9;
+    dVar1 = pdVar9[1];
+    dVar2 = pdVar9[2];
+    if (*(int *)(this + 0x4d8) == 0x39) {
+      uVar14 = 0x93dd97f6;
+      uVar15 = 0xc0000587;
+    }
+    else {
+      uVar14 = 0xd1386c58;
+      uVar15 = 0x3fe34953;
+    }
+  }
+  else {
+    pdVar9 = (double *)CameraOffset(this);
+    dVar8 = *pdVar9;
+    dVar1 = pdVar9[1];
+    dVar2 = pdVar9[2];
+    if (*(int *)(param_4 + 0x48) == 1) {
+      fVar12 = cosf(*(float *)(param_4 + 0x38));
+      fVar11 = *(float *)(param_4 + 0x40);
+      fVar13 = sinf(*(float *)(param_4 + 0x38));
+      dVar8 = dVar8 + 0.0;
+      dVar1 = dVar1 + (double)-(fVar12 * fVar11);
+      dVar2 = dVar2 + (double)(fVar13 * *(float *)(param_4 + 0x40));
+    }
+    uVar14 = 0;
+    uVar15 = 0;
+    bVar6 = true;
+  }
+  AuMatrix4x4::LoadIdentity(param_1);
+  AuMatrix4x4::Translate(param_1,dVar8,dVar1,dVar2);
+  iVar3 = *(int *)(this + 0x4d8);
+  if (((iVar3 - 0x31U < 4) || (iVar3 - 0x12U < 4)) || (iVar3 - 0x4cU < 8)) {
+    iVar10 = *(short *)(this + 0x4c8) + 0x1e;
+    if ((iVar3 - 0x12U < 4) || (iVar10 < 0xb)) {
+      if (iVar10 < 0) {
+        iVar10 = 0;
+      }
+      local_d8[8] = 0x20;
+      local_d8[9] = 0x10;
+      local_d8[4] = 0x200;
+      local_d8[5] = 0x100;
+GROUND CORRECTION: AuAtom13.dll TickMovement 0x180219280
+=====================================================
+Assembly excerpt; XMM6 is zero and XMM8 is the sign-bit mask. The recovered
+operation is gravityNormal * -FallDist, not the stale dVar19 emitted by the
+decompiler. Preceding gates require EB_Gravity and !CanBeUnderGround.
+
+1802198d8: MOV RAX,qword ptr [R14 + 0x90]
+1802198df: COMISD XMM6,qword ptr [RAX + 0x28]
+1802198e4: JBE 0x180219973
+1802198ea: LEA RDX,[RBP + 0x50]
+1802198ee: MOV RCX,R14
+1802198f1: CALL 0x1800dc410
+1802198f6: MOV RCX,qword ptr [R14 + 0x90]
+1802198fd: MOVSD XMM2,qword ptr [RCX + 0x28]
+180219902: XORPS XMM2,XMM8
+180219906: ADD RCX,0x60
+18021990a: LEA RDX,[RBP + -0x28]
+18021990e: CALL qword ptr [0x180737548]
+180219914: MOVSD XMM3,qword ptr [RAX + 0x10]
+180219919: MOVSD XMM2,qword ptr [RAX + 0x8]
+18021991e: MOVSD XMM1,qword ptr [RAX]
+180219922: LEA RCX,[RBP + 0x50]
+180219926: CALL qword ptr [0x180737628]
+18021992c: LEA RDX,[RBP + 0x50]
+180219930: MOV RCX,R14
+180219933: CALL 0x1800d9680
+...
+180219968: MOV RAX,qword ptr [R14 + 0x90]
+18021996f: MOV qword ptr [RAX + 0x28],R12
+
+HUD TARGET EVIDENCE, additional read-only captures
+================================================
+AuAtom13.dll 0x1804122a0 DaSpaceShip::RenderBodyStats target branch:
+  SVar7 = DetailSystem(this,param_6,(ushort *)local_4c0);
+  fVar23 = param_4 * 0.75;
+  fVar20 = 1.0;
+  fVar24 = (1.0 - fVar23) - 0.01;
+  fVar25 = 0.0 - fVar23 * 1.5;
+  AuAtomRenderInfo::RenderSystemIcon(param_8,SVar7,fVar25,fVar24,fVar23,1.0,1.0,1.0,1.0);
+  this_00 = local_4b8;
+  QReadWriteLock::lockForRead((QReadWriteLock *)(local_4b8 + 0xb08));
+  AuShipSystemArray::SystemModule((AuShipSystemArray *)(this_00 + 0xb10),4);
+  QReadWriteLock::unlock((QReadWriteLock *)(this_00 + 0xb08));
+  QReadWriteLock::lockForRead((QReadWriteLock *)(this_00 + 0xb08));
+  AuShipSystemArray::SystemTechLevel((AuShipSystemArray *)(this_00 + 0xb10),4);
+  QReadWriteLock::unlock((QReadWriteLock *)(this_00 + 0xb08));
+  uVar8 = SystemHitsRemaining(this_00,SVar7,local_4c0[0]._0_2_);
+  QReadWriteLock::lockForRead((QReadWriteLock *)(this_00 + 0x6e8));
+  QReadWriteLock::lockForRead((QReadWriteLock *)(this_00 + 0x770));
+  uVar9 = FUN_1801b85a0(this_00 + 0x6f0,SVar7,local_4c0[0]._0_2_,this_00 + 0x778);
+  QReadWriteLock::unlock((QReadWriteLock *)(this_00 + 0x770));
+  QReadWriteLock::unlock((QReadWriteLock *)(this_00 + 0x6e8));
+  fVar21 = (float)uVar8 / (float)uVar9;
+  if ((fVar21 <= 0.1) || (bVar5 = DaUnit::IsAnyConditionVisible((DaUnit *)this_00), bVar5)) {
+    fVar28 = 0.1;
+    fVar27 = 0.2;
+  }
+  else {
+    fVar28 = 0.35;
+    if (0.5 <= fVar21) {
+      fVar27 = 1.0;
+      fVar26 = 0.2;
+      goto LAB_1804125f0;
+    }
+    fVar27 = 0.7;
+  }
+  fVar26 = 1.0;
+LAB_1804125f0:
+  AuAtomRenderInfo::RenderBar
+            (param_8,0.0,fVar24,param_3,fVar23,fVar21,0,fVar26,fVar27,0.2,0.5,fVar28,0.1,1.0);
+  if (param_7 == 0) {
+    iVar17 = 0x40;
+    iVar16 = 0xff;
+    iVar18 = iVar17;
+  }
+  else if (param_7 == 2) {
+    iVar17 = 0xff;
+    iVar16 = 0x20;
+    iVar18 = 0x20;
+  }
+  else if (param_7 - 3 < 2) {
+    iVar17 = 0x60;
+    iVar16 = 0x60;
+    iVar18 = 0xff;
+  }
+  else {
+    iVar17 = 0xc0;
+    iVar16 = 0xc0;
+    iVar18 = iVar17;
+  }
+  QColor::setRgb((QColor *)local_330,iVar17,iVar16,iVar18,0xff);
+  QWidget::rect(*(QWidget **)(param_8 + 0x10));
+  iVar18 = (local_430 - (int)local_438) + 1;
+  if (0 < iVar18) {
+    fVar20 = (float)((local_42c - local_438._4_4_) + 1) / (float)iVar18;
+  }
+  iVar16 = (local_42c - local_438._4_4_) + 1;
+  pQVar11 = (QString *)NameWithEmpire(this_00);
+  lVar13 = *(longlong *)(*(longlong *)(param_8 + 0x10) + 0x28);
+  AuGLEffects::RenderText
+            (*(AuGLEffects **)(param_8 + 0x20),
+             iVar18 / 2 -
+             (int)((float)iVar18 * (((0.0 - fVar25) + param_3) * 0.5 + fVar25) * fVar20 * -0.5),
+             iVar16 / 2 - (int)((float)iVar16 * (fVar24 - fVar22) * 0.5),pQVar11,
+             *(QFont **)(param_8 + 8),(QColor *)local_330,
+             (*(int *)(lVar13 + 0x1c) - *(int *)(lVar13 + 0x14)) + 1,
+             (*(int *)(lVar13 + 0x20) - *(int *)(lVar13 + 0x18)) + 1,0x24,1);
+  QString::~QString((QString *)&local_4c8);
+  return;
+
+AuAtom13.dll 0x1803455c0 DaPerson::RenderScene target gate:
+  if (((*(int *)(local_9f0 + 0x48) != 2) && (*(int *)param_4 != 0)) && (0 < param_5)) {
+    pDVar18 = DaAtom::FindEnvironmentAtom((DaAtom *)pDVar30);
+    pDVar18 = DaAtom::FindIdRecursive(pDVar18,param_4,-1);
+    if (pDVar18 != (DaAtom *)0x0) {
+      dVar34 = sqrt(*(double *)param_6 * *(double *)param_6 +
+                    *(double *)(param_6 + 8) * *(double *)(param_6 + 8) +
+                    *(double *)(param_6 + 0x10) * *(double *)(param_6 + 0x10));
+      dVar35 = (double)(ulonglong)(uint)((float)dVar34 / 10.0);
+      if ((float)dVar34 / 10.0 <= (float)param_5) {
+        dVar35 = 5.12263046511523e-315;
+        (**(code **)(*(longlong *)pDVar18 + 0x108))(pDVar18,*(longlong *)pDVar18,0x3d99999a);
+      }
+    }
+  }
+
+Shores of Hazeron.exe 0x1403098d0 UpdateTarget, acquisition tail:
+
+
+Shores of Hazeron.exe 0x14032f800 periodic target worker:
+
+void FUN_14032f800(QObject *param_1)
+
+{
+  int iVar1;
+  QObject *pQVar2;
+  longlong lVar3;
+  undefined4 local_res8 [2];
+  longlong local_res10;
+
+  local_res8[0] = 0xffffffff;
+  iVar1 = QSemaphore::available((QSemaphore *)(param_1 + 0x10));
+  while (iVar1 == 0) {
+    QTime::start((QTime *)local_res8);
+    pQVar2 = QObject::parent(param_1);
+    lVar3 = __RTDynamicCast(pQVar2,0,&QObject::RTTI_Type_Descriptor,&AuView::RTTI_Type_Descriptor,0)
+    ;
+    if (lVar3 != 0) {
+      FUN_1402f3330(lVar3,&local_res10);
+      if (local_res10 != 0) {
+        FUN_1403098d0(lVar3,local_res10,0);
+      }
+      FUN_140309550(lVar3);
+    }
+    iVar1 = QTime::elapsed((QTime *)local_res8);
+    if (0 < (int)(200U - iVar1)) {
+      QThread::msleep(200U - iVar1);
+    }
+    iVar1 = QSemaphore::available((QSemaphore *)(param_1 + 0x10));
+  }
+  return;
+}
+
+Audio ownership: AuAtom13.dll 0x18020f6d0
+Called with true by normal AuView::initializeGL, EXE 0x14030dab0.
+/* public: void __cdecl AuAtomRenderInfo::InitializeGL(bool) __ptr64 */
+
+void __thiscall AuAtomRenderInfo::InitializeGL(AuAtomRenderInfo *this,bool param_1)
+
+{
+  longlong lVar1;
+  AuGLEffects *this_00;
+  AuGLEffects *pAVar2;
+
+                    /* 0x20f6d0  3860  ?InitializeGL@AuAtomRenderInfo@@QEAAX_N@Z */
+  pAVar2 = (AuGLEffects *)0x0;
+  if (*(longlong *)(this + 0x20) == 0) {
+    this_00 = operator_new(0xbb0);
+    if (this_00 != (AuGLEffects *)0x0) {
+      AuGLEffects::AuGLEffects(this_00);
+      *(undefined ***)this_00 = AuGLEffects::vftable;
+      pAVar2 = this_00;
+    }
+    *(AuGLEffects **)(this + 0x20) = pAVar2;
+  }
+  if (param_1) {
+    lVar1 = *(longlong *)(this + 0x20);
+    QString::operator=((QString *)(lVar1 + 0xb80),
+                       (QString *)(*(longlong *)gp_AuGlobal_exref + 0x108));
+    if (*(int *)(lVar1 + 0xb48) != 0) {
+      *(undefined4 *)(lVar1 + 0xb48) = 0;
+    }
+    lVar1 = *(longlong *)(this + 0x20);
+    QString::operator=((QString *)(lVar1 + 0xb88),
+                       (QString *)(*(longlong *)gp_AuGlobal_exref + 0x118));
+    if (*(int *)(lVar1 + 0xb3c) != 0) {
+      *(undefined4 *)(lVar1 + 0xb3c) = 0;
+    }
+    lVar1 = *(longlong *)(this + 0x20);
+    QString::operator=((QString *)(lVar1 + 0xb90),
+                       (QString *)(*(longlong *)gp_AuGlobal_exref + 0x120));
+    if (*(int *)(lVar1 + 0xb44) != 0) {
+      *(undefined4 *)(lVar1 + 0xb44) = 0;
+    }
+    lVar1 = *(longlong *)(this + 0x20);
+    QString::operator=((QString *)(lVar1 + 0xb98),
+                       (QString *)(*(longlong *)gp_AuGlobal_exref + 0x228));
+    if (*(int *)(lVar1 + 0xb78) != 0) {
+      *(undefined4 *)(lVar1 + 0xb78) = 0;
+    }
+    lVar1 = *(longlong *)(this + 0x20);
+    QString::operator=((QString *)(lVar1 + 0xba0),
+                       (QString *)(*(longlong *)gp_AuGlobal_exref + 0x130));
+    if (*(int *)(lVar1 + 0xb38) != 0) {
+      *(undefined4 *)(lVar1 + 0xb38) = 0;
+    }
+    AuGLEffects::InitializeAudio(*(AuGLEffects **)(this + 0x20));
+  }
+                    /* WARNING: Could not recover jumptable at 0x00018020f860. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  AuGLEffects::InitializeGL
+            (*(AuGLEffects **)(this + 0x20),*(bool *)(*(longlong *)gp_AuGlobal_exref + 0x230));
+  return;
+}

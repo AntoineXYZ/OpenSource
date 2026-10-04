@@ -125,6 +125,7 @@ struct Hatch
 	QPointF center;
 	QPolygonF boundary;
 	Material material;
+	quint32 doorId = 0;
 	bool diamond;
 	bool turret = false;
 };
@@ -141,6 +142,7 @@ QVector<Hatch> Hatches(const QVector<Detail>& details, int deck)
 		positions.insert(detail.packedXY);
 		Hatch hatch;
 		hatch.center = DecodePoint(detail.packedXY);
+		hatch.doorId = turret ? 0 : detail.detailId;
 		hatch.turret = turret;
 		const int x = int(std::round(hatch.center.x() / RasterSpacing)) + RasterOrigin;
 		const int y = int(std::round(hatch.center.y() / RasterSpacing)) + RasterOrigin;
@@ -300,7 +302,7 @@ struct Raster
 struct Builder
 {
 	Mesh mesh;
-	QHash<int, int> batchIndices;
+	QHash<quint64, int> batchIndices;
 	int vertices = 0;
 	bool truncated = false;
 
@@ -311,7 +313,7 @@ struct Builder
 
 	void Triangle(Material material, int deck, bool interior,
 		const QVector3D& a, const QVector3D& b, const QVector3D& c,
-		const QVector2D& ua, const QVector2D& ub, const QVector2D& uc)
+		const QVector2D& ua, const QVector2D& ub, const QVector2D& uc, quint32 doorId = 0)
 	{
 		if(vertices >= MaximumVertices)
 		{
@@ -321,7 +323,8 @@ struct Builder
 		QVector3D normal = QVector3D::crossProduct(b - a, c - a);
 		if(normal.lengthSquared() < 1e-10f) return;
 		normal.normalize();
-		const int key = ((deck - MinimumDeck + 1) * 2 + int(interior)) * 128 + int(material);
+		const quint32 surface = quint32(((deck - MinimumDeck + 1) * 2 + int(interior)) * 128 + int(material));
+		const quint64 key = (quint64(doorId) << 32) | surface;
 		int index = batchIndices.value(key, -1);
 		if(index < 0)
 		{
@@ -329,6 +332,7 @@ struct Builder
 			batchIndices.insert(key, index);
 			Batch batch;
 			batch.material = material; batch.deck = deck; batch.interior = interior;
+			batch.doorId = doorId;
 			mesh.batches.append(batch);
 		}
 		QVector<Vertex>& out = mesh.batches[index].vertices;
@@ -345,10 +349,10 @@ struct Builder
 
 	void Quad(Material material, int deck, bool interior,
 		const QVector3D& a, const QVector3D& b, const QVector3D& c, const QVector3D& d,
-		float repeat = 1)
+		float repeat = 1, quint32 doorId = 0)
 	{
-		Triangle(material, deck, interior, a, b, c, {0, 0}, {repeat, 0}, {repeat, 1});
-		Triangle(material, deck, interior, a, c, d, {0, 0}, {repeat, 1}, {0, 1});
+		Triangle(material, deck, interior, a, b, c, {0, 0}, {repeat, 0}, {repeat, 1}, doorId);
+		Triangle(material, deck, interior, a, c, d, {0, 0}, {repeat, 1}, {0, 1}, doorId);
 	}
 };
 
@@ -460,7 +464,8 @@ void Plane(Builder& out, const QPoint (&points)[3], int x, int y, double z,
 		for(int i = 1; i + 1 < polygon.size(); ++i)
 		{
 			const QPointF a = polygon.first(), b = polygon.at(up ? i : i + 1), c = polygon.at(up ? i + 1 : i);
-			out.Triangle(texture, deck, interior, Position(a, z), Position(b, z), Position(c, z), uv(a), uv(b), uv(c));
+			out.Triangle(texture, deck, interior, Position(a, z), Position(b, z), Position(c, z),
+				uv(a), uv(b), uv(c), hatch ? hatch->doorId : 0);
 		}
 	};
 	QPolygonF triangle;
@@ -481,8 +486,7 @@ void Plane(Builder& out, const QPoint (&points)[3], int x, int y, double z,
 				if(outside.size() >= 3) next.append(outside);
 				intersection = inside;
 			}
-			// The designer preview keeps hatches closed. The original runtime
-			// selected the half-open region and animated its atlas coordinates.
+			// The renderer selects each hatch's closed/half/open atlas frame.
 			if(!hatch.turret) emitPolygon(intersection, hatch.material, &hatch);
 		}
 		remainder = next;
@@ -604,6 +608,7 @@ struct WallSpan
 	QPointF b;
 	quint16 tag;
 	int detail;
+	quint32 doorId;
 };
 
 using DetailGrid = QHash<quint32, QVector<Detail>>;
@@ -612,7 +617,7 @@ QVector<WallSpan> WallSpans(const Edge& edge, bool exterior, const DetailGrid& d
 {
 	const QPointF a = PlanPoint(edge.a), b = PlanPoint(edge.b), direction = Unit(b - a);
 	const double length = Length(b - a);
-	struct Opening { double start; double end; int type; };
+	struct Opening { double start; double end; int type; quint32 id; };
 	QVector<Opening> openings;
 	QVector<double> cuts = {0, length};
 	QVector<Detail> candidates;
@@ -639,7 +644,7 @@ QVector<WallSpan> WallSpans(const Edge& edge, bool exterior, const DetailGrid& d
 		else if(!exterior && type >= 53) { start = 0; end = length; }
 		start = std::max(0.0, start); end = std::min(length, end);
 		if(end - start <= Epsilon) continue;
-		openings.append({start, end, type}); cuts.append(start); cuts.append(end);
+		openings.append({start, end, type, detail.detailId}); cuts.append(start); cuts.append(end);
 	}
 	std::sort(cuts.begin(), cuts.end());
 	cuts.erase(std::unique(cuts.begin(), cuts.end()), cuts.end());
@@ -647,11 +652,12 @@ QVector<WallSpan> WallSpans(const Edge& edge, bool exterior, const DetailGrid& d
 	for(int i = 1; i < cuts.size(); ++i)
 	{
 		const double middle = (cuts.at(i - 1) + cuts.at(i)) / 2;
-		WallSpan span = {a + direction * cuts.at(i - 1), a + direction * cuts.at(i), edge.tag, 0};
+		WallSpan span = {a + direction * cuts.at(i - 1), a + direction * cuts.at(i), edge.tag, 0, 0};
 		for(const Opening& opening : openings)
 			if(middle > opening.start && middle < opening.end)
 			{
 				span.detail = opening.type;
+				span.doorId = IsDoorDetail(opening.type) ? opening.id : 0;
 				if(exterior) span.tag = quint16((IsSideTurret(opening.type) ? 31
 					: opening.type == 3 ? 28 : opening.type == 9 ? 29 : 30) << 8);
 				break;
@@ -699,9 +705,23 @@ void HullWalls(Builder& out, const QVector<Edge>& edges, int deck, int armor, co
 					SideTurret(out, deck, a0, b0, b1, a1);
 					continue;
 				}
-				out.Quad(material, deck, false, a0, b0, b1, a1);
-				out.Triangle(material, deck, true, a0, b1, b0, {0, 0}, {1, 1}, {1, 0});
-				out.Triangle(material, deck, true, a0, a1, b1, {0, 0}, {0, 1}, {1, 1});
+				const quint32 doorId = p.strip == 1 || p.strip == 2 ? edge.doorId : 0;
+				out.Quad(material, deck, false, a0, b0, b1, a1, 1, doorId);
+				if(Type(edge.tag) != 30)
+				{
+					const Material inside = p.strip == 1 ? Material::LargeCrewDoor : material;
+					out.Triangle(inside, deck, true, a0, b1, b0, {0, 0}, {1, 1}, {1, 0}, doorId);
+					out.Triangle(inside, deck, true, a0, a1, b1, {0, 0}, {0, 1}, {1, 1}, doorId);
+				}
+			}
+			if(Type(edge.tag) == 30)
+			{
+				// RenderInterior uses a full-height crew panel behind the exterior
+				// seven-foot hull door and its projecting upper hull profile.
+				const QVector3D a0 = Position(a, deck * DeckHeight), b0 = Position(b, deck * DeckHeight);
+				const QVector3D a1 = Position(a, (deck + 1) * DeckHeight), b1 = Position(b, (deck + 1) * DeckHeight);
+				out.Triangle(Material::CrewDoor, deck, true, a0, b1, b0, {0, 0}, {1, 1}, {1, 0}, edge.doorId);
+				out.Triangle(Material::CrewDoor, deck, true, a0, a1, b1, {0, 0}, {0, 1}, {1, 1}, edge.doorId);
 			}
 			// RenderWallEndCap closes both room profiles to the baseline. Its
 			// interior-facing strip uses the end-cap tile and height-scaled V.
@@ -868,7 +888,7 @@ void DeckSurfaces(Builder& out, const Raster& raster, int deck, int armor, const
 			out.Quad(material, deck, true,
 				Position(span.b, deck * DeckHeight), Position(span.a, deck * DeckHeight),
 				Position(span.a, (deck + 1) * DeckHeight), Position(span.b, (deck + 1) * DeckHeight),
-				span.detail || length <= 5 + Epsilon ? 1 : float(std::ceil(length / 10)));
+				span.detail || length <= 5 + Epsilon ? 1 : float(std::ceil(length / 10)), span.doorId);
 		}
 }
 }

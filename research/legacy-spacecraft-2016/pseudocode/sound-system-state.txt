@@ -1,0 +1,333 @@
+Read-only Ghidra capture, 2026-10-04. Original 2016 AuAtom13.dll.
+
+DaSpaceShip constructor 0x1803c1ec0, relevant zero initializers:
+  *(undefined4 *)(this + 0x490) = 0x64000000;
+  *(undefined2 *)(this + 0x494) = 0;
+  *(undefined4 *)(this + 0x497) = 0;
+  this[0x496] = (DaSpaceShip)0x0;
+  *(undefined2 *)(this + 0x49b) = 0;
+  *(undefined8 *)(this + 0x4c8) = 0;
+  *(undefined2 *)(this + 0x49e) = 0;
+  this[0x49d] = (DaSpaceShip)0x0;
+  *(undefined8 *)(this + 0x500) = 0;
+  *(undefined8 *)(this + 0x510) = 0;
+
+
+/* public: bool __cdecl DaSpaceShip::PowerPlantWorking(void)const __ptr64 */
+
+bool __thiscall DaSpaceShip::PowerPlantWorking(DaSpaceShip *this)
+
+{
+  float fVar1;
+  uint uVar2;
+
+                    /* 0xd6160  5559  ?PowerPlantWorking@DaSpaceShip@@QEBA_NXZ */
+  if (this[0x496] != (DaSpaceShip)0x0) {
+    QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x4c0));
+    fVar1 = *(float *)(this + 0x510);
+    QReadWriteLock::unlock((QReadWriteLock *)(this + 0x4c0));
+    if (0.0 < fVar1) {
+      if ((this[0x4b6] == (DaSpaceShip)0x0) && (this[0xa08] != (DaSpaceShip)0x0)) {
+        uVar2 = SystemHitsRemaining(this,7);
+        return uVar2 != 0;
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+
+
+
+/* public: bool __cdecl DaSpaceShip::SensorsWorking(void)const __ptr64 */
+
+bool __thiscall DaSpaceShip::SensorsWorking(DaSpaceShip *this)
+
+{
+  float fVar1;
+  uint uVar2;
+
+                    /* 0xd8430  6540  ?SensorsWorking@DaSpaceShip@@QEBA_NXZ */
+  if (this[0x497] == (DaSpaceShip)0x0) {
+    return false;
+  }
+  QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x4c0));
+  fVar1 = *(float *)(this + 0x4c8);
+  QReadWriteLock::unlock((QReadWriteLock *)(this + 0x4c0));
+  if (0.0 < fVar1) {
+    QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0xb08));
+    uVar2 = AuShipSystemArray::GetPowerConsumption((AuShipSystemArray *)(this + 0xb10),8);
+    QReadWriteLock::unlock((QReadWriteLock *)(this + 0xb08));
+    if (uVar2 != 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+
+
+
+/* public: bool __cdecl DaSpaceShip::GravityDriveWorking(void)const __ptr64 */
+
+bool __thiscall DaSpaceShip::GravityDriveWorking(DaSpaceShip *this)
+
+{
+  float fVar1;
+  int iVar2;
+  uint uVar3;
+
+                    /* 0xcc300  3488  ?GravityDriveWorking@DaSpaceShip@@QEBA_NXZ */
+  QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x4c0));
+  iVar2 = *(int *)(this + 0x500);
+  QReadWriteLock::unlock((QReadWriteLock *)(this + 0x4c0));
+  if (iVar2 - 1U < 2) {
+    QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x4c0));
+    fVar1 = *(float *)(this + 0x4c8);
+    QReadWriteLock::unlock((QReadWriteLock *)(this + 0x4c0));
+    if (0.0 < fVar1) {
+      if (this[0xa08] != (DaSpaceShip)0x0) {
+        QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0xb08));
+        uVar3 = AuShipSystemArray::GetPowerConsumption((AuShipSystemArray *)(this + 0xb10),2);
+        QReadWriteLock::unlock((QReadWriteLock *)(this + 0xb08));
+        if (uVar3 == 0) {
+          return false;
+        }
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+
+
+
+/* public: virtual bool __cdecl DaSpaceShip::Tick(class AuTime const & __ptr64) __ptr64 */
+
+bool __thiscall DaSpaceShip::Tick(DaSpaceShip *this,AuTime *param_1)
+
+{
+  bool bVar1;
+
+                    /* 0x46d320  7268  ?Tick@DaSpaceShip@@UEAA_NAEBVAuTime@@@Z */
+  if ((this[0xa08] != (DaSpaceShip)0x0) && (this[0x18] != (DaSpaceShip)0x2)) {
+    QReadWriteLock::lockForWrite((QReadWriteLock *)(this + 0x4c0));
+    *(undefined4 *)(this + 0x538) = 0;
+    QReadWriteLock::unlock((QReadWriteLock *)(this + 0x4c0));
+    bVar1 = DaAtom::Tick((DaAtom *)this,param_1);
+    if (!bVar1) {
+      return false;
+    }
+    if (this[0x18] != (DaSpaceShip)0x2) {
+      bVar1 = DaAtom::InDesignEnvironment((DaAtom *)this);
+      if (!bVar1) {
+        QMutex::lock((QMutex *)(this + 0xb30));
+        if (this[0xb38] == (DaSpaceShip)0x0) {
+          if (this[0xb3c] != (DaSpaceShip)0x0) {
+            DoScuttleOrder(this);
+            this[0xb3c] = (DaSpaceShip)0x0;
+          }
+        }
+        else {
+          ConfigureHarvester(this);
+          this[0xb38] = (DaSpaceShip)0x0;
+        }
+        bVar1 = IsNew(this);
+        if (!bVar1) {
+          if (this[0xb3a] != (DaSpaceShip)0x0) {
+            CycleFTLDrive(this);
+            this[0xb3a] = (DaSpaceShip)0x0;
+          }
+          if (this[0xb39] != (DaSpaceShip)0x0) {
+            CycleBayWeapons(this);
+            this[0xb39] = (DaSpaceShip)0x0;
+          }
+          if (this[0xb3d] != (DaSpaceShip)0x0) {
+            GamesTick(this,1 < (byte)this[0xb3d]);
+            this[0xb3d] = (DaSpaceShip)0x0;
+          }
+          if (this[0xb3b] != (DaSpaceShip)0x0) {
+            DecayMoveActions(this);
+            this[0xb3b] = (DaSpaceShip)0x0;
+          }
+        }
+        QMutex::unlock((QMutex *)(this + 0xb30));
+      }
+    }
+    return true;
+  }
+  return true;
+}
+
+
+
+
+/* public: virtual void __cdecl DaSpaceShip::TickOnClient(class AuTime const & __ptr64) __ptr64 */
+
+void __thiscall DaSpaceShip::TickOnClient(DaSpaceShip *this,AuTime *param_1)
+
+{
+  longlong lVar1;
+  DgData *this_00;
+  bool bVar2;
+  uchar uVar3;
+  uint uVar4;
+  __int64 _Var5;
+  ulonglong uVar6;
+  undefined7 uVar7;
+
+                    /* 0x46d570  7299  ?TickOnClient@DaSpaceShip@@UEAAXAEBVAuTime@@@Z */
+  DaAtom::TickOnClient((DaAtom *)this,param_1);
+  _Var5 = QDateTime::currentMSecsSinceEpoch();
+  if ((_Var5 / 1000 != *(longlong *)param_1 / 1000 &&
+       -1 < _Var5 / 1000 - *(longlong *)param_1 / 1000) && (this[0xa08] == (DaSpaceShip)0x0)) {
+    AnalyzeDesign(this,false);
+    if (this[0xa08] != (DaSpaceShip)0x0) {
+      bVar2 = DaAtom::InDesignEnvironment((DaAtom *)this);
+      if (bVar2) {
+        lVar1 = *(longlong *)gp_AuGlobal_exref;
+        QReadWriteLock::lockForWrite((QReadWriteLock *)(lVar1 + 0x1e0));
+        this_00 = *(DgData **)(lVar1 + 0x68);
+        uVar4 = DesignId(this);
+        uVar3 = DgData::SpaceShipDesignMinTechLevel(this_00,uVar4);
+        QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x770));
+        uVar4 = DesignId(this);
+        uVar6 = (ulonglong)uVar4;
+        DgData::SpaceShipDesignReconcileModules(this_00,uVar4,(DqDesignAnalysis *)(this + 0x778));
+        QReadWriteLock::unlock((QReadWriteLock *)(this + 0x770));
+        QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1e0));
+        uVar7 = (undefined7)(uVar6 >> 8);
+        GatherSystemsData(this,0xc0,uVar3);
+        (**(code **)(*(longlong *)this + 0x1a0))(this,CONCAT71(uVar7,1));
+      }
+      UpdatePathCache(this);
+      DaAtom::QueryEnvironmentRecursive((DaAtom *)this);
+    }
+  }
+  DecayMoveActions(this);
+  return;
+}
+
+
+
+
+/* public: void __cdecl DaSpaceShip::GatherSystemsData(unsigned char,unsigned char) __ptr64 */
+
+void __thiscall DaSpaceShip::GatherSystemsData(DaSpaceShip *this,uchar param_1,uchar param_2)
+
+{
+                    /* 0x3f3c70  3369  ?GatherSystemsData@DaSpaceShip@@QEAAXEE@Z */
+  QReadWriteLock::lockForWrite((QReadWriteLock *)(this + 0xb08));
+  QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x770));
+  if (this[0xa08] != (DaSpaceShip)0x0) {
+    GatherSystemsDataSystemsAndDesignLocked(this,param_1,param_2);
+  }
+  QReadWriteLock::unlock((QReadWriteLock *)(this + 0x770));
+                    /* WARNING: Could not recover jumptable at 0x0001803f3cf6. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  QReadWriteLock::unlock((QReadWriteLock *)(this + 0xb08));
+  return;
+}
+
+
+
+
+/* protected: void __cdecl DaSpaceShip::GatherSystemsDataSystemsAndDesignLocked(unsigned
+   char,unsigned char) __ptr64 */
+
+void __thiscall
+DaSpaceShip::GatherSystemsDataSystemsAndDesignLocked(DaSpaceShip *this,uchar param_1,uchar param_2)
+
+{
+  longlong lVar1;
+  longlong *plVar2;
+  __int64 _Var3;
+  longlong local_res8;
+
+                    /* 0x3f3d00  3370
+                       ?GatherSystemsDataSystemsAndDesignLocked@DaSpaceShip@@IEAAXEE@Z */
+  QList<AuShipSystem>::clear((QList<AuShipSystem> *)(this + 0xb10));
+  lVar1 = *(longlong *)gp_AuGlobal_exref;
+  QReadWriteLock::lockForRead((QReadWriteLock *)(lVar1 + 0x1e0));
+  lVar1 = *(longlong *)(lVar1 + 0x68);
+  std::
+  _Hash<std::_Umap_traits<unsigned_int,DnSpaceShip,std::_Uhash_compare<unsigned_int,AuDesignIdHash,std::equal_to<unsigned_int>_>,std::allocator<std::pair<unsigned_int_const_,DnSpaceShip>_>,0>_>
+  ::find((_Hash<std::_Umap_traits<unsigned_int,DnSpaceShip,std::_Uhash_compare<unsigned_int,AuDesignIdHash,std::equal_to<unsigned_int>_>,std::allocator<std::pair<unsigned_int_const_,DnSpaceShip>_>,0>_>
+          *)(lVar1 + 0x1b8),(uint *)&local_res8);
+  plVar2 = (longlong *)
+           std::
+           _Hash<std::_Umap_traits<unsigned_int,DnSpaceShip,std::_Uhash_compare<unsigned_int,AuDesignIdHash,std::equal_to<unsigned_int>_>,std::allocator<std::pair<unsigned_int_const_,DnSpaceShip>_>,0>_>
+           ::end((_Hash<std::_Umap_traits<unsigned_int,DnSpaceShip,std::_Uhash_compare<unsigned_int,AuDesignIdHash,std::equal_to<unsigned_int>_>,std::allocator<std::pair<unsigned_int_const_,DnSpaceShip>_>,0>_>
+                  *)(lVar1 + 0x1b8));
+  if (local_res8 != *plVar2) {
+    AuShipSystemArray::GatherShipSystems
+              ((AuShipSystemArray *)(this + 0xb10),param_1,param_2,
+               (DqDesignAnalysis *)(this + 0x778),(DnSpaceShip *)(local_res8 + 0x18));
+  }
+  QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1e0));
+  _Var3 = QDateTime::currentMSecsSinceEpoch();
+  *(__int64 *)(this + 0xb28) = _Var3;
+  return;
+}
+
+
+
+
+/* public: void __cdecl DaSpaceShip::DesignLoadWorking(class AuId const & __ptr64,class QString
+   const & __ptr64) __ptr64 */
+
+void __thiscall DaSpaceShip::DesignLoadWorking(DaSpaceShip *this,AuId *param_1,QString *param_2)
+
+{
+  longlong lVar1;
+  DgData *this_00;
+  uint uVar2;
+  QTypedArrayData<unsigned_short> *local_res8;
+
+                    /* 0x3e4370  2595
+                       ?DesignLoadWorking@DaSpaceShip@@QEAAXAEBVAuId@@AEBVQString@@@Z */
+  InvalidatePathCache(this);
+  QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x4c0));
+  lVar1 = *(longlong *)gp_AuGlobal_exref;
+  QReadWriteLock::lockForRead((QReadWriteLock *)(lVar1 + 0x1e0));
+  this_00 = *(DgData **)(lVar1 + 0x68);
+  local_res8 = QString::fromAscii_helper("",0);
+  uVar2 = DgData::SpaceShipDesignId(this_00,(QString *)&local_res8,param_1);
+  *(uint *)(this + 0x514) = uVar2;
+  QString::~QString((QString *)&local_res8);
+  QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1e0));
+  if (*(int *)(this + 0x514) == 0) {
+    QReadWriteLock::unlock((QReadWriteLock *)(this + 0x4c0));
+    DesignNew(this,param_1,param_2);
+  }
+  else {
+    QReadWriteLock::unlock((QReadWriteLock *)(this + 0x4c0));
+    (**(code **)(*(longlong *)this + 0x1a0))(this,1);
+    QReadWriteLock::lockForWrite((QReadWriteLock *)(this + 0x770));
+    this[0xa08] = (DaSpaceShip)0x0;
+    AuPath::Clear((AuPath *)(this + 0x8f8));
+    QReadWriteLock::unlock((QReadWriteLock *)(this + 0x770));
+  }
+  return;
+}
+
+
+
+
+/* public: void __cdecl DaSpaceShip::Create(void) __ptr64 */
+
+void __thiscall DaSpaceShip::Create(DaSpaceShip *this)
+
+{
+                    /* 0x3dcb00  2026  ?Create@DaSpaceShip@@QEAAXXZ */
+  DaDesignPlane::Create((DaDesignPlane *)this);
+  QReadWriteLock::lockForWrite((QReadWriteLock *)(this + 0x4c0));
+  *(undefined4 *)(this + 0x508) = 3;
+                    /* WARNING: Could not recover jumptable at 0x0001803dcb3a. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  QReadWriteLock::unlock((QReadWriteLock *)(this + 0x4c0));
+  return;
+}
+

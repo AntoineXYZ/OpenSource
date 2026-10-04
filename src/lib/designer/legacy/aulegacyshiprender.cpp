@@ -1,13 +1,23 @@
 #include "aulegacyshiprender.h"
 #include "aulegacyship.h"
 #include "aulegacyshipmesh.h"
+#include "aulegacyshipequipment.h"
+#include "aulegacyshipwalk.h"
+#include "aulegacyshiphud.h"
+#include "aulegacyshipsound.h"
 #include "aulegacyshipatlas.h"
 #include "aulegacyshipeffects.h"
 #include "aulegacyshiphelm.h"
+#include "auapp.h"
 
 #include <QByteArray>
+#include <QApplication>
+#include <QCursor>
 #include <QImage>
 #include <QElapsedTimer>
+#include <QFocusEvent>
+#include <QHideEvent>
+#include <QShowEvent>
 #include <QTimer>
 #include <QKeyEvent>
 #include <QMap>
@@ -20,6 +30,7 @@
 #include <QOpenGLTexture>
 #include <QOpenGLVertexArrayObject>
 #include <QPainter>
+#include <QPixmap>
 #include <QSet>
 #include <QSurfaceFormat>
 #include <QVector2D>
@@ -33,7 +44,9 @@
 namespace
 {
 const float Pi = 3.14159265358979323846f;
-const float FieldOfView = 40.0f;
+const float FieldOfView = 45.0f;
+using namespace AuLegacyShip::Rendering;
+const qint64 DoorTickMilliseconds = qint64(DoorAnimationTickSeconds * 1000);
 
 struct TextureRegion
 {
@@ -168,6 +181,13 @@ class AuLegacyShipRender::Impl
 {
 public:
 	AuLegacyShip::Rendering::Mesh mesh;
+	AuLegacyShip::Design design;
+	WalkWorld world;
+	WalkState character;
+	SoundSession sound;
+	QVector<DoorDefinition> doors;
+	QHash<quint32, DoorAnimation> doorStates;
+	QSet<int> keys;
 	QVector<DrawBatch> batches;
 	QVector<TransparentTriangle> transparentTriangles;
 	QOpenGLBuffer buffer;
@@ -181,21 +201,32 @@ public:
 	QElapsedTimer animationClock;
 	QTimer* animationTimer = nullptr;
 	QMetaObject::Connection contextConnection;
-	QVector3D target;
-	QPoint mouse;
-	Qt::MouseButton dragButton = Qt::NoButton;
+	QPoint mouseAnchor;
+	QPoint mousePressed;
+	bool handClick = false;
+	bool mouseCaptured = false;
+	bool freeMouse = false;
+	bool temporaryHand = false;
 	QString glError;
 	QStringList textureWarnings;
 	float radius = 10.0f;
-	float distance = 40.0f;
-	float azimuth = -55.0f;
-	float elevation = 30.0f;
+	float azimuth = 90.0f;
+	float elevation = 0.0f;
 	int deck = 0;
-	bool cutaway = false;
 	bool dirty = true;
 	bool ready = false;
-	bool autoFit = true;
-	bool panning = false;
+	bool gravity = false;
+	bool continuousForward = false;
+	bool jumpRequested = false;
+	bool haveDesign = false;
+	qint64 lastTick = 0;
+	qint64 lastDoorTick = 0;
+	qint64 lastTargetTick = 0;
+	bool hasTarget = false;
+	int targetLevel = 0;
+	QVector3D targetPoint;
+	QString interaction;
+	qint64 interactionUntil = 0;
 
 	QVector3D CameraDirection() const
 	{
@@ -205,11 +236,26 @@ public:
 			std::cos(pitch) * std::sin(yaw), std::sin(pitch));
 	}
 
-	float FittedDistance(float aspect) const
+	QVector3D Eye() const
 	{
-		const float vertical = FieldOfView * Pi / 360.0f;
-		const float horizontal = std::atan(std::tan(vertical) * aspect);
-		return radius * 1.12f / std::sin(std::min(vertical, horizontal));
+		return character.feet + QVector3D(0, 0, world.Settings().eyeHeight);
+	}
+
+	int FrameMaterial(int source) const
+	{
+		const Batch& batch = mesh.batches[source];
+		return int(batch.doorId ? DoorMaterialFrame(batch.material, doorStates.value(batch.doorId).frame)
+			: batch.material);
+	}
+
+	void StopMovement(bool preserveFall = false)
+	{
+		keys.clear();
+		continuousForward = false;
+		jumpRequested = false;
+		character.velocity = preserveFall && character.gravityActive
+			? QVector3D(0, 0, character.velocity.z()) : QVector3D();
+		handClick = false;
 	}
 
 	bool Upload()
@@ -234,7 +280,7 @@ public:
 			DrawBatch draw = { source, vertices.size(), batch.vertices.size(), batch.deck };
 			batches.append(draw);
 			Texture(source);
-			if (batch.tint.w() < 0.999f || transparentTextures.contains(TextureKey(source)))
+			if (batch.doorId || batch.tint.w() < 0.999f || transparentTextures.contains(TextureKey(source)))
 			{
 				for (int i = 0; i + 2 < batch.vertices.size(); i += 3)
 				{
@@ -274,13 +320,13 @@ public:
 	QString TextureKey(int source) const
 	{
 		const auto& batch = mesh.batches[source];
-		return batch.textureFile.isEmpty() ? QStringLiteral("atlas:%1").arg(int(batch.material)) : batch.textureFile;
+		return batch.textureFile.isEmpty() ? QStringLiteral("atlas:%1").arg(FrameMaterial(source)) : batch.textureFile;
 	}
 
 	QOpenGLTexture* Texture(int source)
 	{
 		const auto& batch = mesh.batches[source];
-		const int material = int(batch.material);
+		const int material = FrameMaterial(source);
 		const QString key = TextureKey(source);
 		if (textures.contains(key))
 			return textures.value(key);
@@ -388,62 +434,261 @@ AuLegacyShipRender::AuLegacyShipRender(QWidget* parent)
 	requested.setSamples(4);
 	setFormat(requested);
 	setFocusPolicy(Qt::StrongFocus);
-	setAccessibleName(QStringLiteral("Legacy spacecraft 3D rendering"));
-	setToolTip(QStringLiteral("Drag to orbit. Right, middle, or Shift-drag to pan. "
-		"Scroll to zoom. Press F or Home to fit the spacecraft."));
+	setMouseTracking(true);
+	qApp->installEventFilter(this);
+	setAccessibleName(QStringLiteral("Legacy spacecraft walkthrough"));
+	setToolTip(QStringLiteral("W/A/S/D move; mouse looks; Shift runs. Return or right-click toggles avatar/hand input; "
+		"hold Ctrl for the hand cursor. C/Z move vertically where permitted; E engages a ladder. "
+		"Space jumps or brakes. Use the hand to click doors/hatches, or Ctrl+P/C to open/close. Home returns to the design."));
 	setMinimumSize(160, 120);
 	m_Impl->animationClock.start();
 	m_Impl->animationTimer = new QTimer(this);
-	m_Impl->animationTimer->setInterval(100);
-	connect(m_Impl->animationTimer, &QTimer::timeout, this, [this]() {
-		if (isVisible())
-			update();
-	});
+	m_Impl->animationTimer->setInterval(16);
+	connect(m_Impl->animationTimer, &QTimer::timeout, this, [this]() { Tick(); });
+	m_Impl->animationTimer->start();
 }
 
 AuLegacyShipRender::~AuLegacyShipRender()
 {
+	qApp->removeEventFilter(this);
+	ReleaseMouseCapture();
+	m_Impl->sound.SetAudio(nullptr);
 	CleanupGL();
 	delete m_Impl;
 }
 
 void AuLegacyShipRender::SetDesign(const AuLegacyShip::Design& design)
 {
-	const bool wasEmpty = m_Impl->mesh.batches.isEmpty();
+	const bool reset = !m_Impl->haveDesign || design.header.designId != m_Impl->design.header.designId;
+	const QVector<DoorDefinition> previousDoors = m_Impl->doors;
+	const QHash<quint32, DoorAnimation> previousStates = m_Impl->doorStates;
+	m_Impl->design = design;
+	m_Impl->sound.SetDesign(design);
+	m_Impl->haveDesign = true;
 	m_Impl->mesh = AuLegacyShip::Rendering::BuildMesh(design);
+	m_Impl->world.SetMesh(m_Impl->mesh, design);
+	m_Impl->hasTarget = false;
+	m_Impl->targetLevel = 0;
+	m_Impl->world.SetDesignPlane(float(m_Impl->deck * AuLegacyShip::DeckHeight));
+	m_Impl->doors = DoorDefinitions(design, m_Impl->mesh);
+	m_Impl->doorStates.clear();
+	for (const DoorDefinition& door : m_Impl->doors)
+	{
+		DoorAnimation state;
+		if (!reset)
+			for (const DoorDefinition& previous : previousDoors)
+				if (previous.id == door.id && previous.type == door.type && previous.deck == door.deck
+					&& previous.center == door.center && previous.a == door.a && previous.b == door.b)
+				{
+					state = previousStates.value(door.id);
+					break;
+				}
+		m_Impl->doorStates.insert(door.id, state);
+		m_Impl->world.SetDoorOpen(door.id, state.open);
+	}
+	if (reset)
+	{
+		// The original studio creates its standing avatar at the ship origin;
+		// switching line/solid mode never resets this character transform.
+		m_Impl->character = WalkState();
+		m_Impl->azimuth = 90;
+		m_Impl->elevation = 0;
+		m_Impl->StopMovement();
+		m_Impl->interaction.clear();
+	}
 	m_Impl->radius = std::max(1.0f, (m_Impl->mesh.maximum - m_Impl->mesh.minimum).length() * 0.5f);
 	m_Impl->dirty = true;
-	bool animated = false;
-	for (const auto& batch : m_Impl->mesh.batches)
-		animated = animated || batch.effectFrameCount > 1 || batch.degreesPerSecond != 0 || !batch.uvVelocity.isNull();
-	if (animated)
-		m_Impl->animationTimer->start();
-	else
-		m_Impl->animationTimer->stop();
 	if (m_Impl->ready)
 		m_Impl->glError.clear();
-	if (wasEmpty || m_Impl->autoFit)
-		FitDesign();
+	m_Impl->lastTick = m_Impl->animationClock.elapsed();
+	m_Impl->lastDoorTick = m_Impl->lastTick / DoorTickMilliseconds;
 	update();
 }
 
 void AuLegacyShipRender::SetDeck(int deck)
 {
 	m_Impl->deck = deck;
+	m_Impl->world.SetDesignPlane(float(deck * AuLegacyShip::DeckHeight));
 	update();
 }
 
-void AuLegacyShipRender::SetCutaway(bool enabled)
+void AuLegacyShipRender::SetGravity(bool enabled)
 {
-	m_Impl->cutaway = enabled;
+	m_Impl->gravity = enabled;
+	m_Impl->character.velocity = QVector3D();
 	update();
 }
 
-void AuLegacyShipRender::FitDesign()
+void AuLegacyShipRender::ResetCharacter()
 {
-	m_Impl->target = (m_Impl->mesh.minimum + m_Impl->mesh.maximum) * 0.5f;
-	m_Impl->distance = m_Impl->FittedDistance(float(std::max(1, width())) / std::max(1, height()));
-	m_Impl->autoFit = true;
+	m_Impl->StopMovement();
+	if (m_Impl->world.FindSpawn(m_Impl->design, m_Impl->deck, m_Impl->character))
+	{
+		m_Impl->azimuth = 90;
+		m_Impl->elevation = 0;
+		m_Impl->interaction = QStringLiteral("Returned to the design.");
+	}
+	else
+		m_Impl->interaction = QStringLiteral("No clear standing position on this deck. Select another deck and press Home.");
+	m_Impl->interactionUntil = m_Impl->animationClock.elapsed() + 2500;
+	update();
+}
+
+void AuLegacyShipRender::Tick()
+{
+	const qint64 now = m_Impl->animationClock.elapsed();
+	const float seconds = std::min(0.05f, float(now - m_Impl->lastTick) / 1000.0f);
+	m_Impl->lastTick = now;
+	if (!isVisible()) return;
+	AuApp* app = qobject_cast<AuApp*>(qApp);
+	m_Impl->sound.SetAudio(app ? app->Sound() : nullptr);
+	const Qt::KeyboardModifiers modifiers = QApplication::queryKeyboardModifiers();
+	m_Impl->temporaryHand = modifiers.testFlag(Qt::ControlModifier);
+	UpdateMouseCapture();
+	if (m_Impl->mouseCaptured)
+	{
+		// Sample the real cursor, rather than queued synthetic warp events.
+		// The original input loop also recentres it while controlling the avatar.
+		const QPoint delta = QCursor::pos() - m_Impl->mouseAnchor;
+		m_Impl->azimuth = std::fmod(m_Impl->azimuth - delta.x() * 0.2f, 360.0f);
+		m_Impl->elevation = Bounded(m_Impl->elevation - delta.y() * 0.2f, -89.0f, 89.0f);
+		CenterMouse();
+	}
+	const qint64 tick = now / DoorTickMilliseconds;
+	for (qint64 step = m_Impl->lastDoorTick; step < tick && step < m_Impl->lastDoorTick + 2; ++step)
+		for (auto door = m_Impl->doorStates.begin(); door != m_Impl->doorStates.end(); ++door)
+			if (AdvanceDoorAnimation(door.value()) && door.value().frame == DoorFrame::HalfOpen)
+				for (const DoorDefinition& definition : m_Impl->doors)
+					if (definition.id == door.key())
+					{
+						m_Impl->sound.DoorTransition(definition, door.value().open);
+						break;
+					}
+	m_Impl->lastDoorTick = tick;
+	if (hasFocus() && seconds > 0)
+	{
+		const auto pressed = [this](int key) { return m_Impl->keys.contains(key); };
+		const float forward = float(pressed(Qt::Key_W) || m_Impl->continuousForward) - float(pressed(Qt::Key_S));
+		const float sideways = float(pressed(Qt::Key_D)) - float(pressed(Qt::Key_A));
+		const float vertical = float(pressed(Qt::Key_C)) - float(pressed(Qt::Key_Z));
+		const float speed = modifiers.testFlag(Qt::ShiftModifier) ? 12.5f : 5.0f;
+		const float yaw = m_Impl->azimuth * Pi / 180.0f;
+		QVector3D direction = m_Impl->CameraDirection();
+		if (m_Impl->character.gravityActive && !m_Impl->character.onLadder)
+			direction = QVector3D(std::cos(yaw), std::sin(yaw), 0);
+		QVector3D motion = direction * forward + QVector3D(std::sin(yaw), -std::cos(yaw), 0) * sideways
+			+ QVector3D(0, 0, vertical);
+		if (m_Impl->character.gravityActive)
+		{
+			// Vertical input cannot fly in ship gravity, but Z still requests
+			// descent through a supporting automatic hatch. Keep that intent
+			// without reducing walking speed when C/Z is held with WASD.
+			motion.setZ(0);
+			if (motion.lengthSquared() > 1) motion.normalize();
+			motion.setZ(vertical);
+		}
+		else if (motion.lengthSquared() > 1) motion.normalize();
+		if (!m_Impl->character.gravityActive && pressed(Qt::Key_Space))
+		{
+			motion = QVector3D();
+			m_Impl->character.velocity = QVector3D();
+		}
+		m_Impl->world.Step(m_Impl->character, motion * speed, seconds, m_Impl->gravity, m_Impl->jumpRequested);
+		m_Impl->jumpRequested = false;
+		// The 2016 path query requests opening only for automatic small doors
+		// and hatches. Designer Tock deliberately skips world auto-closing.
+		for (quint32 id : m_Impl->character.blockedDoors)
+			for (const DoorDefinition& door : m_Impl->doors)
+				if (door.id == id && IsAutomaticDoorDetail(door.type))
+				{
+					OperateDoor(id, true);
+					break;
+				}
+	}
+	UpdateTarget(now);
+	if (isActiveWindow())
+	{
+		SoundListener listener;
+		listener.feet = m_Impl->character.feet;
+		listener.eye = m_Impl->Eye();
+		listener.forward = m_Impl->CameraDirection();
+		listener.up = QVector3D::crossProduct(QVector3D::crossProduct(listener.forward, QVector3D(0, 0, 1)),
+			listener.forward).normalized();
+		listener.inShip = m_Impl->character.inShip;
+		listener.grounded = m_Impl->character.grounded;
+		listener.climbing = m_Impl->character.onLadder;
+		listener.running = modifiers.testFlag(Qt::ShiftModifier);
+		const QVector3D velocity = m_Impl->character.velocity;
+		listener.moving = hasFocus() && (velocity.x() * velocity.x() + velocity.y() * velocity.y()
+			+ (listener.climbing ? velocity.z() * velocity.z() : 0) > .001f);
+		m_Impl->sound.Update(listener);
+	}
+	else
+		m_Impl->sound.Stop();
+	update();
+}
+
+void AuLegacyShipRender::UpdateTarget(qint64 now)
+{
+	if (now - m_Impl->lastTargetTick < 200) return;
+	m_Impl->lastTargetTick = now;
+	WalkHit hit;
+	if (m_Impl->world.Raycast(m_Impl->Eye(), m_Impl->CameraDirection(), 256, hit, false))
+	{
+		// The preview has one target atom, the ship. The original sight worker
+		// doubles a steady target's lock every 200 ms, starting at level one.
+		m_Impl->targetLevel = m_Impl->hasTarget
+			? (m_Impl->targetLevel ? std::min(15, m_Impl->targetLevel * 2) : 1)
+			: m_Impl->targetLevel / 3;
+		m_Impl->hasTarget = true;
+		m_Impl->targetPoint = hit.point;
+	}
+	else
+	{
+		m_Impl->targetLevel /= 2;
+		if (!m_Impl->targetLevel) m_Impl->hasTarget = false;
+	}
+}
+
+void AuLegacyShipRender::OperateDoor(quint32 id, bool open)
+{
+	if (!id || !m_Impl->doorStates.contains(id)) return;
+	const QVector<quint32> group = DoorOperationGroup(m_Impl->doors, id);
+	for (quint32 member : group)
+	{
+		m_Impl->doorStates[member].open = open;
+		m_Impl->world.SetDoorOpen(member, open);
+	}
+	m_Impl->interaction = open ? QStringLiteral("Opening door / hatch.") : QStringLiteral("Closing door / hatch.");
+	m_Impl->interactionUntil = m_Impl->animationClock.elapsed() + 1800;
+	update();
+}
+
+void AuLegacyShipRender::UseDoor(const QPoint& screenPosition)
+{
+	const QVector3D forward = m_Impl->CameraDirection();
+	const QVector3D right = QVector3D::crossProduct(forward, QVector3D(0, 0, 1)).normalized();
+	const QVector3D up = QVector3D::crossProduct(right, forward).normalized();
+	const float aspect = float(std::max(1, width())) / std::max(1, height());
+	const float tangent = std::tan(FieldOfView * Pi / 360.0f);
+	const float x = 2.0f * screenPosition.x() / std::max(1, width()) - 1;
+	const float y = 1 - 2.0f * screenPosition.y() / std::max(1, height());
+	const QVector3D direction = (forward + right * (x * tangent * aspect) + up * (y * tangent)).normalized();
+	WalkHit hit;
+	if (m_Impl->world.Raycast(m_Impl->Eye(), direction, 16, hit) && hit.doorId)
+		for (const DoorDefinition& door : m_Impl->doors)
+			if (door.id == hit.doorId)
+			{
+				const int deck = int(std::floor((m_Impl->character.feet.z() + .05) / AuLegacyShip::DeckHeight));
+				if ((door.deck == deck || door.deck == deck + 1)
+					&& DoorDistanceSquared(door, m_Impl->character.feet.toPointF()) <= DoorInteractionDistance * DoorInteractionDistance)
+				{
+					OperateDoor(door.id, !m_Impl->doorStates.value(door.id).open);
+					return;
+				}
+			}
+	m_Impl->interaction = QStringLiteral("Move within 6 feet of a door or hatch, then click it.");
+	m_Impl->interactionUntil = m_Impl->animationClock.elapsed() + 2500;
 	update();
 }
 
@@ -499,18 +744,13 @@ uniform bool u_hasEffect;
 uniform vec4 u_effectRect;
 uniform vec4 u_tint;
 uniform float u_selfIllumination;
-uniform bool u_equipment;
 uniform bool u_atlas;
 uniform bool u_twoSided;
 uniform vec2 u_inset;
 uniform vec3 u_light;
-uniform float u_clipHeight;
-uniform bool u_cutaway;
 uniform bool u_translucentPass;
 void main()
 {
-	if (u_cutaway && !u_equipment && v_position.z > u_clipHeight)
-		discard;
 	vec2 uv = u_atlas ? mix(u_inset, vec2(1.0) - u_inset, fract(v_uv)) : v_uv;
 	vec4 texel = SAMPLE(u_texture, uv) * u_tint;
 	if (texel.a < 0.01 || u_translucentPass != (texel.a < 0.999))
@@ -585,8 +825,7 @@ void AuLegacyShipRender::CleanupGL()
 
 void AuLegacyShipRender::resizeGL(int, int)
 {
-	if (m_Impl->autoFit)
-		FitDesign();
+	if (m_Impl->mouseCaptured) CenterMouse();
 }
 
 void AuLegacyShipRender::paintGL()
@@ -598,11 +837,11 @@ void AuLegacyShipRender::paintGL()
 	if (m_Impl->ready && (!m_Impl->dirty || m_Impl->Upload()))
 	{
 		const QVector3D direction = m_Impl->CameraDirection();
-		const QVector3D eye = m_Impl->target + direction * m_Impl->distance;
+		const QVector3D eye = m_Impl->Eye();
 		QMatrix4x4 view;
-		view.lookAt(eye, m_Impl->target, QVector3D(0.0f, 0.0f, 1.0f));
+		view.lookAt(eye, eye + direction, QVector3D(0.0f, 0.0f, 1.0f));
 		QMatrix4x4 projection;
-		const float nearPlane = std::max(0.02f, std::min(m_Impl->radius * 0.01f, m_Impl->distance * 0.01f));
+		const float nearPlane = 0.1f;
 		const float farPlane = std::max(nearPlane + 1.0f,
 			(eye - (m_Impl->mesh.minimum + m_Impl->mesh.maximum) * 0.5f).length() + m_Impl->radius * 2.0f);
 		projection.perspective(FieldOfView, float(std::max(1, width())) / std::max(1, height()), nearPlane, farPlane);
@@ -617,9 +856,7 @@ void AuLegacyShipRender::paintGL()
 		m_Impl->program->setUniformValue("u_mvp", projection * view);
 		m_Impl->program->setUniformValue("u_texture", 0);
 		m_Impl->program->setUniformValue("u_effect", 1);
-		m_Impl->program->setUniformValue("u_cutaway", m_Impl->cutaway);
-		m_Impl->program->setUniformValue("u_clipHeight", float(m_Impl->deck * AuLegacyShip::DeckHeight + 4.0));
-		m_Impl->program->setUniformValue("u_light", (direction + QVector3D(0.15f, -0.1f, 0.5f)).normalized());
+		m_Impl->program->setUniformValue("u_light", (-direction + QVector3D(0.15f, -0.1f, 0.5f)).normalized());
 		m_Impl->program->setUniformValue("u_translucentPass", false);
 		const qint64 elapsed = m_Impl->animationClock.elapsed();
 		const float seconds = float(elapsed) / 1000;
@@ -637,7 +874,7 @@ void AuLegacyShipRender::paintGL()
 		const auto bindBatch = [this, gl, elapsed, seconds, &transforms](int source)
 		{
 			const auto& batch = m_Impl->mesh.batches[source];
-			const int material = int(batch.material);
+			const int material = m_Impl->FrameMaterial(source);
 			m_Impl->Texture(source)->bind(0);
 			const bool atlas = batch.textureFile.isEmpty() && material >= 0
 				&& material < int(sizeof(ShipTextures) / sizeof(ShipTextures[0]));
@@ -649,7 +886,6 @@ void AuLegacyShipRender::paintGL()
 			m_Impl->program->setUniformValue("u_uvOffset", batch.uvVelocity * seconds);
 			m_Impl->program->setUniformValue("u_tint", batch.tint);
 			m_Impl->program->setUniformValue("u_selfIllumination", batch.selfIllumination);
-			m_Impl->program->setUniformValue("u_equipment", batch.equipment);
 			m_Impl->program->setUniformValue("u_twoSided", batch.twoSided);
 			if (batch.twoSided)
 				gl->glDisable(GL_CULL_FACE);
@@ -659,20 +895,17 @@ void AuLegacyShipRender::paintGL()
 		};
 		for (const DrawBatch& batch : m_Impl->batches)
 		{
-			if (m_Impl->cutaway && batch.deck > m_Impl->deck)
-				continue;
 			bindBatch(batch.source);
 			gl->glDrawArrays(GL_TRIANGLES, batch.first, batch.count);
 		}
 		QVector<const TransparentTriangle*> transparent;
 		transparent.reserve(m_Impl->transparentTriangles.size());
 		for (const TransparentTriangle& triangle : m_Impl->transparentTriangles)
-			if (!m_Impl->cutaway || triangle.deck <= m_Impl->deck)
-				transparent.append(&triangle);
+			transparent.append(&triangle);
 		std::sort(transparent.begin(), transparent.end(), [&direction, &transforms](const TransparentTriangle* a, const TransparentTriangle* b)
 		{
 			return QVector3D::dotProduct(transforms[a->source].map(a->center), direction)
-				< QVector3D::dotProduct(transforms[b->source].map(b->center), direction);
+				> QVector3D::dotProduct(transforms[b->source].map(b->center), direction);
 		});
 		QVector<quint32> indices;
 		QVector<DrawBatch> transparentBatches;
@@ -725,110 +958,282 @@ void AuLegacyShipRender::paintGL()
 	}
 	QPainter painter(this);
 	painter.setPen(QColor(195, 205, 215));
+	// Draw HUD after the scene, independently of whether any ship mesh exists.
+	// The native crosshair is a yellow textured dot with four spreading arms.
+	PaintCrosshair(painter, size(), m_Impl->targetLevel);
+	if (m_Impl->hasTarget && m_Impl->targetLevel > 0
+		&& (m_Impl->targetPoint - m_Impl->Eye()).length() <= m_Impl->targetLevel * 10)
+		PaintShipTarget(painter, size(), m_Impl->design.header.name);
 	if (!m_Impl->glError.isEmpty())
 		painter.drawText(rect().adjusted(24, 24, -24, -24), Qt::AlignCenter | Qt::TextWordWrap, m_Impl->glError);
 	else if (m_Impl->mesh.batches.isEmpty())
-		painter.drawText(rect(), Qt::AlignCenter, QStringLiteral("Paint cells in the floor plan to create a spacecraft."));
+		painter.drawText(rect().adjusted(24, int(height() * .72), -24, -12), Qt::AlignHCenter | Qt::AlignTop | Qt::TextWordWrap,
+			QStringLiteral("Paint cells in the floor plan to create a spacecraft."));
 	else
 	{
-		const QString mode = m_Impl->cutaway ? QStringLiteral("Deck %1 cutaway").arg(m_Impl->deck)
-			: QStringLiteral("Spacecraft exterior");
-		painter.drawText(QRect(12, 10, std::max(0, width() - 24), 24), Qt::AlignLeft | Qt::AlignVCenter, mode);
+		const int deck = int(std::floor((m_Impl->character.feet.z() + .05) / AuLegacyShip::DeckHeight));
+		painter.drawText(QRect(12, 10, std::max(0, width() - 24), 24), Qt::AlignLeft | Qt::AlignVCenter,
+			QStringLiteral("Walkthrough · Deck %1 · Studio gravity %2").arg(deck)
+				.arg(m_Impl->gravity ? QStringLiteral("on") : QStringLiteral("off")));
 		painter.drawText(QRect(12, height() - 34, std::max(0, width() - 24), 24), Qt::AlignLeft | Qt::AlignVCenter,
-			QStringLiteral("Drag: orbit   Shift / right drag: pan   Scroll: zoom   F: fit"));
+			QStringLiteral("WASD move   Mouse look   Return/right-click avatar/hand   Hold Ctrl for hand   Ctrl+P/C open/close"));
+		if (m_Impl->animationClock.elapsed() < m_Impl->interactionUntil)
+			painter.drawText(QRect(12, height() - 64, std::max(0, width() - 24), 28),
+				Qt::AlignLeft | Qt::AlignVCenter, m_Impl->interaction);
 		if (!m_Impl->textureWarnings.isEmpty())
 			painter.drawText(QRect(12, 38, std::max(0, width() - 24), 40), Qt::AlignLeft | Qt::TextWordWrap,
 				QStringLiteral("Original texture unavailable; showing untextured geometry."));
 	}
 }
 
+void AuLegacyShipRender::CenterMouse()
+{
+	const QPoint center = mapToGlobal(rect().center());
+	if (QCursor::pos() != center) QCursor::setPos(center);
+	// Some platforms cannot warp the cursor. Sample the resulting position so
+	// a rejected warp cannot apply the same look delta repeatedly while idle.
+	m_Impl->mouseAnchor = QCursor::pos();
+}
+
+void AuLegacyShipRender::ReleaseMouseCapture()
+{
+	if (QWidget::mouseGrabber() == this) releaseMouse();
+	m_Impl->mouseCaptured = false;
+	const QPixmap hand(QStringLiteral(":/data/Hand.png"));
+	setCursor(hand.isNull() ? QCursor(Qt::PointingHandCursor) : QCursor(hand, 1, 3));
+}
+
+void AuLegacyShipRender::UpdateMouseCapture()
+{
+	if (m_Impl->mouseCaptured && QWidget::mouseGrabber() != this)
+	{
+		m_Impl->StopMovement(true);
+		ReleaseMouseCapture();
+	}
+	const bool wanted = isVisible() && hasFocus() && isActiveWindow()
+		&& !m_Impl->freeMouse && !m_Impl->temporaryHand
+		&& !QApplication::activeModalWidget() && !QApplication::activePopupWidget()
+		&& (!QWidget::mouseGrabber() || QWidget::mouseGrabber() == this);
+	if (wanted == m_Impl->mouseCaptured) return;
+	if (wanted)
+	{
+		m_Impl->handClick = false;
+		grabMouse(Qt::BlankCursor);
+		m_Impl->mouseCaptured = QWidget::mouseGrabber() == this;
+		if (m_Impl->mouseCaptured)
+		{
+			setCursor(Qt::BlankCursor);
+			CenterMouse();
+		}
+	}
+	else
+	{
+		m_Impl->StopMovement(true);
+		ReleaseMouseCapture();
+	}
+	update();
+}
+
 void AuLegacyShipRender::mousePressEvent(QMouseEvent* event)
 {
-	if (event->button() != Qt::LeftButton && event->button() != Qt::MiddleButton && event->button() != Qt::RightButton)
+	if (event->button() == Qt::RightButton && event->modifiers() == Qt::NoModifier)
 	{
-		QOpenGLWidget::mousePressEvent(event);
+		m_Impl->freeMouse = !m_Impl->freeMouse;
+		setFocus(Qt::MouseFocusReason);
+		UpdateMouseCapture();
+		event->accept();
 		return;
 	}
-	setFocus(Qt::MouseFocusReason);
-	m_Impl->mouse = event->pos();
-	m_Impl->dragButton = event->button();
-	m_Impl->panning = event->button() != Qt::LeftButton || event->modifiers().testFlag(Qt::ShiftModifier);
-	setCursor(Qt::ClosedHandCursor);
-	event->accept();
+	if (event->button() == Qt::LeftButton)
+	{
+		// A click after focus loss resumes avatar input without operating a
+		// door under the old cursor position. Hand mode clicks use that position.
+		setFocus(Qt::MouseFocusReason);
+		UpdateMouseCapture();
+		m_Impl->handClick = !m_Impl->mouseCaptured;
+		m_Impl->mousePressed = event->pos();
+		event->accept();
+		return;
+	}
+	QOpenGLWidget::mousePressEvent(event);
 }
 
 void AuLegacyShipRender::mouseMoveEvent(QMouseEvent* event)
 {
-	if (m_Impl->dragButton == Qt::NoButton || !event->buttons().testFlag(m_Impl->dragButton))
-	{
-		QOpenGLWidget::mouseMoveEvent(event);
-		return;
-	}
-	const QPoint delta = event->pos() - m_Impl->mouse;
-	m_Impl->mouse = event->pos();
-	m_Impl->autoFit = false;
-	if (m_Impl->panning)
-	{
-		const QVector3D direction = m_Impl->CameraDirection();
-		const QVector3D right = QVector3D::crossProduct(QVector3D(0.0f, 0.0f, 1.0f), direction).normalized();
-		const QVector3D up = QVector3D::crossProduct(direction, right).normalized();
-		const float scale = 2.0f * m_Impl->distance * std::tan(FieldOfView * Pi / 360.0f) / std::max(1, height());
-		m_Impl->target += (-right * float(delta.x()) + up * float(delta.y())) * scale;
-	}
-	else
-	{
-		m_Impl->azimuth = std::fmod(m_Impl->azimuth - delta.x() * 0.4f, 360.0f);
-		m_Impl->elevation = Bounded(m_Impl->elevation + delta.y() * 0.4f, -89.0f, 89.0f);
-	}
-	update();
+	if (m_Impl->handClick && (event->pos() - m_Impl->mousePressed).manhattanLength() > 3)
+		m_Impl->handClick = false;
 	event->accept();
 }
 
 void AuLegacyShipRender::mouseReleaseEvent(QMouseEvent* event)
 {
-	if (event->button() == m_Impl->dragButton)
+	if (event->button() == Qt::LeftButton)
 	{
-		m_Impl->dragButton = Qt::NoButton;
-		unsetCursor();
+		if (m_Impl->handClick && !m_Impl->mouseCaptured) UseDoor(event->pos());
+		m_Impl->handClick = false;
 		event->accept();
 		return;
 	}
+	if (event->button() == Qt::RightButton) { event->accept(); return; }
 	QOpenGLWidget::mouseReleaseEvent(event);
 }
 
 void AuLegacyShipRender::mouseDoubleClickEvent(QMouseEvent* event)
 {
-	if (event->button() == Qt::LeftButton)
-	{
-		FitDesign();
-		event->accept();
-		return;
-	}
-	QOpenGLWidget::mouseDoubleClickEvent(event);
+	mousePressEvent(event);
 }
 
 void AuLegacyShipRender::wheelEvent(QWheelEvent* event)
 {
-	const int delta = event->angleDelta().y();
-	if (delta == 0)
-	{
-		event->ignore();
-		return;
-	}
-	m_Impl->distance = Bounded(m_Impl->distance * std::pow(1.15f, -delta / 120.0f),
-		0.2f, std::max(100.0f, m_Impl->radius * 100.0f));
-	m_Impl->autoFit = false;
-	update();
 	event->accept();
 }
 
 void AuLegacyShipRender::keyPressEvent(QKeyEvent* event)
 {
-	if (event->key() == Qt::Key_F || event->key() == Qt::Key_Home)
+	const int key = event->key();
+	if ((key == Qt::Key_Return || key == Qt::Key_Enter) && event->modifiers() == Qt::NoModifier)
 	{
-		FitDesign();
+		if (!event->isAutoRepeat())
+		{
+			m_Impl->freeMouse = !m_Impl->freeMouse;
+			UpdateMouseCapture();
+		}
+		event->accept();
+		return;
+	}
+	if (event->modifiers().testFlag(Qt::ControlModifier) && (key == Qt::Key_P || key == Qt::Key_C))
+	{
+		if (!event->isAutoRepeat())
+		{
+			const bool open = key == Qt::Key_P;
+			const quint32 id = ClosestDoor(m_Impl->doors, m_Impl->doorStates, m_Impl->character.feet, !open);
+			if (id) OperateDoor(id, open);
+			else
+			{
+				m_Impl->interaction = QStringLiteral("No %1 door or hatch within 6 feet.")
+					.arg(open ? QStringLiteral("closed") : QStringLiteral("open"));
+				m_Impl->interactionUntil = m_Impl->animationClock.elapsed() + 2500;
+			}
+		}
+		event->accept();
+		return;
+	}
+	if (event->modifiers().testFlag(Qt::ControlModifier) || event->modifiers().testFlag(Qt::AltModifier))
+	{
+		QOpenGLWidget::keyPressEvent(event);
+		return;
+	}
+	if (key == Qt::Key_Home)
+	{
+		ResetCharacter();
+		event->accept();
+		return;
+	}
+	if (!m_Impl->mouseCaptured)
+	{
+		QOpenGLWidget::keyPressEvent(event);
+		return;
+	}
+	if (key == Qt::Key_E)
+	{
+		if (!event->isAutoRepeat())
+		{
+			if (m_Impl->world.ToggleLadder(m_Impl->character))
+				m_Impl->interaction = m_Impl->character.ladderEngaged
+					? QStringLiteral("On ladder. C/Z climbs; E releases.") : QStringLiteral("Released ladder.");
+			else
+				m_Impl->interaction = QStringLiteral("Move closer to a ladder, then press E.");
+			m_Impl->interactionUntil = m_Impl->animationClock.elapsed() + 2500;
+		}
+		event->accept();
+		return;
+	}
+	if (key == Qt::Key_Q)
+	{
+		if (!event->isAutoRepeat()) m_Impl->continuousForward = !m_Impl->continuousForward;
+		event->accept();
+		return;
+	}
+	if (key == Qt::Key_W || key == Qt::Key_A || key == Qt::Key_S || key == Qt::Key_D
+		|| key == Qt::Key_C || key == Qt::Key_Z || key == Qt::Key_Shift || key == Qt::Key_Space)
+	{
+		if (!event->isAutoRepeat())
+		{
+			m_Impl->keys.insert(key);
+			if (key == Qt::Key_S) m_Impl->continuousForward = false;
+			if (key == Qt::Key_Space)
+			{
+				m_Impl->jumpRequested = true;
+				m_Impl->continuousForward = false;
+			}
+		}
 		event->accept();
 		return;
 	}
 	QOpenGLWidget::keyPressEvent(event);
+}
+
+void AuLegacyShipRender::keyReleaseEvent(QKeyEvent* event)
+{
+	if (m_Impl->keys.contains(event->key()))
+	{
+		if (!event->isAutoRepeat()) m_Impl->keys.remove(event->key());
+		event->accept();
+		return;
+	}
+	QOpenGLWidget::keyReleaseEvent(event);
+}
+
+bool AuLegacyShipRender::eventFilter(QObject* watched, QEvent* event)
+{
+	if (watched == this && event->type() == QEvent::ToolTip && m_Impl->mouseCaptured) return true;
+	if (isVisible() && (event->type() == QEvent::KeyPress || event->type() == QEvent::KeyRelease))
+	{
+		const QKeyEvent* key = static_cast<QKeyEvent*>(event);
+		if (key->key() == Qt::Key_Control && !key->isAutoRepeat())
+		{
+			// Observe releases over tool windows too, without consuming their keys.
+			m_Impl->temporaryHand = event->type() == QEvent::KeyPress;
+			UpdateMouseCapture();
+		}
+	}
+	if (event->type() == QEvent::ApplicationDeactivate
+		|| (event->type() == QEvent::WindowDeactivate && watched == window()))
+	{
+		m_Impl->StopMovement();
+		ReleaseMouseCapture();
+		m_Impl->sound.Stop();
+	}
+	return QOpenGLWidget::eventFilter(watched, event);
+}
+
+void AuLegacyShipRender::focusInEvent(QFocusEvent* event)
+{
+	QOpenGLWidget::focusInEvent(event);
+	m_Impl->StopMovement();
+	m_Impl->temporaryHand = QApplication::queryKeyboardModifiers().testFlag(Qt::ControlModifier);
+	UpdateMouseCapture();
+}
+
+void AuLegacyShipRender::focusOutEvent(QFocusEvent* event)
+{
+	m_Impl->StopMovement();
+	ReleaseMouseCapture();
+	QOpenGLWidget::focusOutEvent(event);
+}
+
+void AuLegacyShipRender::showEvent(QShowEvent* event)
+{
+	QOpenGLWidget::showEvent(event);
+	m_Impl->freeMouse = false;
+	m_Impl->temporaryHand = QApplication::queryKeyboardModifiers().testFlag(Qt::ControlModifier);
+	QTimer::singleShot(0, this, [this]() { UpdateMouseCapture(); });
+}
+
+void AuLegacyShipRender::hideEvent(QHideEvent* event)
+{
+	m_Impl->StopMovement();
+	ReleaseMouseCapture();
+	m_Impl->sound.Stop();
+	QOpenGLWidget::hideEvent(event);
 }

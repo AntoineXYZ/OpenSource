@@ -1,0 +1,120 @@
+Read-only Ghidra excerpts, 2026-10-04, AuAtom13.dll.
+
+DaAtom::CreateEnvironmentQuery 0x1802049a0, ship/deck and studio plane ground values:
+LAB_180204f41:
+            *(float *)(pDVar16 + 0x38) = *(float *)(pDVar16 + 0x38) + 8.0;
+          }
+          in_XMM1_Qa = 0.0;
+          dVar40 = (double)(**(code **)(*(longlong *)this_00 + 0x2f8))(this_00);
+          if ((dVar40 != 0.0) &&
+             (*(uint *)(pDVar16 + 0x20) = *(uint *)(pDVar16 + 0x20) | 0x10000,
+             *(double *)(pDVar16 + 0x28) <= 0.25 && *(double *)(pDVar16 + 0x28) != 0.25)) {
+            *(undefined4 *)(pDVar16 + 0x90) = 3;
+          }
+        }
+        else {
+...
+      *(undefined8 *)(pDVar16 + 0x68) = puVar18[1];
+      *(undefined8 *)(pDVar16 + 0x70) = puVar18[2];
+      *(undefined8 *)(pDVar16 + 0xb8) = *(undefined8 *)(pDVar16 + 0x60);
+      *(undefined8 *)(pDVar16 + 0xc0) = *(undefined8 *)(pDVar16 + 0x68);
+      *(undefined8 *)(pDVar16 + 200) = *(undefined8 *)(pDVar16 + 0x70);
+      *(undefined8 *)(pDVar16 + 0x28) = 0;
+      *(undefined4 *)(pDVar16 + 0x38) = 0x41000000;
+      *(uint *)(pDVar16 + 0x20) = *(uint *)(pDVar16 + 0x20) | 0x10000;
+      *(undefined4 *)(pDVar16 + 0x90) = 3;
+    }
+    *pDVar16 = (DaSpaceShip)0x0;
+    *(uint *)(pDVar16 + 0x20) = *(uint *)(pDVar16 + 0x20) | 2;
+...
+  }
+  if (pDVar37 == (DaAtom *)0x0) {
+    return (AuQueryEnvironment *)pDVar16;
+  }
+  pDVar25 = FindParentGalaxy(this);
+  if (pDVar25 != (DaGalaxy *)0x0) {
+    pDVar16[0x9c] = *(DaSpaceShip *)(pDVar25 + 0x3b0);
+  }
+  this_02 = FindParentDesignEnvironment(pDVar37);
+  if (this_02 != (DaDesignEnvironment *)0x0) {
+    *pDVar16 = (DaSpaceShip)0x0;
+    *(undefined4 *)(pDVar16 + 0x48) = 0x3f000000;
+    *(uint *)(pDVar16 + 0x20) = *(uint *)(pDVar16 + 0x20) | 0x2003;
+    local_6d8 = ZEXT816(0);
+    local_6c8 = 0x3ff0000000000000;
+    pAVar22 = (AuMatrix4x4 *)Transform(this);
+    puVar18 = (undefined8 *)AuMatrix4x4::UnProjectVector(pAVar22,local_6c0);
+    *(undefined8 *)(pDVar16 + 0x60) = *puVar18;
+    *(undefined8 *)(pDVar16 + 0x68) = puVar18[1];
+    *(undefined8 *)(pDVar16 + 0x70) = puVar18[2];
+    *(undefined8 *)(pDVar16 + 0xb8) = *(undefined8 *)(pDVar16 + 0x60);
+    *(undefined8 *)(pDVar16 + 0xc0) = *(undefined8 *)(pDVar16 + 0x68);
+    *(undefined8 *)(pDVar16 + 200) = *(undefined8 *)(pDVar16 + 0x70);
+    bVar5 = DaDesignEnvironment::IsGravityOn(this_02,(AuId *)(this + 0x14));
+    if (!bVar5) {
+      return (AuQueryEnvironment *)pDVar16;
+    }
+    *(uint *)(pDVar16 + 0x20) = *(uint *)(pDVar16 + 0x20) | 0x10000;
+    if (this_00 != (DaVehicle *)0x0) {
+      return (AuQueryEnvironment *)pDVar16;
+    }
+    DaDesignEnvironment::GetDesignPlaneTransform(this_02,local_418);
+    AuMatrix4x4::Project((AuMatrix4x4 *)local_418,in_XMM1_Qa,0.0,0.0);
+    pAVar22 = (AuMatrix4x4 *)Transform(this);
+    dVar41 = dStack_6e8;
+    dVar40 = local_6f0;
+    pAVar22 = (AuMatrix4x4 *)AuMatrix4x4::Inverse(pAVar22);
+    AuMatrix4x4::Project(pAVar22,in_XMM1_Qa,dVar40,dVar41);
+    local_6f0 = (double)local_6a0._0_8_;
+    dStack_6e8 = stack0xfffffffffffff968;
+    local_6e0 = local_690;
+    if (pDVar17 == (DaCreature *)0x0) {
+      fVar39 = (float)(**(code **)(*(longlong *)this + 0x350))(this);
+      *(double *)(pDVar16 + 0x28) = (*(double *)(pDVar16 + 0x40) - (double)fVar39) - local_6e0;
+    }
+    else {
+      dVar40 = *(double *)(pDVar16 + 0x40);
+      fVar39 = (float)(**(code **)(*(longlong *)this + 0x350))();
+      *(double *)(pDVar16 + 0x28) =
+           ((dVar40 - (double)CONCAT44(uVar47,uVar46)) - (double)fVar39) - local_6e0;
+    }
+    if (0.25 < *(double *)(pDVar16 + 0x28) || *(double *)(pDVar16 + 0x28) == 0.25) {
+      return (AuQueryEnvironment *)pDVar16;
+    }
+    *(undefined4 *)(pDVar16 + 0x90) = 2;
+    return (AuQueryEnvironment *)pDVar16;
+  }
+  pDVar26 = FindParentArena(pDVar37);
+  if (pDVar26 != (DaArena *)0x0) {
+    *(uint *)(pDVar16 + 0x20) = *(uint *)(pDVar16 + 0x20) | 0x4000000;
+
+DaSpaceShip::RenderAudioSources 0x18040f290, hatch and plant gain calls:
+18040f953: MOV ECX,dword ptr [RSI + 0xbc0]
+18040f959: MOVAPS XMM2,XMM6
+18040f95c: MOV EDX,0x100a
+18040f961: TEST BL,BL
+18040f963: JNZ 0x18040f96a
+18040f965: MULSS XMM2,XMM10
+18040f96a: CALL qword ptr [0x180732290]
+18040f970: MOV ECX,0xa
+18040f975: CALL qword ptr [0x1807366d8]
+18040f97b: MOV ECX,dword ptr [RSI + 0xbc0]
+18040f981: MOV EDX,0x1020
+18040f986: MOVSS XMM2,dword ptr [RAX + 0x8]
+18040f98b: CALL qword ptr [0x180732290]
+18040f991: MOV ECX,0xa
+...
+18040ff18: MOVAPS XMM2,XMM6
+18040ff1b: MULSS XMM2,dword ptr [0x18073b598]
+18040ff23: JMP 0x18040ff3c
+18040ff25: MOV ECX,dword ptr [RSI + 0xbd0]
+18040ff2b: XORPS XMM2,XMM2
+18040ff2e: MOV EDX,0x100d
+18040ff33: CALL qword ptr [0x180732290]
+18040ff39: MOVAPS XMM2,XMM6
+18040ff3c: MOV ECX,dword ptr [RSI + 0xbd0]
+18040ff42: MOV EDX,0x100a
+18040ff47: CALL qword ptr [0x180732290]
+18040ff4d: MOV ECX,0x62
+18040ff52: CALL qword ptr [0x1807366d8]
+18040ff58: MOV ECX,dword ptr [RSI + 0xbd0]

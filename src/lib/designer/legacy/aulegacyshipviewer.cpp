@@ -726,13 +726,23 @@ public:
 		QAction* saveAction = MakeAction("Save spacecraft", "dp_Save", "Save spacecraft to a .ship file (Ctrl+S).");
 		saveAction->setShortcut(QKeySequence::Save);
 		QObject::connect(saveAction, &QAction::triggered, window, [this]() { SaveDesign(); });
-		QAction* fitAction = MakeAction("Fit view", "dp_ShowDesignPlane", "Fit the current floor plan or spacecraft in the view (F).");
+		QAction* fitAction = MakeAction("Fit view", "dp_ShowDesignPlane", "Fit the current floor plan in the view (F).");
 		fitAction->setShortcut(QKeySequence(QStringLiteral("F")));
 		QObject::connect(fitAction, &QAction::triggered, window, [this]() { FitDeck(); });
 		renderAction = MakeAction("Render Mode", "dp_RenderMode",
 			"<b>Render Mode</b><br>Switch view between line drawing or solid rendering.");
 		renderAction->setCheckable(true);
-		QObject::connect(renderAction, &QAction::toggled, window, [this](bool solid) { SetRenderMode(solid); });
+		QObject::connect(renderAction, &QAction::toggled, window, [this, fitAction](bool solid) {
+			fitAction->setEnabled(!solid);
+			SetRenderMode(solid);
+		});
+		gravityAction = MakeAction("Gravity", "dp_Gravity",
+			"Toggle gravity on the design plane outside the spacecraft. Ship interiors retain their own gravity; gravity wells and ladders allow vertical travel.");
+		gravityAction->setCheckable(true);
+		QObject::connect(gravityAction, &QAction::toggled, window, [this](bool enabled) {
+			renderView->SetGravity(enabled);
+			ShowRenderHelp();
+		});
 		roomsAction = new QAction(QStringLiteral("Rooms"), window);
 		detailsAction = new QAction(QStringLiteral("Equipment markers"), window);
 		gridAction = MakeAction("Grid", "dp_ShowDesignPlane", "Show the selected grid line families.");
@@ -858,14 +868,6 @@ public:
 		inspect->setAccessibleName(QStringLiteral("Inspect rooms and equipment"));
 		viewTools->addWidget(inspect);
 		panelLayout->addLayout(viewTools);
-		cutaway = new QCheckBox(QStringLiteral("Cut away above current deck"), panel);
-		cutaway->setToolTip(QStringLiteral("Expose the current deck's interior by cutting the ship at half the wall height. Use the deck arrows to move the cut."));
-		cutaway->setVisible(false);
-		QObject::connect(cutaway, &QCheckBox::toggled, window, [this](bool enabled) {
-			renderView->SetCutaway(enabled);
-			ShowRenderHelp();
-		});
-		panelLayout->addWidget(cutaway);
 		toolLabel = new QLabel(panel);
 		toolLabel->setWordWrap(true);
 		panelLayout->addWidget(toolLabel);
@@ -885,9 +887,15 @@ public:
 			"- The brush arrows resize machinery placement and Erase Equipment Area.<br>"
 			"- Middle drag pans; the mouse wheel zooms.<br>"
 			"- Use the selection arrow to inspect rooms and equipment.<br><br>"
-			"- Render Mode switches between the floor plan and the textured spacecraft.<br>"
-			"- In 3D, left drag orbits, middle/right drag pans, and the wheel zooms. F fits the ship.<br>"
-			"- Cut away above current deck exposes the interior; the deck arrows move the cut.<br><br>"
+			"- Render Mode enters the spacecraft scene. Returning to the floor plan preserves your position.<br>"
+			"- In the scene, W/A/S/D move, the mouse looks around, and Shift runs. Q toggles continuous forward movement.<br>"
+			"- Return or right-click switches between avatar input and the free hand cursor. Hold Ctrl to use the hand temporarily.<br>"
+			"- C/Z move up/down when flying, in a gravity well, or on a ladder. Space jumps or brakes in zero gravity.<br>"
+			"- E engages/releases a nearby ladder.<br>"
+			"- Use the hand to click a nearby door or hatch. Ctrl+P opens the nearest closed door; Ctrl+C closes the nearest open door.<br>"
+			"- Regular and crew doors open on approach. Hull and large doors require manual operation.<br>"
+			"- Gravity toggles the studio floor outside the ship. Ship interiors have their own gravity.<br>"
+			"- Home returns to a clear location on the selected deck if you get lost.<br><br>"
 			"<b>CURRENT EDITOR</b><br>"
 			"Rooms and equipment can be edited in the floor plan. Unavailable tools remain disabled.<br><br>"
 			"<b>WHEN FINISHED</b><br>"
@@ -969,7 +977,7 @@ public:
 		AddButton(outer, openAction, 0, 2);
 		AddButton(outer, saveAction, 0, 3);
 		AddButton(outer, renderAction, 1, 0);
-		AddButton(outer, UnavailableAction("Gravity", "dp_Gravity", "Avatar movement is not available in the deck view."), 1, 1);
+		AddButton(outer, gravityAction, 1, 1);
 		AddButton(outer, UnavailableAction("Check paths", "dp_Check", "Path checking is not available yet."), 1, 2);
 		AddButton(outer, UnavailableAction("Burn design CD", "dp_BurnCD", "In-world design publishing is not available here."), 1, 3);
 		AddButton(outer, deckUpAction, 2, 0);
@@ -1145,10 +1153,7 @@ public:
 	void FitDeck()
 	{
 		if (renderAction->isChecked())
-		{
-			renderView->FitDesign();
 			return;
-		}
 		view->fitInView(deckBounds, Qt::KeepAspectRatio);
 		// Leave screen-space room for labels centered on the grid's outer corners.
 		QFont labelFont = window->font();
@@ -1172,21 +1177,16 @@ public:
 			renderDirty = false;
 		}
 		renderView->SetDeck(currentDeck);
-		if (renderNeedsFit)
-		{
-			renderView->FitDesign();
-			renderNeedsFit = false;
-		}
 	}
 
 	void ShowRenderHelp()
 	{
 		if (!renderAction->isChecked())
 			return;
-		toolLabel->setText(QStringLiteral("3D view: left drag orbits; middle/right drag pans; wheel zooms. F fits the ship.\n")
-			+ (cutaway->isChecked()
-			? QStringLiteral("Interior cutaway at deck %1. Use the deck arrows to move the cut.").arg(currentDeck)
-			: QStringLiteral("Solid spacecraft view. Use Render Mode to return to the floor plan.")));
+		toolLabel->setText(QStringLiteral("Walkthrough: WASD moves, mouse looks, Shift runs. E engages/releases a ladder; C/Z climbs. Space jumps or brakes.\n"
+			"Return/right-click toggles avatar/hand input; hold Ctrl for the hand. Click doors or use Ctrl+P/C to open/close. Home returns to the selected deck.\n"
+			"Studio gravity is %1; ship interiors retain their own gravity. Render Mode returns to the floor plan.")
+			.arg(gravityAction->isChecked() ? QStringLiteral("on") : QStringLiteral("off")));
 	}
 
 	void SetRenderMode(bool solid)
@@ -1194,7 +1194,6 @@ public:
 		if (solid)
 			RefreshRendering();
 		views->setCurrentWidget(solid ? static_cast<QWidget*>(renderView) : static_cast<QWidget*>(view));
-		cutaway->setVisible(solid);
 		if (solid)
 		{
 			renderView->setFocus();
@@ -1686,7 +1685,7 @@ public:
 		loaded = true;
 		modified = false;
 		renderDirty = true;
-		renderNeedsFit = true;
+		gravityAction->setChecked(false);
 		IndexDecks();
 		UpdateTitle();
 		editPanel->setEnabled(true);
@@ -1707,7 +1706,6 @@ public:
 	QDockWidget* toolDock;
 	QTabWidget* informationTabs;
 	QCheckBox* streamline;
-	QCheckBox* cutaway;
 	QComboBox* minimumTech;
 	QLabel* toolLabel;
 	QLabel* brushSize;
@@ -1716,6 +1714,7 @@ public:
 	QAction* detailsAction;
 	QAction* gridAction;
 	QAction* renderAction;
+	QAction* gravityAction;
 	QAction* closeAction;
 	QAction* inspectAction;
 	QAction* eraseAction;
@@ -1749,7 +1748,6 @@ public:
 	bool modified = false;
 	bool fittedOnShow = false;
 	bool renderDirty = true;
-	bool renderNeedsFit = true;
 };
 
 AuLegacyShipViewer::AuLegacyShipViewer(QWidget* parent)

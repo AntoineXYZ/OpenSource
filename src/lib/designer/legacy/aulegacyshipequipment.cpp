@@ -211,6 +211,220 @@ bool IsHatchType(int type)
 }
 }
 
+bool IsHatchDetail(int type)
+{
+	return IsHatchType(type);
+}
+
+bool IsDoorDetail(int type)
+{
+	return IsHatchType(type) || type == 3 || type == 5
+		|| type == 49 || type == 50 || type == 53 || type == 54;
+}
+
+bool IsAutomaticDoorDetail(int type)
+{
+	return type == 5 || type == 8 || type == 49 || type == 51
+		|| (type >= 77 && type <= 90);
+}
+
+bool IsDoorMaterial(Material material)
+{
+	switch(material)
+	{
+	case Material::LargeInteriorDoor:
+	case Material::LargeCrewDoor:
+	case Material::LargeHullDoor:
+	case Material::CrewDoor:
+	case Material::CrewHatch:
+	case Material::HullDoor:
+	case Material::HullHatch:
+	case Material::InteriorDoor:
+	case Material::InteriorHatch: return true;
+	default: return false;
+	}
+}
+
+Material DoorMaterialFrame(Material closedMaterial, DoorFrame frame)
+{
+	if(!IsDoorMaterial(closedMaterial)) return closedMaterial;
+	return Material(int(closedMaterial) + int(frame));
+}
+
+bool AdvanceDoorAnimation(DoorAnimation& animation)
+{
+	const int previous = int(animation.frame);
+	const int target = animation.open ? int(DoorFrame::Open) : int(DoorFrame::Closed);
+	if(previous == target) return false;
+	animation.frame = DoorFrame(previous + (previous < target ? 1 : -1));
+	return true;
+}
+
+namespace
+{
+double SquaredLength(const QPointF& point)
+{
+	return QPointF::dotProduct(point, point);
+}
+
+double SegmentDistanceSquared(const QPointF& a, const QPointF& b, const QPointF& point)
+{
+	const QPointF direction = b - a;
+	const double squaredLength = SquaredLength(direction);
+	if(squaredLength == 0) return SquaredLength(point - a);
+	const double t = std::max(0.0, std::min(1.0,
+		QPointF::dotProduct(point - a, direction) / squaredLength));
+	return SquaredLength(point - a - direction * t);
+}
+
+bool StackDoor(int type) { return type == 3 || type == 53 || type == 54; }
+
+bool DoorVoid(const DoorDefinition& door)
+{
+	return (door.roomType == 11 || door.roomType == 15)
+		&& (door.adjacentRoomType == 0 || door.adjacentRoomType == 11
+			|| door.adjacentRoomType == 15);
+}
+}
+
+QVector<DoorDefinition> DoorDefinitions(const Design& design, const Mesh& mesh)
+{
+	QVector<DoorDefinition> result;
+	QHash<quint32, int> indices;
+	for(const Detail& detail : design.details)
+	{
+		if(!detail.detailId || !IsDoorDetail(detail.detailType)
+			|| indices.contains(detail.detailId)) continue;
+		DoorDefinition door;
+		door.id = detail.detailId;
+		door.type = detail.detailType;
+		door.deck = detail.deck;
+		door.a = door.b = door.center = DecodePoint(detail.packedXY);
+		for(const Room& room : design.rooms)
+			if(room.roomId == detail.roomId)
+			{
+				door.roomType = room.roomType;
+				break;
+			}
+		indices.insert(door.id, result.size());
+		result.append(door);
+	}
+	QVector<bool> hasPanel(result.size(), false);
+	for(const Batch& batch : mesh.batches)
+	{
+		const auto found = indices.constFind(batch.doorId);
+		if(found == indices.constEnd()) continue;
+		const int index = found.value();
+		DoorDefinition& door = result[index];
+		for(const Vertex& vertex : batch.vertices)
+		{
+			const QPointF point(vertex.position.x(), vertex.position.y());
+			if(!hasPanel[index]) { door.a = door.b = point; hasPanel[index] = true; }
+			if(IsHatchDetail(door.type)) continue;
+			const double length = SquaredLength(door.b - door.a);
+			if(SquaredLength(point - door.a) > length) door.b = point;
+			else if(SquaredLength(point - door.b) > length) door.a = point;
+		}
+	}
+	QVector<QPolygonF> boundaries;
+	boundaries.reserve(design.rooms.size());
+	for(const Room& room : design.rooms) boundaries.append(RoomBoundary(room));
+	for(int i = result.size() - 1; i >= 0; --i)
+	{
+		if(!hasPanel[i]) { result.removeAt(i); continue; }
+		DoorDefinition& door = result[i];
+		if(IsHatchDetail(door.type)) { door.a = door.b = door.center; continue; }
+		const double length = std::sqrt(SquaredLength(door.b - door.a));
+		if(length > 0)
+		{
+			const QPointF direction = (door.b - door.a) / length;
+			if(door.type == 5 || door.type == 49 || door.type == 50)
+			{
+				door.a = door.center - direction * 2;
+				door.b = door.center + direction * 2;
+			}
+			else
+			{
+				// AnalyzeDesign uses an 11-inch jamb clearance. The rendered
+				// hull span already has a one-foot inset; interior spans do not.
+				const double inset = door.type == 3 ? -1.0 / 12 : 11.0 / 12;
+				door.a += direction * inset;
+				door.b -= direction * inset;
+			}
+		}
+		quint16 owner = 0;
+		for(const Detail& detail : design.details)
+			if(detail.detailId == door.id) { owner = detail.roomId; break; }
+		for(int r = 0; r < design.rooms.size(); ++r)
+		{
+			const Room& room = design.rooms[r];
+			if(room.deck != door.deck || room.roomId == owner) continue;
+			const QPolygonF& boundary = boundaries[r];
+			bool onBoundary = false;
+			for(int v = 0; v < boundary.size(); ++v)
+				if(SegmentDistanceSquared(boundary[v], boundary[(v + 1) % boundary.size()], door.center) < 1e-8)
+				{ onBoundary = true; break; }
+			if(onBoundary) { door.adjacentRoomType = room.roomType; break; }
+		}
+	}
+	return result;
+}
+
+QVector<quint32> DoorOperationGroup(const QVector<DoorDefinition>& doors, quint32 id)
+{
+	QVector<quint32> result;
+	const DoorDefinition* selected = nullptr;
+	for(const DoorDefinition& door : doors)
+		if(door.id == id) { selected = &door; break; }
+	if(!selected) return result;
+	result.append(id);
+	if(!StackDoor(selected->type)) return result;
+	const auto atDeck = [&](int deck) -> const DoorDefinition*
+	{
+		for(const DoorDefinition& door : doors)
+			if(door.deck == deck && std::abs(door.center.x() - selected->center.x()) <= 1e-4
+				&& std::abs(door.center.y() - selected->center.y()) <= 1e-4) return &door;
+		return nullptr;
+	};
+	for(int deck = selected->deck + 1; deck <= MaximumDeck; ++deck)
+	{
+		const DoorDefinition* above = atDeck(deck);
+		if(!above || !StackDoor(above->type) || !DoorVoid(*above)) break;
+		result.append(above->id);
+	}
+	const DoorDefinition* current = selected;
+	while(DoorVoid(*current))
+	{
+		const DoorDefinition* below = atDeck(current->deck - 1);
+		if(!below || !StackDoor(below->type)) break;
+		result.append(below->id);
+		current = below;
+	}
+	return result;
+}
+
+double DoorDistanceSquared(const DoorDefinition& door, const QPointF& point)
+{
+	return IsHatchDetail(door.type) ? SquaredLength(point - door.center)
+		: SegmentDistanceSquared(door.a, door.b, point);
+}
+
+quint32 ClosestDoor(const QVector<DoorDefinition>& doors,
+	const QHash<quint32, DoorAnimation>& animations, const QVector3D& feet, bool open)
+{
+	const int deck = int(std::floor((double(feet.z()) + .05) / DeckHeight));
+	const QPointF point(feet.x(), feet.y());
+	double nearest = DoorInteractionDistance * DoorInteractionDistance;
+	quint32 result = 0;
+	for(const DoorDefinition& door : doors)
+	{
+		if((door.deck != deck && door.deck != deck + 1) || animations.value(door.id).open != open) continue;
+		const double distance = DoorDistanceSquared(door, point);
+		if(distance <= nearest && (!result || distance < nearest)) { nearest = distance; result = door.id; }
+	}
+	return result;
+}
+
 bool EquipmentSupported(int type)
 {
 	if(IsHatchType(type) || (type >= 25 && type <= 31) || (type >= 65 && type <= 72)
@@ -233,9 +447,10 @@ void AppendEquipment(const Design& design, Mesh& mesh)
 	for(const Detail& detail : design.details)
 	{
 		if(out.truncated) break;
-		if(detail.hiddenRaw || detail.deck < MinimumDeck || detail.deck > MaximumDeck) continue;
-		out.DetailTransform(detail);
 		const int type = detail.detailType;
+		const int highestDetailDeck = MaximumDeck + (IsHatchType(type) ? 1 : 0);
+		if(detail.hiddenRaw || detail.deck < MinimumDeck || detail.deck > highestDetailDeck) continue;
+		out.DetailTransform(detail);
 		if(IsHatchType(type)) out.Ladder();
 		else if(type == 2 || (type >= 25 && type <= 31)) { out.Berth(.5f); out.Berth(4); }
 		else if(type >= 65 && type <= 72) out.Berth(.5f);

@@ -8,6 +8,9 @@ namespace AuLegacyShip { struct Design; }
 class QKeyEvent;
 class QMouseEvent;
 class QWheelEvent;
+class QFocusEvent;
+class QHideEvent;
+class QShowEvent;
 
 class AuLegacyShipRender : public QOpenGLWidget
 {
@@ -17,8 +20,8 @@ public:
 
 	void SetDesign(const AuLegacyShip::Design& design);
 	void SetDeck(int deck);
-	void SetCutaway(bool enabled);
-	void FitDesign();
+	void SetGravity(bool enabled);
+	void ResetCharacter();
 	QStringList Warnings() const;
 
 protected:
@@ -31,9 +34,22 @@ protected:
 	void mouseDoubleClickEvent(QMouseEvent* event) override;
 	void wheelEvent(QWheelEvent* event) override;
 	void keyPressEvent(QKeyEvent* event) override;
+	void keyReleaseEvent(QKeyEvent* event) override;
+	bool eventFilter(QObject* watched, QEvent* event) override;
+	void focusInEvent(QFocusEvent* event) override;
+	void focusOutEvent(QFocusEvent* event) override;
+	void showEvent(QShowEvent* event) override;
+	void hideEvent(QHideEvent* event) override;
 
 private:
 	void CleanupGL();
+	void Tick();
+	void UpdateTarget(qint64 now);
+	void UpdateMouseCapture();
+	void ReleaseMouseCapture();
+	void CenterMouse();
+	void UseDoor(const QPoint& screenPosition);
+	void OperateDoor(quint32 id, bool open);
 	class Impl;
 	Impl* m_Impl;
 };

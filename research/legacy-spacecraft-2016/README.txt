@@ -4,9 +4,10 @@
 Current implementation
 ----------------------
 The modern client can open the legacy designer from the launch-screen chooser
-or with -legacy-spacecraft [path/to/design.ship]. The standalone path uses a
-plain QApplication without a world session. The solid view uses a local OpenGL
-widget and the recovered original spacecraft atlas. In the normal client,
+or with -legacy-spacecraft [path/to/design.ship]. Both entry paths initialize
+the normal game globals, resources and shared AuApp sound service. The standalone
+path opens the designer directly without the login frame. The solid view uses
+a local OpenGL widget and the recovered original spacecraft atlas. In the normal client,
 Legacy occupies the existing window; exit before choosing the other designer.
 Launch-screen music stops during Legacy and resumes only if previously playing.
 
@@ -36,12 +37,29 @@ preserve it. Opening alone never rewrites the source file. Successful opens
 remember LegacySpacecraft/LastOpenDirectory in the native user settings for
 Hazeron Freehold / Shores of Hazeron, shared by both launch paths.
 
-The original Render Mode button switches the floor plan to textured 3D.
-Left drag orbits; middle/right/Shift-drag pans; wheel zooms; F or Home fits.
-The separate cutaway checkbox clips at the selected deck's half-height;
-deck arrows move the cut. Mode switching preserves the floor-plan view and
-orbit camera. Painting and erasing return to the floor plan. Armor changes
-the recovered wall profiles and windows; Streamline Hull is a physics setting.
+The original Render Mode button switches the floor plan to a first-person
+walkthrough. WASD moves, the captured mouse looks, Shift runs, Q toggles continuous
+forward movement, and Space jumps or brakes in zero gravity. C/Z moves up/down
+in zero gravity, gravity wells or on a ladder; E engages/releases a nearby
+ladder. Home finds a clear standing position on the selected deck.
+The Return/right-click avatar/hand input toggle and temporary Ctrl-held hand mode
+provide access to doors and the editor interface. Capture releases on focus
+loss, dialogs and leaving the scene, with no drag required for looking.
+The existing Gravity button controls studio gravity outside the ship; interiors retain
+their own gravity. Mode switching preserves the character pose and the
+independent floor-plan view. Painting and erasing return to the floor plan.
+The orbit camera and cutaway control are removed. Armor changes the recovered
+wall profiles and windows; Streamline Hull is a physics setting.
+
+Walkthrough collision uses structural hull/interior surfaces and stairs, plus
+the original machinery/game-table obstacle cells. Consoles, berths, surgery
+units, transporter pads, chairs, vehicle previews and turret guns are passable.
+The local standing-human capsule remains an approximation of the original
+person path queries, as are ladder attachment and ship membership. The
+45-degree FOV, default-human speeds,
+jump impulse, gravity values and door animation timing are recovered. The
+short near plane is a local adaptation. No visible third-person
+body, crouching, console occupation or vehicle driving is implemented here.
 
 The mesh uses the original quarter-grid occupancy rules, room/armor wall
 profiles, interior wall materials, adjacent-deck floors/ceilings and transparent
@@ -59,13 +77,32 @@ red outlines group related palette buttons without changing their slots.
 Equipment renders with recovered procedural geometry or original 3DS assets.
 The surviving model textures match the 2016 pixels. The original full-resolution
 spacecraft atlas, machinery effect atlas and changed helm bitmap are embedded
-for the legacy renderer. Parked vehicles remain stationary, and
-doors/hatches are closed. Logical markers have no physical mesh in the original
-stationary renderer. Live console readouts, firing, movement and contrails
-need world state and remain outside this orbit preview.
+for the legacy renderer. Doors/hatches use the original closed/half/open
+textures at 100-ms intervals, with logical collision changing immediately.
+Automatic small doors/hatches open on a blocked movement attempt. Ctrl+P opens
+the nearest closed door/hatch; Ctrl+C closes the nearest open one. A click on
+a nearby panel also toggles it. Manual operation has the recovered six-foot
+range, deck rule and large-door stack behavior. Doors stay open until closed
+in the designer. Character positions and door states are temporary and never
+alter saved .ship bytes. Parked vehicles remain stationary. Logical markers
+have no physical mesh in the original stationary renderer. Live console
+readouts, firing, vehicle driving and contrails need world state.
 
-Saving, undo/redo, whole-room/deck tools, move/copy,
-path checks, avatar navigation and world rendering remain unfinished.
+The yellow crosshair reuses the modern client's HudItems artwork and drawing
+layout. Looking at the ship acquires the original top hull-health bar and ship
+name on a 200-ms lock cycle, with its original distance gate. The authoring
+ship is undamaged; no invented numeric HP total is displayed. Visual sight
+rays are separate from movement obstacles, so passable equipment is visible
+to targeting while invisible obstacle-cell boxes are not.
+
+Door/hatch sound families and metal/studio-floor footstep loops use the game's
+shared OpenAL context, sound archive loader and user sound settings. Machinery ambience follows
+the recovered working-system conditions; the original designer initializes
+power plant, sensors and drive off. See WALKTHROUGH-AUDIO.txt for the sound
+mapping, original initial state and remaining console-control scope.
+
+Undo/redo, whole-room/deck tools, move/copy, the path-checking tool and world
+rendering remain unfinished.
 
 Read by topic
 -------------
@@ -83,6 +120,11 @@ VEHICLE-BOUNDS.txt             Model footprints and missing-resource behavior.
 PANEL-RECOVERY.txt             Exact icon layout, labels and header controls.
 SURFACE-RECOVERY-NOTES.txt      Hull/interior implementation and remaining gaps.
 RENDERING-MATERIAL-EVIDENCE.txt Original texture/material/surface predicates.
+WALKTHROUGH-RECOVERY.txt       Avatar, controls, camera and gravity evidence.
+WALKTHROUGH-COLLISION.txt      Local controller and explicit approximations.
+WALKTHROUGH-INPUT.txt          Captured mouse, hand mode and focus lifecycle.
+WALKTHROUGH-AUDIO.txt          Original sound families, footsteps and system state.
+DOOR-INTERACTION.txt           Animation, manual/automatic operation and stacks.
 TESTING.txt                   Reference checks and manual native harnesses.
 
 Evidence and tools
@@ -118,7 +160,10 @@ src/lib/data/designs/aulegacyshipdetails.h/.cpp  Equipment editing/reconciliatio
 src/lib/designer/legacy/aulegacyshipviewer.h/.cpp Interface and session state.
 src/lib/designer/legacy/aulegacyshipicons.h/.cpp Embedded original PNGs.
 src/lib/designer/legacy/aulegacyshipmesh.h/.cpp Recovered CPU surface generator.
-src/lib/designer/legacy/aulegacyshiprender.h/.cpp Textured OpenGL orbit view.
+src/lib/designer/legacy/aulegacyshiprender.h/.cpp First-person OpenGL view/input.
+src/lib/designer/legacy/aulegacyshipwalk.h/.cpp   Local character collision/movement.
+src/lib/designer/legacy/aulegacyshiphud.h/.cpp    Shared HUD artwork and target display.
+src/lib/designer/legacy/aulegacyshipsound.h/.cpp  Walkthrough sources using shared game audio.
 src/lib/designer/legacy/aulegacyshipequipment.h/.cpp Procedural equipment.
 src/lib/designer/legacy/aulegacyshipstairs.h/.cpp Original stair geometry.
 src/lib/designer/legacy/aulegacyshipvehicles.h/.cpp Resource model importer.
