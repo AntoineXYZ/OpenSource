@@ -1,0 +1,212 @@
+{
+  "captured_date": "2026-10-04",
+  "purpose": "Additional format/geometry evidence; see ghidra-evidence.json for initial startup trace",
+  "functions": [
+    {
+      "response_id": 37,
+      "module": "AuAtom13.dll",
+      "address": "0x18059fc60",
+      "label": "DpBuilding_DesignRoom",
+      "name_provenance": "PE export; building analogue inspected for comparison"
+    },
+    {
+      "response_id": 38,
+      "module": "AuAtom13.dll",
+      "address": "0x1803e55c0",
+      "label": "DaSpaceShip_DesignRoom",
+      "name_provenance": "PE export"
+    },
+    {
+      "response_id": 39,
+      "module": "AuData13.dll",
+      "address": "0x180167cf0",
+      "label": "DnRoom_read",
+      "name_provenance": "PE export operator<<"
+    },
+    {
+      "response_id": 40,
+      "module": "AuData13.dll",
+      "address": "0x18015c070",
+      "label": "DnDetail_read",
+      "name_provenance": "PE export operator<<"
+    },
+    {
+      "response_id": 41,
+      "module": "AuData13.dll",
+      "address": "0x180025b30",
+      "label": "AuSpaceShipModules_read",
+      "name_provenance": "PE export operator<<"
+    },
+    {
+      "response_id": 42,
+      "module": "AuData13.dll",
+      "address": "0x180046d50",
+      "label": "DnSpaceShip_TechLevel",
+      "name_provenance": "PE export"
+    },
+    {
+      "response_id": 43,
+      "module": "AuData13.dll",
+      "address": "0x18017e3a0",
+      "label": "DnSpaceShip_SetArmor",
+      "name_provenance": "PE export"
+    },
+    {
+      "response_id": 44,
+      "module": "AuData13.dll",
+      "address": "0x180046910",
+      "label": "DnSpaceShip_Structure",
+      "name_provenance": "PE export"
+    },
+    {
+      "response_id": 45,
+      "module": "AuData13.dll",
+      "address": "0x1800351c0",
+      "label": "DnSpaceShip_ArchitectName",
+      "name_provenance": "PE export; shared getter address"
+    },
+    {
+      "response_id": 46,
+      "module": "AuData13.dll",
+      "address": "0x18002f450",
+      "label": "DnSpaceShip_DecodeGridCoord",
+      "name_provenance": "PE export; shares DnBuilding implementation; decompiler has hidden-return-argument errors"
+    },
+    {
+      "response_id": 47,
+      "module": "AuData13.dll",
+      "address": "0x18015b510",
+      "label": "DnSpaceShip_OnDeck",
+      "name_provenance": "PE export; shares DnBuilding implementation"
+    },
+    {
+      "response_id": 48,
+      "module": "AuData13.dll",
+      "address": "0x180143450",
+      "label": "DgData_SpaceShipDesignAddRoom",
+      "name_provenance": "PE export; polygon overload"
+    },
+    {
+      "response_id": 49,
+      "module": "AuData13.dll",
+      "address": "0x180167a50",
+      "label": "DnRoom_write",
+      "name_provenance": "PE export operator>>"
+    },
+    {
+      "response_id": 50,
+      "module": "AuData13.dll",
+      "address": "0x18017e3b0",
+      "label": "DnSpaceShip_SetDesignInfo",
+      "name_provenance": "PE export"
+    },
+    {
+      "response_id": 51,
+      "module": "AuData13.dll",
+      "address": "0x180031080",
+      "label": "DnSpaceShip_Streamline",
+      "name_provenance": "PE export; identical code folded with AuItem::HitPoints"
+    },
+    {
+      "response_id": 52,
+      "module": "AuData13.dll",
+      "address": "0x180034b70",
+      "label": "DnSpaceShip_MinTechLevel",
+      "name_provenance": "PE export; identical code folded with DeManufacturingProcess::LastOutputQuality"
+    },
+    {
+      "response_id": 53,
+      "module": "AuData13.dll",
+      "address": "0x180031410",
+      "label": "DnSpaceShip_HullVolume",
+      "name_provenance": "PE export"
+    }
+  ],
+  "responses": [
+    {
+      "id": 37,
+      "result": "\r\n/* public: bool __cdecl DpBuilding::DesignRoom(class AuPointArray const & __ptr64,int,unsigned char)\r\n   __ptr64 */\r\n\r\nbool __thiscall\r\nDpBuilding::DesignRoom(DpBuilding *this,AuPointArray *param_1,int param_2,uchar param_3)\r\n\r\n{\r\n  uint uVar1;\r\n  longlong lVar2;\r\n  DgData *this_00;\r\n  bool bVar3;\r\n  bool bVar4;\r\n  \r\n                    /* 0x59fc60  2616  ?DesignRoom@DpBuilding@@QEAA_NAEBVAuPointArray@@HE@Z */\r\n  bVar3 = CanDesignBeModified(this);\r\n  if (!bVar3) {\r\n    return false;\r\n  }\r\n  lVar2 = *(longlong *)gp_AuGlobal_exref;\r\n  QReadWriteLock::lockForWrite((QReadWriteLock *)(lVar2 + 0x1d8));\r\n  this_00 = *(DgData **)(lVar2 + 0x68);\r\n  QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x50));\r\n  uVar1 = *(uint *)(this + 0x178);\r\n  QReadWriteLock::unlock((QReadWriteLock *)(this + 0x50));\r\n  bVar3 = false;\r\n  if (param_2 < 0) {\r\n    if (param_2 == -2) {\r\n      bVar4 = DgData::BuildingDesignDeleteRoomCompletely(this_00,uVar1,param_1);\r\n      if (bVar4) {\r\n        bVar3 = true;\r\n      }\r\n    }\r\n    else {\r\n      bVar4 = DgData::BuildingDesignDeleteRoomCells(this_00,uVar1,param_1);\r\n      bVar3 = false;\r\n      if (bVar4) {\r\n        bVar3 = true;\r\n      }\r\n    }\r\n  }\r\n  else {\r\n    bVar4 = DgData::BuildingDesignAddRoom(this_00,uVar1,param_1,(uchar)param_2,param_3);\r\n    if (bVar4) {\r\n      bVar3 = true;\r\n    }\r\n  }\r\n  QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1d8));\r\n  if (bVar3 != false) {\r\n    QReadWriteLock::lockForWrite((QReadWriteLock *)(this + 0x188));\r\n    this[0x420] = (DpBuilding)0x0;\r\n    AuPath::Clear((AuPath *)(this + 0x310));\r\n    QReadWriteLock::unlock((QReadWriteLock *)(this + 0x188));\r\n    InvalidatePathCache(this);\r\n  }\r\n  return bVar3;\r\n}\r\n\r\n",
+      "error": null
+    },
+    {
+      "id": 38,
+      "result": "\r\n/* public: bool __cdecl DaSpaceShip::DesignRoom(class AuPointArray const & __ptr64,int,unsigned\r\n   char) __ptr64 */\r\n\r\nbool __thiscall\r\nDaSpaceShip::DesignRoom(DaSpaceShip *this,AuPointArray *param_1,int param_2,uchar param_3)\r\n\r\n{\r\n  uint uVar1;\r\n  longlong lVar2;\r\n  DgData *this_00;\r\n  bool bVar3;\r\n  bool bVar4;\r\n  \r\n                    /* 0x3e55c0  2615  ?DesignRoom@DaSpaceShip@@QEAA_NAEBVAuPointArray@@HE@Z */\r\n  bVar3 = CanDesignBeModified(this);\r\n  if (!bVar3) {\r\n    return false;\r\n  }\r\n  lVar2 = *(longlong *)gp_AuGlobal_exref;\r\n  QReadWriteLock::lockForWrite((QReadWriteLock *)(lVar2 + 0x1e0));\r\n  this_00 = *(DgData **)(lVar2 + 0x68);\r\n  QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x4c0));\r\n  uVar1 = *(uint *)(this + 0x514);\r\n  QReadWriteLock::unlock((QReadWriteLock *)(this + 0x4c0));\r\n  bVar3 = false;\r\n  if (param_2 < 0) {\r\n    if (param_2 == -2) {\r\n      bVar4 = DgData::SpaceShipDesignDeleteRoomCompletely(this_00,uVar1,param_1);\r\n      if (bVar4) {\r\n        bVar3 = true;\r\n      }\r\n    }\r\n    else {\r\n      bVar4 = DgData::SpaceShipDesignDeleteRoomCells(this_00,uVar1,param_1);\r\n      bVar3 = false;\r\n      if (bVar4) {\r\n        bVar3 = true;\r\n      }\r\n    }\r\n  }\r\n  else {\r\n    bVar4 = DgData::SpaceShipDesignAddRoom(this_00,uVar1,param_1,(uchar)param_2,param_3);\r\n    if (bVar4) {\r\n      bVar3 = true;\r\n    }\r\n  }\r\n  QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1e0));\r\n  if (bVar3 != false) {\r\n    QReadWriteLock::lockForWrite((QReadWriteLock *)(this + 0x770));\r\n    this[0xa08] = (DaSpaceShip)0x0;\r\n    AuPath::Clear((AuPath *)(this + 0x8f8));\r\n    QReadWriteLock::unlock((QReadWriteLock *)(this + 0x770));\r\n    InvalidatePathCache(this);\r\n  }\r\n  return bVar3;\r\n}\r\n\r\n",
+      "error": null
+    },
+    {
+      "id": 39,
+      "result": "\r\n/* public: void __cdecl DnRoom::operator<<(class QDataStream & __ptr64) __ptr64 */\r\n\r\nvoid __thiscall DnRoom::operator<<(DnRoom *this,QDataStream *param_1)\r\n\r\n{\r\n  AuPoint *pAVar1;\r\n  QVector<AuPoint> *this_00;\r\n  float fVar2;\r\n  double dVar3;\r\n  double dVar4;\r\n  short local_res8 [4];\r\n  short local_res18 [8];\r\n  undefined8 local_98;\r\n  undefined8 local_90;\r\n  undefined8 local_88;\r\n  undefined8 local_80;\r\n  undefined8 local_78;\r\n  undefined8 local_70;\r\n  double local_68;\r\n  double local_60;\r\n  double local_58;\r\n  \r\n                    /* 0x167cf0  2081  ??6DnRoom@@QEAAXAEAVQDataStream@@@Z */\r\n  QDataStream::operator>>(param_1,(int *)this);\r\n  QDataStream::operator>>(param_1,(short *)(this + 4));\r\n  QDataStream::operator>>(param_1,(char *)(this + 6));\r\n  QDataStream::operator>>(param_1,(char *)(this + 7));\r\n  QDataStream::operator>>(param_1,(char *)(this + 8));\r\n  this_00 = (QVector<AuPoint> *)(this + 0x10);\r\n  QVector<AuPoint>::clear(this_00);\r\n  QDataStream::operator>>(param_1,local_res8);\r\n  if (local_res8[0] != 0) {\r\n    do {\r\n      QDataStream::operator>>(param_1,local_res18);\r\n      local_68 = (double)(int)(char)((ushort)local_res18[0] >> 8) * 2.8284271245;\r\n      local_60 = (double)(int)(char)local_res18[0] * 2.8284271245;\r\n      local_58 = (double)(int)(char)this[6] * 8.0;\r\n      QVector<AuPoint>::append(this_00,(AuPoint *)&local_68);\r\n      local_res8[0] = local_res8[0] + -1;\r\n    } while (local_res8[0] != 0);\r\n    local_res8[0] = 0;\r\n  }\r\n  if ((this[7] == (DnRoom)0x18) && (*(int *)(*(longlong *)this_00 + 4) == 3)) {\r\n    pAVar1 = QVector<AuPoint>::operator[](this_00,0);\r\n    local_98 = *(undefined8 *)pAVar1;\r\n    local_90 = *(undefined8 *)(pAVar1 + 8);\r\n    local_88 = *(undefined8 *)(pAVar1 + 0x10);\r\n    pAVar1 = QVector<AuPoint>::operator[](this_00,1);\r\n    local_68 = *(double *)pAVar1;\r\n    local_60 = *(double *)(pAVar1 + 8);\r\n    local_58 = *(double *)(pAVar1 + 0x10);\r\n    pAVar1 = QVector<AuPoint>::operator[](this_00,2);\r\n    local_80 = *(undefined8 *)pAVar1;\r\n    local_78 = *(undefined8 *)(pAVar1 + 8);\r\n    local_70 = *(undefined8 *)(pAVar1 + 0x10);\r\n    dVar3 = AuPoint::Distance_2D((AuPoint *)&local_98,(AuPoint *)&local_68);\r\n    dVar4 = AuPoint::Distance_2D((AuPoint *)&local_98,(AuPoint *)&local_80);\r\n    if (dVar4 < dVar3) {\r\n      dVar4 = dVar3;\r\n    }\r\n    fVar2 = sqrtf((float)(dVar4 / 5.656854249));\r\n    fVar2 = ceilf(fVar2);\r\n    AuPointArray::CreateEllipse\r\n              ((AuPointArray *)this_00,(AuPoint *)&local_98,(AuPoint *)&local_68,\r\n               (AuPoint *)&local_80,((int)fVar2 + 1) * 4);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+      "error": null
+    },
+    {
+      "id": 40,
+      "result": "\r\n/* public: void __cdecl DnDetail::operator<<(class QDataStream & __ptr64) __ptr64 */\r\n\r\nvoid __thiscall DnDetail::operator<<(DnDetail *this,QDataStream *param_1)\r\n\r\n{\r\n  short local_res8 [4];\r\n  \r\n                    /* 0x15c070  2079  ??6DnDetail@@QEAAXAEAVQDataStream@@@Z */\r\n  QDataStream::operator>>(param_1,(char *)this);\r\n  QDataStream::operator>>(param_1,(char *)(this + 1));\r\n  QDataStream::operator>>(param_1,(bool *)(this + 2));\r\n  QDataStream::operator>>(param_1,(int *)(this + 4));\r\n  QDataStream::operator>>(param_1,(int *)(this + 8));\r\n  QDataStream::operator>>(param_1,local_res8);\r\n  *(double *)(this + 0x10) = (double)(int)(char)((ushort)local_res8[0] >> 8) * 2.8284271245;\r\n  *(double *)(this + 0x18) = (double)(int)(char)local_res8[0] * 2.8284271245;\r\n  *(double *)(this + 0x20) = (double)(int)(char)*this * 8.0;\r\n  QDataStream::operator>>(param_1,(short *)(this + 0x28));\r\n  QDataStream::operator>>(param_1,(short *)(this + 0x2a));\r\n  if (*(short *)(this + 0x2a) == 0xf9) {\r\n    *(undefined2 *)(this + 0x2a) = 0xf8;\r\n    return;\r\n  }\r\n  if (*(short *)(this + 0x2a) == 0xfb) {\r\n    *(undefined2 *)(this + 0x2a) = 0xfa;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+      "error": null
+    },
+    {
+      "id": 41,
+      "result": "\r\n/* public: void __cdecl AuSpaceShipModules::operator<<(class QDataStream & __ptr64) __ptr64 */\r\n\r\nvoid __thiscall AuSpaceShipModules::operator<<(AuSpaceShipModules *this,QDataStream *param_1)\r\n\r\n{\r\n  longlong lVar1;\r\n  code *pcVar2;\r\n  short sVar3;\r\n  longlong lVar4;\r\n  AuSpaceShipModules *pAVar5;\r\n  short local_res8 [4];\r\n  short local_res18 [4];\r\n  int local_res20 [2];\r\n  short local_58;\r\n  short local_56;\r\n  undefined1 local_50 [24];\r\n  \r\n                    /* 0x25b30  2063  ??6AuSpaceShipModules@@QEAAXAEAVQDataStream@@@Z */\r\n  FUN_18004e170();\r\n  QDataStream::operator>>(param_1,local_res20);\r\n  if (local_res20[0] != 0) {\r\n    do {\r\n      local_res20[0] = local_res20[0] + -1;\r\n      QDataStream::operator>>(param_1,local_res18);\r\n      QDataStream::operator>>(param_1,local_res8);\r\n      if (local_res8[0] == 0xfd) {\r\n        sVar3 = 0xfc;\r\nLAB_180025bbe:\r\n        local_res8[0] = sVar3;\r\n      }\r\n      else {\r\n        sVar3 = 0xfe;\r\n        if (local_res8[0] == 0xff) goto LAB_180025bbe;\r\n      }\r\n      lVar1 = **(longlong **)this;\r\n      local_58 = local_res18[0];\r\n      local_56 = local_res8[0];\r\n      lVar4 = FUN_180011a70(this,lVar1,*(undefined8 *)(lVar1 + 8),&local_58);\r\n      if (*(longlong *)(this + 8) == 0xaaaaaaaaaaaaaa9) {\r\n        std::_Xlength_error(s_list<T>_too_long_180205638);\r\n        pcVar2 = (code *)swi(3);\r\n        (*pcVar2)();\r\n        return;\r\n      }\r\n      *(longlong *)(this + 8) = *(longlong *)(this + 8) + 1;\r\n      *(longlong *)(lVar1 + 8) = lVar4;\r\n      **(longlong **)(lVar4 + 8) = lVar4;\r\n      FUN_180012640(this,local_50,**(longlong **)this + 0x10);\r\n    } while (local_res20[0] != 0);\r\n  }\r\n  local_res20[0] = -1;\r\n  QDataStream::operator>>(param_1,(short *)(this + 0x40));\r\n  QDataStream::operator>>(param_1,(short *)(this + 0x42));\r\n  QDataStream::operator>>(param_1,(short *)(this + 0x44));\r\n  QDataStream::operator>>(param_1,(short *)(this + 0x46));\r\n  QDataStream::operator>>(param_1,(short *)(this + 0x48));\r\n  QDataStream::operator>>(param_1,(short *)(this + 0x4a));\r\n  QDataStream::operator>>(param_1,(short *)(this + 0x4c));\r\n  QDataStream::operator>>(param_1,(short *)(this + 0x4e));\r\n  pAVar5 = this + 0x50;\r\n  FUN_18004e170(pAVar5);\r\n  QDataStream::operator>>(param_1,local_res20);\r\n  while( true ) {\r\n    if (local_res20[0] == 0) {\r\n      return;\r\n    }\r\n    local_res20[0] = local_res20[0] + -1;\r\n    QDataStream::operator>>(param_1,local_res8);\r\n    QDataStream::operator>>(param_1,local_res18);\r\n    local_58 = local_res8[0];\r\n    local_56 = local_res18[0];\r\n    lVar1 = **(longlong **)pAVar5;\r\n    lVar4 = FUN_180011a70(pAVar5,lVar1,*(undefined8 *)(lVar1 + 8),&local_58);\r\n    if (*(longlong *)(this + 0x58) == 0xaaaaaaaaaaaaaa9) break;\r\n    *(longlong *)(this + 0x58) = *(longlong *)(this + 0x58) + 1;\r\n    *(longlong *)(lVar1 + 8) = lVar4;\r\n    **(longlong **)(lVar4 + 8) = lVar4;\r\n    FUN_180012640(pAVar5,local_50,**(longlong **)pAVar5 + 0x10);\r\n  }\r\n  std::_Xlength_error(s_list<T>_too_long_180205638);\r\n  pcVar2 = (code *)swi(3);\r\n  (*pcVar2)();\r\n  return;\r\n}\r\n\r\n",
+      "error": null
+    },
+    {
+      "id": 42,
+      "result": "\r\n/* public: unsigned char __cdecl DnSpaceShip::TechLevel(void)const __ptr64 */\r\n\r\nuchar __thiscall DnSpaceShip::TechLevel(DnSpaceShip *this)\r\n\r\n{\r\n                    /* 0x46d50  5812  ?TechLevel@DnSpaceShip@@QEBAEXZ */\r\n  return (uchar)this[0xde];\r\n}\r\n\r\n",
+      "error": null
+    },
+    {
+      "id": 43,
+      "result": "\r\n/* public: void __cdecl DnSpaceShip::SetArmor(short) __ptr64 */\r\n\r\nvoid __thiscall DnSpaceShip::SetArmor(DnSpaceShip *this,short param_1)\r\n\r\n{\r\n                    /* 0x17e3a0  5395  ?SetArmor@DnSpaceShip@@QEAAXF@Z */\r\n  this[0x15] = SUB21(param_1,0);\r\n  return;\r\n}\r\n\r\n",
+      "error": null
+    },
+    {
+      "id": 44,
+      "result": "\r\n/* public: enum DnSpaceShip::STRUCTURE __cdecl DnSpaceShip::Structure(void)const __ptr64 */\r\n\r\nSTRUCTURE __thiscall DnSpaceShip::Structure(DnSpaceShip *this)\r\n\r\n{\r\n                    /* 0x46910  5745  ?Structure@DnSpaceShip@@QEBA?AW4STRUCTURE@1@XZ */\r\n  return (STRUCTURE)(byte)this[0xdd];\r\n}\r\n\r\n",
+      "error": null
+    },
+    {
+      "id": 45,
+      "result": "\r\n/* public: class QString const & __ptr64 __cdecl DnSpaceShip::ArchitectName(void)const __ptr64 */\r\n\r\nQString * __thiscall DnSpaceShip::ArchitectName(DnSpaceShip *this)\r\n\r\n{\r\n                    /* 0x351c0  2602  ?ArchitectName@DnSpaceShip@@QEBAAEBVQString@@XZ\r\n                       0x351c0  3943  ?FromName@AuCommPacket@@QEBAAEBVQString@@XZ\r\n                       0x351c0  4959  ?NameInBuilding@DnRoomType@@QEBAAEBVQString@@XZ\r\n                       0x351c0  4960  ?NameInSpacecraft@DnDetailType@@QEBAAEBVQString@@XZ */\r\n  return (QString *)(this + 0x20);\r\n}\r\n\r\n",
+      "error": null
+    },
+    {
+      "id": 46,
+      "result": "\r\n/* public: static class AuPoint __cdecl DnBuilding::DecodeGridCoord(unsigned short,signed char) */\r\n\r\nundefined8 __cdecl DnBuilding::DecodeGridCoord(ushort param_1,char param_2)\r\n\r\n{\r\n  undefined6 in_register_0000000a;\r\n  char in_DH;\r\n  char in_R8B;\r\n  \r\n                    /* 0x2f450  3602  ?DecodeGridCoord@DnBuilding@@SA?AVAuPoint@@GC@Z\r\n                       0x2f450  3604  ?DecodeGridCoord@DnSpaceShip@@SA?AVAuPoint@@GC@Z */\r\n  *(double *)CONCAT62(in_register_0000000a,param_1) = (double)(int)in_DH * 2.8284271245;\r\n  *(double *)(CONCAT62(in_register_0000000a,param_1) + 8) = (double)(int)param_2 * 2.8284271245;\r\n  *(double *)(CONCAT62(in_register_0000000a,param_1) + 0x10) = (double)(int)in_R8B * 8.0;\r\n  return CONCAT62(in_register_0000000a,param_1);\r\n}\r\n\r\n",
+      "error": null
+    },
+    {
+      "id": 47,
+      "result": "\r\n/* public: static signed char __cdecl DnBuilding::OnDeck(double) */\r\n\r\nchar __cdecl DnBuilding::OnDeck(double param_1)\r\n\r\n{\r\n  char cVar1;\r\n  int iVar2;\r\n  double dVar3;\r\n  \r\n                    /* 0x15b510  5000  ?OnDeck@DnBuilding@@SACN@Z\r\n                       0x15b510  5001  ?OnDeck@DnSpaceShip@@SACN@Z */\r\n  dVar3 = floor((param_1 + 0.05) * 0.125);\r\n  iVar2 = (int)dVar3;\r\n  if (iVar2 < -0x7f) {\r\n    return -0x7f;\r\n  }\r\n  cVar1 = (char)iVar2;\r\n  if (0x7f < iVar2) {\r\n    cVar1 = '\\x7f';\r\n  }\r\n  return cVar1;\r\n}\r\n\r\n",
+      "error": null
+    },
+    {
+      "id": 48,
+      "result": "\r\n/* public: bool __cdecl DgData::SpaceShipDesignAddRoom(unsigned int,class AuPointArray const &\r\n   __ptr64,unsigned char,unsigned char) __ptr64 */\r\n\r\nbool __thiscall\r\nDgData::SpaceShipDesignAddRoom\r\n          (DgData *this,uint param_1,AuPointArray *param_2,uchar param_3,uchar param_4)\r\n\r\n{\r\n  QList<DnRoom> *this_00;\r\n  uint uVar1;\r\n  longlong lVar2;\r\n  undefined8 *puVar3;\r\n  void *pvVar4;\r\n  uint *puVar5;\r\n  DnRoom *this_01;\r\n  undefined8 *puVar6;\r\n  bool bVar7;\r\n  bool bVar8;\r\n  AuPoint *pAVar9;\r\n  AuPoint *pAVar10;\r\n  __uint64 _Var11;\r\n  undefined8 *puVar12;\r\n  void **ppvVar13;\r\n  DnRoomArray *this_02;\r\n  ulonglong uVar14;\r\n  undefined8 *puVar15;\r\n  longlong *plVar16;\r\n  DgData *this_03;\r\n  undefined8 *puVar17;\r\n  int iVar18;\r\n  double dVar19;\r\n  uint local_res10 [2];\r\n  AuDesignIdHash local_77 [7];\r\n  longlong local_70;\r\n  undefined8 *local_68;\r\n  DgData *local_60;\r\n  undefined8 local_58;\r\n  uint local_50;\r\n  ushort local_4c;\r\n  undefined1 local_4a;\r\n  uchar local_49;\r\n  uchar local_48;\r\n  QVector<AuPoint> local_40 [8];\r\n  \r\n                    /* 0x143450  5600  ?SpaceShipDesignAddRoom@DgData@@QEAA_NIAEBVAuPointArray@@EE@Z\r\n                        */\r\n  local_58 = 0xfffffffffffffffe;\r\n  local_res10[0] = param_1;\r\n  bVar7 = SpaceShipDesignIsReadOnly(this,param_1);\r\n  if ((bVar7) || (*(int *)(*(longlong *)param_2 + 4) < 3)) {\r\n    return false;\r\n  }\r\n  pAVar9 = QVector<AuPoint>::cbegin((QVector<AuPoint> *)param_2);\r\n  pAVar10 = QVector<AuPoint>::cend((QVector<AuPoint> *)param_2);\r\n  if (pAVar9 != pAVar10) {\r\n    do {\r\n      bVar7 = DnSpaceShip::IsValidGridCoord(pAVar9);\r\n      if (!bVar7) {\r\n        return false;\r\n      }\r\n      pAVar9 = pAVar9 + 0x18;\r\n      pAVar10 = QVector<AuPoint>::cend((QVector<AuPoint> *)param_2);\r\n    } while (pAVar9 != pAVar10);\r\n  }\r\n  pAVar9 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)param_2,0);\r\n  dVar19 = (double)round(*(double *)(pAVar9 + 0x10) * 0.125);\r\n  iVar18 = (int)dVar19;\r\n  AuPointArray::AuPointArray((AuPointArray *)&local_70);\r\n  SpaceShipDesignRoomBoundary\r\n            (this,local_res10[0],(short)iVar18,param_3,param_4,(AuPointArray *)&local_70);\r\n  if (*(int *)(local_70 + 4) < 3) {\r\n    QVector<AuPoint>::operator=((QVector<AuPoint> *)&local_70,(QVector<class_AuPoint> *)param_2);\r\n    bVar7 = false;\r\n  }\r\n  else {\r\n    bVar7 = DnRoom::IntersectRoomBoundary((AuPointArray *)&local_70,param_2);\r\n    if (!bVar7) {\r\nLAB_180143695:\r\n      bVar7 = false;\r\n      goto LAB_1801438d3;\r\n    }\r\n    bVar7 = true;\r\n  }\r\n  this_03 = this + 0x178;\r\n  local_60 = this_03;\r\n  _Var11 = AuDesignIdHash::operator()(local_77,local_res10);\r\n  uVar14 = *(ulonglong *)(this + 0x1a0) & _Var11;\r\n  if (*(ulonglong *)(this + 0x1a8) <= uVar14) {\r\n    uVar14 = uVar14 + (-1 - (*(ulonglong *)(this + 0x1a0) >> 1));\r\n  }\r\n  lVar2 = *(longlong *)(this + 0x188);\r\n  puVar12 = *(undefined8 **)(lVar2 + uVar14 * 0x10);\r\n  puVar3 = *(undefined8 **)this_03;\r\n  while( true ) {\r\n    puVar15 = puVar3;\r\n    if (*(undefined8 **)(lVar2 + uVar14 * 0x10) != puVar3) {\r\n      puVar15 = (undefined8 *)**(undefined8 **)(lVar2 + 8 + uVar14 * 0x10);\r\n    }\r\n    puVar17 = puVar3;\r\n    puVar6 = local_68;\r\n    if ((puVar12 == puVar15) ||\r\n       (puVar17 = puVar12, puVar6 = puVar12, local_res10[0] == *(uint *)(puVar12 + 2))) break;\r\n    puVar12 = (undefined8 *)*puVar12;\r\n  }\r\n  local_68 = puVar6;\r\n  if (puVar17 != *(undefined8 **)this_03) {\r\n    if (1 < *(uint *)puVar17[3]) {\r\n      QList<DnRoom>::detach_helper((QList<DnRoom> *)(puVar17 + 3),((uint *)puVar17[3])[1]);\r\n    }\r\n    plVar16 = (longlong *)(puVar17[3] + ((longlong)*(int *)(puVar17[3] + 8) + 2) * 8);\r\n    while( true ) {\r\n      if (1 < *(uint *)puVar17[3]) {\r\n        QList<DnRoom>::detach_helper((QList<DnRoom> *)(puVar17 + 3),((uint *)puVar17[3])[1]);\r\n      }\r\n      if (plVar16 == (longlong *)(puVar17[3] + ((longlong)*(int *)(puVar17[3] + 0xc) + 2) * 8))\r\n      break;\r\n      lVar2 = *plVar16;\r\n      if (((*(char *)(lVar2 + 6) == iVar18) && (2 < *(byte *)(lVar2 + 7) - 0x16)) &&\r\n         ((*(uchar *)(lVar2 + 7) != param_3 || (*(uchar *)(lVar2 + 8) != param_4)))) {\r\n        AuPointArray::AuPointArray((AuPointArray *)&local_68,(AuPointArray *)(lVar2 + 0x10));\r\n        bVar8 = DnRoom::CanSubtractRoomBoundary((AuPointArray *)&local_68,(AuPointArray *)&local_70)\r\n        ;\r\n        if (!bVar8) {\r\n          AuPointArray::~AuPointArray((AuPointArray *)&local_68);\r\n          goto LAB_180143695;\r\n        }\r\n        AuPointArray::~AuPointArray((AuPointArray *)&local_68);\r\n      }\r\n      plVar16 = plVar16 + 1;\r\n    }\r\n    if (1 < *(uint *)puVar17[3]) {\r\n      QList<DnRoom>::detach_helper((QList<DnRoom> *)(puVar17 + 3),((uint *)puVar17[3])[1]);\r\n    }\r\n    ppvVar13 = (void **)(puVar17[3] + ((longlong)*(int *)(puVar17[3] + 8) + 2) * 8);\r\n    while( true ) {\r\n      if (1 < *(uint *)puVar17[3]) {\r\n        QList<DnRoom>::detach_helper((QList<DnRoom> *)(puVar17 + 3),((uint *)puVar17[3])[1]);\r\n      }\r\n      this_03 = local_60;\r\n      if (ppvVar13 == (void **)(puVar17[3] + ((longlong)*(int *)(puVar17[3] + 0xc) + 2) * 8)) break;\r\n      pvVar4 = *ppvVar13;\r\n      if ((*(char *)((longlong)pvVar4 + 6) == iVar18) &&\r\n         (2 < *(byte *)((longlong)pvVar4 + 7) - 0x16)) {\r\n        if ((*(uchar *)((longlong)pvVar4 + 7) == param_3) &&\r\n           (*(uchar *)((longlong)pvVar4 + 8) == param_4)) {\r\n          ppvVar13 = ppvVar13 + 1;\r\n        }\r\n        else {\r\n          AuPointArray::AuPointArray\r\n                    ((AuPointArray *)&local_68,(AuPointArray *)((longlong)pvVar4 + 0x10));\r\n          bVar8 = DnRoom::SubtractRoomBoundary((AuPointArray *)&local_68,(AuPointArray *)&local_70);\r\n          if (bVar8) {\r\n            if (2 < *(int *)((longlong)local_68 + 4)) {\r\n              DnRoom::SetBoundary(*ppvVar13,(AuPointArray *)&local_68);\r\n              (**(code **)(**(longlong **)gp_AuGlobal_exref + 0x290))\r\n                        (*(longlong **)gp_AuGlobal_exref,*(undefined4 *)*ppvVar13,\r\n                         *(undefined2 *)((longlong)*ppvVar13 + 4));\r\n              goto LAB_18014380b;\r\n            }\r\n            (**(code **)(**(longlong **)gp_AuGlobal_exref + 0x298))\r\n                      (*(longlong **)gp_AuGlobal_exref,*(undefined4 *)*ppvVar13,\r\n                       *(undefined2 *)((longlong)*ppvVar13 + 4));\r\n            this_00 = (QList<DnRoom> *)(puVar17 + 3);\r\n            puVar5 = *(uint **)this_00;\r\n            if (1 < *puVar5) {\r\n              uVar1 = puVar5[2];\r\n              if (1 < *puVar5) {\r\n                QList<DnRoom>::detach_helper(this_00,puVar5[1]);\r\n              }\r\n              ppvVar13 = (void **)(*(longlong *)this_00 +\r\n                                   ((longlong)*(int *)(*(longlong *)this_00 + 8) + 2) * 8 +\r\n                                  (longlong)\r\n                                  (int)((longlong)ppvVar13 +\r\n                                        (-(longlong)puVar5 - ((longlong)(int)uVar1 * 8 + 0x10)) >> 3\r\n                                       ) * 8);\r\n            }\r\n            this_01 = *ppvVar13;\r\n            if (this_01 != (DnRoom *)0x0) {\r\n              DnRoom::~DnRoom(this_01);\r\n              operator_delete(this_01);\r\n            }\r\n            ppvVar13 = QListData::erase((QListData *)this_00,ppvVar13);\r\n          }\r\n          else {\r\nLAB_18014380b:\r\n            ppvVar13 = ppvVar13 + 1;\r\n          }\r\n          AuPointArray::~AuPointArray((AuPointArray *)&local_68);\r\n        }\r\n      }\r\n      else {\r\n        ppvVar13 = ppvVar13 + 1;\r\n      }\r\n    }\r\n  }\r\n  if (bVar7) {\r\n    SpaceShipDesignSetRoomBoundary\r\n              (this,local_res10[0],(short)iVar18,param_3,param_4,(AuPointArray *)&local_70);\r\n  }\r\n  else {\r\n    DnRoom::DnRoom((DnRoom *)&local_50);\r\n    local_50 = local_res10[0];\r\n    local_4c = SpaceShipDesignNextRoomId(this,local_res10[0]);\r\n    local_4a = (undefined1)iVar18;\r\n    local_48 = param_4;\r\n    local_49 = param_3;\r\n    QVector<AuPoint>::operator=(local_40,(QVector<class_AuPoint> *)&local_70);\r\n    this_02 = std::\r\n              unordered_map<unsigned_int,DnRoomArray,AuDesignIdHash,std::equal_to<unsigned_int>,std::allocator<std::pair<unsigned_int_const_,DnRoomArray>_>_>\r\n              ::operator[]((unordered_map<unsigned_int,DnRoomArray,AuDesignIdHash,std::equal_to<unsigned_int>,std::allocator<std::pair<unsigned_int_const_,DnRoomArray>_>_>\r\n                            *)this_03,local_res10);\r\n    DnRoomArray::Add(this_02,(DnRoom *)&local_50);\r\n    (**(code **)(**(longlong **)gp_AuGlobal_exref + 0x288))\r\n              (*(longlong **)gp_AuGlobal_exref,local_50,local_4c);\r\n    DnRoom::~DnRoom((DnRoom *)&local_50);\r\n  }\r\n  SpaceShipDesignVerifyDetails(this,local_res10[0]);\r\n  bVar7 = true;\r\nLAB_1801438d3:\r\n  AuPointArray::~AuPointArray((AuPointArray *)&local_70);\r\n  return bVar7;\r\n}\r\n\r\n",
+      "error": null
+    },
+    {
+      "id": 49,
+      "result": "\r\n/* public: void __cdecl DnRoom::operator>>(class QDataStream & __ptr64)const __ptr64 */\r\n\r\nvoid __thiscall DnRoom::operator>>(DnRoom *this,QDataStream *param_1)\r\n\r\n{\r\n  QVector<AuPoint> *pQVar1;\r\n  int iVar2;\r\n  ushort uVar3;\r\n  AuPoint *pAVar4;\r\n  AuPoint *pAVar5;\r\n  double local_68;\r\n  double local_60;\r\n  double local_58;\r\n  undefined8 local_50;\r\n  undefined8 local_48;\r\n  undefined8 local_40;\r\n  undefined8 local_38;\r\n  undefined8 local_30;\r\n  undefined8 local_28;\r\n  AuPoint local_20 [24];\r\n  \r\n                    /* 0x167a50  1829  ??5DnRoom@@QEBAXAEAVQDataStream@@@Z */\r\n  QDataStream::operator<<(param_1,*(int *)this);\r\n  QDataStream::operator<<(param_1,*(short *)(this + 4));\r\n  QDataStream::operator<<(param_1,(char)this[6]);\r\n  QDataStream::operator<<(param_1,(char)this[7]);\r\n  QDataStream::operator<<(param_1,(char)this[8]);\r\n  if (this[7] == (DnRoom)0x18) {\r\n    pQVar1 = (QVector<AuPoint> *)(this + 0x10);\r\n    iVar2 = *(int *)(*(longlong *)(this + 0x10) + 4);\r\n    if (iVar2 != 0) {\r\n      pAVar4 = QVector<AuPoint>::operator[](pQVar1,0);\r\n      local_50 = *(undefined8 *)pAVar4;\r\n      local_48 = *(undefined8 *)(pAVar4 + 8);\r\n      local_40 = *(undefined8 *)(pAVar4 + 0x10);\r\n      pAVar4 = QVector<AuPoint>::operator[](pQVar1,(int)((iVar2 * 3 >> 0x1f & 3U) + iVar2 * 3) >> 2)\r\n      ;\r\n      local_38 = *(undefined8 *)pAVar4;\r\n      local_30 = *(undefined8 *)(pAVar4 + 8);\r\n      local_28 = *(undefined8 *)(pAVar4 + 0x10);\r\n      pAVar4 = QVector<AuPoint>::operator[](pQVar1,iVar2 / 2);\r\n      pAVar5 = QVector<AuPoint>::operator[](pQVar1,0);\r\n      local_58 = *(double *)(pAVar4 + 0x10) + *(double *)(pAVar5 + 0x10);\r\n      local_60 = *(double *)(pAVar4 + 8) + *(double *)(pAVar5 + 8);\r\n      local_68 = *(double *)pAVar4 + *(double *)pAVar5;\r\n      AuPoint::operator/((AuPoint *)&local_68,local_60);\r\n      QDataStream::operator<<(param_1,3);\r\n      uVar3 = DnBuilding::EncodeGridCoord(local_20);\r\n      QDataStream::operator<<(param_1,uVar3);\r\n      uVar3 = DnBuilding::EncodeGridCoord((AuPoint *)&local_50);\r\n      QDataStream::operator<<(param_1,uVar3);\r\n      uVar3 = DnBuilding::EncodeGridCoord((AuPoint *)&local_38);\r\n      QDataStream::operator<<(param_1,uVar3);\r\n      return;\r\n    }\r\n  }\r\n  pQVar1 = (QVector<AuPoint> *)(this + 0x10);\r\n  QDataStream::operator<<(param_1,*(short *)(*(longlong *)(this + 0x10) + 4));\r\n  pAVar4 = QVector<AuPoint>::constBegin(pQVar1);\r\n  pAVar5 = QVector<AuPoint>::constEnd(pQVar1);\r\n  if (pAVar4 != pAVar5) {\r\n    do {\r\n      uVar3 = DnBuilding::EncodeGridCoord(pAVar4);\r\n      QDataStream::operator<<(param_1,uVar3);\r\n      pAVar4 = pAVar4 + 0x18;\r\n      pAVar5 = QVector<AuPoint>::constEnd(pQVar1);\r\n    } while (pAVar4 != pAVar5);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+      "error": null
+    },
+    {
+      "id": 50,
+      "result": "\r\n/* public: void __cdecl DnSpaceShip::SetDesignInfo(unsigned char,unsigned char,float,unsigned\r\n   int,unsigned int,unsigned int,unsigned int,unsigned int,unsigned int,unsigned char) __ptr64 */\r\n\r\nvoid __thiscall\r\nDnSpaceShip::SetDesignInfo\r\n          (DnSpaceShip *this,uchar param_1,uchar param_2,float param_3,uint param_4,uint param_5,\r\n          uint param_6,uint param_7,uint param_8,uint param_9,uchar param_10)\r\n\r\n{\r\n  DnSpaceShip DVar1;\r\n  \r\n                    /* 0x17e3b0  5435  ?SetDesignInfo@DnSpaceShip@@QEAAXEEMIIIIIIE@Z */\r\n  *(float *)(this + 200) = param_3;\r\n  *(uint *)(this + 0xd0) = param_4;\r\n  this[0xde] = (DnSpaceShip)param_2;\r\n  *(uint *)(this + 0xd8) = param_8;\r\n  *(uint *)(this + 0xcc) = param_6;\r\n  *(uint *)(this + 0xd4) = param_5;\r\n  this[0xdd] = (DnSpaceShip)param_1;\r\n  *(uint *)(this + 0xe4) = param_9;\r\n  this[0xe8] = (DnSpaceShip)param_10;\r\n  this[0xdc] = (DnSpaceShip)0x0;\r\n  *(uint *)(this + 0xe0) = param_7;\r\n  if ((byte)(param_1 - 1) < 2) {\r\n    if (((param_5 != 0) && (param_6 != 0)) &&\r\n       ((param_10 != '\\0' || ((param_9 != 0 && (param_7 != 0)))))) {\r\n      DVar1 = this[0xdc];\r\n      if (328.08398 < param_3) {\r\n        DVar1 = (DnSpaceShip)param_1;\r\n      }\r\n      this[0xdc] = DVar1;\r\n    }\r\n  }\r\n  else if (((((byte)(param_1 - 3) < 2) && (param_5 != 0)) && (param_6 != 0)) &&\r\n          ((param_10 != '\\0' || ((param_9 != 0 && (param_7 != 0)))))) {\r\n    this[0xdc] = (DnSpaceShip)param_1;\r\n    return;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+      "error": null
+    },
+    {
+      "id": 51,
+      "result": "\r\n/* public: unsigned char __cdecl AuItem::HitPoints(void)const __ptr64 */\r\n\r\nuchar __thiscall AuItem::HitPoints(AuItem *this)\r\n\r\n{\r\n                    /* 0x31080  4040  ?HitPoints@AuItem@@QEBAEXZ\r\n                       0x31080  5740  ?Streamline@DnSpaceShip@@QEBAEXZ */\r\n  return (uchar)this[0x14];\r\n}\r\n\r\n",
+      "error": null
+    },
+    {
+      "id": 52,
+      "result": "\r\n/* public: unsigned char __cdecl DeManufacturingProcess::LastOutputQuality(void)const __ptr64 */\r\n\r\nuchar __thiscall DeManufacturingProcess::LastOutputQuality(DeManufacturingProcess *this)\r\n\r\n{\r\n                    /* 0x34b70  4778  ?LastOutputQuality@DeManufacturingProcess@@QEBAEXZ\r\n                       0x34b70  4927  ?MinTechLevel@DnSpaceShip@@QEBAEXZ */\r\n  return (uchar)this[0x30];\r\n}\r\n\r\n",
+      "error": null
+    },
+    {
+      "id": 53,
+      "result": "\r\n/* public: unsigned int __cdecl DnSpaceShip::HullVolume(void)const __ptr64 */\r\n\r\nuint __thiscall DnSpaceShip::HullVolume(DnSpaceShip *this)\r\n\r\n{\r\n                    /* 0x31410  4072  ?HullVolume@DnSpaceShip@@QEBAIXZ */\r\n  return *(uint *)(this + 0xd0);\r\n}\r\n\r\n",
+      "error": null
+    }
+  ]
+}

@@ -1,0 +1,201 @@
+{
+  "schema_version": 1,
+  "inspected_date": "2026-10-04",
+  "scope": "Read-only inventory of existing 2016 analysis artifacts and binary exports; no binaries or analysis databases modified.",
+  "binary_directory": "/mnt/c/Users/Celarious/Desktop/Shores of Hazeron/Fresh 2016",
+  "baseline_directory": "/mnt/c/Users/Celarious/Desktop/Shores of Hazeron/Fresh 2016/RE-baseline-20260916T211627Z",
+  "address_convention": "Preferred-image virtual addresses in hexadecimal. Include the module name: DLLs share preferred image base 0x180000000.",
+  "provenance": {
+    "pe_export": "Original Microsoft C++ decorated name and preferred-image address read directly from the current PE export directory.",
+    "qt_metadata_baseline": "Prior IDA analysis associates embedded Qt class/method names with dispatcher targets. Class__Method spelling, prototypes, locals and source boundaries are analyst reconstructions; inspect the stored comments and assembly.",
+    "inferred_call_target": "Unnamed target called by a metadata-backed function in baseline pseudocode. Descriptive role is inferred and needs direct inspection.",
+    "baseline_completeness": "Partial analysis, not recovered original source. Prior baseline covered EXE, AuLoginClient13, AuGlobal13 and AuData13; AuAtom13 and AuGL13 were outside its analysis scope.",
+    "stream_operator_caution": "Decorated ??5 means operator>> and ??6 means operator<<. These member signatures use const on ??5 and mutable receivers on ??6; do not infer read/write direction from the operator glyph alone without checking implementations."
+  },
+  "baseline_coverage": {
+    "source": "manifest.json and README.md in baseline_directory",
+    "created_utc": "20260916T211627Z",
+    "source_available_at_creation": false,
+    "exported_pseudocode_functions": 2755,
+    "exported_local_records": 31769,
+    "exe_qt_metadata_classes_reported": 186,
+    "exe_qt_method_entries_reported": 1715,
+    "exe_distinct_method_targets_decompiled_reported": 1480,
+    "modules": [
+      {
+        "module": "Shores of Hazeron.exe",
+        "total_functions_reported": 70663,
+        "selected_decompiled_functions": 2191,
+        "database_names": 28863,
+        "sha256": "0A38F9311CC366CFCE98C7CDF25A63D15C55102B0B78F7096462B04D61D568AE",
+        "current_binary_hash_matches_baseline": true
+      },
+      {
+        "module": "AuLoginClient13.dll",
+        "total_functions_reported": 529,
+        "selected_decompiled_functions": 529,
+        "database_names": 1122,
+        "sha256": "4758622EA8B97BE9FD115C6856AE2B7C1C78D31764FDC3D4DB81185B7F37769E",
+        "current_binary_hash_matches_baseline": true
+      },
+      {
+        "module": "AuGlobal13.dll",
+        "total_functions_reported": 6443,
+        "selected_decompiled_functions": 20,
+        "database_names": 12090,
+        "sha256": "959F705C8AF7081A30DDFFCB4C9C281090E9975E40C96952C481CB0743BE4C47",
+        "current_binary_hash_matches_baseline": true
+      },
+      {
+        "module": "AuData13.dll",
+        "total_functions_reported": 16127,
+        "selected_decompiled_functions": 15,
+        "database_names": 21208,
+        "sha256": "6155A0FBB047065EA6EF72727D039D62D32184D24285D1EA94C5237B87C9F440",
+        "current_binary_hash_matches_baseline": true
+      }
+    ],
+    "artifact_files": [
+      "README.md",
+      "EXAMPLES.md",
+      "manifest.json",
+      "Shores of Hazeron.exe.functions.jsonl",
+      "Shores of Hazeron.exe.names.jsonl",
+      "AuData13.dll.functions.jsonl",
+      "AuData13.dll.names.jsonl",
+      "AuGlobal13.dll.functions.jsonl",
+      "AuGlobal13.dll.names.jsonl",
+      "AuLoginClient13.dll.functions.jsonl",
+      "AuLoginClient13.dll.names.jsonl",
+      "databases/",
+      "pre-native-save/"
+    ],
+    "function_record_fields": ["ea", "name", "comments", "prototype", "pseudocode", "assembly", "locals"]
+  },
+  "exe_metadata_map": {
+    "module": "Shores of Hazeron.exe",
+    "provenance": "qt_metadata_baseline",
+    "source": "Shores of Hazeron.exe.functions.jsonl",
+    "functions": [
+      {"address": "0x140136bf0", "name": "AuClientApp::EnterSpaceShipDesignerMode", "dispatcher": "0x1403343c0", "metadata": "0x1406f0aa8", "observation": "Closes settings UI and sets app integer at byte offset 24 to 5."},
+      {"address": "0x140213980", "name": "AuMainFrame::Timer", "dispatcher": "0x14033edf0", "metadata": "0x1406f1bc0", "observation": "Run state 5 loads basic cached game data, calls 0x140244760 on model, then 0x14020ebf0 and 0x1403039b0."},
+      {"address": "0x1402a1390", "name": "AuSplash::SpacecraftDesigner"},
+      {"address": "0x140345160", "name": "AuSplash::SpacecraftDesignerMode"},
+      {"address": "0x1401cd6f0", "name": "AuDesignStudioPanel::EnterSpacecraftDesignerPushed"},
+      {"address": "0x1402ec750", "name": "AuView::DesignNew", "dispatcher": "0x140349be0", "metadata": "0x1406f2830"},
+      {"address": "0x1402ec950", "name": "AuView::DesignOpen", "dispatcher": "0x140349be0", "metadata": "0x1406f2830", "observation": "Spacecraft mode with app state 5 calls 0x1402ec270 directly; other app states use design-library dialog."},
+      {"address": "0x1402ee2b0", "name": "AuView::DesignSave", "dispatcher": "0x140349be0", "metadata": "0x1406f2830", "observation": "Spacecraft mode with app state 5 calls 0x1402ee9d0 directly; other app states use design-library dialog."},
+      {"address": "0x140185bf0", "name": "AuDesignOpen::LoadDesignFile", "dispatcher": "0x140337750", "metadata": "0x1406f0f40"},
+      {"address": "0x140186840", "name": "AuDesignSave::SaveDesign", "dispatcher": "0x140337880", "metadata": "0x1406f0f70"},
+      {"address": "0x140186b60", "name": "AuDesignSave::SaveDesignFile", "dispatcher": "0x140337880", "metadata": "0x1406f0f70"},
+      {"address": "0x1402d2350", "name": "AuTabDesign::DesignCheck"},
+      {"address": "0x1402d33e0", "name": "AuTabDesign::TimerUpdate"},
+      {"address": "0x1402edbe0", "name": "AuView::DesignRoomHold"},
+      {"address": "0x1402e9710", "name": "AuView::DesignDeleteRoom"},
+      {"address": "0x1402e97a0", "name": "AuView::DesignDeleteRoomCells"},
+      {"address": "0x140303640", "name": "AuView::SetDesignMode"}
+    ],
+    "additional_targets": [
+      {"address": "0x1402ec270", "inferred_role": "Local spacecraft design file load helper", "provenance": "inferred_call_target", "baseline_pseudocode_available": false},
+      {"address": "0x1402ee9d0", "inferred_role": "Local spacecraft design file save helper", "provenance": "inferred_call_target", "baseline_pseudocode_available": false},
+      {"address": "0x14023ff50", "inferred_role": "Model new spacecraft design helper called by AuView::DesignNew", "provenance": "inferred_call_target", "baseline_pseudocode_available": false},
+      {"address": "0x140244760", "inferred_role": "Model setup target in run state 5", "provenance": "inferred_call_target", "baseline_pseudocode_available": false},
+      {"address": "0x14020ebf0", "inferred_role": "Frame startup helper; original name unresolved", "provenance": "inferred_call_target", "baseline_pseudocode_available": false},
+      {"address": "0x1403039b0", "inferred_role": "View startup helper receiving avatar ID; original name unresolved", "provenance": "inferred_call_target", "baseline_pseudocode_available": false}
+    ],
+    "observed_binary_strings": [
+      "/DesignStudio/LastShipFile",
+      "Spacecraft Designs (*.ship);;All Files (*.*)",
+      "Spacecraft Design File",
+      ".ship"
+    ]
+  },
+  "additional_assembly_observations": {
+    "provenance": "Read-only objdump disassembly of current binaries, with original PE export and import names.",
+    "auid_wire_format": {
+      "wire_width_bytes": 4,
+      "modern_source": "src/lib/util/auid.cpp:29-40",
+      "modern_source_observation": "AuId member read and write operators use quint32 locals. Free QDataStream operators in src/lib/util/auid.h:261-271 delegate to them.",
+      "legacy_module": "AuGlobal13.dll",
+      "legacy_member_write": "0x180025d70",
+      "legacy_member_read": "0x180025e90",
+      "legacy_write_import_slot": "0x18009e978",
+      "legacy_read_import_slot": "0x18009e988",
+      "legacy_observation": "Write passes a DWORD from this to QDataStream::operator<<(int); read invokes QDataStream::operator>>(int&) then copies a DWORD to this. Signed Qt import wrappers preserve the 32-bit ID bit pattern."
+    },
+    "dnspaceship_fields": [
+      {"offset": "0x14", "width_bytes": 1, "meaning": "Streamline", "getter": "0x180031080", "setter": "0x18017e550", "evidence": "Named Streamline getter: movzx eax,BYTE PTR [rcx+0x14]; ret. Named SetStreamline setter writes dl to [rcx+0x14].", "folded_export_label_caution": "Ghidra may display the shared-address alias AuItem::HitPoints. The DnSpaceShip export and receiver context establish Streamline."},
+      {"offset": "0x30", "width_bytes": 1, "meaning": "MinTechLevel", "getter": "0x180034b70", "setter": "0x18017e4a0", "evidence": "Named MinTechLevel getter: movzx eax,BYTE PTR [rcx+0x30]; ret. Named SetMinTechLevel setter writes dl to [rcx+0x30].", "folded_export_label_caution": "Ghidra may display the shared-address alias DeManufacturingProcess::LastOutputQuality. The DnSpaceShip export and receiver context establish MinTechLevel."},
+      {"offset": "0xd0", "width_bytes": 4, "meaning": "HullVolume", "getter": "0x180031410", "evidence": "Named HullVolume getter: mov eax,DWORD PTR [rcx+0xd0]; ret."}
+    ],
+    "game_data_type_accessors": [
+      {"module": "AuData13.dll", "class": "DnRoomType", "type_getter": "0x180072710", "type_offset": "0x0", "type_width_bytes": 4, "spacecraft_name_getter": "0x18002e7c0", "spacecraft_name_qstring_offset": "0x18", "building_name_getter": "0x1800351c0", "building_name_qstring_offset": "0x20", "rx": "0x1801789d0", "tx": "0x180178a30", "type_map_load": "0x180178580"},
+      {"module": "AuData13.dll", "class": "DnDetailType", "type_getter": "0x180047460", "type_offset": "0x18", "type_width_bytes": 1, "spacecraft_name_getter": "0x1800351c0", "spacecraft_name_qstring_offset": "0x20", "building_name_getter": "0x1800351b0", "building_name_qstring_offset": "0x28", "rx": "0x180165600", "tx": "0x1801676f0", "type_map_load": "0x1801632b0"}
+    ],
+    "type_mapping_limit": "These accessors establish where a type record stores its ID and names. Numeric ID-to-name tables have not been extracted from cached game data in this pass. Shared accessor addresses are compiler-folded exports, not evidence that classes are the same."
+  },
+  "dll_export_map": [
+    {
+      "module": "AuData13.dll",
+      "provenance": "pe_export",
+      "role_inferred_from_exports": "Legacy design records, rooms/details, grid coordinates, design analysis, serialization and cached design collections.",
+      "classes": ["DgData", "DqDesignAnalysis", "DnSpaceShip", "DnSpaceShipHash", "DnRoom", "DnRoomArray", "DnDetail", "DnDetailArray", "DnRoomType", "DnDetailType", "AuSpaceShipModules"],
+      "functions": [
+        {"address": "0x18013e9a0", "name": "DgData::LoadSpaceShipDesign", "decorated": "?LoadSpaceShipDesign@DgData@@SAXAEAVQDataStream@@AEAVDnSpaceShip@@AEAVDnDetailArray@@AEAVDnRoomArray@@@Z"},
+        {"address": "0x180140050", "name": "DgData::SaveSpaceShipDesign", "decorated": "?SaveSpaceShipDesign@DgData@@QEBAXIAEAVQDataStream@@AEBVQString@@@Z"},
+        {"address": "0x18013fe50", "name": "DgData::SaveSpaceShipDesign", "decorated": "?SaveSpaceShipDesign@DgData@@QEAA_NAEBVDnSpaceShip@@AEBVDnDetailArray@@AEBVDnRoomArray@@@Z"},
+        {"address": "0x180179390", "name": "DnSpaceShip::operator>>", "decorated": "??5DnSpaceShip@@QEBAXAEAVQDataStream@@@Z"},
+        {"address": "0x180179540", "name": "DnSpaceShip::operator<<", "decorated": "??6DnSpaceShip@@QEAAXAEAVQDataStream@@@Z"},
+        {"address": "0x18015bf70", "name": "DnDetailArray::operator>>", "decorated": "??5DnDetailArray@@QEBAXAEAVQDataStream@@@Z"},
+        {"address": "0x18015c180", "name": "DnDetailArray::operator<<", "decorated": "??6DnDetailArray@@QEAAXAEAVQDataStream@@@Z"},
+        {"address": "0x180167c60", "name": "DnRoomArray::operator>>", "decorated": "??5DnRoomArray@@QEBAXAEAVQDataStream@@@Z"},
+        {"address": "0x180167f60", "name": "DnRoomArray::operator<<", "decorated": "??6DnRoomArray@@QEAAXAEAVQDataStream@@@Z"},
+        {"address": "0x180167a50", "name": "DnRoom::operator>>", "decorated": "??5DnRoom@@QEBAXAEAVQDataStream@@@Z"},
+        {"address": "0x180167cf0", "name": "DnRoom::operator<<", "decorated": "??6DnRoom@@QEAAXAEAVQDataStream@@@Z"},
+        {"address": "0x18015bee0", "name": "DnDetail::operator>>", "decorated": "??5DnDetail@@QEBAXAEAVQDataStream@@@Z"},
+        {"address": "0x18015c070", "name": "DnDetail::operator<<", "decorated": "??6DnDetail@@QEAAXAEAVQDataStream@@@Z"},
+        {"address": "0x180024d10", "name": "AuSpaceShipModules::operator>>", "decorated": "??5AuSpaceShipModules@@QEBAXAEAVQDataStream@@@Z"},
+        {"address": "0x180025b30", "name": "AuSpaceShipModules::operator<<", "decorated": "??6AuSpaceShipModules@@QEAAXAEAVQDataStream@@@Z"},
+        {"address": "0x18002f450", "name": "DnBuilding::DecodeGridCoord", "decorated": "?DecodeGridCoord@DnBuilding@@SA?AVAuPoint@@GC@Z"},
+        {"address": "0x18002f4b0", "name": "DnBuilding::DecodeGridCoord", "decorated": "?DecodeGridCoord@DnBuilding@@SA?AVAuPoint@@HHC@Z"},
+        {"address": "0x18017a390", "name": "DnBuilding::EncodeGridCoord", "decorated": "?EncodeGridCoord@DnBuilding@@SAGAEBVAuPoint@@@Z"},
+        {"address": "0x18015b510", "name": "DnSpaceShip::OnDeck", "decorated": "?OnDeck@DnSpaceShip@@SACN@Z"},
+        {"address": "0x1801432f0", "name": "DgData::SpaceShipDesignAddRoom", "decorated": "?SpaceShipDesignAddRoom@DgData@@QEAAXAEBVDnRoom@@@Z"},
+        {"address": "0x180143450", "name": "DgData::SpaceShipDesignAddRoom", "decorated": "?SpaceShipDesignAddRoom@DgData@@QEAA_NIAEBVAuPointArray@@EE@Z"},
+        {"address": "0x1801447c0", "name": "DgData::SpaceShipDesignChangeRoomType", "decorated": "?SpaceShipDesignChangeRoomType@DgData@@QEAA_NIGW4ROOMTYPE@DnRoomType@@@Z"}
+      ]
+    },
+    {
+      "module": "AuAtom13.dll",
+      "provenance": "pe_export",
+      "role_inferred_from_exports": "Design environment, grid plane, room/detail editing operations and world rendering.",
+      "classes": ["DaDesignEnvironment", "DaDesignPlane", "DaSpaceShip"],
+      "functions": [
+        {"address": "0x1802fae60", "name": "DaDesignEnvironment::NewDesign", "decorated": "?NewDesign@DaDesignEnvironment@@QEAAXAEBVAuId@@AEBVQString@@@Z"},
+        {"address": "0x1802faaf0", "name": "DaDesignEnvironment::LoadWorkingDesign", "decorated": "?LoadWorkingDesign@DaDesignEnvironment@@QEAAXAEBVAuId@@AEBVQString@@@Z"},
+        {"address": "0x1802f9ce0", "name": "DaDesignEnvironment::LoadDesign", "decorated": "?LoadDesign@DaDesignEnvironment@@QEAAXIAEBVAuId@@@Z"},
+        {"address": "0x1802fb8c0", "name": "DaDesignEnvironment::SaveDesign", "decorated": "?SaveDesign@DaDesignEnvironment@@QEAAHAEBVQString@@AEBVAuId@@@Z"},
+        {"address": "0x1802f8ed0", "name": "DaDesignEnvironment::FillRoomCell", "decorated": "?FillRoomCell@DaDesignEnvironment@@QEAAXAEBVAuId@@AEBVAuPoint@@H@Z"},
+        {"address": "0x1802f74a0", "name": "DaDesignEnvironment::AddDetail", "decorated": "?AddDetail@DaDesignEnvironment@@QEAAXAEBVAuId@@AEBVAuPoint@@HHW4COMMODITYID@@@Z"},
+        {"address": "0x1802f8350", "name": "DaDesignEnvironment::DeleteRoom", "decorated": "?DeleteRoom@DaDesignEnvironment@@QEAAXAEBVAuPoint@@@Z"},
+        {"address": "0x1802f8220", "name": "DaDesignEnvironment::DeleteDeck", "decorated": "?DeleteDeck@DaDesignEnvironment@@QEAAXH@Z"},
+        {"address": "0x1802f9240", "name": "DaDesignEnvironment::InitDesignPlane", "decorated": "?InitDesignPlane@DaDesignEnvironment@@QEAAXAEBVAuId@@@Z"},
+        {"address": "0x1802fbd30", "name": "DaDesignEnvironment::SetDesignPlane", "decorated": "?SetDesignPlane@DaDesignEnvironment@@QEAAXAEBVAuId@@AEBVAuPoint@@11@Z"},
+        {"address": "0x1802f8650", "name": "DaDesignEnvironment::DesignLoadCompleted", "decorated": "?DesignLoadCompleted@DaDesignEnvironment@@QEAAXXZ"},
+        {"address": "0x1802fac90", "name": "DaDesignEnvironment::MoveRoomsAndDetails", "decorated": "?MoveRoomsAndDetails@DaDesignEnvironment@@QEAAXAEBVAuId@@HHHH@Z"},
+        {"address": "0x1802f7c00", "name": "DaDesignEnvironment::CopyRoomsAndDetails", "decorated": "?CopyRoomsAndDetails@DaDesignEnvironment@@QEAAXAEBVAuId@@HHHH@Z"},
+        {"address": "0x1802fb170", "name": "DaDesignEnvironment::RenderEnvironment", "decorated": "?RenderEnvironment@DaDesignEnvironment@@UEAAXAEBVAuMatrix4x4@@0AEBVAuAtomRenderInfo@@PEAVDaPerson@@@Z"},
+        {"address": "0x1802fd190", "name": "DaDesignPlane::GetFillShapeAt", "decorated": "?GetFillShapeAt@DaDesignPlane@@QEBAXAEBVAuPoint@@AEAVAuPointArray@@@Z"},
+        {"address": "0x180301980", "name": "DaDesignPlane::RenderSpacecraftGrid", "decorated": "?RenderSpacecraftGrid@DaDesignPlane@@AEAAXAEBVAuMatrix4x4@@0AEAVAuGLEffects@@PEAVQOpenGLWidget@@MAEBVQFont@@@Z"},
+        {"address": "0x1803e55c0", "name": "DaSpaceShip::DesignRoom", "decorated": "?DesignRoom@DaSpaceShip@@QEAA_NAEBVAuPointArray@@HE@Z"}
+      ]
+    },
+    {
+      "module": "AuGL13.dll",
+      "provenance": "PE export/import name inspection",
+      "role_inferred_from_exports": "General rendering infrastructure. No designer-specific DaDesign/DqDesign/DnSpaceShip class exports found in this pass.",
+      "classes": [],
+      "functions": []
+    }
+  ]
+}

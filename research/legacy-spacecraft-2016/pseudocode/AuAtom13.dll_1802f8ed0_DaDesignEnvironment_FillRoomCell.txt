@@ -1,0 +1,107 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuAtom13.dll
+Address: 0x1802f8ed0
+Name provenance: PE export
+Captured: 2026-10-04
+
+
+/* public: void __cdecl DaDesignEnvironment::FillRoomCell(class AuId const & __ptr64,class AuPoint
+   const & __ptr64,int) __ptr64 */
+
+void __thiscall
+DaDesignEnvironment::FillRoomCell
+          (DaDesignEnvironment *this,AuId *param_1,AuPoint *param_2,int param_3)
+
+{
+  bool bVar1;
+  char cVar2;
+  int iVar3;
+  DaDesignPlane *this_00;
+  DaSpaceShip *pDVar4;
+  longlong local_18 [2];
+  
+                    /* 0x2f8ed0  2990
+                       ?FillRoomCell@DaDesignEnvironment@@QEAAXAEBVAuId@@AEBVAuPoint@@H@Z */
+  local_18[1] = 0xfffffffffffffffe;
+  this_00 = DaAtom::FindDesignPlane((DaAtom *)this,param_1);
+  if (this_00 == (DaDesignPlane *)0x0) {
+    return;
+  }
+  if ((this_00[0x3b9] != (DaDesignPlane)0x0) && (-1 < param_3)) {
+    if (this_00[0x3b9] != (DaDesignPlane)0x1) {
+      return;
+    }
+    if (this[0x3b0] != (DaDesignEnvironment)0x1) {
+      if (this[0x3b0] != (DaDesignEnvironment)0x2) {
+        return;
+      }
+      QReadWriteLock::lockForWrite((QReadWriteLock *)(this + 0x3b8));
+      if ((*(DpBuilding **)(this + 0x3c8) != (DpBuilding *)0x0) &&
+         (bVar1 = DpBuilding::DesignChangeRoomType(*(DpBuilding **)(this + 0x3c8),param_2,param_3),
+         bVar1)) {
+        if (this[0x3b1] == (DaDesignEnvironment)0x0) {
+          this[0x3b1] = (DaDesignEnvironment)0x1;
+          (**(code **)(*(longlong *)this + 0x1a0))(this,1);
+        }
+        (**(code **)(*(longlong *)this + 0x1a0))(this,1);
+      }
+      QReadWriteLock::unlock((QReadWriteLock *)(this + 0x3b8));
+      return;
+    }
+    pDVar4 = DaAtom::FindSpaceShip((DaAtom *)this);
+    if (pDVar4 == (DaSpaceShip *)0x0) {
+      return;
+    }
+    bVar1 = DaSpaceShip::DesignChangeRoomType(pDVar4,param_2,param_3);
+    if (!bVar1) {
+      return;
+    }
+    if (this[0x3b1] != (DaDesignEnvironment)0x0) {
+      return;
+    }
+    this[0x3b1] = (DaDesignEnvironment)0x1;
+    (**(code **)(*(longlong *)this + 0x1a0))(this,1);
+    return;
+  }
+  AuPointArray::AuPointArray((AuPointArray *)local_18);
+  DaDesignPlane::GetFillShapeAt(this_00,param_2,(AuPointArray *)local_18);
+  if (*(int *)(local_18[0] + 4) != 0) {
+    if (this[0x3b0] == (DaDesignEnvironment)0x1) {
+      if (-1 < param_3) {
+        cVar2 = DnSpaceShip::OnDeck(*(double *)(param_2 + 0x10));
+        iVar3 = DeckMinLimit(this);
+        if ((cVar2 < iVar3) || (iVar3 = DeckMaxLimit(this), iVar3 < cVar2)) goto LAB_1802f9156;
+      }
+      pDVar4 = DaAtom::FindSpaceShip((DaAtom *)this);
+      if ((pDVar4 != (DaSpaceShip *)0x0) &&
+         ((bVar1 = DaSpaceShip::DesignRoom
+                             (pDVar4,(AuPointArray *)local_18,param_3,(uchar)this_00[0x3ba]), bVar1
+          && (this[0x3b1] == (DaDesignEnvironment)0x0)))) {
+        this[0x3b1] = (DaDesignEnvironment)0x1;
+        (**(code **)(*(longlong *)this + 0x1a0))(this,1);
+      }
+    }
+    else if (this[0x3b0] == (DaDesignEnvironment)0x2) {
+      if (-1 < param_3) {
+        cVar2 = DnBuilding::OnDeck(*(double *)(param_2 + 0x10));
+        iVar3 = DeckMinLimit(this);
+        if ((cVar2 < iVar3) || (iVar3 = DeckMaxLimit(this), iVar3 < cVar2)) goto LAB_1802f9156;
+      }
+      QReadWriteLock::lockForWrite((QReadWriteLock *)(this + 0x3b8));
+      if ((*(DpBuilding **)(this + 0x3c8) != (DpBuilding *)0x0) &&
+         (bVar1 = DpBuilding::DesignRoom
+                            (*(DpBuilding **)(this + 0x3c8),(AuPointArray *)local_18,param_3,
+                             (uchar)this_00[0x3ba]), bVar1)) {
+        if (this[0x3b1] == (DaDesignEnvironment)0x0) {
+          this[0x3b1] = (DaDesignEnvironment)0x1;
+          (**(code **)(*(longlong *)this + 0x1a0))(this,1);
+        }
+        (**(code **)(*(longlong *)this + 0x1a0))(this,1);
+      }
+      QReadWriteLock::unlock((QReadWriteLock *)(this + 0x3b8));
+    }
+  }
+LAB_1802f9156:
+  AuPointArray::~AuPointArray((AuPointArray *)local_18);
+  return;
+}

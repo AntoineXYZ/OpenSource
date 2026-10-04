@@ -1,0 +1,30 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x180167c60
+Name provenance: PE export operator>>
+Captured: 2026-10-04
+
+
+/* public: void __cdecl DnRoomArray::operator>>(class QDataStream & __ptr64)const __ptr64 */
+
+void __thiscall DnRoomArray::operator>>(DnRoomArray *this,QDataStream *param_1)
+
+{
+  longlong lVar1;
+  undefined8 *puVar2;
+  
+                    /* 0x167c60  1830  ??5DnRoomArray@@QEBAXAEAVQDataStream@@@Z */
+  QDataStream::operator<<
+            (param_1,*(short *)(*(longlong *)this + 0xc) - *(short *)(*(longlong *)this + 8));
+  lVar1 = *(longlong *)this;
+  puVar2 = (undefined8 *)(lVar1 + ((longlong)*(int *)(lVar1 + 8) + 2) * 8);
+  if (puVar2 != (undefined8 *)(lVar1 + (longlong)*(int *)(lVar1 + 0xc) * 8 + 0x10)) {
+    do {
+      DnRoom::operator>>((DnRoom *)*puVar2,param_1);
+      puVar2 = puVar2 + 1;
+    } while (puVar2 != (undefined8 *)
+                       (*(longlong *)this + (longlong)*(int *)(*(longlong *)this + 0xc) * 8 + 0x10))
+    ;
+  }
+  return;
+}

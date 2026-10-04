@@ -1,0 +1,15 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x180031410
+Name provenance: PE export
+Captured: 2026-10-04
+
+
+/* public: unsigned int __cdecl DnSpaceShip::HullVolume(void)const __ptr64 */
+
+uint __thiscall DnSpaceShip::HullVolume(DnSpaceShip *this)
+
+{
+                    /* 0x31410  4072  ?HullVolume@DnSpaceShip@@QEBAIXZ */
+  return *(uint *)(this + 0xd0);
+}

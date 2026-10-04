@@ -1,0 +1,18 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x1800351c0
+Name provenance: PE export; shared getter address
+Captured: 2026-10-04
+
+
+/* public: class QString const & __ptr64 __cdecl DnSpaceShip::ArchitectName(void)const __ptr64 */
+
+QString * __thiscall DnSpaceShip::ArchitectName(DnSpaceShip *this)
+
+{
+                    /* 0x351c0  2602  ?ArchitectName@DnSpaceShip@@QEBAAEBVQString@@XZ
+                       0x351c0  3943  ?FromName@AuCommPacket@@QEBAAEBVQString@@XZ
+                       0x351c0  4959  ?NameInBuilding@DnRoomType@@QEBAAEBVQString@@XZ
+                       0x351c0  4960  ?NameInSpacecraft@DnDetailType@@QEBAAEBVQString@@XZ */
+  return (QString *)(this + 0x20);
+}

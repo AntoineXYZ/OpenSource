@@ -1,0 +1,15 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x180046910
+Name provenance: PE export
+Captured: 2026-10-04
+
+
+/* public: enum DnSpaceShip::STRUCTURE __cdecl DnSpaceShip::Structure(void)const __ptr64 */
+
+STRUCTURE __thiscall DnSpaceShip::Structure(DnSpaceShip *this)
+
+{
+                    /* 0x46910  5745  ?Structure@DnSpaceShip@@QEBA?AW4STRUCTURE@1@XZ */
+  return (STRUCTURE)(byte)this[0xdd];
+}

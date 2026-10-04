@@ -1,0 +1,129 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: Shores of Hazeron.exe
+Address: 0x1402ee9d0
+Name provenance: inferred descriptive label
+Captured: 2026-10-04
+
+
+ulonglong FUN_1402ee9d0(longlong param_1)
+
+{
+  longlong lVar1;
+  bool bVar2;
+  uint uVar3;
+  ulonglong uVar4;
+  DaAtom *pDVar5;
+  DaDesignEnvironment *this;
+  QString *pQVar6;
+  undefined8 uVar7;
+  longlong local_res10;
+  longlong local_res18;
+  QString local_res20 [8];
+  ulonglong in_stack_ffffffffffffff38;
+  QTypedArrayData<unsigned_short> *local_a8;
+  QString local_a0 [8];
+  longlong local_98;
+  QTypedArrayData<unsigned_short> *local_90;
+  QFileInfo local_88 [8];
+  QTypedArrayData<unsigned_short> *local_80;
+  QTypedArrayData<unsigned_short> *local_78;
+  QFile local_70 [16];
+  QString local_60 [8];
+  undefined8 local_58;
+  QDataStream local_50 [24];
+  undefined4 local_38;
+  
+  local_58 = 0xfffffffffffffffe;
+  uVar4 = FUN_1402f3050();
+  if ((char)uVar4 != '\0') {
+    QString::QString((QString *)&local_res10);
+    QReadWriteLock::lockForRead((QReadWriteLock *)(param_1 + 0x1858));
+    uVar3 = 0;
+    if (*(int *)(param_1 + 0x184) != 0) {
+      pDVar5 = DaRoot::FindNormalAtom((DaRoot *)(param_1 + 0x1860),(AuId *)(param_1 + 0x184));
+      pDVar5 = (DaAtom *)
+               __RTDynamicCast(pDVar5,0,&DaAtom::RTTI_Type_Descriptor,
+                               &DaPerson::RTTI_Type_Descriptor,
+                               in_stack_ffffffffffffff38 & 0xffffffff00000000);
+      uVar3 = 0;
+      if ((pDVar5 != (DaAtom *)0x0) &&
+         (this = DaAtom::FindParentDesignEnvironment(pDVar5), this != (DaDesignEnvironment *)0x0)) {
+        pQVar6 = (QString *)DaDesignEnvironment::DesignName(this);
+        QString::operator=((QString *)&local_res10,pQVar6);
+        QString::~QString((QString *)&local_a8);
+        uVar3 = DaDesignEnvironment::WorkingDesignId(this);
+      }
+    }
+    QReadWriteLock::unlock((QReadWriteLock *)(param_1 + 0x1858));
+    if (uVar3 == 0) {
+      uVar4 = 0;
+    }
+    else {
+      local_80 = QString::fromAscii_helper("",0);
+      local_78 = QString::fromAscii_helper("/DesignStudio/LastShipFile",0x1a);
+      AuSettings::readEntry
+                ((AuSettings *)(*(longlong *)gp_AuGlobal_exref + 0x218),(QString *)&local_98,
+                 (QString *)&local_78);
+      QString::~QString((QString *)&local_78);
+      QString::~QString((QString *)&local_80);
+      if (*(int *)(local_98 + 4) == 0) {
+        pQVar6 = (QString *)QDir::currentPath();
+        QString::operator=((QString *)&local_98,pQVar6);
+        QString::~QString((QString *)&local_a8);
+      }
+      QFileInfo::QFileInfo(local_88,(QString *)&local_98);
+      QString::QString(local_res20);
+      if (*(int *)(local_res10 + 4) == 0) {
+        pQVar6 = (QString *)QFileInfo::absolutePath(local_88);
+        QString::operator=(local_res20,pQVar6);
+      }
+      else {
+        uVar7 = QFileInfo::absolutePath(local_88);
+        uVar7 = FUN_1400fed80(local_60,uVar7,&DAT_14049bce0);
+        uVar7 = FUN_1400fed30(&local_90,uVar7,&local_res10);
+        pQVar6 = (QString *)FUN_1400fed80(&local_a8,uVar7,".ship");
+        QString::operator=(local_res20,pQVar6);
+        QString::~QString((QString *)&local_a8);
+        QString::~QString((QString *)&local_90);
+        QString::~QString(local_60);
+      }
+      QString::~QString(local_a0);
+      local_90 = QString::fromAscii_helper("Spacecraft Designs (*.ship);;All Files (*.*)",0x2c);
+      uVar7 = FUN_140310230(local_a0,"Spacecraft Design File",0,0xffffffff);
+      QFileDialog::getSaveFileName(&local_res18,param_1,uVar7,local_res20,&local_90,0,0);
+      QString::~QString(local_a0);
+      QString::~QString((QString *)&local_90);
+      if (*(int *)(local_res18 + 4) == 0) {
+        uVar4 = 0;
+      }
+      else {
+        local_a8 = QString::fromAscii_helper("/DesignStudio/LastShipFile",0x1a);
+        AuSettings::writeEntry
+                  ((AuSettings *)(*(longlong *)gp_AuGlobal_exref + 0x218),(QString *)&local_a8,
+                   (QString *)&local_res18);
+        QString::~QString((QString *)&local_a8);
+        QFile::QFile(local_70,(QString *)&local_res18);
+        bVar2 = QFile::open(local_70,2);
+        if (bVar2) {
+          QDataStream::QDataStream(local_50,(QIODevice *)local_70);
+          local_38 = 7;
+          lVar1 = *(longlong *)gp_AuGlobal_exref;
+          QReadWriteLock::lockForRead((QReadWriteLock *)(lVar1 + 0x1e0));
+          DgData::SaveSpaceShipDesign
+                    (*(DgData **)(lVar1 + 0x68),uVar3,local_50,(QString *)&local_res10);
+          QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1e0));
+          QFileDevice::close((QFileDevice *)local_70);
+          QDataStream::~QDataStream(local_50);
+        }
+        uVar4 = (ulonglong)bVar2;
+        QFile::~QFile(local_70);
+      }
+      QString::~QString((QString *)&local_res18);
+      QString::~QString(local_res20);
+      QFileInfo::~QFileInfo(local_88);
+      QString::~QString((QString *)&local_98);
+    }
+    QString::~QString((QString *)&local_res10);
+  }
+  return uVar4;
+}

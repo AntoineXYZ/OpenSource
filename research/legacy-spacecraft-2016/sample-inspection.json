@@ -1,0 +1,470 @@
+{
+  "format": "experimental-2016-ship",
+  "header_field_provenance": {
+    "architect_id": "AuId uses a four-byte stream representation; confirmed by legacy AuGlobal operators",
+    "streamline": "DnSpaceShip +0x14; getter at AuData13.dll:0x180031080",
+    "armor": "DnSpaceShip +0x15; SetArmor at AuData13.dll:0x18017e3a0",
+    "architect_name": "DnSpaceShip +0x20; getter at AuData13.dll:0x1800351c0",
+    "minimum_tech_level": "DnSpaceShip +0x30; getter at AuData13.dll:0x180034b70",
+    "hull_volume": "DnSpaceShip +0xd0; getter at AuData13.dll:0x180031410",
+    "structure": "DnSpaceShip +0xdd; getter at AuData13.dll:0x180046910",
+    "tech_level": "DnSpaceShip +0xde; getter at AuData13.dll:0x180046d50"
+  },
+  "limits": {
+    "file_bytes": 67108864,
+    "combined_records": 250000
+  },
+  "files": [
+    {
+      "path": "/mnt/c/Users/Celarious/Desktop/Shores of Hazeron/Antiflux Harvester MK2.ship",
+      "size_bytes": 35755,
+      "sha256": "beaa58348bd2a0a0cb76cf20871afa07a7a79448aa70adda4545d0e28f459037",
+      "status": "parsed_exact_eof",
+      "summary": {
+        "header": {
+          "design_id": 110708,
+          "name": "Antiflux Harvester MK2",
+          "architect_id": 4979368,
+          "streamline": 1,
+          "armor": 0,
+          "version_state_raw": 32,
+          "version": 2,
+          "state": 0,
+          "architect_name": "ChrisTheLovasz",
+          "minimum_tech_level": 0,
+          "hull_volume": 0,
+          "structure": 0,
+          "tech_level": 0
+        },
+        "modules": {
+          "first_pairs": [
+            {
+              "first": 0,
+              "second_raw": 283,
+              "second_normalized": 283
+            }
+          ],
+          "scalar_u16_slots": [
+            234,
+            259,
+            237,
+            238,
+            235,
+            239,
+            263,
+            240
+          ],
+          "second_pairs": []
+        },
+        "stream": {
+          "byte_order": "big-endian",
+          "qdatastream_version": "Qt_4_0 (integer 7)",
+          "rooms_count_offset": 126,
+          "details_count_offset": 1071,
+          "bytes_consumed": 35755,
+          "exact_eof": true
+        },
+        "counts": {
+          "rooms": 29,
+          "rooms_retained_by_legacy_reader": 29,
+          "empty_boundary_rooms_discarded_by_legacy_reader": 0,
+          "stored_vertices": 312,
+          "ellipse_control_rooms": 0,
+          "details": 2040
+        },
+        "histograms": {
+          "room_type": {
+            "0x01": 1,
+            "0x02": 1,
+            "0x04": 1,
+            "0x05": 6,
+            "0x07": 1,
+            "0x08": 13,
+            "0x09": 4,
+            "0x10": 1,
+            "0x15": 1
+          },
+          "room_deck": {
+            "0": 7,
+            "1": 6,
+            "2": 11,
+            "3": 5
+          },
+          "detail_deck": {
+            "0": 701,
+            "1": 552,
+            "2": 493,
+            "3": 294
+          },
+          "detail_offset_0x28_u16": {
+            "0x04": 4,
+            "0x05": 4,
+            "0x06": 39,
+            "0x07": 3,
+            "0x09": 2,
+            "0x0a": 316,
+            "0x0b": 6,
+            "0x0c": 2,
+            "0x0d": 7,
+            "0x0e": 5,
+            "0x0f": 4,
+            "0x10": 1,
+            "0x11": 264,
+            "0x12": 502,
+            "0x13": 51,
+            "0x14": 51,
+            "0x15": 51,
+            "0x16": 51,
+            "0x17": 210,
+            "0x18": 57,
+            "0x1a": 57,
+            "0x1b": 180,
+            "0x1c": 51,
+            "0x1d": 51,
+            "0x1e": 71
+          },
+          "detail_offset_0x2a_raw": {
+            "0x00": 2029,
+            "0x106": 11
+          },
+          "detail_offset_0x2a_normalized": {
+            "0x00": 2029,
+            "0x106": 11
+          }
+        },
+        "stored_vertex_control_bounds": {
+          "minimum": [
+            -50.911688241,
+            -11.313708498,
+            0
+          ],
+          "maximum": [
+            50.911688241,
+            169.70562747,
+            24
+          ]
+        },
+        "detail_position_bounds": {
+          "minimum": [
+            -50.911688241,
+            -11.313708498,
+            0
+          ],
+          "maximum": [
+            50.911688241,
+            161.2203460965,
+            24
+          ]
+        },
+        "geometry_note": "Bounds cover stored vertices/control points only; ellipse-control rooms are not expanded or interpreted as ordinary polygons.",
+        "normalizations": {
+          "module_first_pair_second_values_changed": 0,
+          "detail_final_values_changed": 0
+        }
+      }
+    },
+    {
+      "path": "/mnt/c/Users/Celarious/Desktop/Shores of Hazeron/B8_Galatine_A1.ship",
+      "size_bytes": 39059,
+      "sha256": "b7ffbd8265c138fbc891e0f2a6ad5844bbee223f61efad8b31ce0534fb305387",
+      "status": "parsed_exact_eof",
+      "summary": {
+        "header": {
+          "design_id": 20009,
+          "name": null,
+          "architect_id": 114131183,
+          "streamline": 1,
+          "armor": 0,
+          "version_state_raw": 32,
+          "version": 2,
+          "state": 0,
+          "architect_name": "Human",
+          "minimum_tech_level": 0,
+          "hull_volume": 0,
+          "structure": 0,
+          "tech_level": 0
+        },
+        "modules": {
+          "first_pairs": [
+            {
+              "first": 0,
+              "second_raw": 252,
+              "second_normalized": 252
+            }
+          ],
+          "scalar_u16_slots": [
+            234,
+            259,
+            237,
+            238,
+            235,
+            239,
+            263,
+            240
+          ],
+          "second_pairs": []
+        },
+        "stream": {
+          "byte_order": "big-endian",
+          "qdatastream_version": "Qt_4_0 (integer 7)",
+          "rooms_count_offset": 64,
+          "details_count_offset": 1060,
+          "bytes_consumed": 39059,
+          "exact_eof": true
+        },
+        "counts": {
+          "rooms": 30,
+          "rooms_retained_by_legacy_reader": 30,
+          "empty_boundary_rooms_discarded_by_legacy_reader": 0,
+          "stored_vertices": 332,
+          "ellipse_control_rooms": 0,
+          "details": 2235
+        },
+        "histograms": {
+          "room_type": {
+            "0x01": 1,
+            "0x02": 1,
+            "0x04": 1,
+            "0x05": 6,
+            "0x07": 1,
+            "0x08": 13,
+            "0x09": 4,
+            "0x10": 1,
+            "0x11": 1,
+            "0x15": 1
+          },
+          "room_deck": {
+            "0": 7,
+            "1": 7,
+            "2": 11,
+            "3": 5
+          },
+          "detail_deck": {
+            "0": 701,
+            "1": 747,
+            "2": 493,
+            "3": 294
+          },
+          "detail_offset_0x28_u16": {
+            "0x04": 4,
+            "0x05": 4,
+            "0x06": 39,
+            "0x07": 3,
+            "0x08": 195,
+            "0x09": 2,
+            "0x0a": 316,
+            "0x0b": 6,
+            "0x0c": 2,
+            "0x0d": 7,
+            "0x0e": 5,
+            "0x0f": 4,
+            "0x10": 1,
+            "0x11": 264,
+            "0x12": 502,
+            "0x13": 51,
+            "0x14": 51,
+            "0x15": 51,
+            "0x16": 51,
+            "0x17": 210,
+            "0x18": 57,
+            "0x1a": 57,
+            "0x1b": 180,
+            "0x1c": 51,
+            "0x1d": 51,
+            "0x1e": 71
+          },
+          "detail_offset_0x2a_raw": {
+            "0x00": 2224,
+            "0xf9": 11
+          },
+          "detail_offset_0x2a_normalized": {
+            "0x00": 2224,
+            "0xf8": 11
+          }
+        },
+        "stored_vertex_control_bounds": {
+          "minimum": [
+            -50.911688241,
+            -11.313708498,
+            0
+          ],
+          "maximum": [
+            50.911688241,
+            169.70562747,
+            24
+          ]
+        },
+        "detail_position_bounds": {
+          "minimum": [
+            -50.911688241,
+            -11.313708498,
+            0
+          ],
+          "maximum": [
+            50.911688241,
+            161.2203460965,
+            24
+          ]
+        },
+        "geometry_note": "Bounds cover stored vertices/control points only; ellipse-control rooms are not expanded or interpreted as ordinary polygons.",
+        "normalizations": {
+          "module_first_pair_second_values_changed": 0,
+          "detail_final_values_changed": 11
+        }
+      }
+    },
+    {
+      "path": "/mnt/c/Users/Celarious/Desktop/Shores of Hazeron/tl20StarDriver.ship",
+      "size_bytes": 69654,
+      "sha256": "b52a6a63e7fe9e90e31b5547b0b815d7645f08006f3fb41552452fd1b5219121",
+      "status": "parsed_exact_eof",
+      "summary": {
+        "header": {
+          "design_id": 20000,
+          "name": null,
+          "architect_id": 90216032,
+          "streamline": 1,
+          "armor": 10,
+          "version_state_raw": 32,
+          "version": 2,
+          "state": 0,
+          "architect_name": "Human",
+          "minimum_tech_level": 19,
+          "hull_volume": 0,
+          "structure": 0,
+          "tech_level": 0
+        },
+        "modules": {
+          "first_pairs": [
+            {
+              "first": 0,
+              "second_raw": 252,
+              "second_normalized": 252
+            }
+          ],
+          "scalar_u16_slots": [
+            234,
+            259,
+            237,
+            238,
+            235,
+            239,
+            263,
+            240
+          ],
+          "second_pairs": []
+        },
+        "stream": {
+          "byte_order": "big-endian",
+          "qdatastream_version": "Qt_4_0 (integer 7)",
+          "rooms_count_offset": 64,
+          "details_count_offset": 749,
+          "bytes_consumed": 69654,
+          "exact_eof": true
+        },
+        "counts": {
+          "rooms": 25,
+          "rooms_retained_by_legacy_reader": 25,
+          "empty_boundary_rooms_discarded_by_legacy_reader": 0,
+          "stored_vertices": 204,
+          "ellipse_control_rooms": 0,
+          "details": 4053
+        },
+        "histograms": {
+          "room_type": {
+            "0x01": 1,
+            "0x02": 2,
+            "0x04": 1,
+            "0x05": 3,
+            "0x06": 4,
+            "0x07": 1,
+            "0x08": 1,
+            "0x09": 4,
+            "0x0d": 1,
+            "0x0f": 2,
+            "0x10": 1,
+            "0x11": 1,
+            "0x12": 1,
+            "0x14": 1,
+            "0x15": 1
+          },
+          "room_deck": {
+            "0": 15,
+            "1": 9,
+            "2": 1
+          },
+          "detail_deck": {
+            "0": 1873,
+            "1": 2166,
+            "2": 7,
+            "3": 7
+          },
+          "detail_offset_0x28_u16": {
+            "0x01": 7,
+            "0x02": 4,
+            "0x03": 3,
+            "0x04": 9,
+            "0x05": 9,
+            "0x06": 4,
+            "0x07": 17,
+            "0x08": 3,
+            "0x09": 2,
+            "0x0a": 3,
+            "0x0b": 6,
+            "0x0c": 1801,
+            "0x0f": 5,
+            "0x10": 2,
+            "0x11": 2,
+            "0x12": 2,
+            "0x13": 826,
+            "0x14": 2,
+            "0x15": 666,
+            "0x16": 666,
+            "0x17": 14
+          },
+          "detail_offset_0x2a_raw": {
+            "0x00": 4033,
+            "0x52": 1,
+            "0xf3": 1,
+            "0xf9": 18
+          },
+          "detail_offset_0x2a_normalized": {
+            "0x00": 4033,
+            "0x52": 1,
+            "0xf3": 1,
+            "0xf8": 18
+          }
+        },
+        "stored_vertex_control_bounds": {
+          "minimum": [
+            -73.539105237,
+            -152.735064723,
+            0
+          ],
+          "maximum": [
+            73.539105237,
+            113.13708498,
+            16
+          ]
+        },
+        "detail_position_bounds": {
+          "minimum": [
+            -73.539105237,
+            -152.735064723,
+            0
+          ],
+          "maximum": [
+            73.539105237,
+            104.65180360650001,
+            24
+          ]
+        },
+        "geometry_note": "Bounds cover stored vertices/control points only; ellipse-control rooms are not expanded or interpreted as ordinary polygons.",
+        "normalizations": {
+          "module_first_pair_second_values_changed": 0,
+          "detail_final_values_changed": 18
+        }
+      }
+    }
+  ]
+}

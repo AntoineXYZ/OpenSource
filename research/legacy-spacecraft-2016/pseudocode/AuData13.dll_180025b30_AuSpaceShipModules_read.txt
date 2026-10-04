@@ -1,0 +1,91 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x180025b30
+Name provenance: PE export operator<<
+Captured: 2026-10-04
+
+
+/* public: void __cdecl AuSpaceShipModules::operator<<(class QDataStream & __ptr64) __ptr64 */
+
+void __thiscall AuSpaceShipModules::operator<<(AuSpaceShipModules *this,QDataStream *param_1)
+
+{
+  longlong lVar1;
+  code *pcVar2;
+  short sVar3;
+  longlong lVar4;
+  AuSpaceShipModules *pAVar5;
+  short local_res8 [4];
+  short local_res18 [4];
+  int local_res20 [2];
+  short local_58;
+  short local_56;
+  undefined1 local_50 [24];
+  
+                    /* 0x25b30  2063  ??6AuSpaceShipModules@@QEAAXAEAVQDataStream@@@Z */
+  FUN_18004e170();
+  QDataStream::operator>>(param_1,local_res20);
+  if (local_res20[0] != 0) {
+    do {
+      local_res20[0] = local_res20[0] + -1;
+      QDataStream::operator>>(param_1,local_res18);
+      QDataStream::operator>>(param_1,local_res8);
+      if (local_res8[0] == 0xfd) {
+        sVar3 = 0xfc;
+LAB_180025bbe:
+        local_res8[0] = sVar3;
+      }
+      else {
+        sVar3 = 0xfe;
+        if (local_res8[0] == 0xff) goto LAB_180025bbe;
+      }
+      lVar1 = **(longlong **)this;
+      local_58 = local_res18[0];
+      local_56 = local_res8[0];
+      lVar4 = FUN_180011a70(this,lVar1,*(undefined8 *)(lVar1 + 8),&local_58);
+      if (*(longlong *)(this + 8) == 0xaaaaaaaaaaaaaa9) {
+        std::_Xlength_error(s_list<T>_too_long_180205638);
+        pcVar2 = (code *)swi(3);
+        (*pcVar2)();
+        return;
+      }
+      *(longlong *)(this + 8) = *(longlong *)(this + 8) + 1;
+      *(longlong *)(lVar1 + 8) = lVar4;
+      **(longlong **)(lVar4 + 8) = lVar4;
+      FUN_180012640(this,local_50,**(longlong **)this + 0x10);
+    } while (local_res20[0] != 0);
+  }
+  local_res20[0] = -1;
+  QDataStream::operator>>(param_1,(short *)(this + 0x40));
+  QDataStream::operator>>(param_1,(short *)(this + 0x42));
+  QDataStream::operator>>(param_1,(short *)(this + 0x44));
+  QDataStream::operator>>(param_1,(short *)(this + 0x46));
+  QDataStream::operator>>(param_1,(short *)(this + 0x48));
+  QDataStream::operator>>(param_1,(short *)(this + 0x4a));
+  QDataStream::operator>>(param_1,(short *)(this + 0x4c));
+  QDataStream::operator>>(param_1,(short *)(this + 0x4e));
+  pAVar5 = this + 0x50;
+  FUN_18004e170(pAVar5);
+  QDataStream::operator>>(param_1,local_res20);
+  while( true ) {
+    if (local_res20[0] == 0) {
+      return;
+    }
+    local_res20[0] = local_res20[0] + -1;
+    QDataStream::operator>>(param_1,local_res8);
+    QDataStream::operator>>(param_1,local_res18);
+    local_58 = local_res8[0];
+    local_56 = local_res18[0];
+    lVar1 = **(longlong **)pAVar5;
+    lVar4 = FUN_180011a70(pAVar5,lVar1,*(undefined8 *)(lVar1 + 8),&local_58);
+    if (*(longlong *)(this + 0x58) == 0xaaaaaaaaaaaaaa9) break;
+    *(longlong *)(this + 0x58) = *(longlong *)(this + 0x58) + 1;
+    *(longlong *)(lVar1 + 8) = lVar4;
+    **(longlong **)(lVar4 + 8) = lVar4;
+    FUN_180012640(pAVar5,local_50,**(longlong **)pAVar5 + 0x10);
+  }
+  std::_Xlength_error(s_list<T>_too_long_180205638);
+  pcVar2 = (code *)swi(3);
+  (*pcVar2)();
+  return;
+}

@@ -1,0 +1,75 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x180167cf0
+Name provenance: PE export operator<<
+Captured: 2026-10-04
+
+
+/* public: void __cdecl DnRoom::operator<<(class QDataStream & __ptr64) __ptr64 */
+
+void __thiscall DnRoom::operator<<(DnRoom *this,QDataStream *param_1)
+
+{
+  AuPoint *pAVar1;
+  QVector<AuPoint> *this_00;
+  float fVar2;
+  double dVar3;
+  double dVar4;
+  short local_res8 [4];
+  short local_res18 [8];
+  undefined8 local_98;
+  undefined8 local_90;
+  undefined8 local_88;
+  undefined8 local_80;
+  undefined8 local_78;
+  undefined8 local_70;
+  double local_68;
+  double local_60;
+  double local_58;
+  
+                    /* 0x167cf0  2081  ??6DnRoom@@QEAAXAEAVQDataStream@@@Z */
+  QDataStream::operator>>(param_1,(int *)this);
+  QDataStream::operator>>(param_1,(short *)(this + 4));
+  QDataStream::operator>>(param_1,(char *)(this + 6));
+  QDataStream::operator>>(param_1,(char *)(this + 7));
+  QDataStream::operator>>(param_1,(char *)(this + 8));
+  this_00 = (QVector<AuPoint> *)(this + 0x10);
+  QVector<AuPoint>::clear(this_00);
+  QDataStream::operator>>(param_1,local_res8);
+  if (local_res8[0] != 0) {
+    do {
+      QDataStream::operator>>(param_1,local_res18);
+      local_68 = (double)(int)(char)((ushort)local_res18[0] >> 8) * 2.8284271245;
+      local_60 = (double)(int)(char)local_res18[0] * 2.8284271245;
+      local_58 = (double)(int)(char)this[6] * 8.0;
+      QVector<AuPoint>::append(this_00,(AuPoint *)&local_68);
+      local_res8[0] = local_res8[0] + -1;
+    } while (local_res8[0] != 0);
+    local_res8[0] = 0;
+  }
+  if ((this[7] == (DnRoom)0x18) && (*(int *)(*(longlong *)this_00 + 4) == 3)) {
+    pAVar1 = QVector<AuPoint>::operator[](this_00,0);
+    local_98 = *(undefined8 *)pAVar1;
+    local_90 = *(undefined8 *)(pAVar1 + 8);
+    local_88 = *(undefined8 *)(pAVar1 + 0x10);
+    pAVar1 = QVector<AuPoint>::operator[](this_00,1);
+    local_68 = *(double *)pAVar1;
+    local_60 = *(double *)(pAVar1 + 8);
+    local_58 = *(double *)(pAVar1 + 0x10);
+    pAVar1 = QVector<AuPoint>::operator[](this_00,2);
+    local_80 = *(undefined8 *)pAVar1;
+    local_78 = *(undefined8 *)(pAVar1 + 8);
+    local_70 = *(undefined8 *)(pAVar1 + 0x10);
+    dVar3 = AuPoint::Distance_2D((AuPoint *)&local_98,(AuPoint *)&local_68);
+    dVar4 = AuPoint::Distance_2D((AuPoint *)&local_98,(AuPoint *)&local_80);
+    if (dVar4 < dVar3) {
+      dVar4 = dVar3;
+    }
+    fVar2 = sqrtf((float)(dVar4 / 5.656854249));
+    fVar2 = ceilf(fVar2);
+    AuPointArray::CreateEllipse
+              ((AuPointArray *)this_00,(AuPoint *)&local_98,(AuPoint *)&local_68,
+               (AuPoint *)&local_80,((int)fVar2 + 1) * 4);
+  }
+  return;
+}

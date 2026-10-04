@@ -1,0 +1,16 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x18017e3a0
+Name provenance: PE export
+Captured: 2026-10-04
+
+
+/* public: void __cdecl DnSpaceShip::SetArmor(short) __ptr64 */
+
+void __thiscall DnSpaceShip::SetArmor(DnSpaceShip *this,short param_1)
+
+{
+                    /* 0x17e3a0  5395  ?SetArmor@DnSpaceShip@@QEAAXF@Z */
+  this[0x15] = SUB21(param_1,0);
+  return;
+}

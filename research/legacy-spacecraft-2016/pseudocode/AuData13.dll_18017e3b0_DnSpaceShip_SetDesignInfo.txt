@@ -1,0 +1,47 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x18017e3b0
+Name provenance: PE export
+Captured: 2026-10-04
+
+
+/* public: void __cdecl DnSpaceShip::SetDesignInfo(unsigned char,unsigned char,float,unsigned
+   int,unsigned int,unsigned int,unsigned int,unsigned int,unsigned int,unsigned char) __ptr64 */
+
+void __thiscall
+DnSpaceShip::SetDesignInfo
+          (DnSpaceShip *this,uchar param_1,uchar param_2,float param_3,uint param_4,uint param_5,
+          uint param_6,uint param_7,uint param_8,uint param_9,uchar param_10)
+
+{
+  DnSpaceShip DVar1;
+  
+                    /* 0x17e3b0  5435  ?SetDesignInfo@DnSpaceShip@@QEAAXEEMIIIIIIE@Z */
+  *(float *)(this + 200) = param_3;
+  *(uint *)(this + 0xd0) = param_4;
+  this[0xde] = (DnSpaceShip)param_2;
+  *(uint *)(this + 0xd8) = param_8;
+  *(uint *)(this + 0xcc) = param_6;
+  *(uint *)(this + 0xd4) = param_5;
+  this[0xdd] = (DnSpaceShip)param_1;
+  *(uint *)(this + 0xe4) = param_9;
+  this[0xe8] = (DnSpaceShip)param_10;
+  this[0xdc] = (DnSpaceShip)0x0;
+  *(uint *)(this + 0xe0) = param_7;
+  if ((byte)(param_1 - 1) < 2) {
+    if (((param_5 != 0) && (param_6 != 0)) &&
+       ((param_10 != '\0' || ((param_9 != 0 && (param_7 != 0)))))) {
+      DVar1 = this[0xdc];
+      if (328.08398 < param_3) {
+        DVar1 = (DnSpaceShip)param_1;
+      }
+      this[0xdc] = DVar1;
+    }
+  }
+  else if (((((byte)(param_1 - 3) < 2) && (param_5 != 0)) && (param_6 != 0)) &&
+          ((param_10 != '\0' || ((param_9 != 0 && (param_7 != 0)))))) {
+    this[0xdc] = (DnSpaceShip)param_1;
+    return;
+  }
+  return;
+}

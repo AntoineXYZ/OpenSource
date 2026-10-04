@@ -1,0 +1,21 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuAtom13.dll
+Address: 0x180207850
+Name provenance: PE export
+Captured: 2026-10-04
+
+
+/* public: void __cdecl DaAtom::DesignRoomCell(class AuPoint const & __ptr64,int) __ptr64 */
+
+void __thiscall DaAtom::DesignRoomCell(DaAtom *this,AuPoint *param_1,int param_2)
+
+{
+  DaDesignEnvironment *this_00;
+  
+                    /* 0x207850  2617  ?DesignRoomCell@DaAtom@@QEAAXAEBVAuPoint@@H@Z */
+  this_00 = FindParentDesignEnvironment(this);
+  if (this_00 != (DaDesignEnvironment *)0x0) {
+    DaDesignEnvironment::FillRoomCell(this_00,(AuId *)(this + 0x14),param_1,param_2);
+  }
+  return;
+}

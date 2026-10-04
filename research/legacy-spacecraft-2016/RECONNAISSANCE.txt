@@ -1,0 +1,159 @@
+2016 spacecraft designer: first recovery pass
+Captured 2026-10-04
+
+Result
+------
+The offline designer launch path, local .ship file handling, core room-editing
+chain, and the on-disk record layout have been located. An independent Python
+inspector reads the three user-supplied designs. The editor is not yet restored
+in the modern client. No game source or original binary/database was changed,
+and no build was run.
+
+Start here
+----------
+inspect_ship.py: read-only .ship parser; JSON summary by default, --full for
+complete records. Example, from the repository root:
+
+python3 research/legacy-spacecraft-2016/inspect_ship.py \
+  '/mnt/c/Users/Celarious/Desktop/Shores of Hazeron/B8_Galatine_A1.ship'
+
+modern-source-map.json: current source locations and possible integration points.
+legacy-baseline-map.json: binary hashes, prior IDA provenance, exported symbols.
+ghidra-evidence.json: startup, file handling, and initial geometry queries.
+ghidra-format-evidence.json: record readers, field getters, and editing queries.
+pseudocode/: individually readable decompiler outputs, labeled by binary/address.
+sample-inspection.json: hashes, headers, counts, histograms, and coordinate bounds
+for all three original sample files.
+
+Validation
+----------
+All sample bytes are consumed exactly, and SHA-256 values agree with the initial
+read-only inventory. No sample file was changed.
+
+Sample                         Bytes   Rooms  Stored vertices  Details
+Antiflux Harvester MK2.ship     35755      29              312     2040
+B8_Galatine_A1.ship             39059      30              332     2235
+tl20StarDriver.ship             69654      25              204     4053
+
+All three contain version-2/state-0 records. No sample has an empty boundary or
+ellipse-control room. The Galatine and StarDriver samples contain 11 and 18
+legacy detail IDs respectively that the reader normalizes; Antiflux contains 0.
+Synthetic versions 0/1/2 exercised null and unpaired UTF-16, signed coordinates,
+empty rooms, ellipse controls, and ID normalization. 493 malformed/truncated
+inputs were rejected. An independent review checked the parser against the
+saved decompiled readers. Those checks do not replace rendering/editing tests.
+
+Confirmed offline launch path
+----------------------------
+All addresses below are hexadecimal preferred image addresses, not file offsets.
+DLLs share image base 0x180000000, so an address always needs its module name.
+
+Shores of Hazeron.exe:
+  0x140464098: literal '-spacecraft'.
+  0x1401331a0: inferred AuClientApp constructor; sets app offset 0x18 to 5 for
+               either '-spacecraft' or '-designer'.
+  0x140136bf0: AuClientApp::EnterSpaceShipDesignerMode, identified in prior Qt
+               metadata analysis; also sets state 5.
+  0x140213980: AuMainFrame::Timer, identified by prior Qt metadata. State 5
+               loads cached basic game data, then calls 0x140244760.
+  0x140244760: inferred offline spacecraft scene initializer. Creates galaxy,
+               sector, solar system, home world, DaDesignEnvironment(mode 1),
+               and avatar; calls LoadWorkingDesign and sets local client state.
+
+This is the existing 2016 launch path the user demonstrated. Its absence from
+the modern command-line parser does not imply it was absent from the old binary.
+The old initializer depends on cached basic game data; it is not independent of
+the game's world/entity infrastructure.
+
+Confirmed local file path
+------------------------
+Shores of Hazeron.exe:
+  0x1402ec270: inferred local open helper. Selects .ship, opens a QDataStream,
+               loads ship/rooms/details, validates them, and applies the design.
+  0x1402ee9d0: inferred local save helper. Locates the working design ID and
+               invokes DgData::SaveSpaceShipDesign with a file stream.
+Both helpers assign QDataStream version 7 (Qt_4_0 in installed Qt headers).
+
+AuData13.dll:
+  0x18013e9a0: DgData::LoadSpaceShipDesign -> DnSpaceShip::Rx, DnRoomArray read,
+               DnDetailArray read, in that order.
+  0x180140050: DgData::SaveSpaceShipDesign stream overload writes the same order.
+  0x18013fe50: a different SaveSpaceShipDesign overload inserts objects into
+               DgData; it is not the file serializer.
+
+The inspected path writes a raw big-endian Qt stream. It does not prepend the
+SHIP_FILE_TYPE/SHIP_FILE_VER constants still declared in the modern source, nor
+use the modern .SoH compression/encryption wrapper. Sample parsing confirms this
+for all three supplied files. Other historic .ship variants remain untested.
+
+Recovered file layout
+---------------------
+Ship header: design ID, QString name, 32-bit architect ID, streamline byte,
+armor byte, packed version/state byte, QString architect name, minimum tech
+level byte; version 2 adds hull volume, structure, and tech level. Versions
+below 2 have an additional legacy QString. Nonzero versions include module data.
+
+Modules: counted pairs of 16-bit values, eight 16-bit scalar slots, then another
+counted pair list. The meaning of each slot/pair is not yet reconstructed. The
+reader normalizes some obsolete module IDs; raw and normalized values are kept.
+
+Rooms: 16-bit count followed by room records. Each contains design ID, room ID,
+signed deck, room type, one extra byte, and a counted boundary of packed XY
+coordinates. Each coordinate uses a signed byte per axis. World-space spacing
+is 2.8284271245 per coordinate step, and deck elevation is deck * 8.0. The old
+editor's full grid square is 5.656854249 per side. These constants also survive
+in modern aubodyrenderwidget.h, explicitly described as scavenged dnspaceship.h.
+
+Room type 0x18 with three stored points represents ellipse controls expanded by
+the original loader. The inspector flags these and preserves controls; it does
+not pretend they are a finished triangular room. Empty boundaries are discarded
+by the original array reader; the inspector preserves records and reports them.
+
+Details: 32-bit count followed by 17-byte records containing signed deck, an
+extra byte, boolean byte, detail ID, design ID, packed XY, and two 16-bit values.
+Some legacy IDs are normalized by the original reader. Meanings not proven by
+exports/getters are retained as offset-based raw fields.
+
+Editing chain
+-------------
+AuAtom13.dll:
+  DaAtom::DesignRoomCell (0x180207850)
+    -> DaDesignEnvironment::FillRoomCell (0x1802f8ed0)
+    -> DaDesignPlane::GetFillShapeAt (0x1802fd190)
+    -> DaSpaceShip::DesignRoom (0x1803e55c0)
+AuData13.dll:
+    -> DgData::SpaceShipDesignAddRoom (0x180143450), or deletion methods.
+
+GetFillShapeAt constructs polygons from grid mode, mouse position within the
+cell, and deck height. FillRoomCell checks deck limits and tracks dirty state.
+DesignRoom selects add, delete-cells, or delete-entire-room and invalidates path
+state after a successful edit. AddRoom checks coordinates, reconciles existing
+room boundaries, subtracts overlaps from other room types, and verifies details.
+These dependencies need reconstruction, not just the visible toolbar.
+
+Recommended next implementation milestone
+-----------------------------------------
+Recover the complete legacy authoring model and enough room/detail semantics to
+display these saved designs faithfully, with per-deck inspection. Preserve
+ellipse controls, room identity, signed coordinates, and legacy ID normalization.
+Then reproduce one complete cell-edit operation and compare its result with the
+2016 designer before connecting it to the modern UI.
+
+The modern offline startup and AuScDesign/DaDesigner pipeline are candidate
+integration points. A conversion to modern mesh parts may be useful, but it is
+not yet established to preserve legacy editing semantics. Enabling a launch
+flag alone would enter a different designer, not restore this subsystem.
+
+Evidence limitations
+--------------------
+Ghidra pseudocode is uncorrected and not compilable recovered source. Several
+getters share addresses due to identical implementations; the first class name
+chosen by the decompiler is not always the desired exported alias. Function
+names derived from prior Qt metadata are distinguished from descriptive labels.
+The old IDA baseline hashes match the binaries, but prior analyst types/locals
+are not treated as original source. Four duplicate .dll.0 imports contain only
+16-bit DOS stubs; queries used the full 64-bit programs.
+
+The sample files are known to open in the 2016 designer according to the user.
+Exact stream consumption validates the recovered record boundaries, not visual
+equivalence, all field meanings, all historical versions, or editing behavior.

@@ -1,0 +1,23 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x18013e9a0
+Name provenance: PE export
+Captured: 2026-10-04
+
+
+/* public: static void __cdecl DgData::LoadSpaceShipDesign(class QDataStream & __ptr64,class
+   DnSpaceShip & __ptr64,class DnDetailArray & __ptr64,class DnRoomArray & __ptr64) */
+
+void __cdecl
+DgData::LoadSpaceShipDesign
+          (QDataStream *param_1,DnSpaceShip *param_2,DnDetailArray *param_3,DnRoomArray *param_4)
+
+{
+                    /* 0x13e9a0  4863
+                       ?LoadSpaceShipDesign@DgData@@SAXAEAVQDataStream@@AEAVDnSpaceShip@@AEAVDnDetailArray@@AEAVDnRoomArray@@@Z
+                        */
+  DnSpaceShip::Rx(param_2,param_1);
+  DnRoomArray::operator<<(param_4,param_1);
+  DnDetailArray::operator<<(param_3,param_1);
+  return;
+}

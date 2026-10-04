@@ -1,0 +1,15 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x180046d50
+Name provenance: PE export
+Captured: 2026-10-04
+
+
+/* public: unsigned char __cdecl DnSpaceShip::TechLevel(void)const __ptr64 */
+
+uchar __thiscall DnSpaceShip::TechLevel(DnSpaceShip *this)
+
+{
+                    /* 0x46d50  5812  ?TechLevel@DnSpaceShip@@QEBAEXZ */
+  return (uchar)this[0xde];
+}
