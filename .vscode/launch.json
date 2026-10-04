@@ -2,6 +2,60 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Linux: Legacy spacecraft viewer (already built)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/linux-debug/bin/AuSceneClient",
+      "args": ["-legacy-spacecraft"],
+      "cwd": "${workspaceFolder}/build/linux-debug/bin",
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "sourceFileMap": {
+        "/src": "${workspaceFolder}"
+      },
+      "presentation": {
+        "group": "Legacy spacecraft",
+        "order": 1
+      },
+      "windows": {
+        "presentation": {
+          "hidden": true
+        }
+      }
+    },
+    {
+      "name": "Windows: Legacy spacecraft viewer (already built)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/windows-debug/bin/AuSceneClient.exe",
+      "args": ["-legacy-spacecraft"],
+      "cwd": "${workspaceFolder}/build/windows-debug/bin",
+      "MIMode": "gdb",
+      "pipeTransport": {
+        "pipeProgram": "C:/Windows/System32/cmd.exe",
+        "pipeArgs": ["/c"],
+        "debuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
+        "pipeCwd": "${workspaceFolder}"
+      },
+      "sourceFileMap": {
+        "/src": "${workspaceFolder}"
+      },
+      "presentation": {
+        "group": "Legacy spacecraft",
+        "order": 2
+      },
+      "linux": {
+        "program": "//wsl.localhost/${env:WSL_DISTRO_NAME}${workspaceFolder}/build/windows-debug/bin/AuSceneClient.exe",
+        "cwd": "//wsl.localhost/${env:WSL_DISTRO_NAME}${workspaceFolder}/build/windows-debug/bin",
+        "pipeTransport": {
+          "pipeProgram": "/bin/sh",
+          "pipeArgs": ["-c"],
+          "debuggerPath": "/mnt/c/msys64/ucrt64/bin/gdb.exe",
+          "pipeCwd": "${workspaceFolder}"
+        }
+      }
+    },
+    {
       "name": "Linux Debug",
       "type": "cppdbg",
       "request": "launch",

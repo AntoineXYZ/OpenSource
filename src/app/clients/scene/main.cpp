@@ -12,10 +12,13 @@
 #include "auclientlib.h"
 #include "auclientmailres.h"
 #include "auclientres.h"
+#include "aulegacyshipviewer.h"
 #include "aumodelres.h"
 #include "autexture.h"
 #include <iostream>
+#include <QApplication>
 #include <QDir>
+#include <QFileInfo>
 #include <QMessageBox>
 #include <signal.h>
 
@@ -26,17 +29,20 @@ void SignalHandler(int value)
 
 int main(int argc, char** argv)
 {
+	// Resolve a legacy input relative to the caller before changing directory.
+	bool legacySpacecraft = false;
+	QString legacyShipFile;
+	for(int i = 1; i < argc; ++i)
+		if(QString::fromLocal8Bit(argv[i]) == "-legacy-spacecraft")
+		{
+			legacySpacecraft = true;
+			if(i + 1 < argc && !QString::fromLocal8Bit(argv[i + 1]).startsWith('-'))
+				legacyShipFile = QFileInfo(QString::fromLocal8Bit(argv[i + 1])).absoluteFilePath();
+			break;
+		}
+
 	int returnValue;
 	{
-		// Install signal handler(s).
-		signal(SIGINT, SignalHandler);
-		signal(SIGTERM, SignalHandler);
-#if !defined(Q_OS_WIN)
-		signal(SIGPIPE, SignalHandler);	// Broken pipe gets ignored.
-		signal(SIGHUP, SignalHandler);
-		signal(SIGQUIT, SignalHandler);
-#endif
-
 		// Determine the path to my files.
 		QFileInfo exe(QString::fromLocal8Bit(argv[0]));
 		QDir dir(exe.absoluteDir());
@@ -65,6 +71,26 @@ int main(int argc, char** argv)
 
 		QCoreApplication::setLibraryPaths(libPaths);
 		//QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+
+		if(legacySpacecraft)
+		{
+			// This viewer requires no game session, cached game data, or GL context.
+			QApplication a(argc, argv);
+			AuLegacyShipViewer viewer;
+			viewer.show();
+			if(!legacyShipFile.isEmpty())
+				viewer.OpenFile(legacyShipFile);
+			return a.exec();
+		}
+
+		// Game signal handlers depend on the AuApp instance; the viewer uses Qt only.
+		signal(SIGINT, SignalHandler);
+		signal(SIGTERM, SignalHandler);
+#if !defined(Q_OS_WIN)
+		signal(SIGPIPE, SignalHandler);	// Broken pipe gets ignored.
+		signal(SIGHUP, SignalHandler);
+		signal(SIGQUIT, SignalHandler);
+#endif
 
 		// Must set default OpenGL version before app constructor, particularly for Mac.
 		QSurfaceFormat glformat;

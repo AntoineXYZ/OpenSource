@@ -1,0 +1,16 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x180034720
+Name provenance: PE export DnDetailType::IsVehicleLoc
+Captured: 2026-10-04
+
+/* public: static bool __cdecl DnDetailType::IsVehicleLoc(enum DnDetailType::DETAILTYPE) */
+
+bool __cdecl DnDetailType::IsVehicleLoc(DETAILTYPE param_1)
+
+{
+                    /* 0x34720  4681  ?IsVehicleLoc@DnDetailType@@SA_NW4DETAILTYPE@1@@Z */
+  return param_1 - 0x39 < 8;
+}
+
+

@@ -1,0 +1,78 @@
+2016 spacecraft per-deck rendering evidence
+Captured 2026-10-04; read-only Ghidra queries.
+
+Sources
+  ghidra-render-evidence.json contains the complete queried pseudocode and
+  source addresses. Its pseudocode_file entries point to individual exports.
+  Binary identity is recorded in legacy-baseline-map.json.
+  These are decompiler findings, not original source or live rendering tests.
+
+Previously unknown detail fields now identified
+  DnDetail::Insert, AuData13.dll 0x18015c630, binds these members to the SQL
+  columns in INSERT INTO n_Detail/n_BuildingDetail:
+    +0x00 deck       signed byte
+    +0x01 dtype      detail type, unsigned byte
+    +0x02 hidden     boolean (retain raw byte when parsing the file)
+    +0x04 id         detail ID, uint32
+    +0x08 idd        design ID, uint32
+    +0x10 location   AuPoint; double X/Y/Z
+    +0x28 rid        room ID, uint16
+    +0x2a cid        commodity ID, uint16
+  SQL column names directly establish the field names; the COMMODITYID return
+  types of DnDetail::SystemCID (0x180046c40) and VehicleCID (0x180047690)
+  independently establish the last field as a commodity ID. It is NOT the
+  detail type. SystemCID and VehicleCID expose it only for applicable detail
+  types. The existing loader's 0xf9->0xf8 and 0xfb->0xfa conversions therefore
+  normalize commodity IDs.
+  DnDetail::operator<< at 0x18015c070 establishes that the saved location is a
+  packed grid point converted to X/Y at half-grid spacing and Z=deck*8 feet.
+  It is an object location, not an encoded polygon or independent rotation.
+  DnDetail::Rotation (0x180044b00) forwards the detail type to the static
+  DnDetailType::Rotation (0x180044b20): directional variants encode rotation
+  in the type itself. The latter export records the exact radians mapping.
+  DesignIconSize (0x18015c3f0) returns a type-dependent scalar, but neither
+  complete icon geometry nor object footprints were recovered in this pass.
+  The hidden flag's database meaning is recovered; whether/how the original
+  designer shows hidden records still needs rendering call-site evidence.
+
+Previously unknown room field now identified
+  DnRoom::Insert, AuData13.dll 0x180172360, binds +0x08 to rsub; the preceding
+  +0x07 goes to rtype. Thus +0x08 is room subtype. Specific subtype values
+  remain unmapped, so preserve the raw value.
+
+Ellipse expansion
+  The saved room reader, AuData13.dll 0x180167cf0, expands room type 0x18 with
+  exactly three stored points. They are center C and axis endpoints A/B.
+  Its facet count is:
+    maxDistance = max(distance2D(C,A), distance2D(C,B))
+    facets = (int(ceilf(sqrtf(float(maxDistance / 5.656854249)))) + 1) * 4
+  AuMath13.dll AuPointArray::CreateEllipse at 0x180039600 confirms the same
+  clockwise geometric construction that survives in src/lib/math/aupoint.cpp
+  AuPointArray::CreateEllipse, but the old executable uses float radii and
+  float angle/trigonometry while the modern function uses doubles.
+  With double axis vectors U=A-C, V=B-C, the old per-point calculation is:
+    rx = float(sqrt(U.x*U.x + U.y*U.y))
+    ry = float(sqrt(V.x*V.x + V.y*V.y))
+    angle = 6.2831855f - (float(i)*6.2831855f)/float(facets)
+    ca = cosf(angle)*rx; sa = sinf(angle)*ry
+    point = C + (U/double(rx))*double(ca) + (V/double(ry))*double(sa)
+  A contribution with ca or sa exactly zero is replaced by the zero vector,
+  including a zero-radius axis. This comes from inlined AuPoint operations.
+  Calling the current double implementation yields the same shape but should
+  not be described as numerically identical to the 2016 implementation.
+  Preserve the original three controls alongside generated display vertices.
+  None of the three real sample ships contains an ellipse-control record, so
+  this behavior still needs a synthetic fixture or an additional real sample.
+
+Recovered categories (not full type display names)
+  Exported predicates directly establish:
+    room living quarters: 0x01, 0x04, 0x07, 0x13
+    room open to below:   0x0b, 0x0f
+    room roof:            0x16 through 0x18 inclusive
+    detail stairs:        0x65 through 0x8c inclusive
+    detail vehicle loc:   0x39 through 0x40 inclusive
+    detail hatch:         0x08 and 0x4d through 0x53 inclusive
+  Console and command/control-console category sets are in the JSON evidence.
+  Rotation and icon size exports are captured for a future faithful renderer.
+  Ghidra's DETAILTYPE enum has no members; the names table was not recovered.
+  Do not invent equipment names or treat predicate categories as exact names.

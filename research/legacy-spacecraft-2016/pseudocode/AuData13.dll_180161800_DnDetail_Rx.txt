@@ -1,0 +1,46 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x180161800
+Name provenance: PE export DnDetail::Rx
+Captured: 2026-10-04
+
+/* public: void __cdecl DnDetail::Rx(class QDataStream & __ptr64) __ptr64 */
+
+void __thiscall DnDetail::Rx(DnDetail *this,QDataStream *param_1)
+
+{
+  DnDetail DVar1;
+  undefined2 uVar2;
+  
+                    /* 0x161800  5340  ?Rx@DnDetail@@QEAAXAEAVQDataStream@@@Z */
+  QDataStream::operator>>(param_1,(int *)(this + 8));
+  QDataStream::operator>>(param_1,(int *)(this + 4));
+  QDataStream::operator>>(param_1,(short *)(this + 0x28));
+  QDataStream::operator>>(param_1,(char *)this);
+  QDataStream::operator>>(param_1,(char *)(this + 1));
+  QDataStream::operator>>(param_1,(double *)(this + 0x10));
+  QDataStream::operator>>(param_1,(double *)(this + 0x18));
+  QDataStream::operator>>(param_1,(double *)(this + 0x20));
+  QDataStream::operator>>(param_1,(bool *)(this + 2));
+  DVar1 = this[1];
+  if ((((byte)DVar1 < 0x29) && ((0x1fe00600800U >> ((ulonglong)(byte)DVar1 & 0x3f) & 1) != 0)) ||
+     ((byte)DVar1 - 0x39 < 8)) {
+    QDataStream::operator>>(param_1,(short *)(this + 0x2a));
+    if (*(short *)(this + 0x2a) == 0xf9) {
+      uVar2 = 0xf8;
+    }
+    else {
+      if (*(short *)(this + 0x2a) != 0xfb) {
+        return;
+      }
+      uVar2 = 0xfa;
+    }
+  }
+  else {
+    uVar2 = 0;
+  }
+  *(undefined2 *)(this + 0x2a) = uVar2;
+  return;
+}
+
+

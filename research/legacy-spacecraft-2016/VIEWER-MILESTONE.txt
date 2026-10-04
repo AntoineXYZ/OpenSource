@@ -1,0 +1,126 @@
+2016 spacecraft designer: native deck inspection milestone
+2026-10-04
+
+Implemented in source
+---------------------
+The modern scene client now has an offline, read-only viewer for the recovered
+2016 .ship format. It displays room boundaries and detail locations by deck,
+with selection, zoom/pan, layer toggles, and an inspector for the saved values.
+This is the first native integration of the recovered authoring records. Cell
+editing, legacy equipment shapes, 3D rendering, and saving are future work.
+
+Launch after manually building the client
+---------------------------------------
+Use either new VS Code profile:
+  Linux: Legacy spacecraft viewer (already built)
+  Windows: Legacy spacecraft viewer (already built)
+These use the Debug output directories and have no preLaunchTask. They do not
+initiate a build. Open one of the supplied .ship files from the viewer.
+
+Alternatively, supply the optional file path directly:
+  AuSceneClient -legacy-spacecraft "/path/to/design.ship"
+  AuSceneClient.exe -legacy-spacecraft "C:\path\to\design.ship"
+
+Use a path appropriate to the executable's platform: a Windows executable uses
+C:\ paths even when launched from WSL. Relative input paths are resolved before
+the client's usual change of working directory to its executable directory.
+
+From a running modern design studio, use File > View Legacy Spacecraft...
+
+The standalone path creates a plain QApplication before any game application,
+game data, resource initialization, login, or OpenGL context. The original 2016
+-spacecraft flag remains evidence of the old editor's launch path; the new
+-legacy-spacecraft option explicitly identifies this recovery viewer.
+
+Implementation locations
+------------------------
+src/lib/data/designs/aulegacyship.h/.cpp
+  Reusable authoring records and a bounded, atomic .ship reader. Retains IDs,
+  signed decks, packed coordinates, null strings, original ellipse controls,
+  module values, and both raw and normalized commodity IDs. Failed loads leave
+  the current design intact. No serializer or conversion to AuScDesign exists.
+
+src/lib/designer/legacy/aulegacyshipviewer.h/.cpp
+  Qt Widgets deck viewer. Positive X is right, positive Y is up, units are feet.
+  Room colors group room types; detail markers group detail types. Marker
+  shapes are visualization aids, not recovered equipment geometry. Hidden
+  detail records remain inspectable; the original hidden-display policy has
+  not been recovered. Numeric type/subtype labels avoid invented type names.
+
+src/app/clients/scene/main.cpp
+  Offline launch branch that bypasses the game application and game-specific
+  signal handlers. The regular startup path remains available without the flag.
+
+src/lib/designer/core/audesignerframe.cpp and .vscode/launch.json
+  Design studio File menu entry and the already-built launch profiles.
+
+The existing CMake recursive source discovery includes the new library files.
+No build-system target or runtime dependency was added.
+
+Reader and geometry behavior
+----------------------------
+The reader accepts recovered versions 0, 1, and 2. Real samples cover version 2;
+versions 0/1 require the synthetic regression fixtures. Higher versions are
+rejected rather than assumed to share this layout. Input is capped at 64 MiB
+and 250,000 combined module pairs, rooms, vertices, and details. Strings and
+counts are checked against remaining bytes before allocation; trailing bytes
+are rejected. Source files are opened read-only.
+
+Empty room boundaries are retained in the model for inspection but omitted
+from the deck display, matching the old array reader's discard behavior. The
+deck list includes decks that contain details without any room boundaries.
+Rooms with fewer than three points and degenerate ellipse controls are reported
+as geometry warnings. Degenerate ellipses are omitted rather than drawn as a
+misleading triangle or line. This is a deliberate preview policy.
+
+Room type 0x18 with three controls is expanded with the original facet formula
+and float-based radii/trigonometry. The stored controls remain unchanged. See
+RENDER-EVIDENCE.txt, ghidra-render-evidence.json, and the exported pseudocode for
+field identification and the difference from modern double-based ellipses.
+The viewer displays stored polygons without the original editor's validation,
+overlap correction, roof synthesis, equipment meshes, or gameplay checks.
+
+Manual comparison targets
+-------------------------
+All three original samples have four occupied decks, numbered 0 through 3.
+The expected saved record counts by deck are:
+
+File                          Deck    Rooms    Details
+Antiflux Harvester MK2.ship       0        7        701
+                                 1        6        552
+                                 2       11        493
+                                 3        5        294
+B8_Galatine_A1.ship               0        7        701
+                                 1        7        747
+                                 2       11        493
+                                 3        5        294
+tl20StarDriver.ship               0       15       1873
+                                 1        9       2166
+                                 2        1          7
+                                 3        0          7
+
+After your build, check each deck against the original 2016 designer. Test room
+selection with the Details layer hidden, then inspect detail positions and their
+owning room IDs. Verify zoom/pan/fit, reopening files, closing the viewer, and a
+failed load while another design is open. A failed load should preserve the
+previous design. Also launch the ordinary client without the new argument.
+
+Verification limits
+-------------------
+Completed: independent static review of the reader and integration, whitespace
+checks, JSON/Python syntax checks, and validation of all 19 new evidence links.
+The three original samples were re-read with the Python inspector: SHA-256
+hashes and record counts still match the baseline, with exact EOF consumption.
+
+No build, compiler, or native runtime test was initiated during implementation.
+Source review and Python inspection of the original files support the recovered
+layout; they do not establish native compilation, visual parity, or full editor
+restoration. Native reader regression and parity tools are provided under tests/
+for execution after the user builds the test harness manually.
+
+Next restoration milestone
+--------------------------
+After comparing the deck views, reproduce one complete legacy cell-add/delete
+operation against a design saved by the 2016 editor. That requires the recovered
+fill shapes, polygon merging/subtraction, room identity, and detail validation.
+The native record model now provides a place to implement and test that behavior.

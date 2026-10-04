@@ -1,0 +1,16 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x180034260
+Name provenance: PE export DnRoom::IsRoof
+Captured: 2026-10-04
+
+/* public: bool __cdecl DnRoom::IsRoof(void)const __ptr64 */
+
+bool __thiscall DnRoom::IsRoof(DnRoom *this)
+
+{
+                    /* 0x34260  4593  ?IsRoof@DnRoom@@QEBA_NXZ */
+  return (byte)this[7] - 0x16 < 3;
+}
+
+

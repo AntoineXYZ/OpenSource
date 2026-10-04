@@ -1,6 +1,12 @@
 2016 spacecraft designer: first recovery pass
 Captured 2026-10-04
 
+Follow-up: VIEWER-MILESTONE.txt describes the native deck viewer implemented
+after this first-pass report. RENDER-EVIDENCE.txt identifies the formerly unknown
+room subtype, detail type, hidden flag, room ID, and commodity ID fields, and
+records the original float-based ellipse expansion. The report below preserves
+the state of the initial reconnaissance.
+
 Result
 ------
 The offline designer launch path, local .ship file handling, core room-editing

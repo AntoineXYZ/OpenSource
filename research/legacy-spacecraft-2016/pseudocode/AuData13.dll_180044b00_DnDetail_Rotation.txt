@@ -1,0 +1,19 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x180044b00
+Name provenance: PE export DnDetail::Rotation
+Captured: 2026-10-04
+
+/* public: float __cdecl DnDetail::Rotation(void)const __ptr64 */
+
+float __thiscall DnDetail::Rotation(DnDetail *this)
+
+{
+  float fVar1;
+  
+                    /* 0x44b00  5310  ?Rotation@DnDetail@@QEBAMXZ */
+  fVar1 = DnDetailType::Rotation((uint)(byte)this[1]);
+  return fVar1;
+}
+
+

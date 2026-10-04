@@ -1,0 +1,100 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuMath13.dll
+Address: 0x180039600
+Name provenance: PE export AuPointArray::CreateEllipse
+Captured: 2026-10-04
+
+/* public: void __cdecl AuPointArray::CreateEllipse(class AuPoint const & __ptr64,class AuPoint
+   const & __ptr64,class AuPoint const & __ptr64,int) __ptr64 */
+
+void __thiscall
+AuPointArray::CreateEllipse
+          (AuPointArray *this,AuPoint *param_1,AuPoint *param_2,AuPoint *param_3,int param_4)
+
+{
+  double dVar1;
+  double dVar2;
+  double dVar3;
+  double dVar4;
+  double dVar5;
+  double dVar6;
+  double dVar7;
+  double dVar8;
+  double dVar9;
+  double dVar10;
+  double *pdVar11;
+  double *pdVar12;
+  int iVar13;
+  float fVar14;
+  double dVar15;
+  double dVar16;
+  double dVar17;
+  float fVar18;
+  double local_138;
+  double local_130;
+  double local_128;
+  double local_120;
+  double local_118;
+  double local_110;
+  double local_108;
+  double local_100;
+  double local_f8;
+  double local_f0 [27];
+  
+                    /* 0x39600  477  ?CreateEllipse@AuPointArray@@QEAAXAEBVAuPoint@@00H@Z */
+  QVector<AuPoint>::clear((QVector<AuPoint> *)this);
+  dVar9 = *(double *)param_2 - *(double *)param_1;
+  dVar10 = *(double *)(param_2 + 8) - *(double *)(param_1 + 8);
+  dVar1 = *(double *)(param_2 + 0x10);
+  dVar2 = *(double *)(param_1 + 0x10);
+  dVar5 = sqrt(dVar9 * dVar9 + dVar10 * dVar10);
+  dVar7 = *(double *)param_3 - *(double *)param_1;
+  dVar8 = *(double *)(param_3 + 8) - *(double *)(param_1 + 8);
+  dVar3 = *(double *)(param_3 + 0x10);
+  dVar4 = *(double *)(param_1 + 0x10);
+  dVar15 = (double)(float)dVar5;
+  dVar6 = sqrt(dVar8 * dVar8 + dVar7 * dVar7);
+  iVar13 = 0;
+  dVar16 = (double)(float)dVar6;
+  if (0 < param_4) {
+    do {
+      fVar18 = 6.2831855 - ((float)iVar13 * 6.2831855) / (float)param_4;
+      fVar14 = cosf(fVar18);
+      fVar18 = sinf(fVar18);
+      dVar17 = (double)(fVar18 * (float)dVar6);
+      if (dVar17 == 0.0) {
+        local_f0[2] = 0.0;
+        pdVar11 = local_f0;
+        local_f0[0] = 0.0;
+        local_f0[1] = 0.0;
+      }
+      else {
+        pdVar11 = &local_120;
+        local_120 = (dVar7 / dVar16) * dVar17;
+        local_118 = (dVar8 / dVar16) * dVar17;
+        local_110 = ((dVar3 - dVar4) / dVar16) * dVar17;
+      }
+      dVar17 = (double)(fVar14 * (float)dVar5);
+      if (dVar17 == 0.0) {
+        local_f0[5] = 0.0;
+        pdVar12 = local_f0 + 3;
+        local_f0[3] = 0.0;
+        local_f0[4] = 0.0;
+      }
+      else {
+        pdVar12 = &local_108;
+        local_108 = (dVar9 / dVar15) * dVar17;
+        local_100 = (dVar10 / dVar15) * dVar17;
+        local_f8 = ((dVar1 - dVar2) / dVar15) * dVar17;
+      }
+      local_138 = *pdVar12 + *(double *)param_1 + *pdVar11;
+      local_130 = pdVar12[1] + *(double *)(param_1 + 8) + pdVar11[1];
+      local_128 = pdVar12[2] + *(double *)(param_1 + 0x10) + pdVar11[2];
+      QVector<AuPoint>::append((QVector<AuPoint> *)this,(AuPoint *)&local_138);
+      iVar13 = iVar13 + 1;
+    } while (iVar13 < param_4);
+  }
+  return;
+}
+
+

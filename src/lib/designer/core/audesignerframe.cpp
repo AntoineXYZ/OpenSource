@@ -52,6 +52,7 @@
 #include "aujobsquerydialog.h"
 #include "aujoystick.h"
 #include "aulaborhandcraft.h"
+#include "aulegacyshipviewer.h"
 #include "aulocator.h"
 #include "aulocatorgps.h"
 #include "aulocatormap.h"
@@ -3531,6 +3532,16 @@ void AuDesignerFrame::CreateDesignerMenu()
 
 		m_Designer_Open = fileMenu->addAction(tr("&Open..."), m_View, SLOT(DesignerOpen()), QKeySequence::Open);
 		m_Designer_Open->setIcon(QIcon(":data/dp_Load.png"));
+
+		QAction* legacyOpen = fileMenu->addAction(tr("View &Legacy Spacecraft..."));
+		connect(legacyOpen, &QAction::triggered, this, [this]()
+		{
+			AuLegacyShipViewer* viewer = new AuLegacyShipViewer(this);
+			viewer->setAttribute(Qt::WA_DeleteOnClose);
+			viewer->setWindowFlag(Qt::Window);
+			viewer->show();
+			viewer->ChooseFile();
+		});
 
 		m_Designer_Save = fileMenu->addAction(tr("&Save"), m_View, SLOT(DesignerSave()), QKeySequence::Save);
 		m_Designer_Save->setIcon(QIcon(":data/dp_Save.png"));

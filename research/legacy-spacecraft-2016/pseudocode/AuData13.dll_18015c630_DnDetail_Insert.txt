@@ -1,0 +1,98 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x18015c630
+Name provenance: PE export DnDetail::Insert
+Captured: 2026-10-04
+
+/* public: void __cdecl DnDetail::Insert(class QSqlDatabase & __ptr64,bool)const __ptr64 */
+
+void __thiscall DnDetail::Insert(DnDetail *this,QSqlDatabase *param_1,bool param_2)
+
+{
+  bool bVar1;
+  ushort uVar2;
+  undefined8 uVar3;
+  longlong lVar4;
+  undefined2 *puVar5;
+  QString *pQVar6;
+  QMessageLogger *this_00;
+  QDebug *pQVar7;
+  char *pcVar8;
+  QSqlQuery local_res8 [8];
+  QChar local_res18 [8];
+  QString local_res20 [8];
+  QString local_78 [16];
+  QString local_68 [8];
+  QTypedArrayData<unsigned_short> *local_60;
+  QTypedArrayData<unsigned_short> *local_58;
+  undefined8 local_50;
+  QSqlDatabase local_48 [8];
+  QMessageLogger local_40 [40];
+  
+                    /* 0x15c630  4320  ?Insert@DnDetail@@QEBAXAEAVQSqlDatabase@@_N@Z */
+  local_50 = 0xfffffffffffffffe;
+  pcVar8 = "n_BuildingDetail";
+  if (!param_2) {
+    pcVar8 = "n_Detail";
+  }
+  QString::QString(local_68,(Null *)null_exref);
+  uVar3 = QSqlDatabase::QSqlDatabase(local_48,param_1);
+  QSqlQuery::QSqlQuery(local_res8,local_68,uVar3);
+  QString::~QString(local_68);
+  QString::QString(local_res20);
+  lVar4 = -1;
+  if (pcVar8 != (char *)0x0) {
+    do {
+      lVar4 = lVar4 + 1;
+    } while (pcVar8[lVar4] != '\0');
+  }
+  local_60 = QString::fromAscii_helper(pcVar8,(int)lVar4);
+  local_58 = QString::fromAscii_helper
+                       ("INSERT INTO %1 (idd,id,rid,deck,dtype,loc,hidden,cid) VALUES (?,?,?,?,?,?,?,?);"
+                        ,0x4f);
+  puVar5 = (undefined2 *)QChar::QChar(local_res18,0x20);
+  pQVar6 = (QString *)QString::arg((QString *)&local_58,local_78,&local_60,0,*puVar5);
+  QString::operator=(local_res20,pQVar6);
+  QString::~QString(local_78);
+  QString::~QString((QString *)&local_58);
+  QString::~QString((QString *)&local_60);
+  QSqlQuery::prepare(local_res8,local_res20);
+  QVariant::QVariant((QVariant *)local_78,*(uint *)(this + 8));
+  QSqlQuery::addBindValue(local_res8,local_78,1);
+  QVariant::~QVariant((QVariant *)local_78);
+  QVariant::QVariant((QVariant *)local_78,*(uint *)(this + 4));
+  QSqlQuery::addBindValue(local_res8,local_78,1);
+  QVariant::~QVariant((QVariant *)local_78);
+  QVariant::QVariant((QVariant *)local_78,(uint)*(ushort *)(this + 0x28));
+  QSqlQuery::addBindValue(local_res8,local_78,1);
+  QVariant::~QVariant((QVariant *)local_78);
+  QVariant::QVariant((QVariant *)local_78,(int)(char)*this);
+  QSqlQuery::addBindValue(local_res8,local_78,1);
+  QVariant::~QVariant((QVariant *)local_78);
+  QVariant::QVariant((QVariant *)local_78,(uint)(byte)this[1]);
+  QSqlQuery::addBindValue(local_res8,local_78,1);
+  QVariant::~QVariant((QVariant *)local_78);
+  uVar2 = DnBuilding::EncodeGridCoord((AuPoint *)(this + 0x10));
+  QVariant::QVariant((QVariant *)local_78,(int)(short)uVar2);
+  QSqlQuery::addBindValue(local_res8,local_78,1);
+  QVariant::~QVariant((QVariant *)local_78);
+  QVariant::QVariant((QVariant *)local_78,(bool)this[2]);
+  QSqlQuery::addBindValue(local_res8,local_78,1);
+  QVariant::~QVariant((QVariant *)local_78);
+  QVariant::QVariant((QVariant *)local_78,(uint)*(ushort *)(this + 0x2a));
+  QSqlQuery::addBindValue(local_res8);
+  QVariant::~QVariant((QVariant *)local_78);
+  bVar1 = QSqlQuery::exec(local_res8);
+  if (!bVar1) {
+    this_00 = (QMessageLogger *)QMessageLogger::QMessageLogger(local_40,(char *)0x0,0,(char *)0x0);
+    pQVar7 = (QDebug *)QMessageLogger::warning(this_00);
+    pQVar7 = QDebug::operator<<(pQVar7,"ERROR! DnDetail::Insert FAILED");
+    QDebug::operator<<(pQVar7,local_res20);
+    QDebug::~QDebug((QDebug *)local_78);
+  }
+  QString::~QString(local_res20);
+  QSqlQuery::~QSqlQuery(local_res8);
+  return;
+}
+
+
