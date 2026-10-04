@@ -3,6 +3,7 @@
 #include "aulegacyshipedit.h"
 #include "aulegacyshipgeometry.h"
 #include "aulegacyshipicons.h"
+#include "aulegacyshiprender.h"
 
 #include <QAction>
 #include <QActionGroup>
@@ -38,6 +39,7 @@
 #include <QSpinBox>
 #include <QStandardPaths>
 #include <QStatusBar>
+#include <QStackedWidget>
 #include <QStringList>
 #include <QStyleOptionGraphicsItem>
 #include <QTabWidget>
@@ -458,6 +460,10 @@ public:
 	{
 		scene = new QGraphicsScene(window);
 		view = new DeckView(scene, window);
+		renderView = new AuLegacyShipRender(window);
+		views = new QStackedWidget(window);
+		views->addWidget(view);
+		views->addWidget(renderView);
 		scene->setSceneRect(GridBounds());
 
 		QAction* newAction = MakeAction("New spacecraft", "dp_New", "Start a new spacecraft (Ctrl+N).");
@@ -467,9 +473,13 @@ public:
 		openAction->setShortcut(QKeySequence::Open);
 		QObject::connect(openAction, &QAction::triggered, window, &AuLegacyShipViewer::ChooseFile);
 		QAction* saveAction = UnavailableAction("Save spacecraft", "dp_Save", "Saving .ship files is not available yet.");
-		QAction* fitAction = MakeAction("Fit deck", "dp_ShowDesignPlane", "Fit the current deck in the view (F).");
+		QAction* fitAction = MakeAction("Fit view", "dp_ShowDesignPlane", "Fit the current floor plan or spacecraft in the view (F).");
 		fitAction->setShortcut(QKeySequence(QStringLiteral("F")));
 		QObject::connect(fitAction, &QAction::triggered, window, [this]() { FitDeck(); });
+		renderAction = MakeAction("Render Mode", "dp_RenderMode",
+			"<b>Render Mode</b><br>Switch view between line drawing or solid rendering.");
+		renderAction->setCheckable(true);
+		QObject::connect(renderAction, &QAction::toggled, window, [this](bool solid) { SetRenderMode(solid); });
 		roomsAction = new QAction(QStringLiteral("Rooms"), window);
 		detailsAction = new QAction(QStringLiteral("Equipment markers"), window);
 		gridAction = MakeAction("Grid", "dp_ShowDesignPlane", "Show the selected grid line families.");
@@ -552,7 +562,7 @@ public:
 		QWidget* central = new QWidget(window);
 		QVBoxLayout* layout = new QVBoxLayout(central);
 		layout->setContentsMargins(6, 4, 6, 4);
-		layout->addWidget(view, 1);
+		layout->addWidget(views, 1);
 		window->setCentralWidget(central);
 
 		toolDock = new QDockWidget(QStringLiteral("Spacecraft Design (F6)"), window);
@@ -595,6 +605,14 @@ public:
 		inspect->setAccessibleName(QStringLiteral("Inspect rooms and equipment"));
 		viewTools->addWidget(inspect);
 		panelLayout->addLayout(viewTools);
+		cutaway = new QCheckBox(QStringLiteral("Cut away above current deck"), panel);
+		cutaway->setToolTip(QStringLiteral("Expose the current deck's interior by cutting the ship at half the wall height. Use the deck arrows to move the cut."));
+		cutaway->setVisible(false);
+		QObject::connect(cutaway, &QCheckBox::toggled, window, [this](bool enabled) {
+			renderView->SetCutaway(enabled);
+			ShowRenderHelp();
+		});
+		panelLayout->addWidget(cutaway);
 		toolLabel = new QLabel(panel);
 		toolLabel->setWordWrap(true);
 		panelLayout->addWidget(toolLabel);
@@ -611,8 +629,11 @@ public:
 			"- Left click or drag to paint. Select Erase Room Cells to erase.<br>"
 			"- Middle drag pans; the mouse wheel zooms.<br>"
 			"- Use the selection arrow to inspect rooms and equipment.<br><br>"
+			"- Render Mode switches between the floor plan and the textured spacecraft.<br>"
+			"- In 3D, left drag orbits, middle/right drag pans, and the wheel zooms. F fits the ship.<br>"
+			"- Cut away above current deck exposes the interior; the deck arrows move the cut.<br><br>"
 			"<b>CURRENT EDITOR</b><br>"
-			"Room painting and erasing are available. Equipment placement, saving, and 3D viewing are not available yet; their buttons are disabled.<br><br>"
+			"Room painting and erasing are available in the floor plan. Equipment placement and saving are not available yet; their buttons are disabled.<br><br>"
 			"<b>WHEN FINISHED</b><br>"
 			"Press Escape to exit the designer.<br>"
 			"Edits last for this session. New, Open and Exit ask before discarding changes.<br>"
@@ -690,7 +711,7 @@ public:
 		AddButton(outer, newAction, 0, 1);
 		AddButton(outer, openAction, 0, 2);
 		AddButton(outer, saveAction, 0, 3);
-		AddButton(outer, UnavailableAction("Rendering mode", "dp_RenderMode", "3D viewing is not available yet."), 1, 0);
+		AddButton(outer, renderAction, 1, 0);
 		AddButton(outer, UnavailableAction("Gravity", "dp_Gravity", "Avatar movement is not available in the deck view."), 1, 1);
 		AddButton(outer, UnavailableAction("Check paths", "dp_Check", "Path checking is not available yet."), 1, 2);
 		AddButton(outer, UnavailableAction("Burn design CD", "dp_BurnCD", "In-world design publishing is not available here."), 1, 3);
@@ -779,7 +800,7 @@ public:
 		AddButton(outer, armorUpAction, 5, 2);
 		AddButton(outer, armorDownAction, 5, 3);
 		streamline = new QCheckBox(QStringLiteral("Streamline Hull"), parent);
-		streamline->setToolTip(QStringLiteral("Use a streamlined hull. Changes the design setting; 3D rendering is not available yet."));
+		streamline->setToolTip(QStringLiteral("Streamline the hull for atmospheric flight: improves speed and reduces hull stress."));
 		QObject::connect(streamline, &QCheckBox::toggled, window, [this](bool enabled) {
 			if (loaded && bool(design.header.streamline) != enabled)
 			{
@@ -816,7 +837,7 @@ public:
 		if (!loaded || (delta > 0 && design.header.armor >= 10) || (delta < 0 && design.header.armor == 0))
 			return;
 		design.header.armor = quint8(int(design.header.armor) + delta);
-		HeaderChanged();
+		HeaderChanged(true);
 	}
 
 	void RefreshHeaderControls()
@@ -834,9 +855,12 @@ public:
 		armorDownAction->setToolTip(QStringLiteral("Decrease armor\n") + armor);
 	}
 
-	void HeaderChanged()
+	void HeaderChanged(bool geometryChanged = false)
 	{
 		modified = true;
+		renderDirty = renderDirty || geometryChanged;
+		if (geometryChanged && renderAction->isChecked())
+			RefreshRendering();
 		RefreshHeaderControls();
 		UpdateTitle();
 		ShowOverview();
@@ -845,6 +869,11 @@ public:
 
 	void FitDeck()
 	{
+		if (renderAction->isChecked())
+		{
+			renderView->FitDesign();
+			return;
+		}
 		view->fitInView(deckBounds, Qt::KeepAspectRatio);
 		// Leave screen-space room for labels centered on the grid's outer corners.
 		QFont labelFont = window->font();
@@ -860,8 +889,55 @@ public:
 		view->centerOn(deckBounds.center());
 	}
 
+	void RefreshRendering()
+	{
+		if (renderDirty)
+		{
+			renderView->SetDesign(design);
+			renderDirty = false;
+		}
+		renderView->SetDeck(currentDeck);
+		if (renderNeedsFit)
+		{
+			renderView->FitDesign();
+			renderNeedsFit = false;
+		}
+	}
+
+	void ShowRenderHelp()
+	{
+		if (!renderAction->isChecked())
+			return;
+		toolLabel->setText(QStringLiteral("3D view: left drag orbits; middle/right drag pans; wheel zooms. F fits the ship."));
+		window->statusBar()->showMessage(cutaway->isChecked()
+			? QStringLiteral("Interior cutaway at deck %1. Use the deck arrows to move the cut.").arg(currentDeck)
+			: QStringLiteral("Solid spacecraft view. Use Render Mode to return to the floor plan."));
+	}
+
+	void SetRenderMode(bool solid)
+	{
+		if (solid)
+			RefreshRendering();
+		views->setCurrentWidget(solid ? static_cast<QWidget*>(renderView) : static_cast<QWidget*>(view));
+		cutaway->setVisible(solid);
+		coordinates->setVisible(!solid);
+		if (solid)
+		{
+			renderView->setFocus();
+			ShowRenderHelp();
+			ShowOverview();
+		}
+		else
+		{
+			view->setFocus();
+			SetToolMode(toolMode);
+		}
+	}
+
 	void SetToolMode(ToolMode mode)
 	{
+		if (renderAction->isChecked())
+			renderAction->setChecked(false);
 		toolMode = mode;
 		view->SetEditing(loaded && mode != InspectMode, mode == EraseMode);
 		inspectAction->setChecked(mode == InspectMode);
@@ -894,7 +970,7 @@ public:
 
 	void EditAt(const QPointF& cursor)
 	{
-		if (!loaded || toolMode == InspectMode)
+		if (!loaded || renderAction->isChecked() || toolMode == InspectMode)
 			return;
 		const int deck = currentDeck;
 		const int type = toolMode == EraseMode ? -1 : selectedRoomType;
@@ -909,6 +985,7 @@ public:
 		if (result.changed)
 		{
 			modified = true;
+			renderDirty = true;
 			IndexDecks();
 			UpdateTitle();
 			ShowDeck(deck, false);
@@ -954,6 +1031,8 @@ public:
 			"Marker shapes and colors distinguish records; they do not represent recovered equipment shapes.\n");
 		if (!geometryWarnings.isEmpty())
 			text += QStringLiteral("\nGeometry warnings for this deck:\n") + geometryWarnings.join(QLatin1Char('\n'));
+		if (!renderDirty && !renderView->Warnings().isEmpty())
+			text += QStringLiteral("\n3D rendering notes:\n") + renderView->Warnings().join(QLatin1Char('\n'));
 		return text;
 	}
 
@@ -1061,6 +1140,8 @@ public:
 	{
 		deck = std::max(AuLegacyShip::MinimumDeck, std::min(AuLegacyShip::MaximumDeck, deck));
 		currentDeck = deck;
+		if (renderAction->isChecked())
+			RefreshRendering();
 		deckUpAction->setEnabled(loaded && deck < AuLegacyShip::MaximumDeck);
 		deckDownAction->setEnabled(loaded && deck > AuLegacyShip::MinimumDeck);
 		const QTransform previousTransform = view->transform();
@@ -1145,7 +1226,7 @@ public:
 			message += QStringLiteral("; %1 geometry warnings (see inspector)").arg(warningCount);
 		window->statusBar()->showMessage(message);
 		ShowOverview();
-		if (fit)
+		if (fit && !renderAction->isChecked())
 			FitDeck();
 		else
 		{
@@ -1154,6 +1235,7 @@ public:
 			view->verticalScrollBar()->setValue(previousVertical);
 		}
 		view->viewport()->update();
+		ShowRenderHelp();
 	}
 
 	void IndexDecks()
@@ -1192,6 +1274,8 @@ public:
 		fileName = path.isEmpty() ? QString() : QFileInfo(path).absoluteFilePath();
 		loaded = true;
 		modified = false;
+		renderDirty = true;
+		renderNeedsFit = true;
 		IndexDecks();
 		UpdateTitle();
 		editPanel->setEnabled(true);
@@ -1205,11 +1289,14 @@ public:
 	QSettings settings;
 	QGraphicsScene* scene;
 	DeckView* view;
+	AuLegacyShipRender* renderView;
+	QStackedWidget* views;
 	QSpinBox* roomNumber;
 	QWidget* editPanel;
 	QDockWidget* toolDock;
 	QTabWidget* informationTabs;
 	QCheckBox* streamline;
+	QCheckBox* cutaway;
 	QComboBox* minimumTech;
 	QLabel* toolLabel;
 	QLabel* coordinates;
@@ -1217,6 +1304,7 @@ public:
 	QAction* roomsAction;
 	QAction* detailsAction;
 	QAction* gridAction;
+	QAction* renderAction;
 	QAction* closeAction;
 	QAction* inspectAction;
 	QAction* eraseAction;
@@ -1240,6 +1328,8 @@ public:
 	bool loaded = false;
 	bool modified = false;
 	bool fittedOnShow = false;
+	bool renderDirty = true;
+	bool renderNeedsFit = true;
 };
 
 AuLegacyShipViewer::AuLegacyShipViewer(QWidget* parent)

@@ -5,7 +5,8 @@ Current implementation
 ----------------------
 The modern client can open the legacy designer from the launch-screen chooser
 or with -legacy-spacecraft [path/to/design.ship]. The standalone path uses a
-plain QApplication, without a world session or OpenGL. In the normal client,
+plain QApplication without a world session. The solid view uses a local OpenGL
+widget and the bundled modern spacecraft atlas. In the normal client,
 Legacy occupies the existing window; exit before choosing the other designer.
 Launch-screen music stops during Legacy and resumes only if previously playing.
 
@@ -29,9 +30,21 @@ failed loads preserve it. Original files remain read-only. Successful opens
 remember LegacySpacecraft/LastOpenDirectory in the native user settings for
 Hazeron Freehold / Shores of Hazeron, shared by both launch paths.
 
-Saving, undo/redo, equipment placement, whole-room/deck tools, move/copy, path
-checks and 3D remain unfinished. The user deferred 3D to prioritize interface
-recovery; an orbit/fly camera is the intended first camera milestone.
+The original Render Mode button switches the floor plan to textured 3D.
+Left drag orbits; middle/right/Shift-drag pans; wheel zooms; F or Home fits.
+The separate cutaway checkbox clips at the selected deck's half-height;
+deck arrows move the cut. Mode switching preserves the floor-plan view and
+orbit camera. Painting and erasing return to the floor plan. Armor changes
+the recovered wall profiles and windows; Streamline Hull is a physics setting.
+
+The mesh uses the original quarter-grid occupancy rules, room/armor wall
+profiles, interior wall materials, adjacent-deck floors/ceilings and transparent
+window textures. This is a reconstruction from static evidence; full original
+visual parity has not been validated. See SURFACE-RECOVERY-NOTES.txt for the
+implemented surfaces and remaining geometry/detail limitations.
+
+Saving, undo/redo, equipment placement, whole-room/deck tools, move/copy,
+path checks, avatar navigation and world rendering remain unfinished.
 
 Read by topic
 -------------
@@ -42,7 +55,8 @@ PAINTING-RULES.txt             Room identity, raster edits, quirks and guards.
 EQUIPMENT-RECONCILIATION.txt    Placement rules and ordered detail side effects.
 VEHICLE-BOUNDS.txt             Model footprints and missing-resource behavior.
 PANEL-RECOVERY.txt             Exact icon layout, labels and header controls.
-SURFACE-RECOVERY-NOTES.txt      Deferred hull/interior rendering investigation.
+SURFACE-RECOVERY-NOTES.txt      Hull/interior implementation and remaining gaps.
+RENDERING-MATERIAL-EVIDENCE.txt Original texture/material/surface predicates.
 TESTING.txt                   Reference checks and manual native harnesses.
 
 Evidence and tools
@@ -75,6 +89,8 @@ src/lib/data/designs/aulegacyshipedit.h/.cpp     Add/erase transactions.
 src/lib/data/designs/aulegacyshipdetails.h/.cpp  Equipment reconciliation.
 src/lib/designer/legacy/aulegacyshipviewer.h/.cpp Interface and session state.
 src/lib/designer/legacy/aulegacyshipicons.h/.cpp Embedded original PNGs.
+src/lib/designer/legacy/aulegacyshipmesh.h/.cpp Recovered CPU surface generator.
+src/lib/designer/legacy/aulegacyshiprender.h/.cpp Textured OpenGL orbit view.
 src/app/clients/scene/main.cpp                  Standalone launch branch.
 src/lib/designer/core/audesignerframe.cpp       Chooser and embedded lifecycle.
 .vscode/launch.json                            Already-built launch profiles.

@@ -1,0 +1,334 @@
+Read-only Ghidra capture for 3D surface recovery. Not original source.
+
+
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* protected: void __cdecl DaSpaceShip::RenderWallEndCap(class QList<class AuTriSpacecraft> &
+   __ptr64,class AuPointArray const & __ptr64,class AuPoint const & __ptr64,class AuPoint const &
+   __ptr64,bool,bool)const __ptr64 */
+
+void __thiscall
+DaSpaceShip::RenderWallEndCap
+          (DaSpaceShip *this,QList<AuTriSpacecraft> *param_1,AuPointArray *param_2,AuPoint *param_3,
+          AuPoint *param_4,bool param_5,bool param_6)
+
+{
+  double dVar1;
+  double dVar2;
+  double dVar3;
+  AuPoint *pAVar4;
+  double *pdVar5;
+  undefined8 *puVar6;
+  SHIP_TEXTURE SVar7;
+  int iVar8;
+  int iVar9;
+  int iVar10;
+  double in_XMM1_Qa;
+  double dVar11;
+  float fVar12;
+  undefined4 uVar13;
+  undefined4 uVar14;
+  undefined4 uVar15;
+  undefined4 uVar16;
+  undefined4 uVar17;
+  undefined4 uVar18;
+  undefined1 auStackY_2a8 [32];
+  double local_208;
+  double dStack_200;
+  double local_1f8;
+  longlong local_1f0;
+  longlong local_1e8;
+  float local_1e0 [2];
+  double local_1d8;
+  double dStack_1d0;
+  double local_1c8;
+  float local_1c0;
+  float local_1bc;
+  float local_1b8;
+  float local_1b4;
+  double local_1b0;
+  double dStack_1a8;
+  double local_1a0;
+  double local_198;
+  double dStack_190;
+  double local_188;
+  undefined8 local_180;
+  undefined8 uStack_178;
+  undefined8 local_170;
+  undefined4 local_168;
+  uint uStack_164;
+  undefined4 uStack_160;
+  uint uStack_15c;
+  ulonglong local_158;
+  double local_150;
+  double local_148;
+  double local_140;
+  QList<AuTriSpacecraft> *local_138;
+  undefined8 local_130;
+  undefined8 local_110;
+  undefined8 uStack_108;
+  undefined8 local_100;
+  int local_f8 [4];
+  ulonglong local_e8;
+  
+                    /* 0x44e0f0  6077
+                       ?RenderWallEndCap@DaSpaceShip@@IEBAXAEAV?$QList@VAuTriSpacecraft@@@@AEBVAuPointArray@@AEBVAuPoint@@2_N3@Z
+                        */
+  local_130 = 0xfffffffffffffffe;
+  local_e8 = DAT_180a0ecf0 ^ (ulonglong)auStackY_2a8;
+  if (2 < *(int *)(*(longlong *)param_2 + 4)) {
+    local_1b4 = 50.0;
+    local_f8[0] = 0;
+    local_f8[1] = 0;
+    local_f8[2] = 3;
+    if (param_6) {
+      local_f8[2] = 0;
+      local_1b4 = 0.0;
+      SVar7 = 0x25;
+    }
+    else {
+      SVar7 = 0x1b;
+    }
+    local_138 = param_1;
+    ShipTexture(SVar7,local_1e0,&local_1b8,&local_1c0,&local_1bc);
+    QVector<AuPoint>::operator[]((QVector<AuPoint> *)param_2,0);
+    AuPoint::operator*(param_3,in_XMM1_Qa);
+    pAVar4 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)param_2,0);
+    local_198 = local_198 + *(double *)param_4;
+    dVar11 = dStack_190 + *(double *)(param_4 + 8);
+    local_188 = *(double *)(pAVar4 + 0x10) + *(double *)(param_4 + 0x10);
+    dStack_190 = dVar11;
+    QVector<AuPoint>::operator[]((QVector<AuPoint> *)param_2,1);
+    AuPoint::operator*(param_3,dVar11);
+    pAVar4 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)param_2,1);
+    local_1b0 = local_1b0 + *(double *)param_4;
+    dStack_1a8 = dStack_1a8 + *(double *)(param_4 + 8);
+    local_1a0 = *(double *)(pAVar4 + 0x10) + *(double *)(param_4 + 0x10);
+    local_140 = local_1a0 - local_188;
+    local_148 = dStack_1a8 - dStack_190;
+    dVar11 = local_1b0 - local_198;
+    local_150 = dVar11;
+    AuPoint::Unit((AuPoint *)&local_150);
+    iVar10 = 2;
+    iVar8 = 1;
+    if (ABS(local_140) == 1.0) {
+      local_198 = local_1b0;
+      dStack_190 = dStack_1a8;
+      local_188 = local_1a0;
+      QVector<AuPoint>::operator[]((QVector<AuPoint> *)param_2,2);
+      pdVar5 = (double *)AuPoint::operator*(param_3,dVar11);
+      local_1b0 = *pdVar5;
+      dStack_1a8 = pdVar5[1];
+      local_1a0 = pdVar5[2];
+      pAVar4 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)param_2,2);
+      local_1b0 = local_1b0 + *(double *)param_4;
+      dStack_1a8 = dStack_1a8 + *(double *)(param_4 + 8);
+      local_1a0 = *(double *)(pAVar4 + 0x10) + *(double *)(param_4 + 0x10);
+      local_140 = local_1a0 - local_188;
+      local_148 = dStack_1a8 - dStack_190;
+      dVar11 = local_1b0 - local_198;
+      local_150 = dVar11;
+      AuPoint::Unit((AuPoint *)&local_150);
+      iVar8 = iVar10;
+      if (ABS(local_140) == 1.0) {
+        return;
+      }
+    }
+    local_110 = 0;
+    uStack_108 = 0;
+    local_100 = 0x3ff0000000000000;
+    AuPoint::Cross((AuPoint *)&local_150,(AuPoint *)&local_168);
+    AuPoint::Unit((AuPoint *)&local_168);
+    AuPointArray::AuPointArray((AuPointArray *)&local_1e8);
+    AuPointArray::AuPointArray((AuPointArray *)&local_1f0);
+    local_180 = 0;
+    uStack_178 = 0;
+    if (param_5) {
+      uVar17 = 0;
+      uVar18 = 0;
+      if (param_6) {
+        pAVar4 = (AuPoint *)AuPoint::operator*((AuPoint *)&local_168,dVar11);
+        puVar6 = (undefined8 *)AuPoint::operator/(pAVar4,dVar11);
+        uVar13 = (undefined4)*puVar6;
+        uVar14 = (undefined4)((ulonglong)*puVar6 >> 0x20);
+        uVar15 = (undefined4)puVar6[1];
+        uVar16 = (undefined4)((ulonglong)puVar6[1] >> 0x20);
+        uVar17 = (undefined4)puVar6[2];
+        uVar18 = (undefined4)((ulonglong)puVar6[2] >> 0x20);
+      }
+      else {
+        uVar15 = 0;
+        uVar16 = 0;
+        uVar13 = 0;
+        uVar14 = 0;
+      }
+      local_158 = local_158 ^ 0x8000000000000000;
+      uStack_164 = uStack_164 ^ 0x80000000;
+      uStack_15c = uStack_15c ^ 0x80000000;
+      QVector<AuPoint>::append((QVector<AuPoint> *)&local_1e8,(AuPoint *)&local_198);
+      fVar12 = local_1e0[0];
+      dVar11 = (double)local_1b8;
+      local_1d8 = (double)local_1e0[0];
+      local_1c8 = 0.0;
+      dStack_1d0 = dVar11;
+      QVector<AuPoint>::append((QVector<AuPoint> *)&local_1f0,(AuPoint *)&local_1d8);
+      local_208 = 0.0;
+      dStack_200 = 0.0;
+      local_1f8 = 0.0;
+      if (iVar8 < *(int *)(*(longlong *)param_2 + 4)) {
+        do {
+          if ((param_6) &&
+             (pAVar4 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)param_2,iVar8),
+             *(double *)pAVar4 != 0.0)) {
+            QVector<AuPoint>::operator[]((QVector<AuPoint> *)param_2,iVar8);
+          }
+          else {
+            QVector<AuPoint>::operator[]((QVector<AuPoint> *)param_2,iVar8);
+          }
+          pdVar5 = (double *)AuPoint::operator*(param_3,dVar11);
+          local_208 = *pdVar5;
+          dStack_200 = pdVar5[1];
+          local_1f8 = pdVar5[2];
+          pAVar4 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)param_2,iVar8);
+          local_208 = local_208 + *(double *)param_4;
+          dStack_200 = dStack_200 + *(double *)(param_4 + 8);
+          local_1f8 = *(double *)(pAVar4 + 0x10) + *(double *)(param_4 + 0x10);
+          dVar3 = (double)fVar12;
+          pAVar4 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)param_2,iVar8);
+          if ((*(double *)pAVar4 != 0.0) && (dVar3 = (double)local_1c0, param_6)) {
+            local_208 = local_208 + (double)CONCAT44(uVar14,uVar13);
+            dStack_200 = dStack_200 + (double)CONCAT44(uVar16,uVar15);
+            local_1f8 = local_1f8 + (double)CONCAT44(uVar18,uVar17);
+          }
+          pAVar4 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)param_2,iVar8);
+          dVar11 = (double)local_1b8;
+          dVar2 = *(double *)(pAVar4 + 0x10) * 0.125 * (double)(local_1bc - local_1b8) + dVar11;
+          QVector<AuPoint>::append((QVector<AuPoint> *)&local_1e8,(AuPoint *)&local_208);
+          local_1c8 = 0.0;
+          local_1d8 = dVar3;
+          dStack_1d0 = dVar2;
+          QVector<AuPoint>::append((QVector<AuPoint> *)&local_1f0,(AuPoint *)&local_1d8);
+          iVar8 = iVar8 + 1;
+          fVar12 = local_1e0[0];
+        } while (iVar8 < *(int *)(*(longlong *)param_2 + 4));
+      }
+    }
+    else {
+      uVar17 = 0;
+      uVar18 = 0;
+      if (param_6) {
+        local_1c8 = (double)(local_158 ^ 0x8000000000000000);
+        local_1d8 = -(double)CONCAT44(uStack_164,local_168);
+        dStack_1d0 = -(double)CONCAT44(uStack_15c,uStack_160);
+        pAVar4 = (AuPoint *)AuPoint::operator*((AuPoint *)&local_1d8,dVar11);
+        puVar6 = (undefined8 *)AuPoint::operator/(pAVar4,dVar11);
+        uVar13 = (undefined4)*puVar6;
+        uVar14 = (undefined4)((ulonglong)*puVar6 >> 0x20);
+        uVar15 = (undefined4)puVar6[1];
+        uVar16 = (undefined4)((ulonglong)puVar6[1] >> 0x20);
+        uVar17 = (undefined4)puVar6[2];
+        uVar18 = (undefined4)((ulonglong)puVar6[2] >> 0x20);
+      }
+      else {
+        uVar15 = 0;
+        uVar16 = 0;
+        uVar13 = 0;
+        uVar14 = 0;
+      }
+      QVector<AuPoint>::append((QVector<AuPoint> *)&local_1e8,(AuPoint *)&local_198);
+      dVar11 = (double)local_1b8;
+      local_1d8 = (double)local_1e0[0];
+      local_1c8 = 0.0;
+      dStack_1d0 = dVar11;
+      QVector<AuPoint>::append((QVector<AuPoint> *)&local_1f0,(AuPoint *)&local_1d8);
+      local_208 = 0.0;
+      dStack_200 = 0.0;
+      local_1f8 = 0.0;
+      iVar9 = *(int *)(*(longlong *)param_2 + 4) + -1;
+      param_1 = local_138;
+      if (iVar8 <= iVar9) {
+        do {
+          if ((param_6) &&
+             (pAVar4 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)param_2,iVar9),
+             *(double *)pAVar4 != 0.0)) {
+            QVector<AuPoint>::operator[]((QVector<AuPoint> *)param_2,iVar9);
+          }
+          else {
+            QVector<AuPoint>::operator[]((QVector<AuPoint> *)param_2,iVar9);
+          }
+          pdVar5 = (double *)AuPoint::operator*(param_3,dVar11);
+          local_208 = *pdVar5;
+          dStack_200 = pdVar5[1];
+          local_1f8 = pdVar5[2];
+          pAVar4 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)param_2,iVar9);
+          local_208 = local_208 + *(double *)param_4;
+          dStack_200 = dStack_200 + *(double *)(param_4 + 8);
+          local_1f8 = *(double *)(pAVar4 + 0x10) + *(double *)(param_4 + 0x10);
+          dVar3 = (double)local_1e0[0];
+          pAVar4 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)param_2,iVar9);
+          if ((*(double *)pAVar4 != 0.0) && (dVar3 = (double)local_1c0, param_6)) {
+            local_208 = local_208 + (double)CONCAT44(uVar14,uVar13);
+            dStack_200 = dStack_200 + (double)CONCAT44(uVar16,uVar15);
+            local_1f8 = local_1f8 + (double)CONCAT44(uVar18,uVar17);
+          }
+          pAVar4 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)param_2,iVar9);
+          dVar11 = (double)local_1b8;
+          dVar2 = *(double *)(pAVar4 + 0x10) * 0.125 * (double)(local_1bc - local_1b8) + dVar11;
+          QVector<AuPoint>::append((QVector<AuPoint> *)&local_1e8,(AuPoint *)&local_208);
+          local_1c8 = 0.0;
+          local_1d8 = dVar3;
+          dStack_1d0 = dVar2;
+          QVector<AuPoint>::append((QVector<AuPoint> *)&local_1f0,(AuPoint *)&local_1d8);
+          iVar9 = iVar9 + -1;
+          param_1 = local_138;
+        } while (iVar8 <= iVar9);
+      }
+    }
+    if ((2 < *(int *)(local_1f0 + 4)) && (2 < *(int *)(local_1e8 + 4))) {
+      pAVar4 = QVector<AuPoint>::at((QVector<AuPoint> *)&local_1e8,0);
+      local_180 = *(undefined8 *)pAVar4;
+      uStack_178 = *(undefined8 *)(pAVar4 + 8);
+      local_170 = *(undefined8 *)(pAVar4 + 0x10);
+      pAVar4 = QVector<AuPoint>::at((QVector<AuPoint> *)&local_1f0,0);
+      dVar11 = *(double *)pAVar4;
+      dVar3 = *(double *)(pAVar4 + 8);
+      pAVar4 = QVector<AuPoint>::at((QVector<AuPoint> *)&local_1e8,1);
+      local_1d8 = *(double *)pAVar4;
+      dStack_1d0 = *(double *)(pAVar4 + 8);
+      local_1c8 = *(double *)(pAVar4 + 0x10);
+      pAVar4 = QVector<AuPoint>::at((QVector<AuPoint> *)&local_1f0,1);
+      fVar12 = local_1b4;
+      if (2 < *(int *)(local_1f0 + 4)) {
+        uVar17 = (int)*(undefined8 *)pAVar4;
+        uVar18 = (int)((ulonglong)*(undefined8 *)pAVar4 >> 0x20);
+        uVar13 = (int)*(undefined8 *)(pAVar4 + 8);
+        uVar14 = (int)((ulonglong)*(undefined8 *)(pAVar4 + 8) >> 0x20);
+        do {
+          pAVar4 = QVector<AuPoint>::at((QVector<AuPoint> *)&local_1f0,iVar10);
+          dVar2 = *(double *)pAVar4;
+          dVar1 = *(double *)(pAVar4 + 8);
+          pAVar4 = QVector<AuPoint>::at((QVector<AuPoint> *)&local_1e8,iVar10);
+          local_208 = *(double *)pAVar4;
+          dStack_200 = *(double *)(pAVar4 + 8);
+          local_1f8 = *(double *)(pAVar4 + 0x10);
+          ModelAdd(param_1,(AuPoint *)&local_168,local_f8,fVar12,param_6,(float)dVar11,(float)dVar3,
+                   -1.0,-1.0,(AuPoint *)&local_180,(float)(double)CONCAT44(uVar18,uVar17),
+                   (float)(double)CONCAT44(uVar14,uVar13),-1.0,-1.0,(AuPoint *)&local_1d8,
+                   (float)dVar2,(float)dVar1,-1.0,-1.0,(AuPoint *)&local_208);
+          local_1d8 = local_208;
+          dStack_1d0 = dStack_200;
+          local_1c8 = local_1f8;
+          iVar10 = iVar10 + 1;
+          uVar17 = SUB84(dVar2,0);
+          uVar18 = (int)((ulonglong)dVar2 >> 0x20);
+          uVar13 = SUB84(dVar1,0);
+          uVar14 = (int)((ulonglong)dVar1 >> 0x20);
+        } while (iVar10 < *(int *)(local_1f0 + 4));
+      }
+    }
+    AuPointArray::~AuPointArray((AuPointArray *)&local_1f0);
+    AuPointArray::~AuPointArray((AuPointArray *)&local_1e8);
+  }
+  return;
+}
+
+

@@ -140,8 +140,10 @@ check CanDesignBeModified and invalidate cached geometry/path after success.
 
 The working constructor (AuData13.dll 0x180178f70) stores ushort 1 at +0x14:
 new streamline=1, armor=0. Loading preserves saved values. Header edits mark
-the native session dirty; their 3D effects await the deferred renderer. Raw
-control captures are in pseudocode/ship-header-control-evidence.txt.
+the native session dirty. Armor now updates the recovered 3D wall profiles;
+streamline affects atmospheric physics rather than rendered geometry (see
+RENDERING-MATERIAL-EVIDENCE.txt). Raw control captures are in
+pseudocode/ship-header-control-evidence.txt.
 
 Room labels in the edit view
 -----------------------------

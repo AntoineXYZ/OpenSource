@@ -1,0 +1,1068 @@
+Read-only Ghidra capture for 3D surface recovery. Not original source.
+
+
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* protected: void __cdecl DaSpaceShip::RenderExteriorTops(class QList<class AuTriSpacecraft> &
+   __ptr64,enum DaSpaceShip::SHIP_TEXTURE,enum DnRoom::WALLTYPE,double,int & __ptr64,int &
+   __ptr64,int & __ptr64,int & __ptr64,class DnFloorBuffer16 & __ptr64,bool,class DnSpaceShip const
+   & __ptr64,class DnDetailArray const & __ptr64)const __ptr64 */
+
+void __thiscall
+DaSpaceShip::RenderExteriorTops
+          (DaSpaceShip *this,QList<AuTriSpacecraft> *param_1,SHIP_TEXTURE param_2,WALLTYPE param_3,
+          double param_4,int *param_5,int *param_6,int *param_7,int *param_8,
+          DnFloorBuffer16 *param_9,bool param_10,DnSpaceShip *param_11,DnDetailArray *param_12)
+
+{
+  short sVar1;
+  short sVar2;
+  longlong lVar3;
+  char *pcVar4;
+  bool bVar5;
+  bool bVar6;
+  float fVar7;
+  float fVar8;
+  float fVar9;
+  float fVar10;
+  char cVar11;
+  bool bVar12;
+  bool bVar13;
+  bool bVar14;
+  bool bVar15;
+  bool bVar16;
+  bool bVar17;
+  bool bVar18;
+  bool bVar19;
+  bool bVar20;
+  bool bVar21;
+  ushort uVar22;
+  undefined8 *puVar23;
+  ushort uVar24;
+  uint uVar25;
+  int iVar26;
+  DaSpaceShip *this_00;
+  int iVar27;
+  AuPoint *pAVar28;
+  uint uVar29;
+  QList<AuTriSpacecraft> *pQVar30;
+  uint uVar31;
+  double dVar32;
+  float fVar33;
+  float fVar34;
+  float fVar35;
+  float fVar36;
+  float fVar37;
+  float fVar38;
+  float fVar39;
+  undefined1 auStackY_488 [32];
+  bool bVar40;
+  float fVar41;
+  float fVar42;
+  float fVar43;
+  AuPoint *pAVar44;
+  float fVar45;
+  float fVar46;
+  float fVar47;
+  AuPoint *pAVar48;
+  float fVar49;
+  float fVar50;
+  float fVar51;
+  float fVar52;
+  int local_3a8;
+  float local_3a0;
+  uint local_39c;
+  uint local_398;
+  short local_394;
+  QList<AuTriSpacecraft> *local_390;
+  float local_388;
+  float local_384;
+  float local_380;
+  uint local_37c;
+  DETAILTYPE local_378 [2];
+  int *local_370;
+  int *local_368;
+  float *local_360;
+  float *local_358;
+  double local_350;
+  double dStack_348;
+  double local_340;
+  WALLTYPE local_338;
+  short local_334;
+  undefined1 local_330 [16];
+  double local_320;
+  float local_318;
+  float local_314;
+  float local_310;
+  float local_30c;
+  float local_308 [2];
+  DaSpaceShip *local_300;
+  float local_2f8;
+  float local_2f4;
+  float local_2f0;
+  float local_2ec;
+  float local_2e8;
+  float local_2e4;
+  undefined8 local_2e0;
+  undefined8 uStack_2d8;
+  undefined8 local_2d0;
+  float local_2c8;
+  float local_2c4;
+  float local_2c0;
+  float local_2bc;
+  float local_2b8;
+  float local_2b4;
+  undefined1 local_2b0 [16];
+  double local_2a0;
+  AuPoint local_298 [16];
+  double local_288;
+  longlong *local_280;
+  longlong *local_278;
+  longlong *local_270;
+  longlong *local_268;
+  longlong *local_260;
+  longlong *local_258;
+  longlong *local_250;
+  longlong *local_248;
+  longlong *local_240;
+  undefined8 *local_238;
+  undefined8 *local_230;
+  undefined8 *local_228;
+  undefined8 *local_220;
+  AuPoint local_218 [16];
+  double local_208;
+  AuPoint local_200 [16];
+  double local_1f0;
+  uint local_1e8;
+  AuPoint local_1e0 [16];
+  double local_1d0;
+  AuPoint local_1c8 [16];
+  double local_1b8;
+  uint local_1b0;
+  AuPoint local_1a8 [16];
+  double local_198;
+  uint local_190;
+  uint local_18c;
+  AuPoint local_188 [16];
+  double local_178;
+  AuPoint local_170 [16];
+  double local_160;
+  int local_f0 [4];
+  ulonglong local_e0;
+  
+                    /* 0x42a140  5929
+                       ?RenderExteriorTops@DaSpaceShip@@IEBAXAEAV?$QList@VAuTriSpacecraft@@@@W4SHIP_TEXTURE@1@W4WALLTYPE@DnRoom@@NAEAH333AEAVDnFloorBuffer16@@_NAEBVDnSpaceShip@@AEBVDnDetailArray@@@Z
+                        */
+  local_e0 = DAT_180a0ecf0 ^ (ulonglong)auStackY_488;
+  local_358 = (float *)param_5;
+  local_360 = (float *)param_6;
+  local_368 = param_7;
+  local_370 = param_8;
+  local_390 = param_1;
+  local_338 = param_3;
+  local_300 = this;
+  ShipTexture(param_2,&local_318,local_308,&local_384,&local_3a0);
+  fVar10 = local_308[0];
+  fVar7 = local_318;
+  local_314 = local_384 - local_318;
+  local_2c0 = local_314 * 0.75 + local_318;
+  local_2bc = local_314 * 0.25 + local_318;
+  local_310 = local_3a0 - local_308[0];
+  fVar37 = local_314 * 0.5 + local_318;
+  fVar39 = local_310 * 0.5 + local_308[0];
+  local_2b4 = local_310 * 0.75 + local_308[0];
+  local_308[0] = local_310 * 0.25 + local_308[0];
+  EffectTexture(this,0x1f,&local_318,&local_30c,&local_380,&local_388);
+  fVar9 = local_30c;
+  fVar8 = local_318;
+  fVar33 = local_380 - local_318;
+  local_2b8 = fVar33 * 0.25 + local_318;
+  fVar34 = local_388 - local_30c;
+  fVar38 = fVar33 * 0.5 + local_318;
+  local_2c8 = fVar33 * 0.75 + local_318;
+  local_f0[0] = 0;
+  local_f0[1] = 0;
+  local_f0[2] = 3;
+  fVar35 = 50.0;
+  local_2c4 = fVar34 * 0.75 + local_30c;
+  fVar36 = fVar34 * 0.5 + local_30c;
+  if (param_10) {
+    local_f0[2] = 0;
+    fVar35 = 0.0;
+  }
+  local_3a8 = 0;
+  local_2e0 = 0;
+  uStack_2d8 = 0;
+  local_2d0 = 0x3ff0000000000000;
+  local_2e8 = local_314 * 0.14644662 + fVar7;
+  local_314 = local_314 * 0.8535534 + fVar7;
+  local_2f0 = local_310 * 0.14644662;
+  local_310 = local_310 * 0.8535534 + fVar10;
+  local_2f0 = local_2f0 + fVar10;
+  local_2f4 = fVar33 * 0.8535534 + local_318;
+  local_2f8 = fVar33 * 0.14644662 + local_318;
+  local_2e4 = fVar34 * 0.8535534 + local_30c;
+  local_2ec = fVar34 * 0.14644662 + local_30c;
+  dVar32 = (double)(ulonglong)(uint)local_2ec;
+  local_30c = fVar34 * 0.25 + local_30c;
+  do {
+    local_318 = 0.0;
+    do {
+      fVar33 = local_318;
+      iVar26 = (int)local_318 * 0x204 + local_3a8;
+      lVar3 = *(longlong *)param_9;
+      local_394 = *(short *)(lVar3 + (ulonglong)(iVar26 + 0x60e) * 2);
+      sVar1 = *(short *)(lVar3 + (ulonglong)(iVar26 + 0x40b) * 2);
+      sVar2 = *(short *)(lVar3 + (ulonglong)(iVar26 + 0x206) * 2);
+      local_334 = *(short *)(lVar3 + (ulonglong)(iVar26 + 0x409) * 2);
+      if ((((local_394 != 0) || (sVar1 != 0)) || (sVar2 != 0)) || (local_334 != 0)) {
+        if ((int)local_318 < *param_5) {
+          *param_5 = (int)local_318;
+        }
+        if (*param_6 < (int)local_318) {
+          *param_6 = (int)local_318;
+        }
+        if (local_3a8 < *param_7) {
+          *param_7 = local_3a8;
+        }
+        if (*param_8 < local_3a8) {
+          *param_8 = local_3a8;
+        }
+        uVar31 = (uint)local_394;
+        uVar29 = (uint)sVar1;
+        local_398 = uVar31 >> 0xf & 0xffffff01;
+        local_37c = uVar29 >> 0xf & 0xffffff01;
+        uVar25 = (uint)(int)sVar2 >> 0xf;
+        local_1e8 = (uint)(int)sVar2 >> 0xe & 0xffffff01;
+        local_39c = (uint)(int)local_334 >> 0xf & 0xffffff01;
+        local_18c = (uint)(int)local_334 >> 0xe & 0xffffff01;
+        local_1b0 = uVar31 >> 0xe & 0xffffff01;
+        local_190 = uVar29 >> 0xe & 0xffffff01;
+        DnRoom::DeckCoord((int)local_298,(int)local_318,dVar32);
+        DnRoom::DeckCoord((int)local_1e0,(int)fVar33,dVar32);
+        iVar26 = (int)fVar33 + 4;
+        DnRoom::DeckCoord((int)local_1a8,iVar26,dVar32);
+        DnRoom::DeckCoord((int)local_1c8,iVar26,dVar32);
+        iVar27 = (int)fVar33 + 2;
+        DnRoom::DeckCoord((int)&local_350,iVar27,dVar32);
+        DnRoom::DeckCoord((int)local_188,iVar26,dVar32);
+        DnRoom::DeckCoord((int)local_170,iVar27,dVar32);
+        DnRoom::DeckCoord((int)local_200,(int)local_318,dVar32);
+        DnRoom::DeckCoord((int)local_218,iVar27,dVar32);
+        uVar31 = (int)uVar31 >> 8 & 0x1f;
+        uVar22 = sVar2 >> 8 & 0x1f;
+        uVar24 = local_334 >> 8 & 0x1f;
+        uVar29 = (int)uVar29 >> 8 & 0x1f;
+        bVar21 = false;
+        if ((uVar31 == 2) || (uVar31 == 0xe)) {
+LAB_18042a6b2:
+          bVar21 = true;
+        }
+        else if (uVar31 == 0x15) {
+          if ((byte)param_11[0x15] < 8) goto LAB_18042a6b2;
+        }
+        else if ((uVar31 == 4) && ((byte)param_11[0x15] < 7)) goto LAB_18042a6b2;
+        bVar40 = false;
+        if ((uVar29 == 2) || (uVar29 == 0xe)) {
+LAB_18042a6e7:
+          bVar40 = true;
+        }
+        else if (uVar29 == 0x15) {
+          if ((byte)param_11[0x15] < 8) goto LAB_18042a6e7;
+        }
+        else if ((uVar29 == 4) && ((byte)param_11[0x15] < 7)) goto LAB_18042a6e7;
+        bVar5 = false;
+        if ((uVar22 == 2) || (uVar22 == 0xe)) {
+LAB_18042a711:
+          bVar5 = true;
+        }
+        else if (uVar22 == 0x15) {
+          if ((byte)param_11[0x15] < 8) goto LAB_18042a711;
+        }
+        else if ((uVar22 == 4) && ((byte)param_11[0x15] < 7)) goto LAB_18042a711;
+        bVar6 = false;
+        if ((uVar24 == 2) || (uVar24 == 0xe)) {
+LAB_18042a73b:
+          bVar6 = true;
+        }
+        else if (uVar24 == 0x15) {
+          if ((byte)param_11[0x15] < 8) goto LAB_18042a73b;
+        }
+        else if ((uVar24 == 4) && ((byte)param_11[0x15] < 7)) goto LAB_18042a73b;
+        cVar11 = DnSpaceShip::ClosestDeck(local_288);
+        QList<DnDetail>::cbegin((QList<DnDetail> *)param_12);
+        puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+        if (local_250 != (longlong *)*puVar23) {
+          do {
+            if (((*(char *)*local_250 == cVar11) &&
+                (((bVar12 = DnDetailType::IsAnyHatch((uint)(byte)((char *)*local_250)[1]), bVar12 ||
+                  (*(char *)(*local_250 + 1) == '!')) || (*(char *)(*local_250 + 1) == '\x16')))) &&
+               (bVar12 = AuPoint::FuzzyEquals((AuPoint *)(*local_250 + 0x10),local_298), bVar12)) {
+              bVar12 = true;
+              goto LAB_18042a7fe;
+            }
+            local_250 = local_250 + 1;
+            puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+          } while (local_250 != (longlong *)*puVar23);
+        }
+        bVar12 = false;
+LAB_18042a7fe:
+        cVar11 = DnSpaceShip::ClosestDeck(local_1d0);
+        QList<DnDetail>::cbegin((QList<DnDetail> *)param_12);
+        puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+        if (local_268 != (longlong *)*puVar23) {
+          do {
+            if (((*(char *)*local_268 == cVar11) &&
+                (((bVar13 = DnDetailType::IsAnyHatch((uint)(byte)((char *)*local_268)[1]), bVar13 ||
+                  (*(char *)(*local_268 + 1) == '!')) || (*(char *)(*local_268 + 1) == '\x16')))) &&
+               (bVar13 = AuPoint::FuzzyEquals((AuPoint *)(*local_268 + 0x10),local_1e0), bVar13)) {
+              bVar13 = true;
+              goto LAB_18042a8be;
+            }
+            local_268 = local_268 + 1;
+            puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+          } while (local_268 != (longlong *)*puVar23);
+        }
+        bVar13 = false;
+LAB_18042a8be:
+        cVar11 = DnSpaceShip::ClosestDeck(local_198);
+        QList<DnDetail>::cbegin((QList<DnDetail> *)param_12);
+        puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+        if (local_280 != (longlong *)*puVar23) {
+          do {
+            if ((*(char *)*local_280 == cVar11) &&
+               ((((bVar14 = DnDetailType::IsAnyHatch((uint)(byte)((char *)*local_280)[1]), bVar14 ||
+                  (*(char *)(*local_280 + 1) == '!')) || (*(char *)(*local_280 + 1) == '\x16')) &&
+                (bVar14 = AuPoint::FuzzyEquals((AuPoint *)(*local_280 + 0x10),local_1a8), bVar14))))
+            {
+              bVar14 = true;
+              goto LAB_18042a97d;
+            }
+            local_280 = local_280 + 1;
+            puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+          } while (local_280 != (longlong *)*puVar23);
+        }
+        bVar14 = false;
+LAB_18042a97d:
+        cVar11 = DnSpaceShip::ClosestDeck(local_1b8);
+        QList<DnDetail>::cbegin((QList<DnDetail> *)param_12);
+        puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+        if (local_240 != (longlong *)*puVar23) {
+          do {
+            if (((*(char *)*local_240 == cVar11) &&
+                (((bVar15 = DnDetailType::IsAnyHatch((uint)(byte)((char *)*local_240)[1]), bVar15 ||
+                  (*(char *)(*local_240 + 1) == '!')) || (*(char *)(*local_240 + 1) == '\x16')))) &&
+               (bVar15 = AuPoint::FuzzyEquals((AuPoint *)(*local_240 + 0x10),local_1c8), bVar15)) {
+              bVar15 = true;
+              goto LAB_18042aa3d;
+            }
+            local_240 = local_240 + 1;
+            puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+          } while (local_240 != (longlong *)*puVar23);
+        }
+        bVar15 = false;
+LAB_18042aa3d:
+        cVar11 = DnSpaceShip::ClosestDeck(local_340);
+        QList<DnDetail>::cbegin((QList<DnDetail> *)param_12);
+        puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+        if (local_248 != (longlong *)*puVar23) {
+          do {
+            if (((*(char *)*local_248 == cVar11) &&
+                (((bVar16 = DnDetailType::IsAnyHatch((uint)(byte)((char *)*local_248)[1]), bVar16 ||
+                  (*(char *)(*local_248 + 1) == '!')) || (*(char *)(*local_248 + 1) == '\x16')))) &&
+               (bVar16 = AuPoint::FuzzyEquals((AuPoint *)(*local_248 + 0x10),(AuPoint *)&local_350),
+               bVar16)) {
+              bVar16 = true;
+              goto LAB_18042aafa;
+            }
+            local_248 = local_248 + 1;
+            puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+          } while (local_248 != (longlong *)*puVar23);
+        }
+        bVar16 = false;
+LAB_18042aafa:
+        cVar11 = DnSpaceShip::ClosestDeck(local_178);
+        QList<DnDetail>::cbegin((QList<DnDetail> *)param_12);
+        puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+        if (local_258 != (longlong *)*puVar23) {
+          do {
+            if ((*(char *)*local_258 == cVar11) &&
+               ((((bVar17 = DnDetailType::IsAnyHatch((uint)(byte)((char *)*local_258)[1]), bVar17 ||
+                  (*(char *)(*local_258 + 1) == '!')) || (*(char *)(*local_258 + 1) == '\x16')) &&
+                (bVar17 = AuPoint::FuzzyEquals((AuPoint *)(*local_258 + 0x10),local_188), bVar17))))
+            {
+              bVar17 = true;
+              goto LAB_18042abbd;
+            }
+            local_258 = local_258 + 1;
+            puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+          } while (local_258 != (longlong *)*puVar23);
+        }
+        bVar17 = false;
+LAB_18042abbd:
+        cVar11 = DnSpaceShip::ClosestDeck(local_160);
+        QList<DnDetail>::cbegin((QList<DnDetail> *)param_12);
+        puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+        if (local_270 != (longlong *)*puVar23) {
+          do {
+            if ((*(char *)*local_270 == cVar11) &&
+               ((((bVar18 = DnDetailType::IsAnyHatch((uint)(byte)((char *)*local_270)[1]), bVar18 ||
+                  (*(char *)(*local_270 + 1) == '!')) || (*(char *)(*local_270 + 1) == '\x16')) &&
+                (bVar18 = AuPoint::FuzzyEquals((AuPoint *)(*local_270 + 0x10),local_170), bVar18))))
+            {
+              bVar18 = true;
+              goto LAB_18042ac7d;
+            }
+            local_270 = local_270 + 1;
+            puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+          } while (local_270 != (longlong *)*puVar23);
+        }
+        bVar18 = false;
+LAB_18042ac7d:
+        cVar11 = DnSpaceShip::ClosestDeck(local_1f0);
+        QList<DnDetail>::cbegin((QList<DnDetail> *)param_12);
+        puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+        if (local_260 != (longlong *)*puVar23) {
+          do {
+            if (((*(char *)*local_260 == cVar11) &&
+                (((bVar19 = DnDetailType::IsAnyHatch((uint)(byte)((char *)*local_260)[1]), bVar19 ||
+                  (*(char *)(*local_260 + 1) == '!')) || (*(char *)(*local_260 + 1) == '\x16')))) &&
+               (bVar19 = AuPoint::FuzzyEquals((AuPoint *)(*local_260 + 0x10),local_200), bVar19)) {
+              bVar19 = true;
+              goto LAB_18042ad3d;
+            }
+            local_260 = local_260 + 1;
+            puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+          } while (local_260 != (longlong *)*puVar23);
+        }
+        bVar19 = false;
+LAB_18042ad3d:
+        cVar11 = DnSpaceShip::ClosestDeck(local_208);
+        QList<DnDetail>::cbegin((QList<DnDetail> *)param_12);
+        puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+        if (local_278 != (longlong *)*puVar23) {
+          do {
+            if (((*(char *)*local_278 == cVar11) &&
+                (((bVar20 = DnDetailType::IsAnyHatch((uint)(byte)((char *)*local_278)[1]), bVar20 ||
+                  (*(char *)(*local_278 + 1) == '!')) || (*(char *)(*local_278 + 1) == '\x16')))) &&
+               (bVar20 = AuPoint::FuzzyEquals((AuPoint *)(*local_278 + 0x10),local_218), bVar20)) {
+              bVar20 = true;
+              goto LAB_18042adfc;
+            }
+            local_278 = local_278 + 1;
+            puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+          } while (local_278 != (longlong *)*puVar23);
+        }
+        bVar20 = false;
+LAB_18042adfc:
+        pQVar30 = local_390;
+        fVar33 = local_3a0;
+        cVar11 = (char)local_39c;
+        if (((((bVar12) || (bVar13)) || (bVar14)) ||
+            (((bVar15 || (bVar16)) || ((bVar17 || ((bVar18 || (bVar19)))))))) || (bVar20)) {
+LAB_18042b149:
+          if (local_394 == 0) {
+LAB_18042b1d0:
+            if ((sVar1 != 0) && ((char)local_37c != '\0')) {
+              if (bVar40) {
+                if (local_338 == 5) {
+LAB_18042b82f:
+                  fVar34 = fVar38;
+                  fVar45 = fVar37;
+                  if (((bVar16) || (bVar18)) || ((bVar14 || (bVar13)))) {
+                    fVar41 = fVar33;
+                    if (bVar16) {
+                      local_330._0_8_ = local_350 - 2.0;
+                      local_330._8_8_ = dStack_348 + 2.0;
+                      local_320 = local_340;
+                      ModelAdd(pQVar30,(AuPoint *)&local_2e0,local_f0,fVar35,param_10,local_2e8,
+                               local_310,local_2f8,local_2e4,(AuPoint *)local_330,fVar7,fVar33,fVar8
+                               ,local_388,local_1e0,local_384,fVar33,local_380,local_388,local_1a8);
+                      pAVar48 = (AuPoint *)local_330;
+                      pAVar44 = (AuPoint *)local_2b0;
+                      local_320 = local_340;
+                      dVar32 = (double)(ulonglong)(uint)local_2e4;
+                      local_330._8_8_ = dStack_348 + 2.0;
+                      local_330._0_8_ = local_350 - 2.0;
+                      local_2b0._8_8_ = dStack_348 + 2.0;
+                      local_2b0._0_8_ = local_350 + 2.0;
+                      pAVar28 = local_1a8;
+                      fVar34 = local_380;
+                      fVar42 = local_388;
+                      fVar43 = local_314;
+                      fVar33 = local_310;
+                      fVar46 = local_2f4;
+                      fVar47 = local_2e4;
+                      fVar49 = local_2e8;
+                      fVar50 = local_310;
+                      fVar51 = local_2f8;
+                      fVar52 = local_2e4;
+                      local_2a0 = local_320;
+                      fVar45 = local_384;
+                    }
+                    else {
+                      if ((!bVar14) && (!bVar13)) goto LAB_18042b200;
+                      if (bVar13) {
+                        pAVar28 = (AuPoint *)local_330;
+                        local_330._8_8_ = dStack_348 + 1.41421356225;
+                        local_330._0_8_ = local_350 - 1.41421356225;
+                        local_320 = local_340;
+                        fVar42 = local_2bc;
+                        fVar43 = local_2b4;
+                        fVar46 = local_2b8;
+                        fVar47 = local_2c4;
+                      }
+                      else {
+                        pAVar28 = local_1e0;
+                        fVar42 = fVar7;
+                        fVar43 = fVar33;
+                        fVar46 = fVar8;
+                        fVar47 = local_388;
+                      }
+                      ModelAdd(pQVar30,(AuPoint *)&local_2e0,local_f0,fVar35,param_10,fVar37,fVar39,
+                               fVar38,fVar36,(AuPoint *)&local_350,fVar42,fVar43,fVar46,fVar47,
+                               pAVar28,fVar37,fVar33,fVar38,local_388,local_170);
+                      pAVar48 = (AuPoint *)&local_350;
+                      if (bVar14) {
+                        pAVar44 = (AuPoint *)local_330;
+                        local_330._8_4_ = SUB84(dStack_348 + 1.41421356225,0);
+                        local_330._0_8_ = local_350 + 1.41421356225;
+                        local_330._12_4_ = (int)((ulonglong)(dStack_348 + 1.41421356225) >> 0x20);
+                        local_320 = local_340;
+                        fVar43 = local_2c0;
+                        fVar33 = local_2b4;
+                        fVar46 = local_2c8;
+                        fVar47 = local_2c4;
+                      }
+                      else {
+                        pAVar44 = local_1a8;
+                        fVar43 = local_384;
+                        fVar46 = local_380;
+                        fVar47 = local_388;
+                      }
+                      pAVar28 = local_170;
+                      fVar42 = local_388;
+                      fVar49 = fVar37;
+                      fVar50 = fVar39;
+                      fVar51 = fVar38;
+                      fVar52 = fVar36;
+                    }
+                  }
+                  else {
+                    pAVar48 = local_1a8;
+                    pAVar44 = local_1e0;
+                    pAVar28 = (AuPoint *)&local_350;
+                    fVar41 = fVar39;
+                    fVar42 = fVar36;
+                    fVar43 = fVar7;
+                    fVar46 = fVar8;
+                    fVar47 = local_388;
+                    fVar49 = local_384;
+                    fVar50 = fVar33;
+                    fVar51 = local_380;
+                    fVar52 = local_388;
+                  }
+                  ModelAdd(pQVar30,(AuPoint *)&local_2e0,local_f0,fVar35,param_10,fVar45,fVar41,
+                           fVar34,fVar42,pAVar28,fVar43,fVar33,fVar46,fVar47,pAVar44,fVar49,fVar50,
+                           fVar51,fVar52,pAVar48);
+                }
+              }
+              else if (local_338 == 4) goto LAB_18042b82f;
+            }
+          }
+          else {
+            if ((char)local_398 != '\0') {
+              if (bVar21) {
+                if (local_338 == 5) {
+LAB_18042b23f:
+                  if (bVar16) {
+                    local_2b0._8_4_ = SUB84(dStack_348 + 2.0,0);
+                    local_2b0._0_8_ = local_350 + 2.0;
+                    local_2b0._12_4_ = (int)((ulonglong)(dStack_348 + 2.0) >> 0x20);
+                    local_2a0 = local_340;
+                    ModelAdd(local_390,(AuPoint *)&local_2e0,local_f0,fVar35,param_10,local_314,
+                             local_310,local_2f4,local_2e4,(AuPoint *)local_2b0,local_384,local_3a0,
+                             local_380,local_388,local_1a8,local_384,fVar10,local_380,fVar9,
+                             local_1c8);
+                    dVar32 = (double)(ulonglong)(uint)local_2f4;
+                    local_2a0 = local_340;
+                    local_320 = local_340;
+                    local_2b0._8_8_ = dStack_348 + 2.0;
+                    local_2b0._0_8_ = local_350 + 2.0;
+                    local_330._8_8_ = dStack_348 - 2.0;
+                    local_330._0_8_ = local_350 + 2.0;
+                    ModelAdd(pQVar30,(AuPoint *)&local_2e0,local_f0,fVar35,param_10,local_384,fVar10
+                             ,local_380,fVar9,local_1c8,local_314,local_2f0,local_2f4,local_2ec,
+                             (AuPoint *)local_330,local_314,local_310,local_2f4,local_2e4,
+                             (AuPoint *)local_2b0);
+                  }
+                  else if (((bVar17) || (bVar15)) || (bVar14)) {
+                    if ((bVar15) || (bVar14)) {
+                      if (bVar14) {
+                        local_330._8_4_ = SUB84(dStack_348 + 1.41421356225,0);
+                        local_330._0_8_ = local_350 + 1.41421356225;
+                        local_330._12_4_ = (int)((ulonglong)(dStack_348 + 1.41421356225) >> 0x20);
+                        local_320 = local_340;
+                        ModelAdd(local_390,(AuPoint *)&local_2e0,local_f0,fVar35,param_10,fVar37,
+                                 fVar39,fVar38,fVar36,(AuPoint *)&local_350,local_2c0,local_2b4,
+                                 local_2c8,local_2c4,(AuPoint *)local_330,local_384,fVar39,local_380
+                                 ,fVar36,local_188);
+                        fVar33 = local_3a0;
+                      }
+                      else {
+                        dVar32 = (double)(ulonglong)(uint)local_380;
+                        ModelAdd(local_390,(AuPoint *)&local_2e0,local_f0,fVar35,param_10,fVar37,
+                                 fVar39,fVar38,fVar36,(AuPoint *)&local_350,local_384,local_3a0,
+                                 local_380,local_388,local_1a8,local_384,fVar39,local_380,fVar36,
+                                 local_188);
+                      }
+                      if (bVar15) {
+                        local_330._8_8_ = dStack_348 - 1.41421356225;
+                        local_330._0_8_ = local_350 + 1.41421356225;
+                        local_320 = local_340;
+                        ModelAdd(pQVar30,(AuPoint *)&local_2e0,local_f0,fVar35,param_10,local_384,
+                                 fVar39,local_380,fVar36,local_188,local_2c0,local_308[0],local_2c8,
+                                 local_30c,(AuPoint *)local_330,fVar37,fVar39,fVar38,fVar36,
+                                 (AuPoint *)&local_350);
+                      }
+                      else {
+                        ModelAdd(pQVar30,(AuPoint *)&local_2e0,local_f0,fVar35,param_10,local_384,
+                                 fVar39,local_380,fVar36,local_188,local_384,fVar10,local_380,fVar9,
+                                 local_1c8,fVar37,fVar39,fVar38,fVar36,(AuPoint *)&local_350);
+                      }
+                    }
+                  }
+                  else {
+                    dVar32 = (double)(ulonglong)(uint)local_380;
+                    ModelAdd(local_390,(AuPoint *)&local_2e0,local_f0,fVar35,param_10,fVar37,fVar39,
+                             fVar38,fVar36,(AuPoint *)&local_350,local_384,local_3a0,local_380,
+                             local_388,local_1a8,local_384,fVar10,local_380,fVar9,local_1c8);
+                  }
+                }
+              }
+              else if (local_338 == 4) goto LAB_18042b23f;
+              goto LAB_18042b1d0;
+            }
+            if ((char)local_1b0 != '\0') goto LAB_18042b1d0;
+            if (sVar1 != 0) {
+              if (((((char)local_37c == '\0') && ((char)local_190 == '\0')) &&
+                  ((sVar2 != 0 &&
+                   ((((uVar25 & 1) == 0 && ((char)local_1e8 == '\0')) && (local_334 != 0)))))) &&
+                 ((cVar11 == '\0' &&
+                  (param_5 = (int *)local_358, param_7 = local_368, param_8 = local_370,
+                  param_6 = (int *)local_360, (char)local_18c == '\0')))) goto LAB_18042cd1b;
+              goto LAB_18042b1d0;
+            }
+          }
+LAB_18042b200:
+          pQVar30 = local_390;
+          fVar33 = local_3a0;
+          if ((sVar2 != 0) && ((uVar25 & 1) != 0)) {
+            if (bVar5) {
+              if (local_338 == 5) {
+LAB_18042bd70:
+                if ((((bVar16) || (bVar19)) || (bVar13)) || (bVar12)) {
+                  if (bVar16) {
+                    local_330._8_4_ = SUB84(dStack_348 - 2.0,0);
+                    local_330._0_8_ = local_350 - 2.0;
+                    local_330._12_4_ = (int)((ulonglong)(dStack_348 - 2.0) >> 0x20);
+                    local_320 = local_340;
+                    ModelAdd(local_390,(AuPoint *)&local_2e0,local_f0,fVar35,param_10,local_2e8,
+                             local_2f0,local_2f8,local_2ec,(AuPoint *)local_330,fVar7,fVar10,fVar8,
+                             fVar9,local_298,fVar7,local_3a0,fVar8,local_388,local_1e0);
+                    pAVar28 = (AuPoint *)local_330;
+                    pAVar48 = (AuPoint *)local_2b0;
+                    local_320 = local_340;
+                    local_2a0 = local_340;
+                    dVar32 = (double)(ulonglong)(uint)local_2e4;
+                    local_330._8_8_ = dStack_348 - 2.0;
+                    local_330._0_8_ = local_350 - 2.0;
+                    pAVar44 = local_1e0;
+                    local_2b0._8_8_ = dStack_348 + 2.0;
+                    local_2b0._0_8_ = local_350 - 2.0;
+                    fVar43 = local_388;
+                    fVar34 = local_2e8;
+                    fVar45 = local_310;
+                    fVar41 = local_2f8;
+                    fVar42 = local_2e4;
+                    fVar46 = local_2e8;
+                    fVar47 = local_2f0;
+                    fVar49 = local_2f8;
+                    fVar50 = local_2ec;
+                  }
+                  else {
+                    if ((!bVar13) && (!bVar12)) goto LAB_18042c231;
+                    if (bVar12) {
+                      pAVar28 = (AuPoint *)local_330;
+                      local_330._8_4_ = SUB84(dStack_348 - 1.41421356225,0);
+                      local_330._0_8_ = local_350 - 1.41421356225;
+                      local_330._12_4_ = (int)((ulonglong)(dStack_348 - 1.41421356225) >> 0x20);
+                      local_320 = local_340;
+                      fVar33 = local_2bc;
+                      fVar34 = local_308[0];
+                      fVar45 = local_2b8;
+                      fVar41 = local_30c;
+                    }
+                    else {
+                      pAVar28 = local_298;
+                      fVar33 = fVar7;
+                      fVar34 = fVar10;
+                      fVar45 = fVar8;
+                      fVar41 = fVar9;
+                    }
+                    ModelAdd(local_390,(AuPoint *)&local_2e0,local_f0,fVar35,param_10,fVar37,fVar39,
+                             fVar38,fVar36,(AuPoint *)&local_350,fVar33,fVar34,fVar45,fVar41,pAVar28
+                             ,fVar7,fVar39,fVar8,fVar36,local_200);
+                    pAVar28 = (AuPoint *)&local_350;
+                    if (bVar13) {
+                      pAVar48 = (AuPoint *)local_330;
+                      local_330._8_8_ = dStack_348 + 1.41421356225;
+                      local_330._0_8_ = local_350 - 1.41421356225;
+                      local_320 = local_340;
+                      fVar34 = local_2bc;
+                      fVar45 = local_2b4;
+                      fVar41 = local_2b8;
+                      fVar42 = local_2c4;
+                    }
+                    else {
+                      pAVar48 = local_1e0;
+                      fVar34 = fVar7;
+                      fVar45 = local_3a0;
+                      fVar41 = fVar8;
+                      fVar42 = local_388;
+                    }
+                    pAVar44 = local_200;
+                    fVar33 = fVar39;
+                    fVar43 = fVar36;
+                    fVar46 = fVar37;
+                    fVar47 = fVar39;
+                    fVar49 = fVar38;
+                    fVar50 = fVar36;
+                  }
+                  ModelAdd(pQVar30,(AuPoint *)&local_2e0,local_f0,fVar35,param_10,fVar7,fVar33,fVar8
+                           ,fVar43,pAVar44,fVar34,fVar45,fVar41,fVar42,pAVar48,fVar46,fVar47,fVar49,
+                           fVar50,pAVar28);
+                }
+                else {
+                  ModelAdd(local_390,(AuPoint *)&local_2e0,local_f0,fVar35,param_10,fVar37,fVar39,
+                           fVar38,fVar36,(AuPoint *)&local_350,fVar7,fVar10,fVar8,fVar9,local_298,
+                           fVar7,local_3a0,fVar8,local_388,local_1e0);
+                }
+              }
+            }
+            else if (local_338 == 4) goto LAB_18042bd70;
+          }
+LAB_18042c231:
+          pQVar30 = local_390;
+          uVar29 = local_39c;
+          if ((local_334 != 0) && ((char)local_39c != '\0')) {
+            if (bVar6) {
+              if (local_338 == 5) {
+LAB_18042c264:
+                if (bVar16) {
+                  local_330._0_8_ = local_350 + 2.0;
+                  local_330._8_8_ = dStack_348 - 2.0;
+                  local_320 = local_340;
+                  ModelAdd(local_390,(AuPoint *)&local_2e0,local_f0,fVar35,param_10,local_314,
+                           local_2f0,local_2f4,local_2ec,(AuPoint *)local_330,local_384,fVar10,
+                           local_380,fVar9,local_1c8,fVar7,fVar10,fVar8,fVar9,local_298);
+                  dVar32 = (double)(ulonglong)(uint)local_314;
+                  local_320 = local_340;
+                  local_2a0 = local_340;
+                  local_330._8_8_ = dStack_348 - 2.0;
+                  local_330._0_8_ = local_350 + 2.0;
+                  local_2b0._8_8_ = dStack_348 - 2.0;
+                  local_2b0._0_8_ = local_350 - 2.0;
+                  ModelAdd(pQVar30,(AuPoint *)&local_2e0,local_f0,fVar35,param_10,fVar7,fVar10,fVar8
+                           ,fVar9,local_298,local_2e8,local_2f0,local_2f8,local_2ec,
+                           (AuPoint *)local_2b0,local_314,local_2f0,local_2f4,local_2ec,
+                           (AuPoint *)local_330);
+                }
+                else if (((bVar20) || (bVar12)) || (bVar15)) {
+                  if ((bVar12) || (bVar15)) {
+                    if (bVar15) {
+                      local_330._8_8_ = dStack_348 - 1.41421356225;
+                      local_330._0_8_ = local_350 + 1.41421356225;
+                      local_320 = local_340;
+                      ModelAdd(local_390,(AuPoint *)&local_2e0,local_f0,fVar35,param_10,fVar37,
+                               fVar39,fVar38,fVar36,(AuPoint *)&local_350,local_2c0,local_308[0],
+                               local_2c8,local_30c,(AuPoint *)local_330,fVar37,fVar10,fVar38,fVar9,
+                               local_218);
+                    }
+                    else {
+                      ModelAdd(local_390,(AuPoint *)&local_2e0,local_f0,fVar35,param_10,fVar37,
+                               fVar39,fVar38,fVar36,(AuPoint *)&local_350,local_384,fVar10,local_380
+                               ,fVar9,local_1c8,fVar37,fVar10,fVar38,fVar9,local_218);
+                    }
+                    if (bVar12) {
+                      pAVar28 = (AuPoint *)local_330;
+                      local_330._8_4_ = SUB84(dStack_348 - 1.41421356225,0);
+                      local_330._0_8_ = local_350 - 1.41421356225;
+                      local_330._12_4_ = (int)((ulonglong)(dStack_348 - 1.41421356225) >> 0x20);
+                      local_320 = local_340;
+                      fVar33 = local_2bc;
+                      fVar34 = local_308[0];
+                      fVar45 = local_2b8;
+                      fVar41 = local_30c;
+                    }
+                    else {
+                      pAVar28 = local_298;
+                      fVar33 = fVar7;
+                      fVar34 = fVar10;
+                      fVar45 = fVar8;
+                      fVar41 = fVar9;
+                    }
+                    ModelAdd(pQVar30,(AuPoint *)&local_2e0,local_f0,fVar35,param_10,fVar37,fVar10,
+                             fVar38,fVar9,local_218,fVar33,fVar34,fVar45,fVar41,pAVar28,fVar37,
+                             fVar39,fVar38,fVar36,(AuPoint *)&local_350);
+                  }
+                }
+                else {
+                  ModelAdd(local_390,(AuPoint *)&local_2e0,local_f0,fVar35,param_10,fVar37,fVar39,
+                           fVar38,fVar36,(AuPoint *)&local_350,local_384,fVar10,local_380,fVar9,
+                           local_1c8,fVar7,fVar10,fVar8,fVar9,local_298);
+                }
+              }
+            }
+            else if (local_338 == 4) goto LAB_18042c264;
+          }
+        }
+        else {
+          if (local_394 == 0) goto LAB_18042b1d0;
+          if ((char)local_398 == '\0') goto LAB_18042b149;
+          uVar29 = local_39c;
+          if (!bVar21) {
+LAB_18042b02a:
+            if (((((((sVar1 == 0) || ((char)local_37c == '\0')) || (bVar40)) ||
+                  ((sVar2 == 0 || ((uVar25 & 1) == 0)))) || (bVar5)) ||
+                ((local_334 == 0 || (cVar11 == '\0')))) || (bVar6)) goto LAB_18042b149;
+            fVar33 = local_384;
+            if (local_338 != 4) goto LAB_18042c78d;
+LAB_18042af83:
+            dVar32 = (double)(ulonglong)(uint)fVar33;
+            ModelAdd(local_390,(AuPoint *)&local_2e0,local_f0,fVar35,param_10,fVar7,fVar10,fVar8,
+                     fVar9,local_298,fVar7,local_3a0,fVar8,local_388,local_1e0,local_384,local_3a0,
+                     local_380,local_388,local_1a8,local_384,fVar10,local_380,fVar9,local_1c8);
+            param_5 = (int *)local_358;
+            param_7 = local_368;
+            param_8 = local_370;
+            param_6 = (int *)local_360;
+            goto LAB_18042cd1b;
+          }
+          if (((((sVar1 == 0) || ((char)local_37c == '\0')) || (!bVar40)) ||
+              ((sVar2 == 0 || ((uVar25 & 1) == 0)))) ||
+             (((!bVar5 || ((local_334 == 0 || (cVar11 == '\0')))) || (!bVar6)))) {
+            if (bVar21) goto LAB_18042b149;
+            goto LAB_18042b02a;
+          }
+          fVar33 = local_380;
+          if (local_338 == 5) goto LAB_18042af83;
+        }
+LAB_18042c78d:
+        this_00 = local_300;
+        if (local_338 == 3) {
+          cVar11 = DnSpaceShip::ClosestDeck(local_288);
+          QList<DnDetail>::cbegin((QList<DnDetail> *)param_12);
+          puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+          if (local_238 != (undefined8 *)*puVar23) {
+            do {
+              pcVar4 = (char *)*local_238;
+              if (((*pcVar4 == cVar11) && (pcVar4[1] == '\x16')) &&
+                 (bVar21 = AuPoint::FuzzyEquals((AuPoint *)(pcVar4 + 0x10),local_298), bVar21)) {
+                RenderTurret(local_300,pQVar30,local_298,1.5707963267948966,param_10);
+                param_5 = (int *)local_358;
+                param_7 = local_368;
+                param_8 = local_370;
+                param_6 = (int *)local_360;
+                goto LAB_18042cd1b;
+              }
+              local_238 = local_238 + 1;
+              puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+            } while (local_238 != (undefined8 *)*puVar23);
+          }
+          cVar11 = DnSpaceShip::ClosestDeck(local_208);
+          QList<DnDetail>::cbegin((QList<DnDetail> *)param_12);
+          puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+          if (local_230 != (undefined8 *)*puVar23) {
+            do {
+              pcVar4 = (char *)*local_230;
+              if (((*pcVar4 == cVar11) && (pcVar4[1] == '\x16')) &&
+                 (bVar21 = AuPoint::FuzzyEquals((AuPoint *)(pcVar4 + 0x10),local_218), bVar21)) {
+                RenderTurret(local_300,pQVar30,local_218,1.5707963267948966,param_10);
+                param_5 = (int *)local_358;
+                param_7 = local_368;
+                param_8 = local_370;
+                param_6 = (int *)local_360;
+                goto LAB_18042cd1b;
+              }
+              local_230 = local_230 + 1;
+              puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+            } while (local_230 != (undefined8 *)*puVar23);
+          }
+          cVar11 = DnSpaceShip::ClosestDeck(local_1f0);
+          QList<DnDetail>::cbegin((QList<DnDetail> *)param_12);
+          puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+          if (local_228 != (undefined8 *)*puVar23) {
+            do {
+              pcVar4 = (char *)*local_228;
+              if (((*pcVar4 == cVar11) && (pcVar4[1] == '\x16')) &&
+                 (bVar21 = AuPoint::FuzzyEquals((AuPoint *)(pcVar4 + 0x10),local_200), bVar21)) {
+                RenderTurret(local_300,pQVar30,local_200,1.5707963267948966,param_10);
+                param_5 = (int *)local_358;
+                param_7 = local_368;
+                param_8 = local_370;
+                param_6 = (int *)local_360;
+                goto LAB_18042cd1b;
+              }
+              local_228 = local_228 + 1;
+              puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+            } while (local_228 != (undefined8 *)*puVar23);
+          }
+          cVar11 = DnSpaceShip::ClosestDeck(local_340);
+          QList<DnDetail>::cbegin((QList<DnDetail> *)param_12);
+          puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+          param_5 = (int *)local_358;
+          param_7 = local_368;
+          param_8 = local_370;
+          param_6 = (int *)local_360;
+          if (local_220 != (undefined8 *)*puVar23) {
+            do {
+              pcVar4 = (char *)*local_220;
+              if (((*pcVar4 == cVar11) && (pcVar4[1] == '\x16')) &&
+                 (bVar21 = AuPoint::FuzzyEquals((AuPoint *)(pcVar4 + 0x10),(AuPoint *)&local_350),
+                 bVar21)) {
+                RenderTurret(local_300,pQVar30,(AuPoint *)&local_350,1.5707963267948966,param_10);
+                param_5 = (int *)local_358;
+                param_7 = local_368;
+                param_8 = local_370;
+                param_6 = (int *)local_360;
+                break;
+              }
+              local_220 = local_220 + 1;
+              puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_12);
+              param_5 = (int *)local_358;
+              param_7 = local_368;
+              param_8 = local_370;
+              param_6 = (int *)local_360;
+            } while (local_220 != (undefined8 *)*puVar23);
+          }
+        }
+        else {
+          param_5 = (int *)local_358;
+          param_7 = local_368;
+          param_8 = local_370;
+          param_6 = (int *)local_360;
+          if (local_338 == 2) {
+            cVar11 = (char)uVar29;
+            if (param_10) {
+              if ((uVar25 & 1) == 0) {
+LAB_18042cb08:
+                if ((cVar11 == '\0') || (bVar21 = IsHatchAt(this_00,local_218,local_378), !bVar21))
+                {
+LAB_18042cb47:
+                  this_00 = local_300;
+                  if (((uVar25 & 1) != 0) &&
+                     (bVar21 = IsHatchAt(local_300,local_200,local_378), bVar21)) {
+                    bVar21 = true;
+                    pAVar28 = local_200;
+                    bVar40 = true;
+                    iVar26 = 2;
+                    goto LAB_18042ccfd;
+                  }
+                  param_5 = (int *)local_358;
+                  param_7 = local_368;
+                  param_8 = local_370;
+                  param_6 = (int *)local_360;
+                  if (((((char)local_398 == '\0') || ((char)local_37c == '\0')) ||
+                      ((uVar25 & 1) == 0)) ||
+                     ((cVar11 == '\0' ||
+                      (bVar21 = IsHatchAt(this_00,(AuPoint *)&local_350,local_378),
+                      param_5 = (int *)local_358, param_7 = local_368, param_8 = local_370,
+                      param_6 = (int *)local_360, !bVar21)))) goto LAB_18042cd1b;
+                  bVar40 = true;
+                  iVar26 = 2;
+LAB_18042ccf6:
+                  pAVar28 = (AuPoint *)&local_350;
+                  bVar21 = false;
+                }
+                else {
+                  bVar21 = true;
+                  pAVar28 = local_218;
+                  bVar40 = true;
+                  iVar26 = 2;
+                }
+              }
+              else {
+                if (cVar11 == '\0') goto LAB_18042cb47;
+                bVar21 = IsHatchAt(local_300,local_298,local_378);
+                if (!bVar21) goto LAB_18042cb08;
+                bVar21 = true;
+                pAVar28 = local_298;
+                bVar40 = true;
+                iVar26 = 2;
+              }
+            }
+            else {
+              if ((uVar25 & 1) == 0) {
+LAB_18042cc35:
+                if ((cVar11 != '\0') && (bVar21 = IsHatchAt(this_00,local_218,local_378), bVar21)) {
+                  bVar21 = true;
+                  pAVar28 = local_218;
+                  bVar40 = false;
+                  iVar26 = 1;
+                  goto LAB_18042ccfd;
+                }
+              }
+              else if (cVar11 != '\0') {
+                bVar21 = IsHatchAt(local_300,local_298,local_378);
+                if (bVar21) {
+                  bVar21 = true;
+                  pAVar28 = local_298;
+                  bVar40 = false;
+                  iVar26 = 1;
+                  goto LAB_18042ccfd;
+                }
+                goto LAB_18042cc35;
+              }
+              this_00 = local_300;
+              if (((uVar25 & 1) == 0) ||
+                 (bVar21 = IsHatchAt(local_300,local_200,local_378), !bVar21)) {
+                param_5 = (int *)local_358;
+                param_7 = local_368;
+                param_8 = local_370;
+                param_6 = (int *)local_360;
+                if (((((char)local_398 != '\0') && ((char)local_37c != '\0')) && ((uVar25 & 1) != 0)
+                    ) && ((cVar11 != '\0' &&
+                          (bVar21 = IsHatchAt(this_00,(AuPoint *)&local_350,local_378),
+                          param_5 = (int *)local_358, param_7 = local_368, param_8 = local_370,
+                          param_6 = (int *)local_360, bVar21)))) {
+                  bVar40 = false;
+                  iVar26 = 1;
+                  goto LAB_18042ccf6;
+                }
+                goto LAB_18042cd1b;
+              }
+              bVar21 = true;
+              pAVar28 = local_200;
+              bVar40 = false;
+              iVar26 = 1;
+            }
+LAB_18042ccfd:
+            RenderHatch(this_00,pQVar30,pAVar28,bVar21,iVar26,bVar40,local_378[0]);
+            param_5 = (int *)local_358;
+            param_7 = local_368;
+            param_8 = local_370;
+            param_6 = (int *)local_360;
+          }
+        }
+      }
+LAB_18042cd1b:
+      local_318 = (float)((int)local_318 + 4);
+    } while ((int)local_318 < 0x203);
+    local_3a8 = local_3a8 + 4;
+    if (0x202 < local_3a8) {
+      return;
+    }
+  } while( true );
+}
+
+

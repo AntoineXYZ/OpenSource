@@ -1,0 +1,184 @@
+2016 spacecraft rendering: material and surface evidence
+========================================================
+
+All original binaries were inspected read-only through Ghidra MCP with an
+explicit program name. Addresses below refer to the 2016 AuAtom13.dll unless
+otherwise stated. No build or original-client visual comparison was run.
+
+Surviving atlas and coordinate table
+------------------------------------
+src/lib/atom/ui/aubodyrenderwidget.h contains the original SHIP_TEXTURE enum;
+the corresponding .cpp ShipTexture function, line 922 at recovery time,
+contains the complete original atlas rectangle table. Its comment explicitly
+identifies the code as scavenged from DaSpaceShip. The table was checked
+against original ShipTexture 0x180466a60, captured in pseudocode/.
+
+The packaged image is :/data/txSpacecraft0Lit.png, registered by
+resources/textures/ships/AuShipTex0.qrc. AuBodyRenderWidget already loads it
+for its deck backdrop. The actual PNG dimensions are 128x4096; the surviving
+source comment claiming 256x8192 is stale. Rectangles use lower-left Y. The
+original function adds/subtracts half a pixel to the rectangle endpoints,
+then divides U by 128 and V by 4096. Ceiling 29 reverses U.
+
+Useful IDs: 18 HullBottom, 25 HullTop, 26 HullTopBottomWindow, 27 HullWall,
+28 HullWallWindow, 29 IntCeiling, 33 IntFloor, 37 IntWallEndCap,
+38 IntWallFinished, 39 IntWallFill, 40 IntWallCargo, 41 IntWallFillCargo,
+42 IntWallEquipment, 43 IntWallFillEquipment, 48 Railing, 49 RailingPost.
+
+Window alpha is encoded in the atlas. Direct PNG decoding found alpha 25
+for 13239/16384 pixels of tile 26 and 14884/16384 pixels of tile 28; the frame
+also contains opaque pixels. Applying one constant alpha to each whole
+window would discard this distinction. Floor, ceiling, finished/equipment
+wall and opaque hull rectangles are opaque. Cargo has a few translucent
+edge pixels. The bitmap already contains full surface color, not only an
+emission overlay.
+
+Interior walls
+--------------
+RenderInterior 0x18042f410 traverses each room boundary except fuel 9 and
+roof 22..24. It splits spans at changed exterior status, changed neighboring
+room tags, door locations, and railing-opening details. AdjacentRoomsData
+0x1800c4400 samples both sides of the boundary. The renderer keeps low 0x1fff
+of each tag (type/subtype); it does not read persistent room IDs here.
+No explicit equal-tag wall exclusion was found; normal room merging makes
+same-tag adjacent areas one boundary. Open-below 11/15 remain in this loop;
+the floor buffer can carry the room tag from the deck underneath them.
+
+Four interior wall material switches use the same map, confirmed from raw
+jump-table bytes and disassembly because the full decompilation mislabels
+the indirect branches. See pseudocode/interior-material-switch-assembly.txt.
+
+Room types 3 Brig, 5 Hold, 13 FlightDeck select Cargo 40 / CargoFill 41.
+Types 8 Engine, 16 Sensor, 17 Shield, 21 Weapon select Equipment 42 / Fill 43.
+Other traversable rooms select Finished 38 / Fill 39.
+
+These material switches read the type from AdjacentRoomsData's retained
+floor-buffer sample, not from the current room iterator. For example, an
+open-below room 15 over engine 8 inherits Equipment on that side. The
+current room boundary still defines where partitions occur. Keeping only
+sample-tag inequality loses partitions between a hall and an open-below
+room whose retained sample also happens to be hall. Both original room
+ownership and sampled material tags are needed for a mesh reconstruction.
+
+A span of at most 5 feet uses the narrow fill rectangle. Longer spans use
+the main rectangle with U from 0 to ceil(length/10ft) and full 8-foot height.
+These are internal partition walls. Hull boundaries use the interior-facing
+RenderExterior pass and retain the hull's exterior profile and materials.
+AuData13.dll ChaseBoundary 0x18016f830 emits boundary vertices only when the
+direction or full room tag changes; it removes a redundant first vertex.
+Hull-wall UVs map one complete rectangle over each entire resulting strip;
+they do not repeat a tile on each quarter-grid edge.
+
+Hull corner miter table 180a0e750 is initialized partly at runtime by
+FUN180071bf0. Its final entries are 0, -cot(67.5deg), -1, -cot(22.5deg), 0,
+cot(22.5deg), 1, cot(67.5deg): 0, -0.4142135624, -1, -2.4142135624, 0,
+2.4142135624, 1, 0.4142135624. The uninitialized binary contains zero for
+the 45-degree cases. Intersecting adjacent offset lines gives the same
+miter, with the normal pointing out from the hull boundary.
+RenderWallEndCap 0x18044e0f0 uses HullWall 27 for the exterior and
+IntWallEndCap 37 for the interior. End-cap V is proportional to height/8.
+The original caps each profile against its baseline when neighboring tags
+change; joining only the exposed difference between profiles is a geometry
+simplification and should be assessed in an original-client comparison.
+
+Horizontal surface predicates
+-----------------------------
+Each 5.656854249-foot square is sampled as four triangles using quarter-grid
+offsets (3,2), (2,3), (1,2), (2,1); each square maps one complete atlas tile.
+Let tag be the unsigned 16-bit sample after filling the current deck:
+
+Interior floor 33: tag!=0 and !(tag&0x8000) and !(tag&0x2000), and additionally
+either the room is not a glass-bottom room or (tag&0x4000)!=0.
+
+Interior ceiling 29: tag!=0 and !(tag&0x8000) and (tag&0x4000)!=0 and
+!(tag&0x2000). It faces down at the current deck plane, serving the room
+underneath. The exterior-top reverse pass supplies ceilings where there is
+no next-deck room. RenderInteriorFloors' second call is a hatch-only pass.
+
+Exterior bottom: tag!=0 and !(tag&0x8000) and !(tag&0x4000).
+Exterior top: tag!=0 and (tag&0x8000)!=0. The retained prior-deck tag supplies
+the type/armor-dependent material, at the next deck plane.
+
+Glass-bottom/top rooms: Bridge 2 and Lounge 14 always; Weapon 21 if armor<8;
+Captain 4 if armor<7. These use HullTopBottomWindow 26. Others use bottom 18
+or top 25. The interior-facing exterior pass omits opaque bottoms (already
+covered by floor 33) but includes reversed top 25 and window 26.
+
+These predicates are directly visible in RenderInteriorFloors 0x180435fd0,
+RenderInteriorCeilings 0x180432f60, RenderExteriorBottoms 0x1804274c0 and
+RenderExteriorTops 0x18042a140. The latter two captures were added here.
+
+Floor buffer flags must be retained across decks. Original AuData13.dll
+FillFloor 0x1801713a0 special-cases open-below 11/15: over no prior coverage
+write current tag; over previous fuel 9 write current tag|0x4000; over other
+prior coverage preserve previous low tag|0x6000. After a deck, discard stale
+0x8000 samples, clear 0x2000, set 0x8000 on remaining occupied samples.
+
+Hatches and turrets can cut holes at corners, edge midpoints and centers.
+The plane routines test IsAnyHatch or detail 22/33, then generate dedicated
+pieces around their openings. RenderHatch 0x18042ee90 confirms square-center
+holes are axis-aligned squares extending 2ft in X/Y. At corners and edge
+midpoints they are diamonds with vertices 2.8284271245ft from the center on
+each cardinal axis. Treating an entire triangle as missing removes too much
+surface. IsAnyHatch covers types 8, 51, 52 and 77..97.
+
+RenderHatch chooses half-open atlas 35 for types 8/77..83, 15 for 51/84..90,
+and 23 for hull hatches. A per-door animation index controls the actual
+displayed state. Closed equivalents are 34, 14, 22; using those in a static
+designer preview is a deliberate static-state choice, not recovered
+animation behavior.
+
+The original wall/floor aperture lookups do not filter detail.hidden at +2.
+RenderExterior has no read of that byte; the saved top/bottom routines match
+deck, type and location directly. IsDetailAt 0x1803f8f40 does the same.
+RenderInterior checks +2 only in its final furnished-detail loop, starting
+at 0x18043290a. Hidden equipment is skipped there. Including hidden doors
+and hatches in the surface aperture pass therefore follows the recovered
+consumers. See pseudocode/detail-hidden-surface-evidence.txt.
+
+Wall apertures
+--------------
+Small internal doors 5/49/50 have half-width 2.5ft and height 8ft. Type 5 uses
+interior texture 31 and 49/50 crew texture 12 (both half-open animation base;
+closed variants 30 and 11). Internal large doors 53/54 and openings 55/56
+replace a complete run between direction/adjacency changes. 53 uses large
+door 3, 54 uses large crew door 6; 55 has no wall; 56 emits a 3ft-high railing
+with a 0.3ft top rail. Closed large-door texture IDs are 2 and 5.
+
+RenderExterior inserts virtual room types for wall details. Small HullDoor 50
+is centered with half-width 2.5ft and virtual type 30. Its WallProfile is
+(offset 0, height 0, strip 2), (0,7,strip 4), (1,7,strip 5 if armor<=8 else 4),
+(0,8). LargeHullDoor 3 / HullOpening 9 span the existing simplified wall
+segment minus 1ft at each end, virtual types 28 and 29 respectively. 28 has a
+single strip 1 from 0 to 8ft; 29 is strip 0 and emits no face. SideTurret
+21/34..40 uses half-width 2.8284271245ft. Hull strip 1 uses large-hull-door 9
+and strip 2 uses hull-door 20 (half-open animation base; closed 8/19).
+
+These dimensions were checked in assembly because the decompiler loses
+several floating-point call arguments: wall-opening-assembly.txt captures
+the original range calculations and constant addresses 180795810(2.5) and
+180795818(2.8284271245). Dedicated hatch/turret/door geometry still requires
+animation and furnished-detail handling beyond the plane geometry itself.
+
+Streamline and roof recovery limits
+----------------------------------
+No streamline read or branch was found in CreateModels, RenderExterior,
+RenderExteriorWalls, RenderExteriorTops or RenderExteriorBottoms. The wall
+generator's design-header accesses found here are armor at +0x15 passed to
+WallProfile. The earlier SURFACE-RECOVERY-NOTES.txt statement about
+streamline-dependent paths was not established by these functions and
+must not justify inventing a streamline deformation.
+
+The flag's recovered consumers confirm its physics role: DesignStreamline
+0x1803e5a80 is called by HullStress0x1803f54e0, MaxAtmosphereSpeed0x180403350,
+MaxAtmosphereThrottle0x180403440, and the UI ShipDesignStreamline accessor.
+A complete instruction search for cached field +0x841 found only its
+AnalyzeDesign writer and DesignStreamline reader. Streamlined hulls use
+one quarter of the unstreamlined drag-squared stress factor and 512 versus
+256 in atmospheric speed/throttle limits. SetDesignStreamline 0x1804618b0
+updates the design field and invalidates analysis/path state. Its caller
+list and physics functions are captured in streamline-physics-consumers.txt.
+
+The interior boundary loop excludes roof 22..24. The spacecraft exterior
+still runs its occupancy/profile pipeline for those records; their full
+building-style roof semantics are not established by this interior study.

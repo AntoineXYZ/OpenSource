@@ -72,9 +72,16 @@ int main(int argc, char** argv)
 		QCoreApplication::setLibraryPaths(libPaths);
 		//QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
 
+		// Must set default OpenGL version before app constructor, particularly for Mac.
+		QSurfaceFormat glformat;
+		glformat.setProfile(QSurfaceFormat::CoreProfile);
+		glformat.setVersion(GLMajorVersion, GLMinorVersion);
+		QSurfaceFormat::setDefaultFormat(glformat);
+
 		if(legacySpacecraft)
 		{
-			// This viewer requires no game session, cached game data, or GL context.
+			// The offline designer uses Qt and the bundled spacecraft textures.
+			AuTexture auTexture;
 			QApplication a(argc, argv);
 			AuLegacyShipViewer viewer;
 			viewer.show();
@@ -91,12 +98,6 @@ int main(int argc, char** argv)
 		signal(SIGHUP, SignalHandler);
 		signal(SIGQUIT, SignalHandler);
 #endif
-
-		// Must set default OpenGL version before app constructor, particularly for Mac.
-		QSurfaceFormat glformat;
-		glformat.setProfile(QSurfaceFormat::CoreProfile);
-		glformat.setVersion(GLMajorVersion, GLMinorVersion);
-		QSurfaceFormat::setDefaultFormat(glformat);
 
 		// Create an object from each library, so their constructors can call the appropriate Q_INIT_RESOURCE macros.
 		// The objects for shared libraries must persist through the life of the program. Otherwise, they get thrashed loading and

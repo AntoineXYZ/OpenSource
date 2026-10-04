@@ -1,0 +1,165 @@
+Read-only Ghidra capture for 3D surface recovery. Not original source.
+
+
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* protected: void __cdecl DaSpaceShip::RenderHatch(class QList<class AuTriSpacecraft> &
+   __ptr64,class AuPoint const & __ptr64,bool,int,bool,enum DnDetailType::DETAILTYPE)const __ptr64
+    */
+
+void __thiscall
+DaSpaceShip::RenderHatch
+          (DaSpaceShip *this,QList<AuTriSpacecraft> *param_1,AuPoint *param_2,bool param_3,
+          int param_4,bool param_5,DETAILTYPE param_6)
+
+{
+  double dVar1;
+  uint uVar2;
+  int iVar3;
+  int iVar4;
+  SHIP_TEXTURE SVar5;
+  bool bVar6;
+  float fVar7;
+  undefined1 auStackY_1c8 [32];
+  float local_128;
+  float local_124;
+  float local_120;
+  float local_11c;
+  double local_118;
+  double local_110;
+  double local_108;
+  double local_100;
+  double local_f8;
+  double local_f0;
+  double local_e8;
+  double local_e0;
+  double local_d8;
+  double local_d0;
+  double local_c8;
+  double local_c0;
+  undefined8 local_b8;
+  undefined8 uStack_b0;
+  undefined8 local_a8;
+  int local_a0 [4];
+  ulonglong local_90;
+  
+                    /* 0x42ee90  5952
+                       ?RenderHatch@DaSpaceShip@@IEBAXAEAV?$QList@VAuTriSpacecraft@@@@AEBVAuPoint@@_NH2W4DETAILTYPE@DnDetailType@@@Z
+                        */
+  local_90 = DAT_180a0ecf0 ^ (ulonglong)auStackY_1c8;
+  local_e0 = *(double *)(param_2 + 8);
+  if (param_3) {
+    dVar1 = *(double *)param_2;
+    local_c0 = *(double *)(param_2 + 0x10);
+    local_c8 = local_e0 - 2.8284271245;
+    local_e8 = dVar1 + 0.0;
+    local_f8 = local_e0 + 0.0;
+    local_118 = dVar1 - 2.8284271245;
+    local_e0 = local_e0 + 2.8284271245;
+    local_110 = local_f8;
+    local_100 = dVar1 + 2.8284271245;
+    local_d0 = local_e8;
+  }
+  else {
+    local_c0 = *(double *)(param_2 + 0x10);
+    local_118 = *(double *)param_2 - 2.0;
+    local_f8 = local_e0 - 2.0;
+    local_e0 = local_e0 + 2.0;
+    local_e8 = *(double *)param_2 + 2.0;
+    local_110 = local_e0;
+    local_100 = local_e8;
+    local_d0 = local_118;
+    local_c8 = local_f8;
+  }
+  local_c0 = local_c0 + 0.0;
+  switch(param_6) {
+  case 8:
+  case 0x4d:
+  case 0x4e:
+  case 0x4f:
+  case 0x50:
+  case 0x51:
+  case 0x52:
+  case 0x53:
+    SVar5 = 0x23;
+    break;
+  default:
+    SVar5 = 0x17;
+    break;
+  case 0x33:
+  case 0x54:
+  case 0x55:
+  case 0x56:
+  case 0x57:
+  case 0x58:
+  case 0x59:
+  case 0x5a:
+    SVar5 = 0xf;
+  }
+  local_108 = local_c0;
+  local_f0 = local_c0;
+  local_d8 = local_c0;
+  ShipTexture(SVar5,&local_11c,&local_120,&local_124,&local_128);
+  fVar7 = 50.0;
+  local_a0[0] = 0;
+  local_a0[1] = 0;
+  local_a0[2] = 0;
+  if (param_5) {
+    fVar7 = 0.0;
+  }
+  uVar2 = HatchAt(this,param_2);
+  if (uVar2 != 0) {
+    QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x770));
+    iVar3 = DoorIndexDesignLocked(this,uVar2);
+    QReadWriteLock::unlock((QReadWriteLock *)(this + 0x770));
+    if (-1 < iVar3) {
+      iVar4 = AnimatedDoors(this);
+      if (iVar3 < iVar4) {
+        iVar4 = iVar3 + 10;
+      }
+      else {
+        iVar4 = iVar4 + 9;
+      }
+      local_a0[0] = iVar4;
+    }
+  }
+  bVar6 = (param_4 & 0xfffffffdU) == 0;
+  if ((1U < (uint)param_4) || (param_5)) {
+    if (bVar6) {
+      if (param_5) goto LAB_18042f0eb;
+      goto LAB_18042f219;
+    }
+  }
+  else {
+LAB_18042f0eb:
+    local_b8 = 0;
+    uStack_b0 = 0;
+    local_a8 = 0x3ff0000000000000;
+    ModelAdd(param_1,(AuPoint *)&local_b8,local_a0,fVar7,param_5,local_11c,local_120,-1.0,-1.0,
+             (AuPoint *)&local_d0,local_11c,local_128,-1.0,-1.0,(AuPoint *)&local_118,local_124,
+             local_128,-1.0,-1.0,(AuPoint *)&local_e8);
+    ModelAdd(param_1,(AuPoint *)&local_b8,local_a0,fVar7,param_5,local_124,local_128,-1.0,-1.0,
+             (AuPoint *)&local_e8,local_124,local_120,-1.0,-1.0,(AuPoint *)&local_100,local_11c,
+             local_120,-1.0,-1.0,(AuPoint *)&local_d0);
+LAB_18042f219:
+    if ((bVar6) && (!param_5)) goto LAB_18042f234;
+  }
+  if (1U < (uint)param_4) {
+    return;
+  }
+  if (!param_5) {
+    return;
+  }
+LAB_18042f234:
+  local_b8 = 0;
+  uStack_b0 = 0;
+  local_a8 = 0xbff0000000000000;
+  ModelAdd(param_1,(AuPoint *)&local_b8,local_a0,fVar7,param_5,local_124,local_120,-1.0,-1.0,
+           (AuPoint *)&local_100,local_124,local_128,-1.0,-1.0,(AuPoint *)&local_e8,local_11c,
+           local_128,-1.0,-1.0,(AuPoint *)&local_118);
+  ModelAdd(param_1,(AuPoint *)&local_b8,local_a0,fVar7,param_5,local_11c,local_128,-1.0,-1.0,
+           (AuPoint *)&local_118,local_11c,local_120,-1.0,-1.0,(AuPoint *)&local_d0,local_124,
+           local_120,-1.0,-1.0,(AuPoint *)&local_100);
+  return;
+}
+
+

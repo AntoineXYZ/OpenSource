@@ -1,0 +1,36 @@
+2016 rendering toggle: read-only Ghidra and original PE string recovery
+====================================================================
+
+Shores of Hazeron.exe:
+  140477668: :/data/dp_RenderMode.png
+  140477690: <b>Render Mode</b><br>Switch view between line drawing or solid rendering.
+  1404776e0: 1DesignRenderModeToggle()
+  1402cada3: constructor reference to the icon in AuTabDesign, 1402c91e0.
+The recovered palette location is row 1, column 0 (PANEL-RECOVERY.txt).
+
+AuAtom13.dll, DaAtom::DesignRenderModeToggle, 1802077a0:
+  environment = FindParentDesignEnvironment(this);
+  plane = FindDesignPlane(environment, this + 0x14);
+  if (plane) {
+    plane[0x3b8] = (plane[0x3b8] == 0);
+    plane->vtable[0x1a0](plane, 1);
+  }
+
+AuAtom13.dll, DaDesignEnvironment::IsRenderSolid, 1802f9cc0:
+  plane = DaAtom::FindDesignPlane(this, id);
+  return plane ? bool(plane[0x3b8]) : false;
+
+AuAtom13.dll, DaDesignEnvironment::RenderEnvironment, 1802fb170:
+  Solid mode omits the design plane's RenderEnvironmentObject call. If there
+  is a parent solar system, it also requests the parent environment render.
+  This is the same boolean, not a third floor-plan/wireframe/solid cycle.
+
+The native implementation reuses that icon, location and original tooltip,
+switching between the existing floor plan and the new orbit view. The cutaway
+checkbox below the palette is a new inspection aid, independent of this
+two-state toggle; it is not asserted to be a recovered 2016 control. The orbit
+camera replaces avatar navigation for this milestone, as requested.
+
+The large original panel constructor exceeded the MCP decompiler timeout;
+its icon references, embedded strings and the exported toggle/accessor were
+recovered separately. No original binary was modified or executed.

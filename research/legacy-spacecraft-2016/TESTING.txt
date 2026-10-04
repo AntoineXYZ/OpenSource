@@ -123,3 +123,48 @@ edge/full/bridge/hole erases; a closed loop; diagonal cells and negative seams;
 XY +/-120 and deck +/-28 limits. Compare IDs, boundaries and equipment changes,
 not just appearance. Whole-room hit tests and type/number reassignment remain
 future comparisons; PAINTING-RULES.txt records their distinct original paths.
+
+Rendering validation (user builds manually)
+------------------------------------------
+The rendering work did not run a compiler, build system, or native client.
+The cell-shape and room-raster Python reference checks above passed again.
+All 62 atlas rectangles in the new renderer were independently compared
+with the surviving AuBodyRenderWidget::ShipTexture table and matched.
+These checks do not establish native rendering or visual parity.
+
+The CPU mesh harness can be built by the user without an OpenGL context:
+
+  c++ -std=c++11 -fPIC -no-pie -Isrc/lib/data/designs \
+    -Isrc/lib/designer/legacy \
+    research/legacy-spacecraft-2016/tests/native_ship_mesh.cpp \
+    src/lib/designer/legacy/aulegacyshipmesh.cpp \
+    src/lib/data/designs/aulegacyship.cpp \
+    src/lib/data/designs/aulegacyshipgeometry.cpp \
+    $(pkg-config --cflags --libs Qt5Core Qt5Gui) -o /tmp/native_ship_mesh
+
+  /tmp/native_ship_mesh
+
+It checks single/stacked-deck area, hidden hull suppression, open-below
+over ordinary/fuel/missing decks, concavity, signed deck heights, same-type
+different-number room partitions, inherited open-below partition ownership,
+square/diamond hatch aperture areas, small doors and full-span wall openings,
+finite normals/positions across every
+spacecraft room type at all eleven armor settings, every nonempty cell-mask
+shape's area, and invalid/zero-area boundary rejection. It has not been built or run.
+
+After a manual client build, compare the three sample ships and controlled
+one/two-deck fixtures with the original client. Check Render Mode in its
+original palette position, unchanged dp_RenderMode icon/tooltip, and repeated
+floor-plan/solid switching. Check the floor-plan camera and selected tool
+survive toggling; selecting Paint/Erase/Inspect returns to the floor plan.
+Check left-drag orbit, middle/right/Shift-drag pan, wheel zoom, F/Home fit,
+resize, F6 docking/floating, and entry/exit through both launch paths.
+
+Check armor 0..10 room silhouettes and transparent window frames; bridge,
+lounge, captain's cabin and weapon-bay glass floors/tops; neighboring room
+partitions; fuel rooms; negative decks; open-to-below and gravity-well rooms.
+The cutaway is an added orbit-inspection aid, not a recovered original mode:
+move the selected deck up/down and confirm upper surfaces are clipped while
+the current deck's floor/lower walls remain. Test hatch/door/opening fixtures
+and read the inspector's explicit rendering limitations. Equipment models,
+animated door states and full original visual parity require further work.
