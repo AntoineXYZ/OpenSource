@@ -1,0 +1,20 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x18001f7c0
+Captured: 2026-10-04
+
+
+/* public: __cdecl AuSpaceShipModules::AuSpaceShipModules(void) __ptr64 */
+
+AuSpaceShipModules * __thiscall AuSpaceShipModules::AuSpaceShipModules(AuSpaceShipModules *this)
+
+{
+                    /* 0x1f7c0  879  ??0AuSpaceShipModules@@QEAA@XZ */
+  FUN_18001a630();
+  FUN_18001a630(this + 0x50);
+  *(undefined4 *)(this + 0x40) = 0x10300ea;
+  *(undefined4 *)(this + 0x44) = 0xee00ed;
+  *(undefined4 *)(this + 0x48) = 0xef00eb;
+  *(undefined4 *)(this + 0x4c) = 0xf00107;
+  return this;
+}

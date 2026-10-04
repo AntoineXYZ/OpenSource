@@ -24,7 +24,8 @@ legacy QString for versions below 2, then minimum tech level u8. Version 2
 adds hull volume u32, structure u8 and tech level u8.
 Nonzero versions then carry module data: a u32
 count of u16 pairs, eight u16 scalar slots, and another counted u16 pair list.
-The module slot meanings remain incomplete; retain raw and normalized IDs.
+The first pair list holds weapon-bay modules, the second transporter modules;
+retain raw and normalized IDs. The eight scalar slots hold other system modules.
 
 Rooms: u16 count, then design ID u32, room ID u16, deck i8, type u8, subtype u8,
 vertex count u16 and that many packed XY u16 values.
@@ -89,3 +90,167 @@ EnterSpaceShipDesignerMode 0x140136bf0 also sets 5. AuMainFrame::Timer
 That creates galaxy/sector/system/world, DaDesignEnvironment(mode 1) and an
 avatar, then loads the working design. This old path depends on world entities;
 the modern standalone 2D path intentionally needs only Qt Widgets.
+
+Saving (recovered 2016 writer)
+------------------------------
+aulegacyshipsave.cpp uses QDataStream::Qt_4_0 (7), explicitly big endian,
+with no magic, checksum, compression, trailing bytes or modern design wrapper.
+DnSpaceShip::Tx at 0x18017eb70 ALWAYS writes version 2 (state | 0x20), even
+after loading version 0/1. The obsolete extra QString is not written. Header
+fields retain their stored widths; QString preserves null versus empty,
+embedded NUL and raw UTF-16 code units. The fixed portion is 56 bytes, plus
+two bytes per string code unit, four per module pair, eleven per room, two
+per saved vertex and seventeen per detail.
+
+AuSpaceShipModules::operator>> at 0x180024d10 writes the two lists in their
+existing iteration order around eight scalar u16 fields. Constructor
+0x18001f7c0 initializes those slots to:
+  0x00ea, 0x0103, 0x00ed, 0x00ee, 0x00eb, 0x00ef, 0x0107, 0x00f0
+The same constants occur in DnSpaceShip's constructor at 0x180178f70. New
+offline designs now use them, and version-0 files acquire them on save.
+The first pair list writes normalized second values (fd->fc, ff->fe);
+the second list has no such load-time remapping. The original MSVC hash-table
+iteration order is significant; neither numeric sorting nor the host's hash
+table gives the correct serialized order.
+
+DnRoomArray::operator>> at 0x180167c60 writes a u16 count and existing room
+order. DnRoom::operator>> at 0x180167a50 packs ordinary boundary coordinates
+using round(coordinate/2.8284271245), with ties away from zero, high byte X
+and low byte Y. Working double boundaries take precedence over the inspector's
+cached packed vertices. Nonempty type-24 dome boundaries instead write three
+controls: (vertex[0]+vertex[n/2])/2, vertex[0], vertex[(3*n)/4]. Assembly loads
+double 2.0 from 0x180213a50 for that division; the decompiler loses the divisor
+in the AuPoint return-value ABI. Stored ellipse controls are expanded with
+the recovered float geometry before applying this same compression. Empty
+inspection-only rooms are omitted, matching the original array reader's
+discard rule. Invalid/degenerate ellipses cause a save error, not data loss.
+
+DnDetailArray::operator>> at 0x18015bf70 writes existing detail order with
+canonical bool bytes 0/1 and in-memory commodity IDs. IDs f9/fb become f8/fa
+on load and therefore on re-save. Packed positions already represent the
+original decoded grid point; re-encoding those points yields identical u16s.
+
+Designer preparation before serialization
+-----------------------------------------
+Write is the low-level serializer. Save first calls PrepareForSave to reproduce
+the load/analysis steps that the original designer performs before serialization.
+The initial reference audit covered Write only, which missed these steps.
+
+DaAtom::DesignSpaceShipLoaded (AuAtom13.dll:0x180207d90) imports each detail via
+DgData::SpaceShipDesignDetailLoaded (AuData13.dll:0x180146650), which calls
+DnDetailArray::Add (0x18015c210). Add orders records by signed deck, unsigned
+room ID, then unsigned detail ID. The native editor now establishes this order
+on opening a design, so subsequent InsertDetail operations start from a sorted
+array. Save also orders its temporary copy; it does not mutate UI selections.
+
+DaSpaceShip::AnalyzeDesign (AuAtom13.dll:0x1803c63c0) supplies the live module
+keys to DnSpaceShip::ReconcileModules (AuData13.dll:0x18017e0c0):
+  - Weapon-bay room type 0x15 contributes its subtype byte (Room Number minus
+    one), shared across decks. Weapon-unit detail 0x17 and weapon-emitter
+    detail 0x63 also contribute the subtype of their referenced room.
+  - Transporter-pad detail 0x14 contributes (room deck byte << 8) | subtype.
+    Negative decks retain their two's-complement byte. Consoles (0x13) and
+    transporter rooms without pads do not establish a transporter module.
+  - Match the first room with the detail's room ID. Orphan details and empty
+    inspection-only rooms establish no module. Multiple pads in one deck/
+    room-number group require only one entry.
+  - Retain existing selected modules. Add missing bay modules as 0x0105 and
+    transporter modules as 0x00f6; remove entries for keys no longer present.
+
+The original reconciler inserts missing keys in ascending QMap order BEFORE
+trimming stale entries. ModuleMap reproduces the old read/insert/rehash order:
+AuShipWhichHash at 0x18002a120 hashes the two little-endian key bytes; insertion
+at 0x180012640 prepends within a bucket and appends a previously empty bucket
+to the list. Duplicate stream keys retain the first value. Constructor
+0x18001a630 starts with 8 buckets and load factor 1; grow at 0x180048600 uses
+8 -> 64 -> 512, then doubling, reinserting in previous iteration order. See
+pseudocode/AuData13.dll_module_hash_iteration.txt for the captured routines.
+The implementation uses explicit list/bucket ordering for portability.
+
+Consequently byte parity means the original writer's bytes for the same
+working records, NOT unconditional preservation of every source file byte.
+Version upgrades, normalization, empty-room removal and dome compression are
+intentional original behavior. The editor allocates a working design ID on
+New/import using the original process counter, and retains source architect,
+state and other header metadata. The low-level Read/Write/Save APIs preserve
+their supplied IDs. Comparing separately authored sessions must account for
+the architect identity and sequence of design allocations.
+Derived header metadata is retained. The original serializer does not itself
+run analysis, but the designer's earlier analysis reconciles modules as above.
+Save gate 0x1402f3050 only tests view mode 1/2.
+
+SaveSpaceShipDesign 0x180140050 optionally fills an empty header name from
+the caller's design name, without modifying its source record. The native
+writer exposes this fallback explicitly. The UI names new designs from the
+first chosen filename and preserves loaded header names, even null/empty ones.
+The original Save icon and always-prompt file dialog are enabled, with Ctrl+S,
+the original dialog caption/filter, .ship suffix and overwrite confirmation.
+New/Open/Exit offer Save/Discard/Cancel; cancel or failure keeps the working
+design and dirty state. Opening reads after that prompt to avoid loading stale
+bytes when the current design was just saved over the selected input file.
+
+Serialization validates record/byte limits, u16 room/vertex counts and finite
+coordinates before touching the destination. Unlike the unsafe old narrowing
+casts, out-of-range working coordinates are rejected. QSaveFile replaces the
+destination atomically, with direct-write fallback disabled. A save failure
+does not truncate an existing design. Neither writer mutates working geometry.
+
+Validation: tests/check_ship_writer.py independently packs original sample
+records with Python struct/UTF-16 and models designer preparation with ordered
+bucket groups. Antiflux remains identical (35,755 bytes); B8_Galatine changes
+11 vehicle-ID bytes (39,059 bytes). Star Driver normalizes 18 vehicle IDs,
+reorders 1,860 detail positions and adds the four-byte transporter pair (0,f6),
+giving 69,658 bytes. No equipment property or room geometry changes.
+
+The user-supplied tl20StarDriver 2016 designer save.ship is now the actual
+original-client oracle. The prepared reference output matches its EVERY BYTE
+after assigning only its captured design/architect identity; no module or
+geometry data is copied from the oracle to make that comparison pass.
+With the retained source identity the expected SHA-256 is:
+  54394f386fb669b69776b59c09d42692f99412956f7a5a8319cf45722ba4ddc1
+With the captured 2016 identity it is:
+  e8b20a55dda90b87f047eaa131e0036a5894211e9bfdeebbd9990ac0952cc5a2
+These Python checks have run. The changed native code has NOT been compiled
+or run by the assistant; native checks are provided in TESTING.txt.
+
+Architect and design identity in standalone 2016 sessions
+---------------------------------------------------------
+The architect is an avatar/entity ID, not a hash of the file or ship geometry.
+Offline initializer Shores of Hazeron.exe:0x140244760 creates a DaPerson named
+Human, calls Create, and passes its ID at object+0x14 and its name to
+DaDesignEnvironment::LoadWorkingDesign. The import path at
+AuAtom13.dll:0x180207d90 likewise passes the acting avatar's ID/name to NewDesign.
+DnSpaceShip's constructor stores that ID as architect at +0x10. DesignLoaded
+copies design settings and modules from the input, but does not copy its
+architect identity into the newly created working design.
+
+DaAtom::Create (AuAtom13.dll:0x180204410) calls AuId::Create at
+AuGlobal13.dll:0x180025fe0. That invokes the global NextAtomId virtual at +0x170.
+The original client vtable 0x140467200 resolves that slot to 0x14013fe60.
+In offline states 5/6/7, this function seeds counter 0x140705098 once with
+AuDice::Roll(2,100000000), then returns the current ID and increments by the
+requested count. Assembly retains the count from R8D in ESI and passes it to
+AuId::operator+; the decompiler obscures that argument behind a return buffer.
+Thus the avatar receives a session-specific value after other world entities
+have consumed IDs. The observed 148856177 belongs to that session's Human.
+
+The design ID uses a separate virtual at +0x190, resolved to EXE:0x14013ff50.
+It returns/increments counter 0x1406f00ac, initially 20000 (bytes 20 4e 00 00).
+Startup consumes the initial working design ID; importing a file creates the
+next working design, explaining 20001 in the captured save. Neither value is
+derived by incrementing the source file's ID.
+
+The editor now allocates working design IDs from a process-lifetime counter
+starting at 20000. Its initial blank design consumes 20000; the first successful
+import receives 20001. Each subsequent New/import consumes one ID. Save/Save As,
+cancelled operations and failed file loads do not advance the counter. The new
+ID is assigned to the header and every room/detail record. Closing/reopening
+the panel does not reset the process counter. This reproduces the original
+allocation rule instead of incrementing an input ID or hard-coding 20001.
+
+Architect IDs are still retained from the source rather than spawning the
+2016 offline world/avatar or copying a particular run's random ID. With the
+same New/import sequence, the actual saves should now differ only in architect
+identity. Different allocation sequences can still produce different design
+IDs. The regression comparator reports those fields explicitly, then projects
+design ID and architect ID/name for an exact remaining-byte comparison.

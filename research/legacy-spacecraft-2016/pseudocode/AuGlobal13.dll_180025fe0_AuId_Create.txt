@@ -1,0 +1,19 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuGlobal13.dll
+Address: 0x180025fe0
+Captured: 2026-10-04
+
+
+/* public: void __cdecl AuId::Create(void) __ptr64 */
+
+void __thiscall AuId::Create(AuId *this)
+
+{
+  undefined4 *puVar1;
+  undefined1 local_res8 [32];
+  
+                    /* 0x25fe0  1285  ?Create@AuId@@QEAAXXZ */
+  puVar1 = (undefined4 *)(**(code **)(*(longlong *)gp_AuGlobal + 0x170))(gp_AuGlobal,local_res8,1);
+  *(undefined4 *)this = *puVar1;
+  return;
+}

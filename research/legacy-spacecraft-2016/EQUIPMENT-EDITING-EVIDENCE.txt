@@ -15,7 +15,9 @@ AuData13.dll SpaceShipDesignAddDetail 0x180142960 first validates and snaps XY
 using EncodeGridCoord 0x18017a390: round(component/2.8284271245), signed byte
 coordinates restricted to -120..120. RoundGridCoordOnDeck 0x18015b600 confirms
 the half-cell snap and round-away-from-zero behavior. Detail validation allows
-decks -42..42; the spacecraft designer UI itself has the narrower -28..28 range.
+decks -42..42. The grid navigates -41..41, while new spacecraft room painting
+is restricted to -28..28. See BUILDING-VS-SPACECRAFT.txt for the corrected
+navigation evidence and the separate building ground/site restrictions.
 
 Ordinary placement ignores pivot 76, contrail emitter 98 and weapon emitter 99
 when looking for equipment to replace at a point. The first ordinary matching

@@ -1,0 +1,66 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuAtom13.dll
+Address: 0x180207d90
+Captured: 2026-10-04
+
+
+/* public: void __cdecl DaAtom::DesignSpaceShipLoaded(class DnSpaceShip const & __ptr64,class
+   DnRoomArray const & __ptr64,class DnDetailArray const & __ptr64) __ptr64 */
+
+void __thiscall
+DaAtom::DesignSpaceShipLoaded
+          (DaAtom *this,DnSpaceShip *param_1,DnRoomArray *param_2,DnDetailArray *param_3)
+
+{
+  longlong lVar1;
+  DgData *this_00;
+  uint uVar2;
+  DaDesignEnvironment *this_01;
+  int *piVar3;
+  QString *pQVar4;
+  longlong *plVar5;
+  undefined8 *puVar6;
+  undefined8 *local_38;
+  undefined8 *local_30 [2];
+  undefined8 local_20;
+  
+                    /* 0x207d90  2632
+                       ?DesignSpaceShipLoaded@DaAtom@@QEAAXAEBVDnSpaceShip@@AEBVDnRoomArray@@AEBVDnDetailArray@@@Z
+                        */
+  local_20 = 0xfffffffffffffffe;
+  local_38 = (undefined8 *)((ulonglong)local_38 & 0xffffffff00000000);
+  this_01 = FindParentDesignEnvironment(this);
+  if (((this_01 != (DaDesignEnvironment *)0x0) &&
+      (piVar3 = (int *)DaDesignEnvironment::Owner(this_01), *piVar3 == *(int *)(this + 0x14))) &&
+     (this_01[0x3b0] == (DaDesignEnvironment)0x1)) {
+    pQVar4 = (QString *)(**(code **)(*(longlong *)this + 0x1b0))(this,local_30);
+    DaDesignEnvironment::NewDesign(this_01,(AuId *)(this + 0x14),pQVar4);
+    QString::~QString((QString *)local_30);
+    uVar2 = DaDesignEnvironment::WorkingDesignId(this_01);
+    lVar1 = *(longlong *)gp_AuGlobal_exref;
+    QReadWriteLock::lockForWrite((QReadWriteLock *)(lVar1 + 0x1e0));
+    this_00 = *(DgData **)(lVar1 + 0x68);
+    DgData::SpaceShipDesignLoaded(this_00,uVar2,param_1);
+    QList<DnRoom>::cbegin((QList<DnRoom> *)param_2);
+    plVar5 = (longlong *)QList<DnRoom>::cend((QList<DnRoom> *)param_2);
+    if (local_38 != (undefined8 *)*plVar5) {
+      do {
+        DgData::SpaceShipDesignRoomLoaded(this_00,uVar2,(DnRoom *)*local_38);
+        local_38 = local_38 + 1;
+        puVar6 = (undefined8 *)QList<DnRoom>::cend((QList<DnRoom> *)param_2);
+      } while (local_38 != (undefined8 *)*puVar6);
+    }
+    QList<DnDetail>::cbegin((QList<DnDetail> *)param_3);
+    plVar5 = (longlong *)QList<DnDetail>::cend((QList<DnDetail> *)param_3);
+    if (local_30[0] != (undefined8 *)*plVar5) {
+      do {
+        DgData::SpaceShipDesignDetailLoaded(this_00,uVar2,(DnDetail *)*local_30[0]);
+        local_30[0] = local_30[0] + 1;
+        puVar6 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)param_3);
+      } while (local_30[0] != (undefined8 *)*puVar6);
+    }
+    QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1e0));
+    DaDesignEnvironment::DesignLoadCompleted(this_01);
+  }
+  return;
+}

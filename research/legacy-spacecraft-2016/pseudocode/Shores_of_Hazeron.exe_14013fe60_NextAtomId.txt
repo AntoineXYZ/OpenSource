@@ -1,0 +1,30 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: Shores of Hazeron.exe
+Address: 0x14013fe60
+Captured: 2026-10-04
+
+
+int * FUN_14013fe60(AuGlobal *param_1,int *param_2)
+
+{
+  int iVar1;
+  int *piVar2;
+  undefined1 local_14 [4];
+  undefined8 local_10;
+  
+  local_10 = 0xfffffffffffffffe;
+  iVar1 = *(int *)(*(longlong *)self_exref + 0x18);
+  if (((iVar1 == 5) || (iVar1 == 7)) || (iVar1 == 6)) {
+    if (DAT_140705098 == 0) {
+      DAT_140705098 = AuDice::Roll((AuDice *)(*(longlong *)gp_AuGlobal_exref + 0xe0),2,100000000);
+    }
+    iVar1 = DAT_140705098;
+    piVar2 = (int *)AuId::operator+((AuId *)&DAT_140705098,(uint)local_14);
+    DAT_140705098 = *piVar2;
+    *param_2 = iVar1;
+  }
+  else {
+    AuGlobal::NextAtomId(param_1,(uint)param_2);
+  }
+  return param_2;
+}

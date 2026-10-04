@@ -6,6 +6,7 @@
 #include "aulegacyshipgeometry.h"
 #include "aulegacyshipicons.h"
 #include "aulegacyshiprender.h"
+#include "aulegacyshipsave.h"
 #include "aulegacyshipvehicles.h"
 
 #include <QAction>
@@ -76,6 +77,10 @@ enum Kind
 // AuAtom13.dll RenderSpacecraftGrid: 40 full grid cells either side of origin.
 constexpr int GridHalfCells = 40;
 constexpr double GridRadius = GridHalfCells * AuLegacyShip::GridSpacing;
+// DaDesignPlane::MoveUp/MoveDown reject destination decks >=42 / <=-42.
+// Grid movement is independent of the narrower spacecraft room-paint limits.
+constexpr int MinimumGridDeck = -41;
+constexpr int MaximumGridDeck = 41;
 
 QRectF GridBounds()
 {
@@ -718,7 +723,9 @@ public:
 		QAction* openAction = MakeAction("Open .ship...", "dp_Load", "Open a 2016 spacecraft design (Ctrl+O).");
 		openAction->setShortcut(QKeySequence::Open);
 		QObject::connect(openAction, &QAction::triggered, window, &AuLegacyShipViewer::ChooseFile);
-		QAction* saveAction = UnavailableAction("Save spacecraft", "dp_Save", "Saving .ship files is not available yet.");
+		QAction* saveAction = MakeAction("Save spacecraft", "dp_Save", "Save spacecraft to a .ship file (Ctrl+S).");
+		saveAction->setShortcut(QKeySequence::Save);
+		QObject::connect(saveAction, &QAction::triggered, window, [this]() { SaveDesign(); });
 		QAction* fitAction = MakeAction("Fit view", "dp_ShowDesignPlane", "Fit the current floor plan or spacecraft in the view (F).");
 		fitAction->setShortcut(QKeySequence(QStringLiteral("F")));
 		QObject::connect(fitAction, &QAction::triggered, window, [this]() { FitDeck(); });
@@ -793,7 +800,7 @@ public:
 		closeAction = new QAction(QStringLiteral("Exit Designer"), window);
 		closeAction->setShortcuts(QList<QKeySequence>() << QKeySequence(Qt::Key_Escape) << QKeySequence::Close);
 		closeAction->setAutoRepeat(false);
-		for (QAction* action : { newAction, openAction, fitAction, closeAction })
+		for (QAction* action : { newAction, openAction, saveAction, fitAction, closeAction })
 			window->addAction(action);
 		QObject::connect(closeAction, &QAction::triggered, window, [this]() {
 			if (exitHandler)
@@ -845,10 +852,6 @@ public:
 		panelLayout->addWidget(editPanel);
 		QHBoxLayout* viewTools = new QHBoxLayout;
 		viewTools->addStretch();
-		QToolButton* fit = new QToolButton(panel);
-		fit->setDefaultAction(fitAction);
-		fit->setToolButtonStyle(Qt::ToolButtonTextOnly);
-		viewTools->addWidget(fit);
 		QToolButton* inspect = new QToolButton(panel);
 		inspect->setDefaultAction(inspectAction);
 		inspect->setIconSize(QSize(16, 16));
@@ -886,10 +889,10 @@ public:
 			"- In 3D, left drag orbits, middle/right drag pans, and the wheel zooms. F fits the ship.<br>"
 			"- Cut away above current deck exposes the interior; the deck arrows move the cut.<br><br>"
 			"<b>CURRENT EDITOR</b><br>"
-			"Rooms and equipment can be edited in the floor plan. Unavailable tools remain disabled. Saving is not available yet.<br><br>"
+			"Rooms and equipment can be edited in the floor plan. Unavailable tools remain disabled.<br><br>"
 			"<b>WHEN FINISHED</b><br>"
 			"Press Escape to exit the designer.<br>"
-			"Edits last for this session. New, Open and Exit ask before discarding changes.<br>"
+			"Use Save or Ctrl+S to save a .ship file. New, Open and Exit offer to save changes.<br>"
 			"F6 hides or shows this panel. Drag its title to dock it elsewhere or float it beside the deck view."));
 		informationTabs->addTab(tips, QStringLiteral("Tips"));
 		inspector = new QPlainTextEdit(informationTabs);
@@ -1100,7 +1103,7 @@ public:
 	{
 		if (!loaded) return;
 		const int next = currentDeck + delta;
-		if (next >= AuLegacyShip::MinimumDeck && next <= AuLegacyShip::MaximumDeck)
+		if (next >= MinimumGridDeck && next <= MaximumGridDeck)
 			ShowDeck(next);
 	}
 
@@ -1136,7 +1139,7 @@ public:
 		RefreshHeaderControls();
 		UpdateTitle();
 		ShowOverview();
-		toolLabel->setText(QStringLiteral("Design settings updated. Session edits are not saved."));
+		toolLabel->setText(QStringLiteral("Design settings updated. Press Ctrl+S to save."));
 	}
 
 	void FitDeck()
@@ -1304,7 +1307,7 @@ public:
 				ShowDeck(deck, false);
 			}
 			toolLabel->setText(result.error.isEmpty()
-				? (result.changed ? QStringLiteral("Equipment updated (%1 added, %2 removed). Session edits are not saved.")
+				? (result.changed ? QStringLiteral("Equipment updated (%1 added, %2 removed). Press Ctrl+S to save.")
 					.arg(result.added).arg(result.removed) : QStringLiteral("No equipment change at this point.")) : result.error);
 			return;
 		}
@@ -1326,7 +1329,7 @@ public:
 			ShowDeck(deck, false);
 		}
 		toolLabel->setText(result.error.isEmpty()
-			? (result.changed ? QStringLiteral("Cell updated. Session edits are not saved.")
+			? (result.changed ? QStringLiteral("Cell updated. Press Ctrl+S to save.")
 				: QStringLiteral("No change at this cell.")) : result.error);
 	}
 
@@ -1343,7 +1346,7 @@ public:
 	{
 		if (!loaded)
 			return QStringLiteral("Open a 2016 .ship design to inspect its room boundaries and equipment positions.\n\n"
-				"Paint and Erase Cells edit the loaded design in memory. Saving is not available yet.\n\n"
+				"Paint and Erase Cells edit the loaded design. Use Save or Ctrl+S to save a .ship file.\n\n"
 				"The four grid directions combine to form the original squares, triangles, diamonds and parallelograms.\n\n"
 				"Left click or drag applies the selected tool. Middle drag pans; the wheel zooms.");
 		const AuLegacyShip::Header& header = design.header;
@@ -1362,8 +1365,9 @@ public:
 			.arg(design.rooms.size()).arg(design.details.size()).arg(occupiedDeckCount).arg(design.bytesConsumed);
 		text += QStringLiteral("Current deck: %1 (Z %2 ft)\n")
 			.arg(currentDeck).arg(currentDeck * AuLegacyShip::DeckHeight);
-		text += modified ? QStringLiteral("\nThis design has session edits. Saving is not available yet.\n")
-			: QStringLiteral("\nNo session edits. Saving is not available yet.\n");
+		text += modified ? QStringLiteral("\nThis design has unsaved changes. Press Ctrl+S to save.\n")
+			: fileName.isEmpty() ? QStringLiteral("\nThis design has not been saved yet.\n")
+			: QStringLiteral("\nNo unsaved changes.\n");
 		text += QStringLiteral("\nUse Inspect to select a room or detail for its record. "
 			"Equipment uses the original palette icons; Render Mode shows its 3D geometry.\n");
 		if (!geometryWarnings.isEmpty())
@@ -1478,14 +1482,14 @@ public:
 
 	void ShowDeck(int deck, bool fit = true)
 	{
-		deck = std::max(AuLegacyShip::MinimumDeck, std::min(AuLegacyShip::MaximumDeck, deck));
+		deck = std::max(MinimumGridDeck, std::min(MaximumGridDeck, deck));
 		if (deck != currentDeck)
 			view->ResetEquipmentStroke();
 		currentDeck = deck;
 		if (renderAction->isChecked())
 			RefreshRendering();
-		deckUpAction->setEnabled(loaded && deck < AuLegacyShip::MaximumDeck);
-		deckDownAction->setEnabled(loaded && deck > AuLegacyShip::MinimumDeck);
+		deckUpAction->setEnabled(loaded && deck < MaximumGridDeck);
+		deckDownAction->setEnabled(loaded && deck > MinimumGridDeck);
 		const QTransform previousTransform = view->transform();
 		const int previousHorizontal = view->horizontalScrollBar()->value();
 		const int previousVertical = view->verticalScrollBar()->value();
@@ -1611,9 +1615,72 @@ public:
 			.arg(modified ? QStringLiteral("*") : QString(), DisplayName()));
 	}
 
+	bool SaveDesign()
+	{
+		if(!loaded)
+			return false;
+		QString suggested = fileName;
+		if(suggested.isEmpty())
+		{
+			QString directory = settings.value(QStringLiteral("LegacySpacecraft/LastOpenDirectory")).toString();
+			if(directory.isEmpty() || !QFileInfo(directory).isDir())
+				directory = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+			if(directory.isEmpty() || !QFileInfo(directory).isDir())
+				directory = QDir::homePath();
+			QString baseName = DisplayName();
+			baseName.replace(QLatin1Char('/'), QLatin1Char('_'));
+			baseName.replace(QLatin1Char('\\'), QLatin1Char('_'));
+			suggested = QDir(directory).filePath(baseName + QStringLiteral(".ship"));
+		}
+		// The original Save button always opens a save dialog. Let the dialog
+		// apply the suffix before its overwrite confirmation, including *.ship.
+		QFileDialog dialog(window, QStringLiteral("Spacecraft Design File"), suggested,
+			QStringLiteral("Spacecraft Designs (*.ship);;All Files (*.*)"));
+		dialog.setAcceptMode(QFileDialog::AcceptSave);
+		dialog.setFileMode(QFileDialog::AnyFile);
+		dialog.setDefaultSuffix(QStringLiteral("ship"));
+		if(dialog.exec() != QDialog::Accepted || dialog.selectedFiles().isEmpty())
+			return false;
+		const QString path = QFileInfo(dialog.selectedFiles().first()).absoluteFilePath();
+		// Name fresh designs from their first filename; preserve loaded QString
+		// bytes, including the distinction between null and empty names.
+		const QString fallbackName = fileName.isEmpty() ? QFileInfo(path).completeBaseName() : QString();
+		QString error;
+		if(!AuLegacyShip::Save(path, design, error, fallbackName))
+		{
+			QMessageBox::warning(window, QStringLiteral("Could not save spacecraft"), error);
+			return false;
+		}
+		if(design.header.name.isEmpty() && !fallbackName.isEmpty())
+			design.header.name = fallbackName;
+		if(design.header.version == 0 && design.header.scalarSlots.isEmpty())
+			design.header.scalarSlots = AuLegacyShip::DefaultModuleSlots();
+		design.header.version = 2;
+		design.header.versionStateRaw = quint8(0x20 | design.header.state);
+		fileName = path;
+		modified = false;
+		UpdateTitle();
+		ShowOverview();
+		toolLabel->setText(QStringLiteral("Saved %1").arg(QFileInfo(path).fileName()));
+		settings.setValue(QStringLiteral("LegacySpacecraft/LastOpenDirectory"), QFileInfo(path).absolutePath());
+		settings.sync();
+		return true;
+	}
+
 	void SetDesign(const QString& path, AuLegacyShip::Design&& incoming)
 	{
+		// The 2016 offline client's design counter starts at 20000 and lasts
+		// for the process. New/import allocate once; saving never consumes an ID.
+		// Evidence: Shores of Hazeron.exe:0x14013ff50 and DaAtom::DesignSpaceShipLoaded.
+		static quint32 nextDesignId = 20000;
+		const quint32 workingDesignId = nextDesignId++;
+		incoming.header.designId = workingDesignId;
+		for(AuLegacyShip::Room& room : incoming.rooms)
+			room.designId = workingDesignId;
+		for(AuLegacyShip::Detail& detail : incoming.details)
+			detail.designId = workingDesignId;
 		scene->clear();
+		AuLegacyShip::SortDetails(incoming.details);
 		design = std::move(incoming);
 		fileName = path.isEmpty() ? QString() : QFileInfo(path).absoluteFilePath();
 		loaded = true;
@@ -1718,10 +1785,10 @@ bool AuLegacyShipViewer::ConfirmDiscardChanges()
 {
 	if (!m_Impl->modified)
 		return true;
-	return QMessageBox::question(this, QStringLiteral("Discard session edits?"),
-		QStringLiteral("This design has unsaved edits. Saving .ship files is not available yet.\n\n"
-			"Discard these edits and continue?"), QMessageBox::Discard | QMessageBox::Cancel,
-		QMessageBox::Cancel) == QMessageBox::Discard;
+	const QMessageBox::StandardButton choice = QMessageBox::question(this, QStringLiteral("Save changes?"),
+		QStringLiteral("Save changes to %1 before continuing?").arg(m_Impl->DisplayName()),
+		QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel, QMessageBox::Save);
+	return choice == QMessageBox::Discard || (choice == QMessageBox::Save && m_Impl->SaveDesign());
 }
 
 void AuLegacyShipViewer::closeEvent(QCloseEvent* event)
@@ -1742,12 +1809,14 @@ void AuLegacyShipViewer::NewDesign()
 	incoming.header.version = 2;
 	incoming.header.versionStateRaw = 0x20;
 	incoming.header.streamline = 1;
-	incoming.header.scalarSlots.fill(0, 8);
+	incoming.header.scalarSlots = AuLegacyShip::DefaultModuleSlots();
 	m_Impl->SetDesign(QString(), std::move(incoming));
 }
 
 bool AuLegacyShipViewer::OpenFile(const QString& fileName)
 {
+	if (!ConfirmDiscardChanges())
+		return false;
 	AuLegacyShip::Design incoming;
 	QString error;
 	if (!AuLegacyShip::Load(fileName, incoming, error))
@@ -1756,8 +1825,6 @@ bool AuLegacyShipViewer::OpenFile(const QString& fileName)
 			QStringLiteral("%1\n\n%2").arg(fileName, error));
 		return false;
 	}
-	if (!ConfirmDiscardChanges())
-		return false;
 	m_Impl->SetDesign(fileName, std::move(incoming));
 	m_Impl->settings.setValue(QStringLiteral("LegacySpacecraft/LastOpenDirectory"),
 		QFileInfo(fileName).absolutePath());

@@ -14,7 +14,8 @@ struct CellEditResult
 };
 
 // Apply one original mouse-event position to an offline working design.
-// roomType -1 erases cells; nonnegative byte values add the selected room type.
+// roomType -1 erases cells; 1..21 except 12 are spacecraft room-paint tools.
+// Building roofs and unknown room types remain readable but cannot be painted.
 // Rejection, including unavailable validation data, leaves design unchanged.
 // The input file is never written. Room Number is the saved subtype byte.
 CellEditResult EditCell(Design& design, int deck, const QPointF& cursor,

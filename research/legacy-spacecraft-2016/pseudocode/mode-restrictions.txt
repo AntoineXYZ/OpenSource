@@ -1,0 +1,1021 @@
+Read-only Ghidra MCP capture, 2026-10-04.
+Names are PE exports. Decompiled types/locals are reconstructions, not source.
+See ../BUILDING-VS-SPACECRAFT.txt for the interpretation and implementation scope.
+
+AuData13.dll 0x180032640 DnDetailType::IsHullOpening
+
+/* public: static bool __cdecl DnDetailType::IsHullOpening(enum DnDetailType::DETAILTYPE) */
+
+bool __cdecl DnDetailType::IsHullOpening(DETAILTYPE param_1)
+
+{
+                    /* 0x32640  4489  ?IsHullOpening@DnDetailType@@SA_NW4DETAILTYPE@1@@Z */
+  switch(param_1) {
+  case 3:
+  case 9:
+  case 0x32:
+  case 0x34:
+  case 0x5b:
+  case 0x5c:
+  case 0x5d:
+  case 0x5e:
+  case 0x5f:
+  case 0x60:
+  case 0x61:
+    return true;
+  default:
+    return false;
+  }
+}
+
+
+AuData13.dll 0x180131180 DgData::BuildingDesignMaxDeckLimit
+
+/* public: static int __cdecl DgData::BuildingDesignMaxDeckLimit(enum INDUSTRYID,enum COMMODITYID)
+    */
+
+int __cdecl DgData::BuildingDesignMaxDeckLimit(INDUSTRYID param_1,COMMODITYID param_2)
+
+{
+  longlong lVar1;
+  int iVar2;
+  char cVar3;
+  longlong lVar4;
+  
+                    /* 0x131180  2715
+                       ?BuildingDesignMaxDeckLimit@DgData@@SAHW4INDUSTRYID@@W4COMMODITYID@@@Z */
+  switch(param_1) {
+  case 0:
+  case 1:
+  case 2:
+  case 10:
+  case 0x33:
+  case 0x72:
+  case 0x81:
+  case 0x82:
+    return 0;
+  case 0xb:
+  case 0xc:
+    return 2;
+  case 0x46:
+  case 0x55:
+  case 0x58:
+  case 0x71:
+  case 0x7f:
+    return 1;
+  case 0x57:
+  case 0x7e:
+    return 5;
+  case 0x6f:
+    return 4;
+  case 0x70:
+  case 0x80:
+    return 3;
+  }
+  lVar1 = *(longlong *)gp_AuGlobal_exref;
+  QReadWriteLock::lockForRead((QReadWriteLock *)(lVar1 + 0x1c8));
+  lVar1 = *(longlong *)(*(longlong *)(lVar1 + 0x68) + 8);
+  lVar4 = *(longlong *)(lVar1 + 0x10) + lVar1;
+  if (lVar4 != *(longlong *)(lVar1 + 0x10) + (longlong)*(int *)(lVar1 + 4) * 0x18 + lVar1) {
+    do {
+      if (*(INDUSTRYID *)(lVar4 + 0x10) == param_1) {
+        cVar3 = *(char *)(lVar4 + 0x15);
+        goto LAB_18013127b;
+      }
+      lVar4 = lVar4 + 0x18;
+    } while (lVar4 != *(longlong *)(lVar1 + 0x10) + (longlong)*(int *)(lVar1 + 4) * 0x18 + lVar1);
+  }
+  cVar3 = 'c';
+LAB_18013127b:
+  QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1c8));
+  if (cVar3 != '\0') {
+    if (cVar3 == '\x01') {
+      return (int)(param_2 != 0x56);
+    }
+    if (cVar3 == '\x03') {
+      iVar2 = 3;
+      if (param_2 == 0x56) {
+        iVar2 = 0;
+      }
+      return iVar2;
+    }
+    if (cVar3 == '\a') {
+      if (param_2 != 0x56) {
+        iVar2 = 7;
+        if (param_2 == 0x30) {
+          iVar2 = 3;
+        }
+        return iVar2;
+      }
+    }
+    else if (cVar3 == '\x0f') {
+      if (param_2 != 0x56) {
+        if (param_2 == 0x30) {
+          return 3;
+        }
+        iVar2 = 0xf;
+        if (param_2 == 0x4c) {
+          iVar2 = 7;
+        }
+        return iVar2;
+      }
+    }
+    else if (cVar3 == '\x1f') {
+      if (param_2 != 0x56) {
+        if (param_2 == 0x30) {
+          return 3;
+        }
+        if (param_2 != 0x4c) {
+          if (param_2 != 0x33) {
+            iVar2 = 0x1f;
+            if (param_2 == 0x92) {
+              iVar2 = 0x17;
+            }
+            return iVar2;
+          }
+          return 0xf;
+        }
+        return 7;
+      }
+    }
+    else if ((cVar3 != ' ') && (cVar3 != '!')) {
+      return (int)(cVar3 == '\"');
+    }
+  }
+  return 0;
+}
+
+
+AuData13.dll 0x180131490 DgData::BuildingDesignMinDeckLimit
+
+/* public: static int __cdecl DgData::BuildingDesignMinDeckLimit(enum INDUSTRYID) */
+
+int __cdecl DgData::BuildingDesignMinDeckLimit(INDUSTRYID param_1)
+
+{
+                    /* 0x131490  2716  ?BuildingDesignMinDeckLimit@DgData@@SAHW4INDUSTRYID@@@Z */
+  if (10 < (int)param_1) {
+    if ((int)param_1 < 0xd) {
+      return -5;
+    }
+    if (param_1 == 0x32) {
+      return -8;
+    }
+    if (param_1 == 0x33) {
+      return -1;
+    }
+  }
+  return 0;
+}
+
+
+AuData13.dll 0x180159bd0 DnBuilding::IsValidGridCoord
+
+/* public: static bool __cdecl DnBuilding::IsValidGridCoord(class AuPoint const &
+   __ptr64,double,enum INDUSTRYID) */
+
+bool __cdecl DnBuilding::IsValidGridCoord(AuPoint *param_1,double param_2,INDUSTRYID param_3)
+
+{
+                    /* 0x159bd0  4678
+                       ?IsValidGridCoord@DnBuilding@@SA_NAEBVAuPoint@@NW4INDUSTRYID@@@Z */
+  if (((ABS(*(double *)param_1) <= param_2) && (ABS(*(double *)(param_1 + 8)) <= param_2)) &&
+     ((0x33 < param_3 - 0x22 ||
+      (((0x8000010000001U >> ((longlong)(int)(param_3 - 0x22) & 0x3fU) & 1) == 0 ||
+       (*(double *)(param_1 + 8) <= 0.0)))))) {
+    return true;
+  }
+  return false;
+}
+
+
+AuData13.dll 0x18013b570 DgData::IndustrySiteRadius
+
+/* public: double __cdecl DgData::IndustrySiteRadius(enum INDUSTRYID,signed char)const __ptr64 */
+
+double __thiscall DgData::IndustrySiteRadius(DgData *this,INDUSTRYID param_1,char param_2)
+
+{
+  float fVar1;
+  double dVar2;
+  double dVar3;
+  
+                    /* 0x13b570  4297  ?IndustrySiteRadius@DgData@@QEBANW4INDUSTRYID@@C@Z */
+  fVar1 = DnBuilding::TerrainLevelRadius(param_1);
+  dVar3 = (double)fVar1;
+  if (param_1 == 0x32) {
+    if (param_2 < -1) {
+      dVar3 = dVar3 + (double)(-1 - param_2) * 5.656854249;
+      dVar2 = ConstructionSiteRadius(this,0x32);
+      if (dVar2 < dVar3) {
+        return dVar2;
+      }
+    }
+  }
+  else if (dVar3 == 0.0) {
+    dVar3 = ConstructionSiteRadius(this,param_1);
+  }
+  return dVar3;
+}
+
+
+AuData13.dll 0x180046d70 DnBuilding::TerrainLevelRadius
+
+/* public: static float __cdecl DnBuilding::TerrainLevelRadius(enum INDUSTRYID) */
+
+float __cdecl DnBuilding::TerrainLevelRadius(INDUSTRYID param_1)
+
+{
+                    /* 0x46d70  5820  ?TerrainLevelRadius@DnBuilding@@SAMW4INDUSTRYID@@@Z */
+  switch(param_1) {
+  case 0x14:
+    return 26.24672;
+  default:
+    return 0.0;
+  case 0x1e:
+  case 0x20:
+    return 42.650917;
+  case 0x1f:
+  case 0x32:
+  case 0x33:
+    return 32.8084;
+  case 0x42:
+  case 0x43:
+    return 49.2126;
+  case 0x71:
+    return 65.6168;
+  case 0x72:
+    return 9.84252;
+  }
+}
+
+
+AuData13.dll 0x180135570 DgData::ConstructionSiteRadius
+
+/* public: double __cdecl DgData::ConstructionSiteRadius(enum INDUSTRYID)const __ptr64 */
+
+double __thiscall DgData::ConstructionSiteRadius(DgData *this,INDUSTRYID param_1)
+
+{
+  longlong lVar1;
+  byte *pbVar2;
+  
+                    /* 0x135570  3444  ?ConstructionSiteRadius@DgData@@QEBANW4INDUSTRYID@@@Z */
+  lVar1 = *(longlong *)(this + 8);
+  pbVar2 = (byte *)(*(longlong *)(lVar1 + 0x10) + lVar1);
+  if (pbVar2 != (byte *)(*(longlong *)(lVar1 + 0x10) + (longlong)*(int *)(lVar1 + 4) * 0x18 + lVar1)
+     ) {
+    do {
+      if (*(INDUSTRYID *)(pbVar2 + 0x10) == param_1) {
+        return (double)*pbVar2 * 3.28083989501312;
+      }
+      pbVar2 = pbVar2 + 0x18;
+    } while (pbVar2 != (byte *)(*(longlong *)(lVar1 + 0x10) + (longlong)*(int *)(lVar1 + 4) * 0x18 +
+                               lVar1));
+  }
+  return 0.0;
+}
+
+
+AuData13.dll 0x18012c8f0 DgData::BuildingDesignAddRoom
+
+/* public: bool __cdecl DgData::BuildingDesignAddRoom(unsigned int,class AuPointArray const &
+   __ptr64,unsigned char,unsigned char) __ptr64 */
+
+bool __thiscall
+DgData::BuildingDesignAddRoom
+          (DgData *this,uint param_1,AuPointArray *param_2,uchar param_3,uchar param_4)
+
+{
+  uint uVar1;
+  longlong lVar2;
+  undefined8 *puVar3;
+  void *pvVar4;
+  uint *puVar5;
+  DnRoom *this_00;
+  undefined8 *puVar6;
+  bool bVar7;
+  bool bVar8;
+  INDUSTRYID IVar9;
+  AuPoint *pAVar10;
+  AuPoint *pAVar11;
+  __uint64 _Var12;
+  undefined8 *puVar13;
+  void **ppvVar14;
+  DnRoomArray *this_01;
+  ulonglong uVar15;
+  undefined8 *puVar16;
+  longlong *plVar17;
+  DgData *this_02;
+  undefined8 *puVar18;
+  int iVar19;
+  double dVar20;
+  uint local_res10 [2];
+  AuDesignIdHash local_87 [7];
+  longlong local_80;
+  undefined8 *local_78;
+  DgData *local_70;
+  undefined8 local_68;
+  uint local_60;
+  ushort local_5c;
+  char local_5a;
+  uchar local_59;
+  uchar local_58;
+  QVector<AuPoint> local_50 [24];
+  
+                    /* 0x12c8f0  2682  ?BuildingDesignAddRoom@DgData@@QEAA_NIAEBVAuPointArray@@EE@Z
+                        */
+  local_68 = 0xfffffffffffffffe;
+  local_res10[0] = param_1;
+  bVar7 = BuildingDesignIsReadOnly(this,param_1);
+  if ((bVar7) || (*(int *)(*(longlong *)param_2 + 4) < 3)) {
+    return false;
+  }
+  pAVar10 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)param_2,0);
+  dVar20 = (double)round(*(double *)(pAVar10 + 0x10) * 0.125);
+  iVar19 = (int)dVar20;
+  IVar9 = BuildingDesignIndustry(this,local_res10[0]);
+  dVar20 = IndustrySiteRadius(this,IVar9,(char)iVar19);
+  pAVar10 = QVector<AuPoint>::cbegin((QVector<AuPoint> *)param_2);
+  pAVar11 = QVector<AuPoint>::cend((QVector<AuPoint> *)param_2);
+  if (pAVar10 != pAVar11) {
+    do {
+      bVar7 = DnBuilding::IsValidGridCoord(pAVar10,dVar20,IVar9);
+      if (!bVar7) {
+        return false;
+      }
+      pAVar10 = pAVar10 + 0x18;
+      pAVar11 = QVector<AuPoint>::cend((QVector<AuPoint> *)param_2);
+    } while (pAVar10 != pAVar11);
+  }
+  AuPointArray::AuPointArray((AuPointArray *)&local_80);
+  BuildingDesignRoomBoundary
+            (this,local_res10[0],(short)iVar19,param_3,param_4,(AuPointArray *)&local_80);
+  if (*(int *)(local_80 + 4) < 3) {
+    QVector<AuPoint>::operator=((QVector<AuPoint> *)&local_80,(QVector<class_AuPoint> *)param_2);
+    bVar7 = false;
+  }
+  else {
+    bVar7 = DnRoom::IntersectRoomBoundary((AuPointArray *)&local_80,param_2);
+    if (!bVar7) {
+LAB_18012cb55:
+      bVar7 = false;
+      goto LAB_18012cd8f;
+    }
+    bVar7 = true;
+  }
+  this_02 = this + 0xb8;
+  local_70 = this_02;
+  _Var12 = AuDesignIdHash::operator()(local_87,local_res10);
+  uVar15 = *(ulonglong *)(this + 0xe0) & _Var12;
+  if (*(ulonglong *)(this + 0xe8) <= uVar15) {
+    uVar15 = uVar15 + (-1 - (*(ulonglong *)(this + 0xe0) >> 1));
+  }
+  lVar2 = *(longlong *)(this + 200);
+  puVar13 = *(undefined8 **)(lVar2 + uVar15 * 0x10);
+  puVar3 = *(undefined8 **)this_02;
+  while( true ) {
+    puVar16 = puVar3;
+    if (*(undefined8 **)(lVar2 + uVar15 * 0x10) != puVar3) {
+      puVar16 = (undefined8 *)**(undefined8 **)(lVar2 + 8 + uVar15 * 0x10);
+    }
+    puVar18 = puVar3;
+    puVar6 = local_78;
+    if ((puVar13 == puVar16) ||
+       (puVar18 = puVar13, puVar6 = puVar13, local_res10[0] == *(uint *)(puVar13 + 2))) break;
+    puVar13 = (undefined8 *)*puVar13;
+  }
+  local_78 = puVar6;
+  if (puVar18 != *(undefined8 **)this_02) {
+    if (1 < *(uint *)puVar18[3]) {
+      QList<DnRoom>::detach_helper((QList<DnRoom> *)(puVar18 + 3),((uint *)puVar18[3])[1]);
+    }
+    plVar17 = (longlong *)(puVar18[3] + ((longlong)*(int *)(puVar18[3] + 8) + 2) * 8);
+    while( true ) {
+      if (1 < *(uint *)puVar18[3]) {
+        QList<DnRoom>::detach_helper((QList<DnRoom> *)(puVar18 + 3),((uint *)puVar18[3])[1]);
+      }
+      if (plVar17 == (longlong *)(puVar18[3] + ((longlong)*(int *)(puVar18[3] + 0xc) + 2) * 8))
+      break;
+      lVar2 = *plVar17;
+      if (((*(char *)(lVar2 + 6) == iVar19) && (2 < *(byte *)(lVar2 + 7) - 0x16)) &&
+         ((*(uchar *)(lVar2 + 7) != param_3 || (*(uchar *)(lVar2 + 8) != param_4)))) {
+        AuPointArray::AuPointArray((AuPointArray *)&local_78,(AuPointArray *)(lVar2 + 0x10));
+        bVar8 = DnRoom::CanSubtractRoomBoundary((AuPointArray *)&local_78,(AuPointArray *)&local_80)
+        ;
+        if (!bVar8) {
+          AuPointArray::~AuPointArray((AuPointArray *)&local_78);
+          goto LAB_18012cb55;
+        }
+        AuPointArray::~AuPointArray((AuPointArray *)&local_78);
+      }
+      plVar17 = plVar17 + 1;
+    }
+    if (1 < *(uint *)puVar18[3]) {
+      QList<DnRoom>::detach_helper((QList<DnRoom> *)(puVar18 + 3),((uint *)puVar18[3])[1]);
+    }
+    ppvVar14 = (void **)(puVar18[3] + ((longlong)*(int *)(puVar18[3] + 8) + 2) * 8);
+    while( true ) {
+      if (1 < *(uint *)puVar18[3]) {
+        QList<DnRoom>::detach_helper((QList<DnRoom> *)(puVar18 + 3),((uint *)puVar18[3])[1]);
+      }
+      this_02 = local_70;
+      if (ppvVar14 == (void **)(puVar18[3] + ((longlong)*(int *)(puVar18[3] + 0xc) + 2) * 8)) break;
+      pvVar4 = *ppvVar14;
+      if ((*(char *)((longlong)pvVar4 + 6) == iVar19) &&
+         (2 < *(byte *)((longlong)pvVar4 + 7) - 0x16)) {
+        if ((*(uchar *)((longlong)pvVar4 + 7) == param_3) &&
+           (*(uchar *)((longlong)pvVar4 + 8) == param_4)) {
+          ppvVar14 = ppvVar14 + 1;
+        }
+        else {
+          AuPointArray::AuPointArray
+                    ((AuPointArray *)&local_78,(AuPointArray *)((longlong)pvVar4 + 0x10));
+          bVar8 = DnRoom::SubtractRoomBoundary((AuPointArray *)&local_78,(AuPointArray *)&local_80);
+          if (bVar8) {
+            if (2 < *(int *)((longlong)local_78 + 4)) {
+              DnRoom::SetBoundary(*ppvVar14,(AuPointArray *)&local_78);
+              (**(code **)(**(longlong **)gp_AuGlobal_exref + 0x220))
+                        (*(longlong **)gp_AuGlobal_exref,*(undefined4 *)*ppvVar14,
+                         *(undefined2 *)((longlong)*ppvVar14 + 4));
+              goto LAB_18012cccb;
+            }
+            (**(code **)(**(longlong **)gp_AuGlobal_exref + 0x228))
+                      (*(longlong **)gp_AuGlobal_exref,*(undefined4 *)*ppvVar14,
+                       *(undefined2 *)((longlong)*ppvVar14 + 4));
+            puVar5 = (uint *)puVar18[3];
+            if (1 < *puVar5) {
+              uVar1 = puVar5[2];
+              if (1 < *puVar5) {
+                QList<DnRoom>::detach_helper((QList<DnRoom> *)(puVar18 + 3),puVar5[1]);
+              }
+              ppvVar14 = (void **)(puVar18[3] + ((longlong)*(int *)(puVar18[3] + 8) + 2) * 8 +
+                                  (longlong)
+                                  (int)((longlong)ppvVar14 +
+                                        (-(longlong)puVar5 - ((longlong)(int)uVar1 * 8 + 0x10)) >> 3
+                                       ) * 8);
+            }
+            this_00 = *ppvVar14;
+            if (this_00 != (DnRoom *)0x0) {
+              DnRoom::~DnRoom(this_00);
+              operator_delete(this_00);
+            }
+            ppvVar14 = QListData::erase((QListData *)(puVar18 + 3),ppvVar14);
+          }
+          else {
+LAB_18012cccb:
+            ppvVar14 = ppvVar14 + 1;
+          }
+          AuPointArray::~AuPointArray((AuPointArray *)&local_78);
+        }
+      }
+      else {
+        ppvVar14 = ppvVar14 + 1;
+      }
+    }
+  }
+  if (bVar7) {
+    BuildingDesignSetRoomBoundary
+              (this,local_res10[0],(short)iVar19,param_3,param_4,(AuPointArray *)&local_80);
+  }
+  else {
+    DnRoom::DnRoom((DnRoom *)&local_60);
+    local_60 = local_res10[0];
+    local_5c = BuildingDesignNextRoomId(this,local_res10[0]);
+    local_58 = param_4;
+    local_5a = (char)iVar19;
+    local_59 = param_3;
+    QVector<AuPoint>::operator=(local_50,(QVector<class_AuPoint> *)&local_80);
+    this_01 = std::
+              unordered_map<unsigned_int,DnRoomArray,AuDesignIdHash,std::equal_to<unsigned_int>,std::allocator<std::pair<unsigned_int_const_,DnRoomArray>_>_>
+              ::operator[]((unordered_map<unsigned_int,DnRoomArray,AuDesignIdHash,std::equal_to<unsigned_int>,std::allocator<std::pair<unsigned_int_const_,DnRoomArray>_>_>
+                            *)this_02,local_res10);
+    DnRoomArray::Add(this_01,(DnRoom *)&local_60);
+    (**(code **)(**(longlong **)gp_AuGlobal_exref + 0x218))
+              (*(longlong **)gp_AuGlobal_exref,local_60,local_5c);
+    DnRoom::~DnRoom((DnRoom *)&local_60);
+  }
+  BuildingDesignVerifyDetails(this,local_res10[0]);
+  bVar7 = true;
+LAB_18012cd8f:
+  AuPointArray::~AuPointArray((AuPointArray *)&local_80);
+  return bVar7;
+}
+
+
+AuData13.dll 0x18012c5e0 DgData::BuildingDesignAddRoof
+
+/* public: bool __cdecl DgData::BuildingDesignAddRoof(unsigned int,class AuPointArray const &
+   __ptr64,unsigned char) __ptr64 */
+
+bool __thiscall
+DgData::BuildingDesignAddRoof(DgData *this,uint param_1,AuPointArray *param_2,uchar param_3)
+
+{
+  bool bVar1;
+  char cVar2;
+  uchar uVar3;
+  INDUSTRYID IVar4;
+  AuPoint *pAVar5;
+  AuPoint *pAVar6;
+  DnRoomArray *this_00;
+  char cVar7;
+  double dVar8;
+  uint local_res10 [2];
+  uint local_40;
+  ushort local_3c;
+  char local_3a;
+  uchar local_39;
+  uchar local_38;
+  QVector<AuPoint> local_30 [24];
+  
+  local_res10[0] = param_1;
+                    /* 0x12c5e0  2680  ?BuildingDesignAddRoof@DgData@@QEAA_NIAEBVAuPointArray@@E@Z
+                        */
+  bVar1 = BuildingDesignIsReadOnly(this,param_1);
+  if ((bVar1) || (*(int *)(*(longlong *)param_2 + 4) < 3)) {
+LAB_18012c61a:
+    bVar1 = false;
+  }
+  else {
+    pAVar5 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)param_2,0);
+    dVar8 = (double)round(*(double *)(pAVar5 + 0x10) * 0.125);
+    IVar4 = BuildingDesignIndustry(this,local_res10[0]);
+    cVar7 = (char)(int)dVar8;
+    dVar8 = IndustrySiteRadius(this,IVar4,cVar7);
+    pAVar5 = QVector<AuPoint>::cbegin((QVector<AuPoint> *)param_2);
+    pAVar6 = QVector<AuPoint>::cend((QVector<AuPoint> *)param_2);
+    if (pAVar5 != pAVar6) {
+      do {
+        cVar2 = DnBuilding::OnDeck(*(double *)(pAVar5 + 0x10));
+        if (cVar2 < '\0') goto LAB_18012c61a;
+        bVar1 = DnBuilding::IsValidGridCoord(pAVar5,dVar8,IVar4);
+        if (!bVar1) goto LAB_18012c61a;
+        pAVar5 = pAVar5 + 0x18;
+        pAVar6 = QVector<AuPoint>::cend((QVector<AuPoint> *)param_2);
+      } while (pAVar5 != pAVar6);
+    }
+    uVar3 = BuildingDesignNextRoomNumber(this,local_res10[0],cVar7,param_3);
+    DnRoom::DnRoom((DnRoom *)&local_40);
+    local_40 = local_res10[0];
+    local_3c = BuildingDesignNextRoomId(this,local_res10[0]);
+    local_3a = cVar7;
+    local_39 = param_3;
+    local_38 = uVar3;
+    QVector<AuPoint>::operator=(local_30,(QVector<class_AuPoint> *)param_2);
+    this_00 = std::
+              unordered_map<unsigned_int,DnRoomArray,AuDesignIdHash,std::equal_to<unsigned_int>,std::allocator<std::pair<unsigned_int_const_,DnRoomArray>_>_>
+              ::operator[]((unordered_map<unsigned_int,DnRoomArray,AuDesignIdHash,std::equal_to<unsigned_int>,std::allocator<std::pair<unsigned_int_const_,DnRoomArray>_>_>
+                            *)(this + 0xb8),local_res10);
+    DnRoomArray::Add(this_00,(DnRoom *)&local_40);
+    (**(code **)(**(longlong **)gp_AuGlobal_exref + 0x218))
+              (*(longlong **)gp_AuGlobal_exref,local_40,local_3c);
+    BuildingDesignVerifyDetails(this,local_res10[0]);
+    DnRoom::~DnRoom((DnRoom *)&local_40);
+    bVar1 = true;
+  }
+  return bVar1;
+}
+
+
+AuData13.dll 0x180133a90 DgData::BuildingDesignTestDetail
+
+/* protected: bool __cdecl DgData::BuildingDesignTestDetail(class DnDetail & __ptr64)const __ptr64
+    */
+
+bool __thiscall DgData::BuildingDesignTestDetail(DgData *this,DnDetail *param_1)
+
+{
+  Data *pDVar1;
+  int iVar2;
+  DnRoom *this_00;
+  bool bVar3;
+  Data *pDVar4;
+  Data *pDVar5;
+  ushort local_res8 [4];
+  DnDetail local_res10 [8];
+  Data *local_res18;
+  Data *local_res20;
+  longlong local_58;
+  longlong local_50;
+  undefined8 local_48;
+  
+                    /* 0x133a90  2738  ?BuildingDesignTestDetail@DgData@@IEBA_NAEAVDnDetail@@@Z */
+  local_48 = 0xfffffffffffffffe;
+  std::
+  _Hash<std::_Umap_traits<unsigned_int,DnBuilding,std::_Uhash_compare<unsigned_int,AuDesignIdHash,std::equal_to<unsigned_int>_>,std::allocator<std::pair<unsigned_int_const_,DnBuilding>_>,0>_>
+  ::lower_bound((_Hash<std::_Umap_traits<unsigned_int,DnBuilding,std::_Uhash_compare<unsigned_int,AuDesignIdHash,std::equal_to<unsigned_int>_>,std::allocator<std::pair<unsigned_int_const_,DnBuilding>_>,0>_>
+                 *)(this + 0xb8),(uint *)&local_50);
+  std::
+  _Hash<std::_Umap_traits<unsigned_int,DnBuilding,std::_Uhash_compare<unsigned_int,AuDesignIdHash,std::equal_to<unsigned_int>_>,std::allocator<std::pair<unsigned_int_const_,DnBuilding>_>,0>_>
+  ::lower_bound((_Hash<std::_Umap_traits<unsigned_int,DnBuilding,std::_Uhash_compare<unsigned_int,AuDesignIdHash,std::equal_to<unsigned_int>_>,std::allocator<std::pair<unsigned_int_const_,DnBuilding>_>,0>_>
+                 *)(this + 0x78),(uint *)&local_58);
+  if (local_50 == *(longlong *)(this + 0xb8)) {
+    if (local_58 == *(longlong *)(this + 0x78)) goto LAB_180133bf9;
+    local_res18 = (Data *)shared_null_exref;
+    bVar3 = DnDetail::IsValid(param_1,(DnRoomArray *)&local_res18,(DnDetailArray *)(local_58 + 0x18)
+                              ,(DnDetailTypeMap *)(this + 0x68),(DETAILTYPE *)local_res10,local_res8
+                              ,false);
+    pDVar4 = local_res18;
+    if (*(int *)local_res18 != 0) {
+      if (*(int *)local_res18 == -1) goto LAB_180133caa;
+      LOCK();
+      iVar2 = *(int *)local_res18;
+      *(int *)local_res18 = *(int *)local_res18 + -1;
+      UNLOCK();
+      if (iVar2 != 1) goto LAB_180133caa;
+    }
+    pDVar5 = local_res18 + ((longlong)*(int *)(local_res18 + 0xc) + 2) * 8;
+    pDVar1 = local_res18 + ((longlong)*(int *)(local_res18 + 8) + 2) * 8;
+    while (pDVar1 != pDVar5) {
+      pDVar5 = pDVar5 + -8;
+      this_00 = *(DnRoom **)pDVar5;
+      if (this_00 != (DnRoom *)0x0) {
+        DnRoom::~DnRoom(this_00);
+        operator_delete(this_00);
+      }
+    }
+  }
+  else {
+    if (local_58 != *(longlong *)(this + 0x78)) {
+      bVar3 = DnDetail::IsValid(param_1,(DnRoomArray *)(local_50 + 0x18),
+                                (DnDetailArray *)(local_58 + 0x18),(DnDetailTypeMap *)(this + 0x68),
+                                (DETAILTYPE *)local_res10,local_res8,false);
+      goto LAB_180133caa;
+    }
+LAB_180133bf9:
+    if (local_50 == *(longlong *)(this + 0xb8)) {
+      return false;
+    }
+    local_res20 = (Data *)shared_null_exref;
+    bVar3 = DnDetail::IsValid(param_1,(DnRoomArray *)(local_50 + 0x18),(DnDetailArray *)&local_res20
+                              ,(DnDetailTypeMap *)(this + 0x68),(DETAILTYPE *)local_res10,local_res8
+                              ,false);
+    pDVar4 = local_res20;
+    if (*(int *)local_res20 != 0) {
+      if (*(int *)local_res20 == -1) goto LAB_180133caa;
+      LOCK();
+      iVar2 = *(int *)local_res20;
+      *(int *)local_res20 = *(int *)local_res20 + -1;
+      UNLOCK();
+      if (iVar2 != 1) goto LAB_180133caa;
+    }
+    pDVar5 = local_res20 + ((longlong)*(int *)(local_res20 + 0xc) + 2) * 8;
+    pDVar1 = local_res20 + ((longlong)*(int *)(local_res20 + 8) + 2) * 8;
+    while (pDVar1 != pDVar5) {
+      pDVar5 = pDVar5 + -8;
+      operator_delete(*(void **)pDVar5);
+    }
+  }
+  QListData::dispose(pDVar4);
+LAB_180133caa:
+  if (bVar3 != false) {
+    param_1[1] = local_res10[0];
+    *(ushort *)(param_1 + 0x28) = local_res8[0];
+  }
+  return bVar3;
+}
+
+
+AuAtom13.dll 0x1802f7dd0 DaDesignEnvironment::CreateRoof
+
+/* public: void __cdecl DaDesignEnvironment::CreateRoof(class AuId const & __ptr64,class AuPoint
+   const & __ptr64,class AuPoint const & __ptr64,class AuPoint const & __ptr64,int) __ptr64 */
+
+void __thiscall
+DaDesignEnvironment::CreateRoof
+          (DaDesignEnvironment *this,AuId *param_1,AuPoint *param_2,AuPoint *param_3,
+          AuPoint *param_4,int param_5)
+
+{
+  double dVar1;
+  double dVar2;
+  double dVar3;
+  double dVar4;
+  double dVar5;
+  bool bVar6;
+  DaDesignPlane *pDVar7;
+  int iVar8;
+  float fVar9;
+  double dVar10;
+  longlong local_78 [2];
+  double local_68;
+  double dStack_60;
+  double local_58;
+  
+                    /* 0x2f7dd0  2187
+                       ?CreateRoof@DaDesignEnvironment@@QEAAXAEBVAuId@@AEBVAuPoint@@11H@Z */
+  local_78[1] = 0xfffffffffffffffe;
+  pDVar7 = DaAtom::FindDesignPlane((DaAtom *)this,param_1);
+  if (pDVar7 == (DaDesignPlane *)0x0) {
+    return;
+  }
+  dVar10 = (*(double *)(param_3 + 8) - *(double *)(param_4 + 8)) *
+           (*(double *)param_2 - *(double *)param_4) -
+           (*(double *)param_3 - *(double *)param_4) *
+           (*(double *)(param_2 + 8) - *(double *)(param_4 + 8));
+  if (0.0 <= dVar10) {
+    if (dVar10 <= 0.0) {
+      return;
+    }
+    iVar8 = 1;
+  }
+  else {
+    iVar8 = -1;
+  }
+  AuPointArray::AuPointArray((AuPointArray *)local_78);
+  if (param_5 - 0x16U < 2) {
+    dVar10 = *(double *)(param_3 + 0x10);
+    dVar5 = *(double *)(param_2 + 0x10);
+    dVar1 = *(double *)(param_3 + 8);
+    dVar2 = *(double *)(param_2 + 8);
+    dVar3 = *(double *)param_3;
+    dVar4 = *(double *)param_2;
+    if (iVar8 < 1) {
+      if (-1 < iVar8) goto LAB_1802f802c;
+      QVector<AuPoint>::append((QVector<AuPoint> *)local_78,param_2);
+      QVector<AuPoint>::append((QVector<AuPoint> *)local_78,param_3);
+      local_58 = (dVar10 - dVar5) + *(double *)(param_4 + 0x10);
+      dStack_60 = (dVar1 - dVar2) + *(double *)(param_4 + 8);
+      local_68 = (dVar3 - dVar4) + *(double *)param_4;
+      QVector<AuPoint>::append((QVector<AuPoint> *)local_78,(AuPoint *)&local_68);
+    }
+    else {
+      QVector<AuPoint>::append((QVector<AuPoint> *)local_78,param_3);
+      QVector<AuPoint>::append((QVector<AuPoint> *)local_78,param_2);
+      QVector<AuPoint>::append((QVector<AuPoint> *)local_78,param_4);
+      local_58 = (dVar10 - dVar5) + *(double *)(param_4 + 0x10);
+      dStack_60 = (dVar1 - dVar2) + *(double *)(param_4 + 8);
+      local_68 = (dVar3 - dVar4) + *(double *)param_4;
+      param_4 = (AuPoint *)&local_68;
+    }
+    QVector<AuPoint>::append((QVector<AuPoint> *)local_78,param_4);
+  }
+  else if (param_5 == 0x18) {
+    if (iVar8 < 0) {
+      local_58 = *(double *)(param_2 + 0x10) +
+                 (*(double *)(param_2 + 0x10) - *(double *)(param_4 + 0x10));
+      dStack_60 = *(double *)(param_2 + 8) + (*(double *)(param_2 + 8) - *(double *)(param_4 + 8));
+      local_68 = *(double *)param_2 + (*(double *)param_2 - *(double *)param_4);
+    }
+    else {
+      local_68 = *(double *)param_4;
+      dStack_60 = *(double *)(param_4 + 8);
+      local_58 = *(double *)(param_4 + 0x10);
+    }
+    dVar10 = AuPoint::Distance_2D(param_2,param_3);
+    dVar5 = AuPoint::Distance_2D(param_2,(AuPoint *)&local_68);
+    if (dVar5 < dVar10) {
+      dVar5 = dVar10;
+    }
+    fVar9 = sqrtf((float)(dVar5 / 5.656854249));
+    fVar9 = ceilf(fVar9);
+    AuPointArray::CreateEllipse
+              ((AuPointArray *)local_78,param_2,param_3,(AuPoint *)&local_68,((int)fVar9 + 1) * 4);
+  }
+LAB_1802f802c:
+  if ((*(int *)(local_78[0] + 4) != 0) && (this[0x3b0] == (DaDesignEnvironment)0x2)) {
+    QReadWriteLock::lockForWrite((QReadWriteLock *)(this + 0x3b8));
+    if ((*(DpBuilding **)(this + 0x3c8) != (DpBuilding *)0x0) &&
+       (bVar6 = DpBuilding::DesignRoof
+                          (*(DpBuilding **)(this + 0x3c8),(AuPointArray *)local_78,param_5), bVar6))
+    {
+      if (this[0x3b1] == (DaDesignEnvironment)0x0) {
+        this[0x3b1] = (DaDesignEnvironment)0x1;
+        (**(code **)(*(longlong *)this + 0x1a0))(this,1);
+      }
+      (**(code **)(*(longlong *)this + 0x1a0))(this,1);
+    }
+    QReadWriteLock::unlock((QReadWriteLock *)(this + 0x3b8));
+  }
+  AuPointArray::~AuPointArray((AuPointArray *)local_78);
+  return;
+}
+
+
+AuAtom13.dll 0x180207150 DaAtom::DesignDeckAbove
+
+/* public: void __cdecl DaAtom::DesignDeckAbove(void) __ptr64 */
+
+void __thiscall DaAtom::DesignDeckAbove(DaAtom *this)
+
+{
+  DaDesignEnvironment *this_00;
+  DaDesignPlane *this_01;
+  
+                    /* 0x207150  2566  ?DesignDeckAbove@DaAtom@@QEAAXXZ */
+  this_00 = FindParentDesignEnvironment(this);
+  if (this_00 != (DaDesignEnvironment *)0x0) {
+    this_01 = FindDesignPlane((DaAtom *)this_00,(AuId *)(this + 0x14));
+    if (this_01 != (DaDesignPlane *)0x0) {
+      DaDesignPlane::MoveUp(this_01);
+      return;
+    }
+  }
+  return;
+}
+
+
+AuAtom13.dll 0x180207190 DaAtom::DesignDeckBelow
+
+/* public: void __cdecl DaAtom::DesignDeckBelow(void) __ptr64 */
+
+void __thiscall DaAtom::DesignDeckBelow(DaAtom *this)
+
+{
+  DaDesignEnvironment *this_00;
+  DaDesignPlane *this_01;
+  
+                    /* 0x207190  2567  ?DesignDeckBelow@DaAtom@@QEAAXXZ */
+  this_00 = FindParentDesignEnvironment(this);
+  if (this_00 != (DaDesignEnvironment *)0x0) {
+    this_01 = FindDesignPlane((DaAtom *)this_00,(AuId *)(this + 0x14));
+    if (this_01 != (DaDesignPlane *)0x0) {
+      DaDesignPlane::MoveDown(this_01);
+      return;
+    }
+  }
+  return;
+}
+
+
+AuAtom13.dll 0x1802ff0e0 DaDesignPlane::MoveUp
+
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* public: void __cdecl DaDesignPlane::MoveUp(void) __ptr64 */
+
+void __thiscall DaDesignPlane::MoveUp(DaDesignPlane *this)
+
+{
+  char cVar1;
+  DaDesignEnvironment *pDVar2;
+  undefined1 auStack_178 [48];
+  double local_148;
+  AuMatrix4x4 local_138 [272];
+  ulonglong local_28;
+  
+                    /* 0x2ff0e0  5172  ?MoveUp@DaDesignPlane@@QEAAXXZ */
+  local_28 = DAT_180a0ecf0 ^ (ulonglong)auStack_178;
+  pDVar2 = DaAtom::FindParentDesignEnvironment((DaAtom *)this);
+  if (pDVar2 != (DaDesignEnvironment *)0x0) {
+    DaAtom::Location((DaAtom *)this);
+    if (pDVar2[0x3b0] == (DaDesignEnvironment)0x1) {
+      cVar1 = DnSpaceShip::OnDeck(local_148);
+    }
+    else {
+      cVar1 = DnBuilding::OnDeck(local_148);
+    }
+    if (cVar1 + 1 < 0x2a) {
+      AuMatrix4x4::LoadIdentity(local_138);
+      AuMatrix4x4::Translate(local_138,0.0,0.0,(double)(cVar1 + 1) * 8.0);
+      DaAtom::SetTransform((DaAtom *)this,local_138);
+      (**(code **)(*(longlong *)this + 0x1a0))(this,1);
+    }
+  }
+  return;
+}
+
+
+AuAtom13.dll 0x1802feff0 DaDesignPlane::MoveDown
+
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* public: void __cdecl DaDesignPlane::MoveDown(void) __ptr64 */
+
+void __thiscall DaDesignPlane::MoveDown(DaDesignPlane *this)
+
+{
+  char cVar1;
+  DaDesignEnvironment *pDVar2;
+  undefined1 auStack_178 [48];
+  double local_148;
+  AuMatrix4x4 local_138 [272];
+  ulonglong local_28;
+  
+                    /* 0x2feff0  5152  ?MoveDown@DaDesignPlane@@QEAAXXZ */
+  local_28 = DAT_180a0ecf0 ^ (ulonglong)auStack_178;
+  pDVar2 = DaAtom::FindParentDesignEnvironment((DaAtom *)this);
+  if (pDVar2 != (DaDesignEnvironment *)0x0) {
+    DaAtom::Location((DaAtom *)this);
+    if (pDVar2[0x3b0] == (DaDesignEnvironment)0x1) {
+      cVar1 = DnSpaceShip::OnDeck(local_148);
+    }
+    else {
+      cVar1 = DnBuilding::OnDeck(local_148);
+    }
+    if (-0x2a < cVar1 + -1) {
+      AuMatrix4x4::LoadIdentity(local_138);
+      AuMatrix4x4::Translate(local_138,0.0,0.0,(double)(cVar1 + -1) * 8.0);
+      DaAtom::SetTransform((DaAtom *)this,local_138);
+      (**(code **)(*(longlong *)this + 0x1a0))(this,1);
+    }
+  }
+  return;
+}
+
+
+AuAtom13.dll 0x1802ff0e0 DaDesignPlane::MoveUp (assembly)
+
+1802ff0e0: MOV qword ptr [RSP + 0x10],RBX 
+1802ff0e5: PUSH RDI 
+1802ff0e6: SUB RSP,0x170 
+1802ff0ed: MOV RAX,qword ptr [0x180a0ecf0] 
+1802ff0f4: XOR RAX,RSP 
+1802ff0f7: MOV qword ptr [RSP + 0x150],RAX 
+1802ff0ff: MOV RBX,RCX 
+1802ff102: CALL 0x18020c4a0 
+1802ff107: MOV RDI,RAX 
+1802ff10a: TEST RAX,RAX 
+1802ff10d: JZ 0x1802ff1a1 
+1802ff113: LEA RDX,[RSP + 0x20] 
+1802ff118: MOV RCX,RBX 
+1802ff11b: MOVAPS xmmword ptr [RSP + 0x160],XMM6 
+1802ff123: CALL 0x1800d14a0 
+1802ff128: CMP byte ptr [RDI + 0x3b0],0x1 
+1802ff12f: MOVSD XMM0,qword ptr [RSP + 0x30] 
+1802ff135: JNZ 0x1802ff13f 
+1802ff137: CALL qword ptr [0x180735b68] 
+1802ff13d: JMP 0x1802ff145 
+1802ff13f: CALL qword ptr [0x1807358e8] 
+1802ff145: MOVSX ECX,AL 
+1802ff148: INC ECX 
+1802ff14a: CMP ECX,0x2a 
+1802ff14d: JGE 0x1802ff199 
+1802ff14f: MOVD XMM6,ECX 
+1802ff153: LEA RCX,[RSP + 0x40] 
+1802ff158: CVTDQ2PD XMM6,XMM6 
+1802ff15c: MULSD XMM6,qword ptr [0x18073b630] 
+1802ff164: CALL qword ptr [0x1807375d0] 
+1802ff16a: XORPS XMM2,XMM2 
+1802ff16d: LEA RCX,[RSP + 0x40] 
+1802ff172: MOVAPS XMM3,XMM6 
+1802ff175: XORPS XMM1,XMM1 
+1802ff178: CALL qword ptr [0x180737628] 
+1802ff17e: LEA RDX,[RSP + 0x40] 
+1802ff183: MOV RCX,RBX 
+1802ff186: CALL 0x1800d9680 
+1802ff18b: MOV RAX,qword ptr [RBX] 
+1802ff18e: MOV DL,0x1 
+1802ff190: MOV RCX,RBX 
+1802ff193: CALL qword ptr [RAX + 0x1a0] 
+1802ff199: MOVAPS XMM6,xmmword ptr [RSP + 0x160] 
+1802ff1a1: MOV RCX,qword ptr [RSP + 0x150] 
+1802ff1a9: XOR RCX,RSP 
+1802ff1ac: CALL 0x18065c420 
+1802ff1b1: MOV RBX,qword ptr [RSP + 0x188] 
+1802ff1b9: ADD RSP,0x170 
+1802ff1c0: POP RDI 
+1802ff1c1: RET
+
+
+AuAtom13.dll 0x1802feff0 DaDesignPlane::MoveDown (assembly)
+
+1802feff0: MOV qword ptr [RSP + 0x10],RBX 
+1802feff5: PUSH RDI 
+1802feff6: SUB RSP,0x170 
+1802feffd: MOV RAX,qword ptr [0x180a0ecf0] 
+1802ff004: XOR RAX,RSP 
+1802ff007: MOV qword ptr [RSP + 0x150],RAX 
+1802ff00f: MOV RBX,RCX 
+1802ff012: CALL 0x18020c4a0 
+1802ff017: MOV RDI,RAX 
+1802ff01a: TEST RAX,RAX 
+1802ff01d: JZ 0x1802ff0b1 
+1802ff023: LEA RDX,[RSP + 0x20] 
+1802ff028: MOV RCX,RBX 
+1802ff02b: MOVAPS xmmword ptr [RSP + 0x160],XMM6 
+1802ff033: CALL 0x1800d14a0 
+1802ff038: CMP byte ptr [RDI + 0x3b0],0x1 
+1802ff03f: MOVSD XMM0,qword ptr [RSP + 0x30] 
+1802ff045: JNZ 0x1802ff04f 
+1802ff047: CALL qword ptr [0x180735b68] 
+1802ff04d: JMP 0x1802ff055 
+1802ff04f: CALL qword ptr [0x1807358e8] 
+1802ff055: MOVSX ECX,AL 
+1802ff058: DEC ECX 
+1802ff05a: CMP ECX,-0x2a 
+1802ff05d: JLE 0x1802ff0a9 
+1802ff05f: MOVD XMM6,ECX 
+1802ff063: LEA RCX,[RSP + 0x40] 
+1802ff068: CVTDQ2PD XMM6,XMM6 
+1802ff06c: MULSD XMM6,qword ptr [0x18073b630] 
+1802ff074: CALL qword ptr [0x1807375d0] 
+1802ff07a: XORPS XMM2,XMM2 
+1802ff07d: LEA RCX,[RSP + 0x40] 
+1802ff082: MOVAPS XMM3,XMM6 
+1802ff085: XORPS XMM1,XMM1 
+1802ff088: CALL qword ptr [0x180737628] 
+1802ff08e: LEA RDX,[RSP + 0x40] 
+1802ff093: MOV RCX,RBX 
+1802ff096: CALL 0x1800d9680 
+1802ff09b: MOV RAX,qword ptr [RBX] 
+1802ff09e: MOV DL,0x1 
+1802ff0a0: MOV RCX,RBX 
+1802ff0a3: CALL qword ptr [RAX + 0x1a0] 
+1802ff0a9: MOVAPS XMM6,xmmword ptr [RSP + 0x160] 
+1802ff0b1: MOV RCX,qword ptr [RSP + 0x150] 
+1802ff0b9: XOR RCX,RSP 
+1802ff0bc: CALL 0x18065c420 
+1802ff0c1: MOV RBX,qword ptr [RSP + 0x188] 
+1802ff0c9: ADD RSP,0x170 
+1802ff0d0: POP RDI 
+1802ff0d1: RET

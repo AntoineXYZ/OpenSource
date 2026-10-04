@@ -14,6 +14,7 @@ Reference checks (repository root; no build)
   python3 -B research/legacy-spacecraft-2016/cell_shapes.py --self-test
   python3 -B research/legacy-spacecraft-2016/room_raster.py --self-test
   python3 -B research/legacy-spacecraft-2016/inspect_vehicle_bounds.py --self-test
+  python3 -B research/legacy-spacecraft-2016/tests/check_ship_writer.py
   python3 -B research/legacy-spacecraft-2016/tests/check_detail_placements.py \
     '/path/to/design.ship'
 
@@ -83,6 +84,68 @@ Multiple sample paths are accepted. /tmp/native_ship_edit also accepts sample
 paths for in-memory new-deck edits and reconciliation; it never writes them.
 /tmp/native_ship_reader '/path/to/design.ship' emits a complete JSON dump.
 
+Native saving checks (user builds manually)
+-------------------------------------------
+The reference save check above audits the three recorded sample paths; pass
+other paths explicitly if the originals are elsewhere. It has passed on all
+three samples: Antiflux is byte-identical and Galatine changes 11 old vehicle
+ID bytes. Star Driver normalizes 18 vehicle IDs, adds the transporter module
+entry and puts equipment in the original designer's deck/room/ID order.
+This is a Python reference check, not a claim that the C++ serializer has run.
+
+Build this isolated harness manually; it is not a client build target:
+
+  c++ -std=c++11 -fPIC -no-pie -Isrc/lib/data/designs \
+    research/legacy-spacecraft-2016/tests/native_ship_writer.cpp \
+    src/lib/data/designs/aulegacyship.cpp \
+    src/lib/data/designs/aulegacyshipsave.cpp \
+    $(pkg-config --cflags --libs Qt5Core Qt5Gui) -o /tmp/native_ship_writer
+
+  /tmp/native_ship_writer --self-test
+  python3 -B research/legacy-spacecraft-2016/tests/check_ship_writer.py \
+    --native /tmp/native_ship_writer '/path/to/original/sample.ship'
+
+The Python comparison gives the already-built harness a temporary output path,
+compares its entire output against the independent reference, then removes the
+temporary file. It never overwrites sample files or starts a build. Multiple
+sample paths are accepted; omitting paths uses sample-inspection.json.
+
+Compare a single input against its actual 2016 designer re-save:
+
+  python3 -B research/legacy-spacecraft-2016/tests/check_ship_writer.py \
+    '/path/to/tl20StarDriver.ship' \
+    --legacy-save '/path/to/tl20StarDriver 2016 designer save.ship'
+
+This reference comparison has passed on the supplied files. It reports the
+identity fields, projects only the captured design ID and architect ID/name,
+and compares every byte. No equipment order, module data or geometry is copied
+from the original save into the expected output. Add --native with the already
+built harness to also check the actual C++ Save path. The original session's
+random avatar ID cannot be reproduced by retaining the source author; see the
+architect identity investigation in FORMAT.txt.
+
+The native tests cover a fixed 104-byte wire oracle, exact v0/v1 upgrades,
+original default modules, record order, null/empty/surrogate UTF-16, fallback
+names, all normalization rules, negative XY/decks, signed rounding ties,
+working boundary precedence, ellipse compression, empty room removal,
+invalid geometry/counts and atomic file replacement/failure. Preparation tests
+cover signed detail ordering, transporter consoles versus pads, multiple pads,
+negative/multiple decks, room numbers, custom selections, duplicate/stale keys,
+empty/orphan rooms, bay units/emitters and module-map collision/growth ordering
+at 8/9, 64/65 and 512/513 entries. The fixed hex oracles and module-order digests
+have been checked independently in Python. The native
+harness itself has NOT been compiled/run by the assistant.
+
+Expected reference saved SHA-256 values:
+  Antiflux Harvester MK2.ship
+    beaa58348bd2a0a0cb76cf20871afa07a7a79448aa70adda4545d0e28f459037
+  B8_Galatine_A1.ship
+    5cebd0457f90d6a088c13ca7725f0960ac13edc11d601fda16418ee19bec6658
+  tl20StarDriver.ship
+    54394f386fb669b69776b59c09d42692f99412956f7a5a8319cf45722ba4ddc1
+  tl20StarDriver.ship with captured 2016 session identity (comparison only)
+    e8b20a55dda90b87f047eaa131e0036a5894211e9bfdeebbd9990ac0952cc5a2
+
 Manual UI and original-client comparisons
 -----------------------------------------
 Launch AuSceneClient -legacy-spacecraft [file] or use the designer chooser.
@@ -91,6 +154,7 @@ task. Paths must match the executable's platform (Windows uses C:\ paths).
 
 Check the right-docked palette, F6 hide/float/redock, icon availability without
 legacy DLLs, dark controls, selected tools, pan/zoom/fit and record inspection.
+The Fit view button must be absent; the F shortcut and automatic fitting remain.
 Check the original design-disk icon appears at the left of the F6 panel title,
 both docked and floating; the application window icon must remain unchanged.
 Drag and double-click the title, use Dock/Float and close, then reopen with F6.
@@ -111,15 +175,45 @@ anchors without scaling the text. Switch decks, paint/grow/repaint/erase rooms,
 and start a fresh design; labels must follow the current geometry without stale
 copies. Clicking/painting through a label must still reach the room or detail.
 Confirm the File/View menu bar is absent and Escape exits from the deck and
-docked/floating panel, offering Discard/Cancel when modified. Ctrl+N, Ctrl+O,
-F and F6 must still work with the panel hidden. Escape in a file dialog or
+docked/floating panel, offering Save/Discard/Cancel when modified. Ctrl+N, Ctrl+O,
+Ctrl+S, F and F6 must still work with the panel hidden. Escape in a file dialog or
 discard prompt must dismiss that dialog rather than exit the designer.
-Deck arrows must stop at -28/+28; Room Number wraps 1..256; minimum TL displays
-32..1. New defaults: streamline enabled, armor 0, minimum TL display 1. Loading
-must preserve header bytes without marking dirty. Disabled tools must do nothing.
+Deck arrows must stop at -41/+41. New rooms must be rejected outside -28/+28,
+but cell erasure remains available there. Paint a Hold on deck 28, move to 29,
+and place a hull hatch or top turret over its interior; it must attach to the
+room below. Room painting on 29 must fail without deleting that attachment.
+Check the deck buttons in both floor-plan and rendered cutaway modes.
+Outdoor flag/light poles and roof tools must not appear in the spacecraft
+palette. Native_ship_edit/native_detail_edit add mode-restriction cases; they
+have not been compiled or run by the assistant. See BUILDING-VS-SPACECRAFT.txt.
+Room Number wraps 1..256; minimum TL displays 32..1.
+New defaults: streamline enabled, armor 0, minimum TL display 1. Loading
+must preserve design settings without marking dirty; it assigns a fresh working
+design ID. Disabled tools must do nothing.
 
-Test New/Open/Exit/close with Discard and Cancel, failed loads preserving edits,
-and last-directory persistence (successful opens only; missing folder fallback).
+Test New/Open/Exit/close with Save, Discard and Cancel, failed loads preserving
+edits, and last-directory persistence (successful opens/saves; folder fallback).
+Use the existing Save icon: the original always-prompt save dialog must open.
+Test new and loaded designs, filename suffixes, overwrite confirmation, Cancel,
+read-only destinations and invalid geometry. Only a successful save clears the
+dirty asterisk; a cancelled/failed save during exit must keep the editor open.
+Paint cells and place/rotate every available equipment type, save to a copy,
+reopen and check room numbers, decks, IDs, positions and 3D appearance. Repeat
+Save without editing and compare bytes. Open the current file while dirty,
+choose Save to that same path, and verify the newly saved geometry loads.
+Load saved copies in the original 2016 client as the final interoperability
+check. Do not infer full original-session parity solely from a round-trip:
+the original world-backed workflow may assign different design/architect IDs.
+In a fresh process, the initial blank design must have ID 20000 and the first
+successful import 20001. Verify that header, rooms and equipment all carry the
+same working ID. Save twice: the ID must not change. Cancel New/Open and try a
+failed load: none must consume an ID. The next successful New/import must use
+20002. Restart both designers and perform the same import sequence before
+comparing: design IDs should now agree, leaving only architect identity.
+Add transporter pads in two room numbers on different decks and save. Confirm
+each group gains one header module; adding only a console must not add one.
+Remove the final pad and save again; its module must disappear. Remove a bay
+or change its Room Number and verify stale/default module reconciliation.
 Check embedded entry/exit, music restoration, reopening Legacy and subsequent
 Modern entry; the two designers cannot be switched directly while open.
 

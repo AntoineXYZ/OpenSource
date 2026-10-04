@@ -1,0 +1,245 @@
+Ghidra decompiler excerpts; not recovered compilable source.
+Module: AuAtom13.dll
+Function: DaSpaceShip::AnalyzeDesign, 0x1803c63c0
+Captured: 2026-10-04
+Analysis object at this+0x778; bay map at this+0x9a8, transporter map at this+0x980.
+Omitted unrelated geometry/path analysis. Each excerpt begins with its decompiler line number.
+
+Excerpt, lines 244-366:
+    plVar22 = (longlong *)QList<DnRoom>::cend(local_c38);
+    lVar39 = 0;
+    if (local_b38 != (longlong *)*plVar22) {
+      do {
+        dVar42 = AuPointArray::Area((AuPointArray *)(*local_b38 + 0x10));
+        dVar42 = (double)round(dVar42 * 8.0);
+        iVar30 = (int)dVar42;
+        *(int *)(this + 0x9a0) = *(int *)(this + 0x9a0) + iVar30;
+        lVar31 = *local_b38;
+        if (*(char *)(lVar31 + 7) == '\x02') {
+          *(int *)(this + 0x784) = *(int *)(this + 0x784) + iVar30;
+        }
+        else if (*(char *)(lVar31 + 7) == '\x03') {
+          *(int *)(this + 0x788) = *(int *)(this + 0x788) + iVar30;
+        }
+        else if (*(char *)(lVar31 + 7) == '\n') {
+          this[0x7dd] = (DaSpaceShip)0x1;
+        }
+        else if (*(char *)(lVar31 + 7) == '\x0e') {
+          this[0x7df] = (DaSpaceShip)0x1;
+        }
+        else if (*(char *)(lVar31 + 7) == '\x05') {
+          *(int *)(this + 0x830) = *(int *)(this + 0x830) + iVar30;
+        }
+        else if (*(char *)(lVar31 + 7) == '\t') {
+          *(int *)(this + 0x7cc) = *(int *)(this + 0x7cc) + iVar30;
+        }
+        else if (*(char *)(lVar31 + 7) == '\r') {
+          *(int *)(this + 0x7c8) = *(int *)(this + 0x7c8) + iVar30;
+        }
+        else if (*(char *)(lVar31 + 7) == '\b') {
+          *(int *)(this + 0x7a8) = *(int *)(this + 0x7a8) + iVar30;
+        }
+        else if (*(char *)(lVar31 + 7) == '\x10') {
+          *(int *)(this + 0x91c) = *(int *)(this + 0x91c) + iVar30;
+        }
+        else if (*(char *)(lVar31 + 7) == '\x11') {
+          *(int *)(this + 0x924) = *(int *)(this + 0x924) + iVar30;
+        }
+        else if (*(char *)(lVar31 + 7) == '\x15') {
+          *(int *)(this + 0x9a4) = *(int *)(this + 0x9a4) + iVar30;
+          local_res10[0] = (ushort)*(byte *)(*local_b38 + 8);
+          lVar31 = *(longlong *)(*(longlong *)(this + 0x9a8) + 0x10);
+          uVar16 = (ushort)*(byte *)(*local_b38 + 8);
+          lVar29 = lVar39;
+          if (lVar31 == 0) {
+LAB_1803c66f8:
+            lVar29 = lVar39;
+          }
+          else {
+            do {
+              if (*(ushort *)(lVar31 + 0x18) < local_res10[0]) {
+                lVar23 = *(longlong *)(lVar31 + 0x10);
+              }
+              else {
+                lVar23 = *(longlong *)(lVar31 + 8);
+                lVar29 = lVar31;
+              }
+              lVar31 = lVar23;
+            } while (lVar23 != 0);
+            if ((lVar29 == 0) || (uVar16 < *(ushort *)(lVar29 + 0x18))) goto LAB_1803c66f8;
+          }
+          if (lVar29 == 0) {
+            local_980 = 0;
+            uStack_978 = 0;
+            local_970 = 0;
+            local_bd8 = -10.023;
+            dStack_bd0 = -400.056;
+            local_bc8 = -7000.089;
+            AuPoint::operator=((AuPoint *)&local_980,(AuPoint *)&local_bd8);
+            local_968 = 0;
+            if (1 < **(uint **)(this + 0x9a8)) {
+              FUN_18047abd0(this + 0x9a8);
+            }
+            lVar29 = *(longlong *)(this + 0x9a8);
+            lVar31 = lVar29 + 8;
+            bVar11 = true;
+            lVar23 = *(longlong *)(lVar29 + 0x10);
+            lVar32 = lVar39;
+            if (*(longlong *)(lVar29 + 0x10) != 0) {
+              do {
+                lVar31 = lVar23;
+                bVar11 = *(ushort *)(lVar31 + 0x18) < uVar16;
+                if (bVar11) {
+                  lVar23 = *(longlong *)(lVar31 + 0x10);
+                }
+                else {
+                  lVar23 = *(longlong *)(lVar31 + 8);
+                  lVar32 = lVar31;
+                }
+                bVar11 = !bVar11;
+              } while (lVar23 != 0);
+              if ((lVar32 != 0) && (*(ushort *)(lVar32 + 0x18) <= uVar16)) {
+                AuPoint::operator=((AuPoint *)(lVar32 + 0x20),(AuPoint *)&local_980);
+                *(undefined4 *)(lVar32 + 0x38) = local_968;
+                goto LAB_1803c67e5;
+              }
+            }
+            FUN_18047a080(lVar29,local_res10,&local_980,lVar31,bVar11);
+          }
+        }
+LAB_1803c67e5:
+        lVar31 = *local_b38;
+        if ((2 < *(byte *)(lVar31 + 7) - 0x16) && (*(int *)(*(longlong *)(lVar31 + 0x10) + 4) != 0))
+        {
+          if (this[0x7dc] == (DaSpaceShip)0x0) {
+            AuPointArray::Extents
+                      ((AuPointArray *)(lVar31 + 0x10),(AuPoint *)(this + 0x800),
+                       (AuPoint *)(this + 0x818));
+            this[0x7dc] = (DaSpaceShip)0x1;
+            *(int *)(this + 0x860) = (int)*(char *)(*local_b38 + 6);
+            *(int *)(this + 0x7f8) = (int)*(char *)(*local_b38 + 6);
+          }
+          else {
+            local_bd8 = 0.0;
+            dStack_bd0 = 0.0;
+            local_bc8 = 0.0;
+            local_c08 = 0.0;
+            dStack_c00 = 0.0;
+            local_bf8 = 0.0;
+            AuPointArray::Extents
+                      ((AuPointArray *)(lVar31 + 0x10),(AuPoint *)&local_bd8,(AuPoint *)&local_c08);
+            puVar24 = (undefined8 *)AuPoint::Min((AuPoint *)(this + 0x800),(AuPoint *)&local_c20);
+
+Excerpt, lines 904-946:
+          break;
+        case (DnDetail)0x12:
+          *(int *)(this + 0x928) = *(int *)(this + 0x928) + 1;
+          break;
+        case (DnDetail)0x14:
+          *(int *)(this + 0x988) = *(int *)(this + 0x988) + 1;
+          QList<DnRoom>::cbegin(local_c38);
+          plVar22 = (longlong *)QList<DnRoom>::cend(local_c38);
+          if (local_ae8 != (undefined8 *)*plVar22) {
+            do {
+              pDVar6 = (DnRoom *)*local_ae8;
+              if (*(short *)(pDVar6 + 4) == *(short *)(*local_c28 + 0x28)) {
+                cVar12 = DnRoom::Deck(pDVar6);
+                uVar14 = DnRoom::Number(pDVar6);
+                local_res10[0] = CONCAT11(cVar12,uVar14);
+                FUN_18047bbd0(this + 0x980,local_9d0,local_res10);
+                if (1 < **(uint **)(this + 0x980)) {
+                  FUN_18047ac70(this + 0x980);
+                }
+                lVar39 = local_9d0[0];
+                if (local_9d0[0] == *(longlong *)(this + 0x980) + 8) {
+                  local_res10[0] = CONCAT11(cVar12,uVar14);
+                  local_aa8[0] = DnDetail::Id((DnDetail *)*local_c28);
+                  QList<unsigned_int>::QList<unsigned_int>(local_ae0);
+                  QList<unsigned_int>::append(local_ae0,local_aa8);
+                  FUN_18047bec0(this + 0x980,local_870,local_res10,local_ae0);
+                  QList<unsigned_int>::~QList<unsigned_int>(local_ae0);
+                  this_04 = local_b30;
+                }
+                else {
+                  uVar37 = DnDetail::Id((DnDetail *)*local_c28);
+                  local_res20 = (longlong *)CONCAT44(local_res20._4_4_,uVar37);
+                  QList<unsigned_int>::append
+                            ((QList<unsigned_int> *)(lVar39 + 0x20),(uint *)&local_res20);
+                  this_04 = local_b30;
+                }
+                break;
+              }
+              local_ae8 = local_ae8 + 1;
+              puVar24 = (undefined8 *)QList<DnRoom>::cend(local_c38);
+            } while (local_ae8 != (undefined8 *)*puVar24);
+          }
+          break;
+
+Excerpt, lines 991-1022:
+          break;
+        case (DnDetail)0x17:
+          *(int *)(this + 0x9b0) = *(int *)(this + 0x9b0) + 1;
+          QList<DnRoom>::cbegin(local_c38);
+          plVar22 = (longlong *)QList<DnRoom>::cend(local_c38);
+          if (local_ad8 != (undefined8 *)*plVar22) {
+            do {
+              if (*(short *)((DnRoom *)*local_ad8 + 4) == *(short *)(*local_c28 + 0x28)) {
+                bVar15 = DnRoom::Number((DnRoom *)*local_ad8);
+                local_res10[0] = (ushort)bVar15;
+                FUN_18047bb40(this + 0x9a8,&local_a98,local_res10);
+                if (1 < **(uint **)(this + 0x9a8)) {
+                  FUN_18047abd0(this + 0x9a8);
+                }
+                if (local_a98 == *(longlong *)(this + 0x9a8) + 8) {
+                  AuPoint::AuPoint(local_868);
+                  pAVar28 = (AuPoint *)AuPoint::Invalid();
+                  AuPoint::operator=(local_868,pAVar28);
+                  local_850 = 1;
+                  FUN_18047bdf0(this + 0x9a8,local_818,local_res10,local_868);
+                }
+                else {
+                  *(int *)(local_a98 + 0x38) = *(int *)(local_a98 + 0x38) + 1;
+                }
+                break;
+              }
+              local_ad8 = local_ad8 + 1;
+              puVar24 = (undefined8 *)QList<DnRoom>::cend(local_c38);
+            } while (local_ad8 != (undefined8 *)*puVar24);
+          }
+          break;
+        case (DnDetail)0x18:
+
+Excerpt, lines 1541-1573:
+          break;
+        case (DnDetail)0x63:
+          QList<DnRoom>::cbegin(local_c38);
+          plVar22 = (longlong *)QList<DnRoom>::cend(local_c38);
+          if (local_b20 != (undefined8 *)*plVar22) {
+            do {
+              if (*(short *)((DnRoom *)*local_b20 + 4) == *(short *)(*local_c28 + 0x28)) {
+                bVar15 = DnRoom::Number((DnRoom *)*local_b20);
+                local_res10[0] = (ushort)bVar15;
+                FUN_18047bb40(this + 0x9a8,&local_a78,local_res10);
+                if (1 < **(uint **)(this + 0x9a8)) {
+                  FUN_18047abd0(this + 0x9a8);
+                }
+                lVar39 = local_a78;
+                if (local_a78 == *(longlong *)(this + 0x9a8) + 8) {
+                  AuPoint::AuPoint(local_810);
+                  pAVar28 = (AuPoint *)AuPoint::Invalid();
+                  AuPoint::operator=(local_810,pAVar28);
+                  local_7f8 = 0;
+                  FUN_18047bdf0(this + 0x9a8,local_890,local_res10,local_810);
+                }
+                else {
+                  AuPoint::operator=((AuPoint *)(local_a78 + 0x20),(AuPoint *)(*local_c28 + 0x10));
+                  dVar42 = DnSpaceShip::DeckHeight();
+                  *(double *)(lVar39 + 0x30) = dVar42 * 0.5 + *(double *)(lVar39 + 0x30);
+                }
+                break;
+              }
+              local_b20 = local_b20 + 1;
+              puVar24 = (undefined8 *)QList<DnRoom>::cend(local_c38);
+            } while (local_b20 != (undefined8 *)*puVar24);
+          }
+          break;

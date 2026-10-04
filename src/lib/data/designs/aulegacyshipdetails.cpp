@@ -981,7 +981,7 @@ QString DetailPlacementDescription(int type)
 	QString text;
 	switch(placement.room)
 	{
-	case -1: text = QStringLiteral("Place inside an apartment, captain's cabin, crew cabin or stateroom; the berth must fit."); break;
+	case -1: text = QStringLiteral("Place inside a barracks, officer cabin, crew cabin or stateroom; the berth must fit."); break;
 	case -2: text = QStringLiteral("Place on an exterior wall, away from room corners and fuel cells."); break;
 	case -3: text = QStringLiteral("Place on a wall shared by exactly two rooms, away from room corners and fuel cells."); break;
 	case -4: text = QStringLiteral("Place inside rooms on this deck and the deck below, away from walls and fuel cells."); break;
@@ -1058,6 +1058,13 @@ DetailEditResult PlaceDetail(Design& design, int deck, const QPointF& cursor,
 	if(type <= 0 || type >= int(sizeof(Placements) / sizeof(Placements[0])))
 	{
 		result.error = QStringLiteral("The selected equipment type is unavailable.");
+		return result;
+	}
+	// IsValid(..., spacecraft=true) cannot accept outdoor-building placement.
+	// Check before the same-type shortcut, including imported pole records.
+	if(Placements[type].room == -8)
+	{
+		result.error = DetailPlacementDescription(type);
 		return result;
 	}
 	QVector<Geometry> rooms;

@@ -1,0 +1,42 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x180024d10
+Captured: 2026-10-04
+
+
+/* public: void __cdecl AuSpaceShipModules::operator>>(class QDataStream & __ptr64)const __ptr64 */
+
+void __thiscall AuSpaceShipModules::operator>>(AuSpaceShipModules *this,QDataStream *param_1)
+
+{
+  longlong *plVar1;
+  
+                    /* 0x24d10  1811  ??5AuSpaceShipModules@@QEBAXAEAVQDataStream@@@Z */
+  QDataStream::operator<<(param_1,*(int *)(this + 8));
+  plVar1 = (longlong *)**(longlong **)this;
+  if (plVar1 != *(longlong **)this) {
+    do {
+      QDataStream::operator<<(param_1,(short)plVar1[2]);
+      QDataStream::operator<<(param_1,*(short *)((longlong)plVar1 + 0x12));
+      plVar1 = (longlong *)*plVar1;
+    } while (plVar1 != (longlong *)*(longlong *)this);
+  }
+  QDataStream::operator<<(param_1,*(short *)(this + 0x40));
+  QDataStream::operator<<(param_1,*(short *)(this + 0x42));
+  QDataStream::operator<<(param_1,*(short *)(this + 0x44));
+  QDataStream::operator<<(param_1,*(short *)(this + 0x46));
+  QDataStream::operator<<(param_1,*(short *)(this + 0x48));
+  QDataStream::operator<<(param_1,*(short *)(this + 0x4a));
+  QDataStream::operator<<(param_1,*(short *)(this + 0x4c));
+  QDataStream::operator<<(param_1,*(short *)(this + 0x4e));
+  QDataStream::operator<<(param_1,*(int *)(this + 0x58));
+  plVar1 = (longlong *)**(longlong **)(this + 0x50);
+  if (plVar1 != *(longlong **)(this + 0x50)) {
+    do {
+      QDataStream::operator<<(param_1,(short)plVar1[2]);
+      QDataStream::operator<<(param_1,*(short *)((longlong)plVar1 + 0x12));
+      plVar1 = (longlong *)*plVar1;
+    } while (plVar1 != (longlong *)*(longlong *)(this + 0x50));
+  }
+  return;
+}

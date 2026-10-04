@@ -94,6 +94,56 @@ void RestrictionsAndOrdering()
 	Check(PlaceDetail(design,1,Point(4,4),52).changed, "hull hatch may attach to room below");
 }
 
+void SpacecraftModeRestrictions()
+{
+	Design design;
+	for(int type : {100, 142})
+	{
+		design.rooms = {Square(1,5)};
+		design.details.clear();
+		for(const QPointF& point : {Point(6,6), Point(0,6), Point(14,14)})
+			Check(!PlaceDetail(design,0,point,type).accepted && design.details.isEmpty(),
+				"building poles rejected inside, on and outside spacecraft rooms");
+		design.details = {Item(1,type,14,14)};
+		const QVector<Detail> before = design.details;
+		Check(!PlaceDetail(design,0,Point(14,14),type).accepted && Same(before,design.details),
+			"imported building pole cannot bypass authoring restriction as a repeated placement");
+		design.rooms.clear(); design.details.clear();
+		Check(!PlaceDetail(design,0,Point(6,6),type).accepted,
+			"building pole rejected on an empty spacecraft");
+	}
+	design.rooms = {Square(1,5,-2)}; design.details.clear();
+	Check(PlaceDetail(design,-2,Point(6,6),141).changed, "troop station inside spacecraft room");
+	const QVector<Detail> troop = design.details;
+	Check(!PlaceDetail(design,-2,Point(14,14),141).accepted && Same(troop,design.details),
+		"building outdoor troop-station permission does not apply to spacecraft");
+	Check(!PlaceDetail(design,-2,Point(0,6),141).accepted,
+		"troop station cannot be on a room wall");
+	design.details.clear();
+	Check(PlaceDetail(design,-2,Point(0,6),50).changed,
+		"building underground hull-door restriction does not apply to spacecraft");
+	design.details.clear();
+	Check(PlaceDetail(design,-2,Point(6,6),52).changed,
+		"building underground hull-hatch restriction does not apply to spacecraft");
+	QString error;
+	Check(ReconcileDetails(design,error) && design.details.size() == 1,
+		"negative-deck spacecraft hull hatch survives reconciliation");
+	design.rooms = {Square(1,9)}; design.details.clear();
+	Check(!PlaceDetail(design,0,Point(6,6),141).accepted, "troop station rejected in fuel cell");
+	design.rooms = {Square(1,5,28)};
+	Check(PlaceDetail(design,29,Point(6,6),52).changed && design.details[0].roomId == 1,
+		"hull hatch attaches above highest paintable spacecraft deck");
+	design.details.clear();
+	Check(PlaceDetail(design,29,Point(6,6),22).changed && design.details[0].detailType == 22,
+		"top turret attaches above highest paintable spacecraft deck");
+	design.rooms = {Square(1,5,41)}; design.details.clear();
+	Check(PlaceDetail(design,42,Point(6,6),52).changed,
+		"data-level equipment limit is wider than grid movement limit");
+	const QVector<Detail> top = design.details;
+	Check(!PlaceDetail(design,43,Point(6,6),52).accepted && Same(top,design.details),
+		"equipment above data-level limit is rejected atomically");
+}
+
 void Brushes()
 {
 	Design design; design.rooms = {Square(1,8,0,0,0,4,4), Square(2,8,0,4,0,8,4)};
@@ -180,6 +230,7 @@ int main(int argc, char** argv)
 {
 	QCoreApplication app(argc,argv);
 	BasicPlacement(); RestrictionsAndOrdering(); Brushes(); VehiclesAndMarkers(); Metadata(); StairReplacement();
+	SpacecraftModeRestrictions();
 	QTextStream(stdout) << (failures ? "Equipment editing checks failed: " : "Equipment editing checks passed: ") << failures << '\n';
 	return failures ? 1 : 0;
 }

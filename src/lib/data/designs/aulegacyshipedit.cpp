@@ -85,9 +85,11 @@ AuLegacyShip::CellEditResult AuLegacyShip::EditCell(Design& design, int deck,
 	const QPointF& cursor, quint8 gridMask, int roomType, quint8 roomNumber)
 {
 	CellEditResult result;
-	if(roomType < -1 || roomType > 255)
+	// The spacecraft palette exposes 1..21 except 12. Roof creation is a
+	// separate building-only command (DaDesignEnvironment::CreateRoof).
+	if(roomType != -1 && (roomType < 1 || roomType > 21 || roomType == 12))
 	{
-		result.error = QStringLiteral("Select a room type or the Erase Cells tool.");
+		result.error = QStringLiteral("Select a spacecraft room type or the Erase Cells tool. Building roofs cannot be painted in spacecraft mode.");
 		return result;
 	}
 	const bool erase = roomType == -1;

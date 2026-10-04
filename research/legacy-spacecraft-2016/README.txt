@@ -21,15 +21,18 @@ The canvas has no visible scrollbars or top summary strip; middle drag pans.
 The original icon panel docks on the right by default and toggles with F6.
 Its title bar uses the original design-disk icon, both docked and floating.
 There is no bottom status bar; edit feedback appears in the tools panel.
-Deck arrows cover -28..28 (57 decks); there is no deck dropdown. The footer
+Deck arrows cover -41..41; new spacecraft rooms can be painted on -28..28.
+See BUILDING-VS-SPACECRAFT.txt for the distinct mode and placement limits.
+There is no deck dropdown. The footer
 dropdown is minimum tech level. Room Number displays subtype+1 (1..256), not
 the persistent room ID. Left click/drag paints; middle drag pans; wheel zooms;
 F fits the view. There is no File/View menu bar; Escape temporarily exits the
 designer through the normal discard-confirmation path. Unsupported original
 tools remain disabled.
 
-Edits are session-only. New/Open/Exit require Discard/Cancel for a dirty design;
-failed loads preserve it. Original files remain read-only. Successful opens
+Save/Ctrl+S writes the legacy .ship format; see FORMAT.txt for byte-parity rules.
+New/Open/Exit require Save/Discard/Cancel for a dirty design; failed loads
+preserve it. Opening alone never rewrites the source file. Successful opens
 remember LegacySpacecraft/LastOpenDirectory in the native user settings for
 Hazeron Freehold / Shores of Hazeron, shared by both launch paths.
 

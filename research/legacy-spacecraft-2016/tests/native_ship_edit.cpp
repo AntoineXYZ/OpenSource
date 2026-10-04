@@ -135,6 +135,30 @@ void TopologyAndLimits()
 		"opposite halves form full square");
 }
 
+void SpacecraftRoomTools()
+{
+	for(int type = 1; type <= 21; ++type)
+	{
+		if(type == 12) continue;
+		Design design = Empty();
+		Check(Paint(design, .25, .25, type).changed,
+			QStringLiteral("spacecraft room tool %1 is available").arg(type));
+	}
+	Design design = Empty();
+	Check(Paint(design, .25, .25).changed, "mode restriction setup");
+	if(design.rooms.size() != 1) return;
+	const Room before = design.rooms[0];
+	for(int type : {-2, 0, 12, 22, 23, 24, 25, 255, 256})
+	{
+		const CellEditResult result = Paint(design, .25, .25, type);
+		Check(!result.accepted && !result.changed && !result.error.isEmpty()
+			&& design.rooms.size() == 1 && design.rooms[0].roomId == before.roomId
+			&& design.rooms[0].roomType == before.roomType
+			&& SameBoundary(RoomBoundary(design.rooms[0]), RoomBoundary(before)),
+			QStringLiteral("unavailable spacecraft room tool %1 cannot repaint a room").arg(type));
+	}
+}
+
 void RoofsAndDetails()
 {
 	Design design = Empty();
@@ -175,6 +199,7 @@ int main(int argc, char** argv)
 	QCoreApplication application(argc, argv);
 	BasicEdits();
 	TopologyAndLimits();
+	SpacecraftRoomTools();
 	RoofsAndDetails();
 	// Optional original files are loaded read-only and edited only in memory.
 	for(int i = 1; i < argc; ++i)
