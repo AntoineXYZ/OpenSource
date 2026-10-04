@@ -33,9 +33,12 @@ The default is the square grid (0 and 90 degrees). The preview and editing
 engine share the same cell-selection function, including negative seams and
 cursor ties. Dragging processes mouse positions without interpolating cells.
 
-Every paintable deck from -28 through +28 is available, including empty decks.
-Loaded rooms/details on other decks remain inspectable; adding there is
-rejected. Erasing follows the original separate deck rule. Painting does not
+The selector is restricted to the 57 decks from -28 through +28, including
+empty decks. These limits were rechecked directly against AuAtom13.dll
+DeckMinLimit (0x1802f8170) and DeckMaxLimit (0x1802f80e0): spacecraft mode
+returns -0x1c and +0x1c respectively. Imported records outside this range are
+retained in memory but cannot add selectable decks. Adding there is rejected.
+Erasing follows the original separate deck rule. Painting does not
 refit the camera. A title asterisk and summary identify session changes.
 
 Recovered behavior

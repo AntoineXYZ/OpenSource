@@ -368,11 +368,11 @@ public:
 	{
 		scene = new QGraphicsScene(window);
 		view = new DeckView(scene, window);
-		view->emptyMessage = QStringLiteral("Open a 2016 .ship file to inspect or edit its decks.\n\n"
-			"Mouse wheel: zoom   \u2022   Middle drag: pan\n"
-			"Edits last for this session. Saving is not available yet.");
 		scene->setSceneRect(-40.0, -40.0, 80.0, 80.0);
 
+		QAction* newAction = new QAction(QStringLiteral("&New spacecraft"), window);
+		newAction->setShortcut(QKeySequence::New);
+		QObject::connect(newAction, &QAction::triggered, window, &AuLegacyShipViewer::NewDesign);
 		QAction* openAction = new QAction(QStringLiteral("&Open .ship..."), window);
 		openAction->setShortcut(QKeySequence::Open);
 		QObject::connect(openAction, &QAction::triggered, window, &AuLegacyShipViewer::ChooseFile);
@@ -410,6 +410,7 @@ public:
 		window->menuBar()->setStyleSheet(menuStyle);
 		QMenu* fileMenu = window->menuBar()->addMenu(QStringLiteral("&File"));
 		fileMenu->setStyleSheet(menuStyle);
+		fileMenu->addAction(newAction);
 		fileMenu->addAction(openAction);
 		closeAction = fileMenu->addAction(QStringLiteral("&Close"));
 		closeAction->setShortcut(QKeySequence::Close);
@@ -464,6 +465,7 @@ public:
 		toolbar->setPalette(controlsPalette);
 		fileMenu->setPalette(controlsPalette);
 		viewMenu->setPalette(controlsPalette);
+		toolbar->addAction(newAction);
 		toolbar->addAction(openAction);
 		toolbar->addAction(fitAction);
 		toolbar->addSeparator();
@@ -646,7 +648,7 @@ public:
 		const AuLegacyShip::Header& header = design.header;
 		QString text = QStringLiteral("%1\n\nFile: %2\nDesign ID: %3\nArchitect: %4\nArchitect ID: %5\n"
 			"Format version: %6\nState: %7\nStreamline: %8\nArmor: %9\n")
-			.arg(DisplayName(), fileName).arg(header.designId)
+			.arg(DisplayName(), fileName.isEmpty() ? QStringLiteral("(new spacecraft; no file)") : fileName).arg(header.designId)
 			.arg(header.architectName.isEmpty() ? QStringLiteral("(not stored)") : header.architectName)
 			.arg(header.architectId).arg(header.version).arg(header.state).arg(header.streamline).arg(header.armor);
 		const bool hasExtendedHeader = header.version > 1;
@@ -668,7 +670,9 @@ public:
 
 	QString DisplayName() const
 	{
-		return design.header.name.isEmpty() ? QFileInfo(fileName).completeBaseName() : design.header.name;
+		if (!design.header.name.isEmpty())
+			return design.header.name;
+		return fileName.isEmpty() ? QStringLiteral("Untitled spacecraft") : QFileInfo(fileName).completeBaseName();
 	}
 
 	void ShowOverview()
@@ -822,14 +826,10 @@ public:
 	{
 		roomDecks.clear();
 		detailDecks.clear();
-		QSet<int> decks;
 		QSet<int> occupied;
-		for (int deck = -28; deck <= 28; ++deck)
-			decks.insert(deck);
 		for (int i = 0; i < design.rooms.size(); ++i)
 		{
 			const AuLegacyShip::Room& room = design.rooms[i];
-			decks.insert(int(room.deck));
 			if (!room.packedVertices.isEmpty())
 			{
 				roomDecks[int(room.deck)].append(i);
@@ -840,16 +840,13 @@ public:
 		{
 			const int deck = design.details[i].deck;
 			detailDecks[deck].append(i);
-			decks.insert(deck);
 			occupied.insert(deck);
 		}
 		occupiedDeckCount = occupied.size();
-		decks.insert(selectedDeck);
-		QList<int> sortedDecks = decks.values();
-		std::sort(sortedDecks.begin(), sortedDecks.end());
+		selectedDeck = std::max(AuLegacyShip::MinimumDeck, std::min(AuLegacyShip::MaximumDeck, selectedDeck));
 		deckCombo->blockSignals(true);
 		deckCombo->clear();
-		for (int deck : sortedDecks)
+		for (int deck = AuLegacyShip::MinimumDeck; deck <= AuLegacyShip::MaximumDeck; ++deck)
 			deckCombo->addItem(QStringLiteral("%1  (Z %2 ft)%3").arg(deck).arg(deck * AuLegacyShip::DeckHeight)
 				.arg(occupied.contains(deck) ? QString() : QStringLiteral(" \u2014 empty")), deck);
 		deckCombo->setCurrentIndex(deckCombo->findData(selectedDeck));
@@ -870,7 +867,7 @@ public:
 	{
 		scene->clear();
 		design = std::move(incoming);
-		fileName = QFileInfo(path).absoluteFilePath();
+		fileName = path.isEmpty() ? QString() : QFileInfo(path).absoluteFilePath();
 		loaded = true;
 		modified = false;
 		IndexDecks(0);
@@ -916,6 +913,7 @@ AuLegacyShipViewer::AuLegacyShipViewer(QWidget* parent)
 {
 	setWindowTitle(QStringLiteral("Legacy Spacecraft Designer"));
 	resize(1200, 800);
+	NewDesign();
 }
 
 AuLegacyShipViewer::~AuLegacyShipViewer()
@@ -959,6 +957,17 @@ void AuLegacyShipViewer::closeEvent(QCloseEvent* event)
 		return;
 	}
 	QMainWindow::closeEvent(event);
+}
+
+void AuLegacyShipViewer::NewDesign()
+{
+	if (!ConfirmDiscardChanges())
+		return;
+	AuLegacyShip::Design incoming;
+	incoming.header.version = 2;
+	incoming.header.versionStateRaw = 0x20;
+	incoming.header.scalarSlots.fill(0, 8);
+	m_Impl->SetDesign(QString(), std::move(incoming));
 }
 
 bool AuLegacyShipViewer::OpenFile(const QString& fileName)

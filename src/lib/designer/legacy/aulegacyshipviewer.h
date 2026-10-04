@@ -16,6 +16,7 @@ public:
 	~AuLegacyShipViewer() override;
 
 	bool OpenFile(const QString& fileName);
+	void NewDesign();
 	void ChooseFile();
 	void SetExitHandler(const std::function<void()>& handler);
 	bool ConfirmDiscardChanges();

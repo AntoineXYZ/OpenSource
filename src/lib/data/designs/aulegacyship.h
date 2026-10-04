@@ -16,6 +16,9 @@ namespace AuLegacyShip
 constexpr double CoordinateSpacing = 2.8284271245;
 constexpr double GridSpacing = 5.656854249;
 constexpr double DeckHeight = 8.0;
+// AuAtom13.dll DeckMinLimit/DeckMaxLimit in spacecraft mode (57 decks).
+constexpr int MinimumDeck = -28;
+constexpr int MaximumDeck = 28;
 constexpr int MaximumFileBytes = 64 * 1024 * 1024;
 constexpr int MaximumRecords = 250000;
 

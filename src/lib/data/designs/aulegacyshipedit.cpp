@@ -91,7 +91,7 @@ AuLegacyShip::CellEditResult AuLegacyShip::EditCell(Design& design, int deck,
 		return result;
 	}
 	const bool erase = roomType == -1;
-	if(deck < -128 || deck > 127 || (!erase && (deck < -28 || deck > 28)))
+	if(deck < -128 || deck > 127 || (!erase && (deck < MinimumDeck || deck > MaximumDeck)))
 	{
 		result.error = QStringLiteral("The 2016 designer adds room cells only on decks -28 through 28.");
 		return result;
