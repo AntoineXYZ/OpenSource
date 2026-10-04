@@ -132,13 +132,19 @@ All 62 atlas rectangles in the new renderer were independently compared
 with the surviving AuBodyRenderWidget::ShipTexture table and matched.
 These checks do not establish native rendering or visual parity.
 
-The CPU mesh harness can be built by the user without an OpenGL context:
+The CPU mesh harness can be built by the user without an OpenGL context.
+It stubs only the resource-model importer; it checks the real surface,
+procedural equipment and stair code, not 3DS loading or vehicle materials:
 
   c++ -std=c++11 -fPIC -no-pie -Isrc/lib/data/designs \
     -Isrc/lib/designer/legacy \
     research/legacy-spacecraft-2016/tests/native_ship_mesh.cpp \
+    research/legacy-spacecraft-2016/tests/native_resource_stubs.cpp \
     src/lib/designer/legacy/aulegacyshipmesh.cpp \
+    src/lib/designer/legacy/aulegacyshipequipment.cpp \
+    src/lib/designer/legacy/aulegacyshipstairs.cpp \
     src/lib/data/designs/aulegacyship.cpp \
+    src/lib/data/designs/aulegacyshipdetails.cpp \
     src/lib/data/designs/aulegacyshipgeometry.cpp \
     $(pkg-config --cflags --libs Qt5Core Qt5Gui) -o /tmp/native_ship_mesh
 
@@ -150,7 +156,8 @@ different-number room partitions, inherited open-below partition ownership,
 square/diamond hatch aperture areas, small doors and full-span wall openings,
 finite normals/positions across every
 spacecraft room type at all eleven armor settings, every nonempty cell-mask
-shape's area, and invalid/zero-area boundary rejection. It has not been built or run.
+shape's area, invalid/zero-area boundary rejection, top/bottom turret cut areas,
+dome normals/depth, side turret profiles and frame UVs. It has not been built or run.
 
 After a manual client build, compare the three sample ships and controlled
 one/two-deck fixtures with the original client. Check Render Mode in its
@@ -166,5 +173,82 @@ partitions; fuel rooms; negative decks; open-to-below and gravity-well rooms.
 The cutaway is an added orbit-inspection aid, not a recovered original mode:
 move the selected deck up/down and confirm upper surfaces are clipped while
 the current deck's floor/lower walls remain. Test hatch/door/opening fixtures
-and read the inspector's explicit rendering limitations. Equipment models,
-animated door states and full original visual parity require further work.
+and read the inspector's explicit rendering limitations. Animated door states
+and full original visual parity require further work.
+
+Equipment validation (user builds manually)
+------------------------------------------
+Read-only checks passed for the cell, raster and vehicle reference algorithms.
+All 251 effect-rectangle components available in the saved decompilation match
+the 63-entry renderer table; the remaining frame-zero X came from assembly.
+The embedded original atlas hash matches (376990 bytes, 2048x256 pixels).
+The recovered full-resolution spacecraft atlas (2626889 bytes, 256x8192) and
+helm bitmap (98358 bytes after decompression) also match their original hashes.
+All embedded string chunks stay below MSVC literal limits.
+The equipment palette has 51 distinct slots, including six vehicle buttons.
+Model/texture identity is recorded in equipment-assets.json; inspect it again
+without compiling with:
+
+  python3 -B research/legacy-spacecraft-2016/inspect_equipment_assets.py \
+    '/path/to/original/2016/client/directory'
+
+The assistant has not compiled or run these new harnesses. Commands below are
+provided for the user; they are not part of a build the assistant initiated.
+
+  c++ -std=c++11 -fPIC -no-pie -Isrc/lib/data/designs \
+    research/legacy-spacecraft-2016/tests/native_detail_edit.cpp \
+    src/lib/data/designs/aulegacyship.cpp \
+    src/lib/data/designs/aulegacyshipdetails.cpp \
+    $(pkg-config --cflags --libs Qt5Core Qt5Gui) -o /tmp/native_detail_edit
+
+  c++ -std=c++11 -fPIC -no-pie -Isrc/lib/data/designs \
+    -Isrc/lib/designer/legacy \
+    research/legacy-spacecraft-2016/tests/native_ship_equipment.cpp \
+    src/lib/designer/legacy/aulegacyshipequipment.cpp \
+    src/lib/data/designs/aulegacyship.cpp \
+    src/lib/data/designs/aulegacyshipdetails.cpp \
+    $(pkg-config --cflags --libs Qt5Core Qt5Gui) -o /tmp/native_ship_equipment
+
+  c++ -std=c++11 -fPIC -no-pie -Isrc/lib/data/designs \
+    -Isrc/lib/designer/legacy \
+    research/legacy-spacecraft-2016/tests/native_ship_stairs.cpp \
+    src/lib/designer/legacy/aulegacyshipstairs.cpp \
+    src/lib/data/designs/aulegacyship.cpp \
+    src/lib/data/designs/aulegacyshipdetails.cpp \
+    $(pkg-config --cflags --libs Qt5Core Qt5Gui) -o /tmp/native_ship_stairs
+
+  /tmp/native_detail_edit
+  /tmp/native_ship_equipment
+  /tmp/native_ship_stairs
+
+Coverage includes replacement atomicity, IDs/order, snap ties, single-station
+limits, bridge fallback, same-room brush fill, type-filtered erase, vehicle
+footprints, original procedural profiles/materials/effect sequences, and all
+40 stair orientations. See the individual evidence files for exact coverage.
+
+After building the client, exercise both standalone and embedded launch paths:
+  - Place every enabled equipment type in its permitted room and reject it in
+    an incompatible room. Check bridge exceptions and one-station limits.
+  - Rotate single/double berths, hatch ladders, game tables, all five stairs and
+    each of the six original vehicles with Left/Right. Check negative XY/decks.
+  - Place machinery with brush sizes 1 and 26. The center must succeed; adjacent
+    rooms are excluded. Erase-area must remove only the clicked equipment type.
+  - Repaint or erase occupied rooms and check equipment reconciliation.
+  - Switch Render Mode repeatedly; inspect machinery, consoles, berths, ladders,
+    stairs, railings, turret apertures and vehicles using orbit and cutaway.
+    The current deck's equipment stays whole above the cut wall height.
+  - Confirm console screens and vehicle textures load without legacy DLLs.
+    Machinery effect textures should advance every 100 ms without moving geometry.
+  - Check the six vehicle footprints near bay edges and after 45-degree rotation.
+    Parked vehicles are static; no arbitrary wheel/rotor animation is added.
+  - Confirm logical markers (pivot, contrail/weapon emitter, troop station) show
+    their plan icons but do not invent a physical 3D model in the stationary view.
+  - Check rounded red palette groups at different dock widths and while floating;
+    Render Mode remains at its original position. Inspect/edit/arrow shortcuts,
+    dirty state and discard confirmation should still work.
+  - Drag within one snapped equipment point: one edit should occur. A fresh
+    click may erase the next co-located marker; tiny movements must not do so.
+
+Doors/hatches remain closed in this orbit-only preview. Console bitmap faces
+are restored, but live ship-system readouts and interactive firing/transport,
+scene movement and contrails need world state and are outside this preview.

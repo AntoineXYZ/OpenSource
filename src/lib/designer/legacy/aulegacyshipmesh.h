@@ -5,6 +5,7 @@
 #include <QStringList>
 #include <QVector2D>
 #include <QVector3D>
+#include <QVector4D>
 
 namespace AuLegacyShip
 {
@@ -14,11 +15,15 @@ namespace Rendering
 // region, rather than the whole image, so a renderer can repeat cropped tiles.
 enum class Material
 {
+	Untextured = -1,
+	Berth = 0,
+	BerthBottom = 1,
 	LargeInteriorDoor = 2,
 	LargeCrewDoor = 5,
 	LargeHullDoor = 8,
 	CrewDoor = 11,
 	CrewHatch = 14,
+	GravityDrive = 17,
 	HullBottom = 18,
 	HullDoor = 19,
 	HullHatch = 22,
@@ -37,8 +42,24 @@ enum class Material
 	InteriorWallCargoFill = 41,
 	InteriorWallEquipment = 42,
 	InteriorWallEquipmentFill = 43,
+	Ladder = 44,
+	LadderPole = 45,
+	LifeSupport = 46,
+	PowerPlant = 47,
 	Railing = 48,
-	RailingPost = 49
+	RailingPost = 49,
+	Seat = 50,
+	Sensor = 51,
+	SensorTop = 52,
+	Shield = 53,
+	Surgery = 54,
+	TransporterPad = 55,
+	Turret = 56,
+	WeaponBay = 57,
+	FTLDrive = 58,
+	StairCasing = 59,
+	StairRiser = 60,
+	StairTread = 61
 };
 
 struct Vertex
@@ -54,6 +75,18 @@ struct Batch
 	QVector<Vertex> vertices;
 	int deck = 0;
 	bool interior = false;
+	bool equipment = false;
+	QString textureFile;
+	QVector4D tint = QVector4D(1, 1, 1, 1);
+	float selfIllumination = 0;
+	bool twoSided = false;
+	QVector3D rotationPivot;
+	QVector3D rotationAxis = QVector3D(0, 0, 1);
+	float degreesPerSecond = 0;
+	QVector2D uvVelocity;
+	int effectFirstFrame = -1;
+	int effectFrameCount = 0;
+	float effectFrameSeconds = 0.1f;
 };
 
 struct Mesh

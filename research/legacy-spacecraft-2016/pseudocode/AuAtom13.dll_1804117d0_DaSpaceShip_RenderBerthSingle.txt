@@ -1,0 +1,241 @@
+Read-only Ghidra capture for equipment recovery. Not original source.
+
+
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* protected: void __cdecl DaSpaceShip::RenderBerthSingle(class QList<class AuTriSpacecraft> &
+   __ptr64,class AuPoint const & __ptr64,double)const __ptr64 */
+
+void __thiscall
+DaSpaceShip::RenderBerthSingle
+          (DaSpaceShip *this,QList<AuTriSpacecraft> *param_1,AuPoint *param_2,double param_3)
+
+{
+  double dVar1;
+  double dVar2;
+  double dVar3;
+  float fVar4;
+  double dVar5;
+  double *extraout_RAX;
+  float fVar6;
+  float fVar7;
+  float fVar8;
+  float fVar9;
+  float fVar10;
+  float fVar11;
+  float fVar12;
+  float fVar13;
+  float fVar14;
+  float fVar15;
+  float fVar16;
+  undefined1 auStackY_2a8 [32];
+  float local_1c8;
+  float local_1c4;
+  undefined8 local_1c0;
+  undefined8 uStack_1b8;
+  undefined8 local_1b0;
+  undefined8 local_1a8;
+  undefined8 uStack_1a0;
+  undefined8 local_198;
+  undefined8 local_190;
+  undefined8 uStack_188;
+  undefined8 local_180;
+  undefined8 local_178;
+  undefined8 uStack_170;
+  undefined8 local_168;
+  double local_160;
+  double local_158;
+  undefined8 local_150;
+  undefined8 uStack_148;
+  undefined8 local_140;
+  float local_138;
+  float local_134;
+  float local_130;
+  float local_12c;
+  double local_128;
+  double local_120;
+  double local_118;
+  double local_110;
+  double local_108;
+  double local_100;
+  double local_f8;
+  double local_f0;
+  double local_e8;
+  double local_e0;
+  double local_d8;
+  double local_d0;
+  undefined4 local_c8;
+  ulonglong local_c0;
+  
+                    /* 0x4117d0  5872
+                       ?RenderBerthSingle@DaSpaceShip@@IEBAXAEAV?$QList@VAuTriSpacecraft@@@@AEBVAuPoint@@N@Z
+                        */
+  local_c0 = DAT_180a0ecf0 ^ (ulonglong)auStackY_2a8;
+  local_d0 = param_3;
+  ShipTexture(0,(float *)&local_160,&local_1c4,&local_1c8,(float *)&local_158);
+  ShipTexture(1,&local_134,&local_12c,&local_130,&local_138);
+  fVar6 = local_1c8 - local_160._0_4_;
+  local_108 = (double)fVar6 * 0.0 + (double)local_160._0_4_;
+  local_f0 = (double)fVar6 * 0.2421875 + (double)local_160._0_4_;
+  local_e0 = (double)fVar6 * 0.2578125 + (double)local_160._0_4_;
+  local_f8 = (double)fVar6 * 0.9921875 + (double)local_160._0_4_;
+  fVar6 = local_158._0_4_ - local_1c4;
+  local_110 = (double)fVar6 * 0.0 + (double)local_1c4;
+  local_e8 = (double)fVar6 * 0.46875 + (double)local_1c4;
+  fVar10 = fVar6 * 0.5 + local_1c4;
+  fVar4 = fVar6 * 0.96875 + local_1c4;
+  EffectTexture(this,0,(float *)&local_158,&local_1c8,&local_1c4,(float *)&local_160);
+  dVar5 = local_d0;
+  local_1c4 = local_1c4 - local_158._0_4_;
+  fVar9 = local_1c4 * 0.0 + local_158._0_4_;
+  dVar1 = *(double *)param_2;
+  dVar2 = *(double *)(param_2 + 8);
+  dVar3 = *(double *)(param_2 + 0x10);
+  fVar8 = local_1c4 * 0.2421875 + local_158._0_4_;
+  local_d8 = (double)local_1c4 * 0.2578125 + (double)local_158._0_4_;
+  local_100 = (double)local_1c4 * 0.9921875 + (double)local_158._0_4_;
+  local_1b0 = 0x3fe0000000000000;
+  fVar7 = local_160._0_4_ - local_1c8;
+  local_158 = (double)fVar7 * 0.0 + (double)local_1c8;
+  local_160 = (double)fVar7 * 0.46875 + (double)local_1c8;
+  fVar12 = fVar7 * 0.5 + local_1c8;
+  fVar6 = fVar7 * 0.96875 + local_1c8;
+  local_1c0 = 0xbff6a09e6676c64a;
+  uStack_1b8 = 0xbff6a09e6676c64a;
+  AuPoint::RotateZ((AuPoint *)&local_1c0,(double)(ulonglong)(uint)fVar7);
+  local_150 = 0x4016a09e6676c64a;
+  uStack_148 = 0x4006a09e6676c64a;
+  local_d0 = 0.0;
+  local_c8 = 1;
+  local_120 = dVar2 + extraout_RAX[1];
+  local_128 = dVar1 + *extraout_RAX;
+  local_118 = dVar3 + extraout_RAX[2];
+  local_190 = 0x3ff0000000000000;
+  uStack_188 = 0;
+  local_1c0 = 0x4016a09e6676c64a;
+  uStack_1b8 = 0x4006a09e6676c64a;
+  local_178 = 0x4016a09e6676c64a;
+  uStack_170 = 0;
+  local_140 = 0x3ff0000000000000;
+  local_168 = 0x3ff0000000000000;
+  local_1a8 = 0x4016a09e6676c64a;
+  uStack_1a0 = 0;
+  local_180 = 0;
+  local_1b0 = 0;
+  local_198 = 0;
+  fVar7 = (float)local_f0;
+  local_1c8 = (float)dVar5;
+  fVar11 = (float)local_108;
+  local_1c4 = fVar10;
+  ModelAdd(param_1,(AuPoint *)&local_190,(int *)&local_d0,0.0,false,(AuPoint *)&local_128,local_1c8,
+           fVar11,fVar10,fVar9,fVar12,(AuPoint *)&local_1a8,fVar11,fVar4,fVar9,fVar6,
+           (AuPoint *)&local_178,fVar7,fVar4,fVar8,fVar6,(AuPoint *)&local_150,fVar7,fVar10,fVar8,
+           fVar12,(AuPoint *)&local_1c0);
+  fVar13 = (float)local_160;
+  fVar14 = (float)local_e8;
+  local_190 = 0xbff0000000000000;
+  uStack_188 = 0;
+  fVar15 = (float)local_158;
+  fVar16 = (float)local_110;
+  local_1a8 = 0;
+  uStack_1a0 = 0;
+  local_178 = 0;
+  uStack_170 = 0;
+  local_180 = 0;
+  local_198 = 0;
+  local_168 = 0x3ff0000000000000;
+  local_140 = 0x3ff0000000000000;
+  local_1b0 = 0;
+  local_150 = 0;
+  uStack_148 = 0x4006a09e6676c64a;
+  local_1c0 = 0;
+  uStack_1b8 = 0x4006a09e6676c64a;
+  ModelAdd(param_1,(AuPoint *)&local_190,(int *)&local_d0,0.0,false,(AuPoint *)&local_128,local_1c8,
+           fVar11,fVar16,fVar9,fVar15,(AuPoint *)&local_1c0,fVar11,fVar14,fVar9,fVar13,
+           (AuPoint *)&local_150,fVar7,fVar14,fVar8,fVar13,(AuPoint *)&local_178,fVar7,fVar16,fVar8,
+           fVar15,(AuPoint *)&local_1a8);
+  local_190 = 0;
+  uStack_188 = 0x3ff0000000000000;
+  fVar9 = (float)local_d8;
+  fVar12 = (float)local_e0;
+  fVar8 = (float)local_100;
+  fVar10 = (float)local_f8;
+  local_1a8 = 0;
+  uStack_1a0 = 0x4006a09e6676c64a;
+  local_178 = 0;
+  uStack_170 = 0x4006a09e6676c64a;
+  local_180 = 0;
+  local_198 = 0;
+  local_168 = 0x3ff0000000000000;
+  local_140 = 0x3ff0000000000000;
+  local_1b0 = 0;
+  local_150 = 0x4016a09e6676c64a;
+  uStack_148 = 0x4006a09e6676c64a;
+  local_1c0 = 0x4016a09e6676c64a;
+  uStack_1b8 = 0x4006a09e6676c64a;
+  ModelAdd(param_1,(AuPoint *)&local_190,(int *)&local_d0,0.0,false,(AuPoint *)&local_128,local_1c8,
+           fVar10,fVar16,fVar8,fVar15,(AuPoint *)&local_1c0,fVar10,fVar14,fVar8,fVar13,
+           (AuPoint *)&local_150,fVar12,fVar14,fVar9,fVar13,(AuPoint *)&local_178,fVar12,fVar16,
+           fVar9,fVar15,(AuPoint *)&local_1a8);
+  fVar6 = local_1c8;
+  local_190 = 0;
+  uStack_188 = 0xbff0000000000000;
+  local_1a8 = 0x4016a09e6676c64a;
+  uStack_1a0 = 0;
+  local_178 = 0x4016a09e6676c64a;
+  uStack_170 = 0;
+  local_180 = 0;
+  local_198 = 0;
+  local_168 = 0x3ff0000000000000;
+  local_140 = 0x3ff0000000000000;
+  local_1b0 = 0;
+  local_150 = 0;
+  uStack_148 = 0;
+  local_1c0 = 0;
+  uStack_1b8 = 0;
+  ModelAdd(param_1,(AuPoint *)&local_190,(int *)&local_d0,0.0,false,(AuPoint *)&local_128,local_1c8,
+           fVar12,fVar16,fVar9,fVar15,(AuPoint *)&local_1c0,fVar12,fVar14,fVar9,fVar13,
+           (AuPoint *)&local_150,fVar10,fVar14,fVar8,fVar13,(AuPoint *)&local_178,fVar10,fVar16,
+           fVar8,fVar15,(AuPoint *)&local_1a8);
+  local_190 = 0;
+  uStack_188 = 0;
+  local_1a8 = 0x4016a09e6676c64a;
+  uStack_1a0 = 0;
+  local_180 = 0x3ff0000000000000;
+  local_c8 = 0;
+  local_178 = 0x4016a09e6676c64a;
+  uStack_170 = 0x4006a09e6676c64a;
+  local_150 = 0;
+  uStack_148 = 0x4006a09e6676c64a;
+  local_198 = 0x3ff0000000000000;
+  local_1c0 = 0;
+  uStack_1b8 = 0;
+  local_168 = 0x3ff0000000000000;
+  local_140 = 0x3ff0000000000000;
+  local_1b0 = 0x3ff0000000000000;
+  ModelAdd(param_1,(AuPoint *)&local_190,(int *)&local_d0,0.0,false,(AuPoint *)&local_128,fVar6,
+           fVar12,local_1c4,-1.0,-1.0,(AuPoint *)&local_1c0,fVar12,fVar4,-1.0,-1.0,
+           (AuPoint *)&local_150,fVar10,fVar4,-1.0,-1.0,(AuPoint *)&local_178,fVar10,local_1c4,-1.0,
+           -1.0,(AuPoint *)&local_1a8);
+  local_190 = 0;
+  uStack_188 = 0;
+  local_180 = 0xbff0000000000000;
+  local_1a8 = 0x4016a09e6676c64a;
+  uStack_1a0 = 0x4006a09e6676c64a;
+  local_178 = 0x4016a09e6676c64a;
+  uStack_170 = 0;
+  local_198 = 0;
+  local_150 = 0;
+  uStack_148 = 0;
+  local_168 = 0;
+  local_140 = 0;
+  local_1b0 = 0;
+  local_1c0 = 0;
+  uStack_1b8 = 0x4006a09e6676c64a;
+  ModelAdd(param_1,(AuPoint *)&local_190,(int *)&local_d0,0.0,false,(AuPoint *)&local_128,fVar6,
+           local_134,local_12c,-1.0,-1.0,(AuPoint *)&local_1c0,local_134,local_138,-1.0,-1.0,
+           (AuPoint *)&local_150,local_130,local_138,-1.0,-1.0,(AuPoint *)&local_178,local_130,
+           local_12c,-1.0,-1.0,(AuPoint *)&local_1a8);
+  return;
+}
+
+

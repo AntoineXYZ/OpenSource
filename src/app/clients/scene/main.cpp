@@ -81,6 +81,8 @@ int main(int argc, char** argv)
 		if(legacySpacecraft)
 		{
 			// The offline designer uses Qt and the bundled spacecraft textures.
+			AuAtomRes auAtomRes;
+			AuModelRes auModelRes;
 			AuTexture auTexture;
 			QApplication a(argc, argv);
 			AuLegacyShipViewer viewer;

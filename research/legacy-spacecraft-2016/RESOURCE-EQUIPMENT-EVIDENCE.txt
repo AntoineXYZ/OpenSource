@@ -1,0 +1,97 @@
+Legacy 2016 resource equipment rendering evidence
+=================================================
+
+Implementation
+--------------
+aulegacyshipvehicles.cpp imports the retained Au3dsGLSLModel CPU geometry and
+material assignments. The loader handles original .3dsN precomputed normals,
+.3dsX inches-to-feet conversion, object matrices, UVs, and material opacity.
+It selects the first available model texture, matching
+Au3dsGLSLMaterialArray::CreateDeviceObjects. HelicopterTex.tga is absent in both
+2016 and current resources; the model's available mHelicopter.png is selected.
+
+Supported resource models: eleven vehicle commodities (6, 7, 8, 9, 28, 77, 82,
+104, 132, 133, 231), console seat and panel, game chair and table, turret gun.
+All sixteen model files are byte-identical to AuModelRes13.dll.
+The twelve associated PNG textures are pixel-identical after PNG decoding
+(one game-table texture has two current resource copies). Three vehicle BMP
+textures are byte-identical. equipment-assets.json records hashes and equality
+results; inspect_equipment_assets.py reproduces this comparison without builds
+or loading/executing the original DLLs.
+
+Nine of ten console display BMPs are byte-identical. The current helm screen
+pc_Console.bmp has 2109 different RGB bytes. The legacy renderer uses the
+recovered original bitmap, independently of the modern application's resource:
+  Source: AuAtomRes13.dll, Qt registration RVA 0x1030, :/data/pc_Console.bmp
+  Original length: 98358 bytes, 256 x 128 pixels
+  SHA-256: 53521a667e2c971a898582c7c2eacffe98b822e159d1e42e1eac92cd5078ec8c
+  Embedded: aulegacyshiphelm.h, reversible Qt compression and base64
+
+The modern txSpacecraft0Lit.png is 128 x 4096. The original is 256 x 8192.
+The legacy renderer loads the full original atlas; the existing modern resource
+is only a fallback if decoding the embedded original fails:
+  Source: AuAtomRes13.dll, Qt registration RVA 0x11b0, :/data/txSpacecraft0Lit.png
+  Original length: 2626889 bytes
+  SHA-256: f98f63d25dbb55276c5ad0dd3073d9ef848f989e94df1583f59b40e6aa0da2a9
+  Embedded: aulegacyshipatlas.h, unchanged PNG bytes encoded as base64
+
+The original animated effects atlas is absent from modern resources:
+  Source: AuAtomRes13.dll, Qt registration RVA 0x1b50, :/data/txEffects.png
+  Original length: 376990 bytes, 2048 x 256 pixels
+  SHA-256: 67257dfda312b0bd57ef2266130b1f49b6758678c51a08659170a37aa0e86d97
+  Embedded: aulegacyshipeffects.h, unchanged PNG bytes encoded as base64
+
+Atlas and effects literals are split into chunks of at most 8000 characters;
+the compressed helm literal is 4308 characters, below MSVC literal limits.
+These resources are isolated to the legacy widget. Global modern resources
+remain unchanged.
+
+Recovered behavior
+------------------
+AuAtom13.dll DaSpaceShip::RenderEnvironmentObject 0x180423a60 dispatches the
+console, captain chair, game table and turret gun resource models. This pass
+does not test hiddenRaw, unlike procedural RenderInterior equipment. Resource
+equipment therefore follows the original distinction.
+
+DpConsole::Render 0x1805f8010 rotates 90 degrees, subtracts the seat model's
+center XY/min Z, and moves only the seat back one foot. Captain chair type73
+omits the panel; other console types display their original station bitmap and
+txConsole_Lower.bmp. Screen vertices come from the original model's screen
+records. Dynamic world data/text on console screens is outside this preview.
+
+DaSpaceShip::RenderGameTable 0x18042e930 and RenderGameChair 0x18042e790 supply
+the original four-chair transforms and 0.083-foot ground clearance. The
+original second-chair -45-radian argument is preserved.
+
+DaSpaceShip::RenderGun 0x18042ed70 draws the commodity102 heavy-weapon model
+mTurretGun.3dsN. Side turrets use the recovered two-foot radial offsets (1.414
+on diagonals), deck+4-foot midpoint and eight 45-degree orientations. Top and
+bottom mounts use yaw90 with the original min-Z/max-Z mounting offsets.
+No generic console or seat is added to turret housings.
+
+ClosestVehicleParkingSpot 0x1803d4620 returns slot angle minus pi/2. Vehicle
+meshes use that orientation, center their native XY bounds on the slot, and
+place min Z on the deck. VehicleFootprint exposes the original swapped XY
+half-extents for the editor. Missing original vehicle assets are reported, never
+substituted with unrelated models. Parked vehicles use their static model; no
+rotor, wheel or whole-vehicle motion is invented.
+
+DaSpaceShip::AnimateDeviceObjects 0x1803c9950 advances effect frames every100ms.
+EffectTexture 0x1803e8300 supplies the exact 63 rectangles in a 1024 x 128
+logical coordinate system (the image has twice that pixel resolution).
+Procedural equipment supplies recovered starting indices and 3/4-frame cycles.
+The preview cycles those effects without rebuilding or uploading mesh geometry.
+
+The original GLSL sources are extracted from AuGL13.dll :/glsl.har, a Qt hash
+of compressed shader sources, and saved in shaders/Spacecraft.f.glsl and
+shaders/Spacecraft.v.glsl. The original fragment shader alpha-mixes unlit effect
+color after lighting; the widget preserves that composition. Camera lighting
+remains the independent orbit preview lighting, without world simulation,
+power-state simulation, station occupancy or gameplay effects.
+
+Verification
+------------
+No build or executable test was initiated. Source-only checks verified resource
+digests and PNG dimensions, all current model/texture comparisons, all 63 effect
+rectangles, embedded chunk lengths, Python syntax and git diff --check. The
+widget still requires the user's manual build and graphics smoke test.

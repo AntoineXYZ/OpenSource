@@ -1,0 +1,1644 @@
+Original EXE equipment slots, existing read-only IDA baseline.
+Captured here 2026-10-04. No original binary was executed.
+
+AuView__DesignBrushSzDown 0x1402e8c90
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignBrushSzDown (method 76; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+char __fastcall AuView__DesignBrushSzDown(__int64 self)
+{
+  char result; // al
+
+  result = *(_BYTE *)(self + 5556);
+  if ( result )
+    *(_BYTE *)(self + 5556) = --result;
+  return result;
+}
+
+AuView__DesignBrushSzUp 0x1402e8cb0
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignBrushSzUp (method 77; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+unsigned __int8 __fastcall AuView__DesignBrushSzUp(__int64 self)
+{
+  unsigned __int8 result; // al
+
+  result = *(_BYTE *)(self + 5556);
+  if ( result < 0x19u )
+    *(_BYTE *)(self + 5556) = ++result;
+  return result;
+}
+
+AuView__DesignDeleteDetail 0x1402e95d0
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDeleteDetail (method 83; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDeleteDetail(__int64 self)
+{
+  void *result; // rax
+  __int64 v3; // r9
+  void *v4; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    LOBYTE(v3) = 1;
+    result = (void *)sub_140311230(result, 0xFFFFFFFFLL, self, v3, -2);
+    v4 = result;
+  }
+  else
+  {
+    v4 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v4;
+    if ( v4 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v4 + 24LL))(v4);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDeleteOneDetail 0x1402e9670
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDeleteOneDetail (method 84; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDeleteOneDetail(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 0xFFFFFFFFLL, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailBerthDouble 0x1402e9840
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailBerthDouble (method 87; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailBerthDouble(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x18u);
+  if ( result )
+  {
+    result = (void *)sub_140310560(result, 2, self);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailBerthSingle 0x1402e98e0
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailBerthSingle (method 88; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailBerthSingle(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x18u);
+  if ( result )
+  {
+    result = (void *)sub_140310560(result, 1, self);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailCmdConsole 0x1402e9980
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailCmdConsole (method 89; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailCmdConsole(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 73, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailContrailEmitter 0x1402e9a20
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailContrailEmitter (method 90; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailContrailEmitter(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 98, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailCrewDoor 0x1402e9ac0
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailCrewDoor (method 91; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailCrewDoor(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 49, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailCrewHatch 0x1402e9b60
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailCrewHatch (method 92; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailCrewHatch(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x18u);
+  if ( result )
+  {
+    result = (void *)sub_140312480(result, 51, self);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailDoor 0x1402e9c00
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailDoor (method 93; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailDoor(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 5, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailEngineConsole 0x1402e9ca0
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailEngineConsole (method 94; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailEngineConsole(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 6, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailFTLDrive 0x1402e9d40
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailFTLDrive (method 97; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailFTLDrive(__int64 self)
+{
+  void *result; // rax
+  __int64 v3; // r9
+  void *v4; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    LOBYTE(v3) = 1;
+    result = (void *)sub_140311230(result, 24, self, v3, -2);
+    v4 = result;
+  }
+  else
+  {
+    v4 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v4;
+    if ( v4 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v4 + 24LL))(v4);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailFireControlConsole 0x1402e9de0
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailFireControlConsole (method 95; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailFireControlConsole(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 7, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailFlagPole 0x1402e9e80
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailFlagPole (method 96; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailFlagPole(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 100, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailGameTable 0x1402e9f20
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailGameTable (method 98; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailGameTable(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x18u);
+  if ( result )
+  {
+    result = (void *)sub_140311C20(result, self);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailGravityDrive 0x1402e9fb0
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailGravityDrive (method 99; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailGravityDrive(__int64 self)
+{
+  void *result; // rax
+  __int64 v3; // r9
+  void *v4; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    LOBYTE(v3) = 1;
+    result = (void *)sub_140311230(result, 10, self, v3, -2);
+    v4 = result;
+  }
+  else
+  {
+    v4 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v4;
+    if ( v4 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v4 + 24LL))(v4);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailHatch 0x1402ea050
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailHatch (method 100; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailHatch(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x18u);
+  if ( result )
+  {
+    result = (void *)sub_140312480(result, 8, self);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailHullDoor 0x1402ea0f0
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailHullDoor (method 101; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailHullDoor(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 50, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailHullHatch 0x1402ea190
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailHullHatch (method 102; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailHullHatch(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x18u);
+  if ( result )
+  {
+    result = (void *)sub_140312480(result, 52, self);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailHullOpening 0x1402ea230
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailHullOpening (method 103; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailHullOpening(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 9, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailLargeCrewDoor 0x1402ea2d0
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailLargeCrewDoor (method 105; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailLargeCrewDoor(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 54, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailLargeDoor 0x1402ea370
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailLargeDoor (method 104; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailLargeDoor(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 53, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailLargeHullDoor 0x1402ea410
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailLargeHullDoor (method 106; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailLargeHullDoor(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 3, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailLifeSupport 0x1402ea4b0
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailLifeSupport (method 107; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailLifeSupport(__int64 self)
+{
+  void *result; // rax
+  __int64 v3; // r9
+  void *v4; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    LOBYTE(v3) = 1;
+    result = (void *)sub_140311230(result, 32, self, v3, -2);
+    v4 = result;
+  }
+  else
+  {
+    v4 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v4;
+    if ( v4 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v4 + 24LL))(v4);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailLightPole 0x1402ea550
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailLightPole (method 108; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailLightPole(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 142, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailNavConsole 0x1402ea5f0
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailNavConsole (method 109; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailNavConsole(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 1, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailOperatingTable 0x1402ea690
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailOperatingTable (method 110; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailOperatingTable(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 11, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailPilotConsole 0x1402ea730
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailPilotConsole (method 111; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailPilotConsole(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 12, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailPivotPoint 0x1402ea7d0
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailPivotPoint (method 112; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailPivotPoint(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 76, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailPowerConsole 0x1402ea870
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailPowerConsole (method 113; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailPowerConsole(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 13, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailPowerPlant 0x1402ea910
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailPowerPlant (method 114; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailPowerPlant(__int64 self)
+{
+  void *result; // rax
+  __int64 v3; // r9
+  void *v4; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    LOBYTE(v3) = 1;
+    result = (void *)sub_140311230(result, 14, self, v3, -2);
+    v4 = result;
+  }
+  else
+  {
+    v4 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v4;
+    if ( v4 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v4 + 24LL))(v4);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailRailingWall 0x1402ea9b0
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailRailingWall (method 115; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailRailingWall(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 56, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailSensorConsole 0x1402eaa50
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailSensorConsole (method 116; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailSensorConsole(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 15, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailSensors 0x1402eaaf0
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailSensors (method 117; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailSensors(__int64 self)
+{
+  void *result; // rax
+  __int64 v3; // r9
+  void *v4; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    LOBYTE(v3) = 1;
+    result = (void *)sub_140311230(result, 16, self, v3, -2);
+    v4 = result;
+  }
+  else
+  {
+    v4 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v4;
+    if ( v4 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v4 + 24LL))(v4);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailShieldConsole 0x1402eab90
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailShieldConsole (method 118; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailShieldConsole(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 17, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailShields 0x1402eac30
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailShields (method 119; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailShields(__int64 self)
+{
+  void *result; // rax
+  __int64 v3; // r9
+  void *v4; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    LOBYTE(v3) = 1;
+    result = (void *)sub_140311230(result, 18, self, v3, -2);
+    v4 = result;
+  }
+  else
+  {
+    v4 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v4;
+    if ( v4 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v4 + 24LL))(v4);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailStairsStraight 0x1402eacd0
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailStairsStraight (method 120; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailStairsStraight(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x18u);
+  if ( result )
+  {
+    result = (void *)sub_140315E30(result, 101, self);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailStairsTurnLeft 0x1402ead70
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailStairsTurnLeft (method 121; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailStairsTurnLeft(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x18u);
+  if ( result )
+  {
+    result = (void *)sub_140315E30(result, 109, self);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailStairsTurnRight 0x1402eae10
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailStairsTurnRight (method 122; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailStairsTurnRight(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x18u);
+  if ( result )
+  {
+    result = (void *)sub_140315E30(result, 117, self);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailStairsUTurnLeft 0x1402eaeb0
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailStairsUTurnLeft (method 123; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailStairsUTurnLeft(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x18u);
+  if ( result )
+  {
+    result = (void *)sub_140315E30(result, 125, self);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailStairsUTurnRight 0x1402eaf50
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailStairsUTurnRight (method 124; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailStairsUTurnRight(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x18u);
+  if ( result )
+  {
+    result = (void *)sub_140315E30(result, 133, self);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailSurgeryConsole 0x1402eaff0
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailSurgeryConsole (method 125; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailSurgeryConsole(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 4, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailTransporterConsole 0x1402eb090
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailTransporterConsole (method 126; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailTransporterConsole(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 19, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailTransporterPad 0x1402eb130
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailTransporterPad (method 127; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailTransporterPad(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 20, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailTroopStation 0x1402eb1d0
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailTroopStation (method 128; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailTroopStation(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 141, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailTurretSide 0x1402eb270
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailTurretSide (method 129; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailTurretSide(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 21, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailTurretTopBottom 0x1402eb310
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailTurretTopBottom (method 130; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailTurretTopBottom(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 22, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailVehicleLoc 0x1402eb3b0
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailVehicleLoc (method 131; types QtMetaTypeId(43), COMMODITYID; argument names vehicleCID); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailVehicleLoc(__int64 self, unsigned int vehicleCID)
+{
+  void *result; // rax
+  void *v5; // rdi
+
+  result = operator new(0x48u);
+  if ( result )
+  {
+    result = (void *)sub_140319220(result, vehicleCID, self);
+    v5 = result;
+  }
+  else
+  {
+    v5 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v5;
+    if ( v5 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v5 + 24LL))(v5);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailWallOpening 0x1402eb450
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailWallOpening (method 132; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailWallOpening(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 55, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailWeaponEmitter 0x1402eb4f0
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailWeaponEmitter (method 133; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailWeaponEmitter(__int64 self)
+{
+  void *result; // rax
+  void *v3; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    result = (void *)sub_140311230(result, 99, self, 0, -2);
+    v3 = result;
+  }
+  else
+  {
+    v3 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v3;
+    if ( v3 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}
+
+AuView__DesignDetailWeaponSystem 0x1402eb590
+// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.
+// AuView::DesignDetailWeaponSystem (method 134; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830
+// Hidden C++ exception states: #wind=1
+void *__fastcall AuView__DesignDetailWeaponSystem(__int64 self)
+{
+  void *result; // rax
+  __int64 v3; // r9
+  void *v4; // rdi
+
+  result = operator new(0x20u);
+  if ( result )
+  {
+    LOBYTE(v3) = 1;
+    result = (void *)sub_140311230(result, 23, self, v3, -2);
+    v4 = result;
+  }
+  else
+  {
+    v4 = nullptr;
+  }
+  if ( !*(_DWORD *)(self + 380) )
+  {
+    AuView__EndCommand(self);
+    *(_QWORD *)(self + 1712) = v4;
+    if ( v4 )
+      (*(void (__fastcall **)(void *))(*(_QWORD *)v4 + 24LL))(v4);
+    QWidget::activateWindow((QWidget *)self);
+    QWidget::raise((QWidget *)self);
+    return (void *)QWidget::setFocus(self, 7);
+  }
+  return result;
+}

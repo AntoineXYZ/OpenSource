@@ -4,7 +4,7 @@ Original 2016 spacecraft surfaces: implementation and evidence
 The offline legacy designer now has a textured orbit view behind the original
 Render Mode button. It shares the in-memory authoring design with the floor
 plan; it does not convert designs to the modern world/scene model. New/Open,
-cell edits and armor changes invalidate the mesh. Returning to either view
+cell/equipment edits and armor changes invalidate the mesh. Returning to either view
 preserves that view's camera. The existing F action fits the active view.
 
 Source map
@@ -20,11 +20,13 @@ src/lib/designer/legacy/aulegacyshiprender.h/.cpp:
   The selected-deck cutaway clips at deck*8+4 feet. This is an added inspection
   aid for the requested orbit camera, not an asserted original 2016 control.
 
-The normal client already initializes AuTexture. The standalone path now
-initializes the same resource bundle and sets the GL format before QApplication.
-Textures are loaded from :/data/txSpacecraft0Lit.png, never from the repository
-or a legacy installation. Atlas regions are the original SHIP_TEXTURE table
-retained in AuBodyRenderWidget::ShipTexture and verified against the binary.
+The normal client already initializes AuTexture, AuAtomRes and AuModelRes.
+The standalone path initializes those bundles and sets the GL format before QApplication.
+The original 256x8192 spacecraft atlas is embedded in aulegacyshipatlas.h;
+the modern :/data/txSpacecraft0Lit.png resource is a half-resolution fallback.
+Neither the repository nor a legacy installation is needed at runtime. Atlas
+regions are the original SHIP_TEXTURE table retained in
+AuBodyRenderWidget::ShipTexture and verified against the binary.
 
 Recovered surface pipeline
 --------------------------
@@ -96,8 +98,12 @@ comparisons. These do not prove original-client visual parity.
 The original Render Mode icon, palette position, tooltip and boolean toggle
 are preserved. The orbit camera, clipping and lighting are new viewer code;
 they do not reproduce avatar navigation or a world environment. Exact original
-shading/effect textures, furnished equipment, animated doors/hatches, turrets,
-railings, ladders, stairs and building roof types 22..24 remain outside the implemented surface baseline.
+shading, animated doors/hatches and building roof types 22..24 remain outside
+the implemented surface baseline. Equipment, original effect textures, turret
+domes/apertures, railings, ladders and stairs are now implemented; see the
+equipment and stair evidence files. Resource models use the existing packaged
+assets. The original spacecraft/effect atlases and changed helm bitmap are
+embedded without a legacy DLL dependency.
 Unsupported room/detail cases are reported in the inspector instead of being
 represented by invented equipment boxes. Scene/world rendering is deferred.
 

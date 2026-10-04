@@ -1,0 +1,186 @@
+Read-only Ghidra capture from original 2016 client. Not original source.
+
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* public: bool __cdecl DaSpaceShip::ClosestVehicleParkingSpot(class DaVehicle const * __ptr64,class
+   AuPoint & __ptr64,class AuPoint & __ptr64)const __ptr64 */
+
+bool __thiscall
+DaSpaceShip::ClosestVehicleParkingSpot
+          (DaSpaceShip *this,DaVehicle *param_1,AuPoint *param_2,AuPoint *param_3)
+
+{
+  float fVar1;
+  short sVar2;
+  longlong lVar3;
+  longlong *plVar4;
+  bool bVar5;
+  bool bVar6;
+  char cVar7;
+  DaAtom *this_00;
+  AuMatrix4x4 *pAVar8;
+  AuPoint *this_01;
+  undefined8 *puVar9;
+  int iVar10;
+  longlong *plVar11;
+  DaVehicle *this_02;
+  int iVar12;
+  undefined4 uVar13;
+  double dVar14;
+  undefined4 uVar15;
+  undefined4 uVar16;
+  undefined4 uVar17;
+  undefined1 auStack_378 [32];
+  undefined4 local_358;
+  DaAtom *local_348;
+  AuPoint *local_340;
+  DaSpaceShip *local_338;
+  double local_330;
+  double local_328;
+  undefined8 local_320;
+  undefined8 local_318;
+  undefined8 uStack_310;
+  undefined8 local_308;
+  QReadWriteLock *local_300;
+  DaVehicle *local_2f8;
+  AuPoint *local_2f0;
+  AuPoint local_2e8 [24];
+  AuPoint local_2d0 [24];
+  AuBox local_2b8 [464];
+  ulonglong local_e8;
+  
+                    /* 0x3d4620  1867
+                       ?ClosestVehicleParkingSpot@DaSpaceShip@@QEBA_NPEBVDaVehicle@@AEAVAuPoint@@1@Z
+                        */
+  local_e8 = DAT_180a0ecf0 ^ (ulonglong)auStack_378;
+  uVar16 = 0;
+  uVar17 = 0xbff00000;
+  local_300 = (QReadWriteLock *)(this + 0x770);
+  local_348 = (DaAtom *)param_1;
+  local_340 = param_2;
+  local_338 = this;
+  local_2f0 = param_3;
+  QReadWriteLock::lockForRead(local_300);
+  lVar3 = *(longlong *)(this + 0x9b8);
+  plVar11 = (longlong *)(lVar3 + ((longlong)*(int *)(lVar3 + 8) + 2) * 8);
+  uVar13 = uVar16;
+  uVar15 = uVar17;
+  if (plVar11 != (longlong *)(lVar3 + ((longlong)*(int *)(lVar3 + 0xc) + 2) * 8)) {
+    this_02 = param_1 + 0x88;
+    local_2f8 = this_02;
+    do {
+      QReadWriteLock::lockForRead((QReadWriteLock *)this_02);
+      sVar2 = *(short *)(*(longlong *)(param_1 + 0x90) + 0xa6);
+      QReadWriteLock::unlock((QReadWriteLock *)this_02);
+      if (sVar2 == *(short *)(*plVar11 + 0x24)) {
+        AuPoint::operator-((AuPoint *)(*plVar11 + 8),(AuPoint *)&local_318);
+        QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x1e0));
+        plVar4 = *(longlong **)(this + 0x1e8);
+        if (plVar4 != (longlong *)0x0) {
+          puVar9 = (undefined8 *)*plVar4;
+          bVar5 = false;
+          param_2 = local_340;
+          if (puVar9 != (undefined8 *)plVar4[1]) {
+            do {
+              local_358 = 0;
+              this_00 = (DaAtom *)
+                        __RTDynamicCast(*puVar9,0,&DaAtom::RTTI_Type_Descriptor,
+                                        &DaVehicle::RTTI_Type_Descriptor);
+              if (((this_00 != (DaAtom *)0x0) && (this_00 != (DaAtom *)param_1)) &&
+                 (((byte)this_00[0x18] & 0xfb) == 0)) {
+                QReadWriteLock::lockForRead((QReadWriteLock *)(this_00 + 0x88));
+                lVar3 = *(longlong *)(this_00 + 0x90);
+                QReadWriteLock::unlock((QReadWriteLock *)(this_00 + 0x88));
+                if (lVar3 == 0) goto LAB_1803d498a;
+                bVar6 = DaAtom::IsInsideSpacecraft(this_00);
+                param_1 = (DaVehicle *)local_348;
+                if (bVar6) {
+                  QReadWriteLock::lockForRead((QReadWriteLock *)(this_00 + 0x88));
+                  sVar2 = *(short *)(*(longlong *)(this_00 + 0x90) + 0xa6);
+                  QReadWriteLock::unlock((QReadWriteLock *)(this_00 + 0x88));
+                  param_1 = (DaVehicle *)local_348;
+                  if (sVar2 == *(short *)(*plVar11 + 0x24)) {
+                    AuBox::AuBox(local_2b8);
+                    cVar7 = (**(code **)(*(longlong *)this_00 + 0x378))(this_00);
+                    param_1 = (DaVehicle *)local_348;
+                    if (cVar7 != '\0') {
+                      pAVar8 = (AuMatrix4x4 *)DaAtom::Transform(this_00);
+                      AuBox::Transform(local_2b8,pAVar8);
+                      iVar12 = -1;
+                      do {
+                        iVar10 = -1;
+                        do {
+                          local_320 = 0x3ff0000000000000;
+                          local_330 = (double)iVar12;
+                          local_328 = (double)iVar10;
+                          AuPoint::operator+((AuPoint *)&local_318,local_2d0);
+                          bVar6 = AuBox::IsPointInside(local_2b8,local_2d0);
+                          if (bVar6) {
+LAB_1803d4957:
+                            bVar5 = true;
+                            break;
+                          }
+                          local_320 = 0x4010000000000000;
+                          local_330 = (double)iVar12;
+                          local_328 = (double)iVar10;
+                          AuPoint::operator+((AuPoint *)&local_318,local_2e8);
+                          bVar6 = AuBox::IsPointInside(local_2b8,local_2e8);
+                          if (bVar6) goto LAB_1803d4957;
+                          iVar10 = iVar10 + 1;
+                        } while (iVar10 < 2);
+                        iVar12 = iVar12 + 1;
+                      } while (iVar12 < 2);
+                      param_1 = (DaVehicle *)local_348;
+                      if (bVar5) goto LAB_1803d498a;
+                    }
+                  }
+                }
+              }
+              puVar9 = puVar9 + 1;
+            } while (puVar9 != (undefined8 *)plVar4[1]);
+            param_2 = local_340;
+            this = local_338;
+            if (bVar5) {
+LAB_1803d498a:
+              this = local_338;
+              QReadWriteLock::unlock((QReadWriteLock *)(local_338 + 0x1e0));
+              param_1 = (DaVehicle *)local_348;
+              this_02 = local_2f8;
+              goto LAB_1803d4a3b;
+            }
+          }
+        }
+        QReadWriteLock::unlock((QReadWriteLock *)(this + 0x1e0));
+        this_01 = (AuPoint *)DaAtom::Location((DaAtom *)param_1);
+        dVar14 = AuPoint::Distance2_2D(this_01,(AuPoint *)&local_318);
+        uVar13 = SUB84(dVar14,0);
+        uVar15 = (undefined4)((ulonglong)dVar14 >> 0x20);
+        if (((double)CONCAT44(uVar17,uVar16) <= 0.0 && (double)CONCAT44(uVar17,uVar16) != 0.0) ||
+           (dVar14 <= (double)CONCAT44(uVar17,uVar16) && (double)CONCAT44(uVar17,uVar16) != dVar14))
+        {
+          lVar3 = *plVar11;
+          *(undefined8 *)param_2 = local_318;
+          *(undefined8 *)(param_2 + 8) = uStack_310;
+          *(undefined8 *)(param_2 + 0x10) = local_308;
+          fVar1 = *(float *)(lVar3 + 0x20);
+          *(undefined8 *)local_2f0 = 0;
+          *(undefined8 *)(local_2f0 + 8) = 0;
+          *(double *)(local_2f0 + 0x10) = (double)(fVar1 - 1.5707964);
+          uVar16 = uVar13;
+          uVar17 = uVar15;
+          if (ABS(dVar14) <= 1e-05) break;
+        }
+        this_02 = param_1 + 0x88;
+      }
+LAB_1803d4a3b:
+      plVar11 = plVar11 + 1;
+      param_2 = local_340;
+      uVar13 = uVar16;
+      uVar15 = uVar17;
+    } while (plVar11 !=
+             (longlong *)
+             (*(longlong *)(this + 0x9b8) +
+              (longlong)*(int *)(*(longlong *)(this + 0x9b8) + 0xc) * 8 + 0x10));
+  }
+  QReadWriteLock::unlock(local_300);
+  return 0.0 <= (double)CONCAT44(uVar15,uVar13);
+}

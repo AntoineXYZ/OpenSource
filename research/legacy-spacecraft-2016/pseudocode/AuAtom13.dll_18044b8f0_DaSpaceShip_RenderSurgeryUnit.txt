@@ -1,0 +1,355 @@
+Read-only Ghidra capture for equipment recovery. Not original source.
+
+
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* protected: void __cdecl DaSpaceShip::RenderSurgeryUnit(class QList<class AuTriSpacecraft> &
+   __ptr64,class AuPoint const & __ptr64)const __ptr64 */
+
+void __thiscall
+DaSpaceShip::RenderSurgeryUnit(DaSpaceShip *this,QList<AuTriSpacecraft> *param_1,AuPoint *param_2)
+
+{
+  undefined1 auStackY_248 [32];
+  undefined8 local_168;
+  undefined8 uStack_160;
+  undefined8 local_158;
+  undefined8 local_150;
+  undefined8 uStack_148;
+  undefined8 local_140;
+  undefined8 local_138;
+  undefined8 uStack_130;
+  undefined8 local_128;
+  undefined8 local_120;
+  undefined8 uStack_118;
+  undefined8 local_110;
+  undefined8 local_108;
+  undefined8 uStack_100;
+  undefined8 local_f8;
+  float local_f0;
+  float local_ec;
+  float local_e8;
+  float local_e4;
+  float local_e0;
+  float local_dc;
+  float local_d8;
+  float local_d4;
+  int local_d0 [4];
+  ulonglong local_c0;
+  
+                    /* 0x44b8f0  6060
+                       ?RenderSurgeryUnit@DaSpaceShip@@IEBAXAEAV?$QList@VAuTriSpacecraft@@@@AEBVAuPoint@@@Z
+                        */
+  local_c0 = DAT_180a0ecf0 ^ (ulonglong)auStackY_248;
+  ShipTexture(0x36,&local_e4,&local_e8,&local_e0,&local_d4);
+  EffectTexture(this,0x28,&local_f0,&local_dc,&local_ec,&local_d8);
+  local_d0[0] = 0;
+  local_d0[1] = 0;
+  local_d0[2] = 8;
+  local_120 = 0x3ff0000000000000;
+  uStack_118 = 0;
+  local_168 = 0x40021a1851f89ea2;
+  uStack_160 = 0x3fedfe051d9e9b13;
+  local_138 = 0x40021a1851f89ea2;
+  uStack_130 = 0x3fedfe051d9e9b13;
+  local_110 = 0;
+  local_158 = 0;
+  local_128 = 0x4020000000000000;
+  local_f8 = 0x4020000000000000;
+  local_140 = 0;
+  local_108 = 0x40021a1851f89ea2;
+  uStack_100 = 0xbfedfe051d9e9b13;
+  local_150 = 0x40021a1851f89ea2;
+  uStack_148 = 0xbfedfe051d9e9b13;
+  ModelAdd(param_1,(AuPoint *)&local_120,local_d0,0.0,false,param_2,0.0,local_e4,local_e8,local_f0,
+           local_dc,(AuPoint *)&local_150,local_e4,local_d4,local_f0,local_d8,(AuPoint *)&local_108,
+           local_e0,local_d4,local_ec,local_d8,(AuPoint *)&local_138,local_e0,local_e8,local_ec,
+           local_dc,(AuPoint *)&local_168);
+  local_120 = 0x3fe6a0902de00d1b;
+  uStack_118 = 0x3fe6a0902de00d1b;
+  local_150 = 0x3fedfe051d9e9b13;
+  uStack_148 = 0x40021a1851f89ea2;
+  local_108 = 0x3fedfe051d9e9b13;
+  uStack_100 = 0x40021a1851f89ea2;
+  local_110 = 0;
+  local_140 = 0;
+  local_f8 = 0x4020000000000000;
+  local_128 = 0x4020000000000000;
+  local_158 = 0;
+  local_138 = 0x40021a1851f89ea2;
+  uStack_130 = 0x3fedfe051d9e9b13;
+  local_168 = 0x40021a1851f89ea2;
+  uStack_160 = 0x3fedfe051d9e9b13;
+  ModelAdd(param_1,(AuPoint *)&local_120,local_d0,0.0,false,param_2,0.0,local_e4,local_e8,local_f0,
+           local_dc,(AuPoint *)&local_168,local_e4,local_d4,local_f0,local_d8,(AuPoint *)&local_138,
+           local_e0,local_d4,local_ec,local_d8,(AuPoint *)&local_108,local_e0,local_e8,local_ec,
+           local_dc,(AuPoint *)&local_150);
+  local_120 = 0;
+  uStack_118 = 0x3ff0000000000000;
+  local_150 = 0xbfedfe051d9e9b13;
+  uStack_148 = 0x40021a1851f89ea2;
+  local_108 = 0xbfedfe051d9e9b13;
+  uStack_100 = 0x40021a1851f89ea2;
+  local_110 = 0;
+  local_140 = 0;
+  local_f8 = 0x4020000000000000;
+  local_128 = 0x4020000000000000;
+  local_158 = 0;
+  local_138 = 0x3fedfe051d9e9b13;
+  uStack_130 = 0x40021a1851f89ea2;
+  local_168 = 0x3fedfe051d9e9b13;
+  uStack_160 = 0x40021a1851f89ea2;
+  ModelAdd(param_1,(AuPoint *)&local_120,local_d0,0.0,false,param_2,0.0,local_e4,local_e8,local_f0,
+           local_dc,(AuPoint *)&local_168,local_e4,local_d4,local_f0,local_d8,(AuPoint *)&local_138,
+           local_e0,local_d4,local_ec,local_d8,(AuPoint *)&local_108,local_e0,local_e8,local_ec,
+           local_dc,(AuPoint *)&local_150);
+  local_120 = 0xbfe6a0902de00d1b;
+  uStack_118 = 0x3fe6a0902de00d1b;
+  local_150 = 0xc0021a1851f89ea2;
+  uStack_148 = 0x3fedfe051d9e9b13;
+  local_108 = 0xc0021a1851f89ea2;
+  uStack_100 = 0x3fedfe051d9e9b13;
+  local_110 = 0;
+  local_140 = 0;
+  local_f8 = 0x4020000000000000;
+  local_128 = 0x4020000000000000;
+  local_158 = 0;
+  local_138 = 0xbfedfe051d9e9b13;
+  uStack_130 = 0x40021a1851f89ea2;
+  local_168 = 0xbfedfe051d9e9b13;
+  uStack_160 = 0x40021a1851f89ea2;
+  ModelAdd(param_1,(AuPoint *)&local_120,local_d0,0.0,false,param_2,0.0,local_e4,local_e8,local_f0,
+           local_dc,(AuPoint *)&local_168,local_e4,local_d4,local_f0,local_d8,(AuPoint *)&local_138,
+           local_e0,local_d4,local_ec,local_d8,(AuPoint *)&local_108,local_e0,local_e8,local_ec,
+           local_dc,(AuPoint *)&local_150);
+  local_120 = 0xbff0000000000000;
+  uStack_118 = 0;
+  local_150 = 0xc0021a1851f89ea2;
+  uStack_148 = 0xbfedfe051d9e9b13;
+  local_108 = 0xc0021a1851f89ea2;
+  uStack_100 = 0xbfedfe051d9e9b13;
+  local_110 = 0;
+  local_140 = 0;
+  local_f8 = 0x4020000000000000;
+  local_128 = 0x4020000000000000;
+  local_158 = 0;
+  local_138 = 0xc0021a1851f89ea2;
+  uStack_130 = 0x3fedfe051d9e9b13;
+  local_168 = 0xc0021a1851f89ea2;
+  uStack_160 = 0x3fedfe051d9e9b13;
+  ModelAdd(param_1,(AuPoint *)&local_120,local_d0,0.0,false,param_2,0.0,local_e4,local_e8,local_f0,
+           local_dc,(AuPoint *)&local_168,local_e4,local_d4,local_f0,local_d8,(AuPoint *)&local_138,
+           local_e0,local_d4,local_ec,local_d8,(AuPoint *)&local_108,local_e0,local_e8,local_ec,
+           local_dc,(AuPoint *)&local_150);
+  local_120 = 0xbfe6a0902de00d1b;
+  uStack_118 = 0xbfe6a0902de00d1b;
+  local_150 = 0xbfedfe051d9e9b13;
+  uStack_148 = 0xc0021a1851f89ea2;
+  local_108 = 0xbfedfe051d9e9b13;
+  uStack_100 = 0xc0021a1851f89ea2;
+  local_110 = 0;
+  local_140 = 0;
+  local_f8 = 0x4020000000000000;
+  local_128 = 0x4020000000000000;
+  local_158 = 0;
+  local_138 = 0xc0021a1851f89ea2;
+  uStack_130 = 0xbfedfe051d9e9b13;
+  local_168 = 0xc0021a1851f89ea2;
+  uStack_160 = 0xbfedfe051d9e9b13;
+  ModelAdd(param_1,(AuPoint *)&local_120,local_d0,0.0,false,param_2,0.0,local_e4,local_e8,local_f0,
+           local_dc,(AuPoint *)&local_168,local_e4,local_d4,local_f0,local_d8,(AuPoint *)&local_138,
+           local_e0,local_d4,local_ec,local_d8,(AuPoint *)&local_108,local_e0,local_e8,local_ec,
+           local_dc,(AuPoint *)&local_150);
+  local_120 = 0;
+  uStack_118 = 0xbff0000000000000;
+  local_110 = 0;
+  local_140 = 0;
+  local_f8 = 0x4020000000000000;
+  local_128 = 0x4020000000000000;
+  local_150 = 0x3fedfe051d9e9b13;
+  uStack_148 = 0xc0021a1851f89ea2;
+  local_108 = 0x3fedfe051d9e9b13;
+  uStack_100 = 0xc0021a1851f89ea2;
+  local_158 = 0;
+  local_138 = 0xbfedfe051d9e9b13;
+  uStack_130 = 0xc0021a1851f89ea2;
+  local_168 = 0xbfedfe051d9e9b13;
+  uStack_160 = 0xc0021a1851f89ea2;
+  ModelAdd(param_1,(AuPoint *)&local_120,local_d0,0.0,false,param_2,0.0,local_e4,local_e8,local_f0,
+           local_dc,(AuPoint *)&local_168,local_e4,local_d4,local_f0,local_d8,(AuPoint *)&local_138,
+           local_e0,local_d4,local_ec,local_d8,(AuPoint *)&local_108,local_e0,local_e8,local_ec,
+           local_dc,(AuPoint *)&local_150);
+  local_120 = 0x3fe6a0902de00d1b;
+  uStack_118 = 0xbfe6a0902de00d1b;
+  local_150 = 0x40021a1851f89ea2;
+  uStack_148 = 0xbfedfe051d9e9b13;
+  local_108 = 0x40021a1851f89ea2;
+  uStack_100 = 0xbfedfe051d9e9b13;
+  local_110 = 0;
+  local_140 = 0;
+  local_f8 = 0x4020000000000000;
+  local_128 = 0x4020000000000000;
+  local_158 = 0;
+  local_138 = 0x3fedfe051d9e9b13;
+  uStack_130 = 0xc0021a1851f89ea2;
+  local_168 = 0x3fedfe051d9e9b13;
+  uStack_160 = 0xc0021a1851f89ea2;
+  ModelAdd(param_1,(AuPoint *)&local_120,local_d0,0.0,false,param_2,0.0,local_e4,local_e8,local_f0,
+           local_dc,(AuPoint *)&local_168,local_e4,local_d4,local_f0,local_d8,(AuPoint *)&local_138,
+           local_e0,local_d4,local_ec,local_d8,(AuPoint *)&local_108,local_e0,local_e8,local_ec,
+           local_dc,(AuPoint *)&local_150);
+  local_140 = 0x4020000000000000;
+  local_158 = 0x4020000000000000;
+  local_120 = 0xbff0000000000000;
+  uStack_118 = 0;
+  local_150 = 0x40021a1851f89ea2;
+  uStack_148 = 0x3fedfe051d9e9b13;
+  local_108 = 0x40021a1851f89ea2;
+  uStack_100 = 0x3fedfe051d9e9b13;
+  local_110 = 0;
+  local_f8 = 0;
+  local_128 = 0;
+  local_138 = 0x40021a1851f89ea2;
+  uStack_130 = 0xbfedfe051d9e9b13;
+  local_168 = 0x40021a1851f89ea2;
+  uStack_160 = 0xbfedfe051d9e9b13;
+  ModelAdd(param_1,(AuPoint *)&local_120,local_d0,0.0,false,param_2,0.0,local_e4,local_d4,local_f0,
+           local_d8,(AuPoint *)&local_168,local_e4,local_e8,local_f0,local_dc,(AuPoint *)&local_138,
+           local_e0,local_e8,local_ec,local_dc,(AuPoint *)&local_108,local_e0,local_d4,local_ec,
+           local_d8,(AuPoint *)&local_150);
+  local_120 = 0xbfe6a0902de00d1b;
+  uStack_118 = 0xbfe6a0902de00d1b;
+  local_150 = 0x3fedfe051d9e9b13;
+  uStack_148 = 0x40021a1851f89ea2;
+  local_108 = 0x3fedfe051d9e9b13;
+  uStack_100 = 0x40021a1851f89ea2;
+  local_110 = 0;
+  local_140 = 0x4020000000000000;
+  local_f8 = 0;
+  local_128 = 0;
+  local_158 = 0x4020000000000000;
+  local_138 = 0x40021a1851f89ea2;
+  uStack_130 = 0x3fedfe051d9e9b13;
+  local_168 = 0x40021a1851f89ea2;
+  uStack_160 = 0x3fedfe051d9e9b13;
+  ModelAdd(param_1,(AuPoint *)&local_120,local_d0,0.0,false,param_2,0.0,local_e4,local_d4,local_f0,
+           local_d8,(AuPoint *)&local_168,local_e4,local_e8,local_f0,local_dc,(AuPoint *)&local_138,
+           local_e0,local_e8,local_ec,local_dc,(AuPoint *)&local_108,local_e0,local_d4,local_ec,
+           local_d8,(AuPoint *)&local_150);
+  local_120 = 0;
+  uStack_118 = 0xbff0000000000000;
+  local_150 = 0xbfedfe051d9e9b13;
+  uStack_148 = 0x40021a1851f89ea2;
+  local_108 = 0xbfedfe051d9e9b13;
+  uStack_100 = 0x40021a1851f89ea2;
+  local_110 = 0;
+  local_140 = 0x4020000000000000;
+  local_f8 = 0;
+  local_128 = 0;
+  local_158 = 0x4020000000000000;
+  local_138 = 0x3fedfe051d9e9b13;
+  uStack_130 = 0x40021a1851f89ea2;
+  local_168 = 0x3fedfe051d9e9b13;
+  uStack_160 = 0x40021a1851f89ea2;
+  ModelAdd(param_1,(AuPoint *)&local_120,local_d0,0.0,false,param_2,0.0,local_e4,local_d4,local_f0,
+           local_d8,(AuPoint *)&local_168,local_e4,local_e8,local_f0,local_dc,(AuPoint *)&local_138,
+           local_e0,local_e8,local_ec,local_dc,(AuPoint *)&local_108,local_e0,local_d4,local_ec,
+           local_d8,(AuPoint *)&local_150);
+  local_110 = 0;
+  local_140 = 0x4020000000000000;
+  local_120 = 0x3fe6a0902de00d1b;
+  uStack_118 = 0xbfe6a0902de00d1b;
+  local_150 = 0xc0021a1851f89ea2;
+  uStack_148 = 0x3fedfe051d9e9b13;
+  local_108 = 0xc0021a1851f89ea2;
+  uStack_100 = 0x3fedfe051d9e9b13;
+  local_f8 = 0;
+  local_128 = 0;
+  local_158 = 0x4020000000000000;
+  local_138 = 0xbfedfe051d9e9b13;
+  uStack_130 = 0x40021a1851f89ea2;
+  local_168 = 0xbfedfe051d9e9b13;
+  uStack_160 = 0x40021a1851f89ea2;
+  ModelAdd(param_1,(AuPoint *)&local_120,local_d0,0.0,false,param_2,0.0,local_e4,local_d4,local_f0,
+           local_d8,(AuPoint *)&local_168,local_e4,local_e8,local_f0,local_dc,(AuPoint *)&local_138,
+           local_e0,local_e8,local_ec,local_dc,(AuPoint *)&local_108,local_e0,local_d4,local_ec,
+           local_d8,(AuPoint *)&local_150);
+  local_120 = 0x3ff0000000000000;
+  uStack_118 = 0;
+  local_150 = 0xc0021a1851f89ea2;
+  uStack_148 = 0xbfedfe051d9e9b13;
+  local_108 = 0xc0021a1851f89ea2;
+  uStack_100 = 0xbfedfe051d9e9b13;
+  local_110 = 0;
+  local_140 = 0x4020000000000000;
+  local_f8 = 0;
+  local_128 = 0;
+  local_158 = 0x4020000000000000;
+  local_138 = 0xc0021a1851f89ea2;
+  uStack_130 = 0x3fedfe051d9e9b13;
+  local_168 = 0xc0021a1851f89ea2;
+  uStack_160 = 0x3fedfe051d9e9b13;
+  ModelAdd(param_1,(AuPoint *)&local_120,local_d0,0.0,false,param_2,0.0,local_e4,local_d4,local_f0,
+           local_d8,(AuPoint *)&local_168,local_e4,local_e8,local_f0,local_dc,(AuPoint *)&local_138,
+           local_e0,local_e8,local_ec,local_dc,(AuPoint *)&local_108,local_e0,local_d4,local_ec,
+           local_d8,(AuPoint *)&local_150);
+  local_140 = 0x4020000000000000;
+  local_158 = 0x4020000000000000;
+  local_120 = 0x3fe6a0902de00d1b;
+  uStack_118 = 0x3fe6a0902de00d1b;
+  local_150 = 0xbfedfe051d9e9b13;
+  uStack_148 = 0xc0021a1851f89ea2;
+  local_108 = 0xbfedfe051d9e9b13;
+  uStack_100 = 0xc0021a1851f89ea2;
+  local_110 = 0;
+  local_f8 = 0;
+  local_128 = 0;
+  local_138 = 0xc0021a1851f89ea2;
+  uStack_130 = 0xbfedfe051d9e9b13;
+  local_168 = 0xc0021a1851f89ea2;
+  uStack_160 = 0xbfedfe051d9e9b13;
+  ModelAdd(param_1,(AuPoint *)&local_120,local_d0,0.0,false,param_2,0.0,local_e4,local_d4,local_f0,
+           local_d8,(AuPoint *)&local_168,local_e4,local_e8,local_f0,local_dc,(AuPoint *)&local_138,
+           local_e0,local_e8,local_ec,local_dc,(AuPoint *)&local_108,local_e0,local_d4,local_ec,
+           local_d8,(AuPoint *)&local_150);
+  local_120 = 0;
+  uStack_118 = 0x3ff0000000000000;
+  local_150 = 0x3fedfe051d9e9b13;
+  uStack_148 = 0xc0021a1851f89ea2;
+  local_108 = 0x3fedfe051d9e9b13;
+  uStack_100 = 0xc0021a1851f89ea2;
+  local_110 = 0;
+  local_140 = 0x4020000000000000;
+  local_f8 = 0;
+  local_128 = 0;
+  local_158 = 0x4020000000000000;
+  local_138 = 0xbfedfe051d9e9b13;
+  uStack_130 = 0xc0021a1851f89ea2;
+  local_168 = 0xbfedfe051d9e9b13;
+  uStack_160 = 0xc0021a1851f89ea2;
+  ModelAdd(param_1,(AuPoint *)&local_120,local_d0,0.0,false,param_2,0.0,local_e4,local_d4,local_f0,
+           local_d8,(AuPoint *)&local_168,local_e4,local_e8,local_f0,local_dc,(AuPoint *)&local_138,
+           local_e0,local_e8,local_ec,local_dc,(AuPoint *)&local_108,local_e0,local_d4,local_ec,
+           local_d8,(AuPoint *)&local_150);
+  local_120 = 0xbfe6a0902de00d1b;
+  uStack_118 = 0x3fe6a0902de00d1b;
+  local_150 = 0x40021a1851f89ea2;
+  uStack_148 = 0xbfedfe051d9e9b13;
+  local_108 = 0x40021a1851f89ea2;
+  uStack_100 = 0xbfedfe051d9e9b13;
+  local_110 = 0;
+  local_140 = 0x4020000000000000;
+  local_f8 = 0;
+  local_128 = 0;
+  local_158 = 0x4020000000000000;
+  local_138 = 0x3fedfe051d9e9b13;
+  uStack_130 = 0xc0021a1851f89ea2;
+  local_168 = 0x3fedfe051d9e9b13;
+  uStack_160 = 0xc0021a1851f89ea2;
+  ModelAdd(param_1,(AuPoint *)&local_120,local_d0,0.0,false,param_2,0.0,local_e4,local_d4,local_f0,
+           local_d8,(AuPoint *)&local_168,local_e4,local_e8,local_f0,local_dc,(AuPoint *)&local_138,
+           local_e0,local_e8,local_ec,local_dc,(AuPoint *)&local_108,local_e0,local_d4,local_ec,
+           local_d8,(AuPoint *)&local_150);
+  return;
+}
+
+

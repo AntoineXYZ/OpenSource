@@ -1,0 +1,117 @@
+Read-only Ghidra capture from original 2016 client. Not original source.
+
+/* public: unsigned short __cdecl DgData::SpaceShipDesignFillDetails(unsigned int,class AuPoint
+   const & __ptr64,enum DnDetailType::DETAILTYPE,enum COMMODITYID,int) __ptr64 */
+
+ushort __thiscall
+DgData::SpaceShipDesignFillDetails
+          (DgData *this,uint param_1,AuPoint *param_2,DETAILTYPE param_3,COMMODITYID param_4,
+          int param_5)
+
+{
+  longlong lVar1;
+  undefined8 *puVar2;
+  bool bVar3;
+  undefined8 *puVar4;
+  bool bVar5;
+  ushort uVar6;
+  __uint64 _Var7;
+  undefined8 *puVar8;
+  AuPoint *pAVar9;
+  int iVar10;
+  ulonglong uVar11;
+  undefined8 *puVar12;
+  undefined8 *puVar13;
+  longlong *plVar14;
+  int iVar15;
+  uint local_res10 [2];
+  AuPoint *local_res18;
+  AuDesignIdHash local_88 [2];
+  ushort local_86;
+  undefined8 *local_80;
+  double local_78;
+  double local_70;
+  AuPoint local_60 [40];
+  
+  local_res10[0] = param_1;
+  local_res18 = param_2;
+                    /* 0x1469d0  5627
+                       ?SpaceShipDesignFillDetails@DgData@@QEAAGIAEBVAuPoint@@W4DETAILTYPE@DnDetailType@@W4COMMODITYID@@H@Z
+                        */
+  uVar6 = SpaceShipDesignAddDetail(this,param_1,param_2,(uchar)param_3,param_4);
+  if (uVar6 == 0) {
+    return 0;
+  }
+  if (param_5 != 0) {
+    local_86 = uVar6;
+    _Var7 = AuDesignIdHash::operator()(local_88,local_res10);
+    uVar11 = *(ulonglong *)(this + 0x1a0) & _Var7;
+    if (*(ulonglong *)(this + 0x1a8) <= uVar11) {
+      uVar11 = uVar11 + (-1 - (*(ulonglong *)(this + 0x1a0) >> 1));
+    }
+    lVar1 = *(longlong *)(this + 0x188);
+    puVar2 = *(undefined8 **)(this + 0x178);
+    puVar8 = *(undefined8 **)(lVar1 + uVar11 * 0x10);
+    while( true ) {
+      puVar13 = puVar2;
+      if (*(undefined8 **)(lVar1 + uVar11 * 0x10) != puVar2) {
+        puVar13 = (undefined8 *)**(undefined8 **)(lVar1 + 8 + uVar11 * 0x10);
+      }
+      puVar12 = puVar2;
+      puVar4 = local_80;
+      if ((puVar8 == puVar13) ||
+         (puVar12 = puVar8, puVar4 = puVar8, local_res10[0] == *(uint *)(puVar8 + 2))) break;
+      puVar8 = (undefined8 *)*puVar8;
+    }
+    local_80 = puVar4;
+    if (puVar12 != *(undefined8 **)(this + 0x178)) {
+      lVar1 = puVar12[3];
+      plVar14 = (longlong *)(lVar1 + ((longlong)*(int *)(lVar1 + 8) + 2) * 8);
+      if (plVar14 != (longlong *)(lVar1 + (longlong)*(int *)(lVar1 + 0xc) * 8 + 0x10)) {
+        do {
+          if (*(ushort *)(*plVar14 + 4) == uVar6) {
+            bVar3 = false;
+            if ((param_3 < 0x18) && ((0x854400U >> (param_3 & 0x1f) & 1) != 0)) {
+              bVar3 = true;
+            }
+            AuPoint::AuPoint((AuPoint *)&local_78,param_2);
+            iVar10 = -param_5;
+            local_80 = (undefined8 *)CONCAT44(local_80._4_4_,iVar10);
+            iVar15 = iVar10;
+            pAVar9 = local_res18;
+            for (; iVar10 <= param_5; iVar10 = iVar10 + 1) {
+              local_78 = (double)((float)iVar10 * 2.828427) + *(double *)pAVar9;
+              if (iVar15 <= param_5) {
+                do {
+                  if ((iVar10 != 0) || (iVar15 != 0)) {
+                    local_70 = (double)((float)iVar15 * 2.828427) + *(double *)(pAVar9 + 8);
+                    pAVar9 = (AuPoint *)DnBuilding::RoundGridCoordOnDeck(local_60);
+                    AuPoint::operator=((AuPoint *)&local_78,pAVar9);
+                    bVar5 = AuPointArray::PointInBoundary
+                                      ((AuPointArray *)(*plVar14 + 0x10),(AuPoint *)&local_78);
+                    if ((bVar5) ||
+                       ((pAVar9 = local_res18, bVar3 &&
+                        (bVar5 = AuPointArray::PointOnBoundary_2D
+                                           ((AuPointArray *)(*plVar14 + 0x10),(AuPoint *)&local_78),
+                        pAVar9 = local_res18, bVar5)))) {
+                      SpaceShipDesignAddDetail
+                                (this,local_res10[0],(AuPoint *)&local_78,(uchar)param_3,param_4);
+                      pAVar9 = local_res18;
+                    }
+                  }
+                  iVar15 = iVar15 + 1;
+                } while (iVar15 <= param_5);
+                iVar15 = (int)local_80;
+              }
+              uVar6 = local_86;
+            }
+            return uVar6;
+          }
+          plVar14 = plVar14 + 1;
+        } while (plVar14 !=
+                 (longlong *)(puVar12[3] + (longlong)*(int *)(puVar12[3] + 0xc) * 8 + 0x10));
+      }
+    }
+  }
+  return uVar6;
+}

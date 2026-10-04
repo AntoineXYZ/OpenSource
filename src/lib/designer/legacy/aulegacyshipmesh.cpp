@@ -1,5 +1,8 @@
 #include "aulegacyshipmesh.h"
 #include "aulegacyshipgeometry.h"
+#include "aulegacyshipequipment.h"
+#include "aulegacyshipvehicles.h"
+#include "aulegacyshipstairs.h"
 
 #include <QHash>
 #include <QPoint>
@@ -96,6 +99,10 @@ QVector<ProfilePoint> WallProfile(int type, int armor)
 		point(0, 0, 0); break;
 	case 30:
 		point(0, 0, 2); point(0, 7, 4); point(1, 7, armor < 9 ? 5 : 4); break;
+	case 31:
+		point(0, 0, armor > 3 ? 4 : 5);
+		point(1.5, 4 - CoordinateSpacing, 3);
+		point(1.5, 4 + CoordinateSpacing, 5); break;
 	default:
 		point(0, 0, 4); break;
 	}
@@ -111,6 +118,7 @@ bool WindowFloor(int type, int armor)
 }
 bool HasInterior(int type) { return type != 9 && !(type >= 22 && type <= 24); }
 bool IsHatch(int type) { return type == 8 || type == 51 || type == 52 || (type >= 77 && type <= 97); }
+bool IsSideTurret(int type) { return type == 21 || (type >= 34 && type <= 40); }
 
 struct Hatch
 {
@@ -118,6 +126,7 @@ struct Hatch
 	QPolygonF boundary;
 	Material material;
 	bool diamond;
+	bool turret = false;
 };
 
 QVector<Hatch> Hatches(const QVector<Detail>& details, int deck)
@@ -126,18 +135,26 @@ QVector<Hatch> Hatches(const QVector<Detail>& details, int deck)
 	QSet<quint16> positions;
 	for(const Detail& detail : details)
 	{
-		if(detail.deck != deck || !IsHatch(detail.detailType)) continue;
+		const bool turret = detail.detailType == 22 || detail.detailType == 33;
+		if(detail.deck != deck || (!IsHatch(detail.detailType) && !turret)) continue;
 		if(positions.contains(detail.packedXY)) continue;
 		positions.insert(detail.packedXY);
 		Hatch hatch;
 		hatch.center = DecodePoint(detail.packedXY);
+		hatch.turret = turret;
 		const int x = int(std::round(hatch.center.x() / RasterSpacing)) + RasterOrigin;
 		const int y = int(std::round(hatch.center.y() / RasterSpacing)) + RasterOrigin;
 		hatch.diamond = x % 4 != 2 || y % 4 != 2;
 		hatch.material = detail.detailType == 8 || (detail.detailType >= 77 && detail.detailType <= 83)
 			? Material::InteriorHatch : detail.detailType == 51 || (detail.detailType >= 84 && detail.detailType <= 90)
 				? Material::CrewHatch : Material::HullHatch;
-		if(hatch.diamond)
+		if(turret)
+			hatch.boundary << hatch.center + QPointF(CoordinateSpacing, 0)
+				<< hatch.center + QPointF(2, 2) << hatch.center + QPointF(0, CoordinateSpacing)
+				<< hatch.center + QPointF(-2, 2) << hatch.center + QPointF(-CoordinateSpacing, 0)
+				<< hatch.center + QPointF(-2, -2) << hatch.center + QPointF(0, -CoordinateSpacing)
+				<< hatch.center + QPointF(2, -2);
+		else if(hatch.diamond)
 			hatch.boundary << hatch.center + QPointF(-CoordinateSpacing, 0)
 				<< hatch.center + QPointF(0, -CoordinateSpacing) << hatch.center + QPointF(CoordinateSpacing, 0)
 				<< hatch.center + QPointF(0, CoordinateSpacing);
@@ -355,6 +372,67 @@ void SplitPolygon(const QPolygonF& polygon, const QPointF& a, const QPointF& b,
 	}
 }
 
+QVector<QVector3D> TurretPoints(const QVector3D& center, const QVector3D& right,
+	const QVector3D& outward, const QVector3D& up)
+{
+	// DaSpaceShip::RenderTurret and RenderExteriorWalls use the same 13 points.
+	const float r = float(CoordinateSpacing);
+	const QVector3D shape[] = {{r, 0, 0}, {2, 0, -2}, {0, 0, -r}, {-2, 0, -2},
+		{-r, 0, 0}, {-2, 0, 2}, {0, 0, r}, {2, 0, 2},
+		{2, 2, 0}, {0, 2, -2}, {-2, 2, 0}, {0, 2, 2}, {0, r, 0}};
+	QVector<QVector3D> points;
+	for(const QVector3D& p : shape)
+		points.append(center + right * p.x() + outward * p.y() + up * p.z());
+	return points;
+}
+
+void TurretDome(Builder& out, const QVector<QVector3D>& points, int deck, bool side)
+{
+	static const int triangles[][3] = {{8,12,9}, {1,8,9}, {8,1,0}, {8,0,7},
+		{9,12,10}, {3,9,10}, {9,3,2}, {9,2,1}, {10,12,11}, {5,10,11},
+		{10,5,4}, {10,4,3}, {11,12,8}, {7,11,8}, {11,7,6}, {11,6,5}};
+	const QVector2D uv[3] = {side ? QVector2D(1, 1) : QVector2D(0, 0),
+		side ? QVector2D(1, 0) : QVector2D(0, 1), side ? QVector2D(0, 1) : QVector2D(1, 0)};
+	for(const auto& tri : triangles)
+	{
+		out.Triangle(Material::Turret, deck, false, points[tri[0]], points[tri[2]], points[tri[1]], uv[0], uv[2], uv[1]);
+		out.Triangle(Material::Turret, deck, true, points[tri[0]], points[tri[1]], points[tri[2]], uv[0], uv[1], uv[2]);
+	}
+}
+
+void SideTurret(Builder& out, int deck, const QVector3D& a0, const QVector3D& b0,
+	const QVector3D& b1, const QVector3D& a1)
+{
+	const QVector3D center = (a0 + b1) * .5f;
+	const QVector3D right = (a0 - b0).normalized();
+	const QVector3D outward(right.y(), -right.x(), 0);
+	// right points opposite the boundary walk, so its left normal faces out.
+	const QVector3D facing = -outward;
+	const QVector<QVector3D> points = TurretPoints(center, right, facing, {0, 0, 1});
+	TurretDome(out, points, deck, true);
+	// RenderExteriorWalls maps a complete tile onto each corner separately.
+	const QVector3D corners[] = {a0, a1, b1, b0};
+	const int ring[][3] = {{0, 1, 2}, {6, 7, 0}, {4, 5, 6}, {2, 3, 4}};
+	const QVector2D cornerUV(1, 1), firstUV(1, 0), lastUV(0, 1);
+	const QVector2D bevelUV(.6767767f, .6767767f);
+	const auto triangle = [&](const QVector3D& a, const QVector3D& b, const QVector3D& c,
+		const QVector2D& ua, const QVector2D& ub, const QVector2D& uc)
+	{
+		out.Triangle(Material::Turret, deck, false, a, c, b, ua, uc, ub);
+		out.Triangle(Material::Turret, deck, true, a, b, c, ua, ub, uc);
+	};
+	for(int i = 0; i < 4; ++i)
+	{
+		triangle(corners[i], points[ring[i][0]], points[ring[i][1]], cornerUV, firstUV, bevelUV);
+		triangle(corners[i], points[ring[i][1]], points[ring[i][2]], cornerUV, bevelUV, lastUV);
+	}
+	if((a0 - b0).length() > 2 * CoordinateSpacing + Epsilon)
+	{
+		triangle(b0, points[4], b1, {0, 1}, {1, 1}, {1, 0});
+		triangle(a1, points[0], a0, {0, 1}, {1, 1}, {1, 0});
+	}
+}
+
 void Plane(Builder& out, const QPoint (&points)[3], int x, int y, double z,
 	Material material, int deck, bool interior, bool up, const QVector<Hatch>& hatches)
 {
@@ -405,7 +483,7 @@ void Plane(Builder& out, const QPoint (&points)[3], int x, int y, double z,
 			}
 			// The designer preview keeps hatches closed. The original runtime
 			// selected the half-open region and animated its atlas coordinates.
-			emitPolygon(intersection, hatch.material, &hatch);
+			if(!hatch.turret) emitPolygon(intersection, hatch.material, &hatch);
 		}
 		remainder = next;
 	}
@@ -550,13 +628,14 @@ QVector<WallSpan> WallSpans(const Edge& edge, bool exterior, const DetailGrid& d
 	for(const Detail& detail : candidates)
 	{
 		const int type = detail.detailType;
-		if(exterior ? type != 3 && type != 9 && type != 50
-			: type != 5 && type != 49 && type != 50 && type != 53 && type != 54 && type != 55) continue;
+		if(exterior ? type != 3 && type != 9 && type != 50 && !IsSideTurret(type)
+			: type != 5 && type != 49 && type != 50 && type != 53 && type != 54 && type != 55 && type != 56) continue;
 		const QPointF position = DecodePoint(detail.packedXY) - a;
 		const double at = QPointF::dotProduct(position, direction);
 		if(std::abs(Cross(direction, position)) > Epsilon || at <= Epsilon || at >= length - Epsilon) continue;
 		double start = at - 2.5, end = at + 2.5;
-		if(exterior && (type == 3 || type == 9)) { start = 1; end = length - 1; }
+		if(IsSideTurret(type)) { start = at - CoordinateSpacing; end = at + CoordinateSpacing; }
+		else if(exterior && (type == 3 || type == 9)) { start = 1; end = length - 1; }
 		else if(!exterior && type >= 53) { start = 0; end = length; }
 		start = std::max(0.0, start); end = std::min(length, end);
 		if(end - start <= Epsilon) continue;
@@ -573,7 +652,8 @@ QVector<WallSpan> WallSpans(const Edge& edge, bool exterior, const DetailGrid& d
 			if(middle > opening.start && middle < opening.end)
 			{
 				span.detail = opening.type;
-				if(exterior) span.tag = quint16((opening.type == 3 ? 28 : opening.type == 9 ? 29 : 30) << 8);
+				if(exterior) span.tag = quint16((IsSideTurret(opening.type) ? 31
+					: opening.type == 3 ? 28 : opening.type == 9 ? 29 : 30) << 8);
 				break;
 			}
 		spans.append(span);
@@ -585,6 +665,7 @@ Material HullMaterial(int strip)
 {
 	if(strip == 1) return Material::LargeHullDoor;
 	if(strip == 2) return Material::HullDoor;
+	if(strip == 3) return Material::Turret;
 	return strip == 5 ? Material::HullWallWindow : Material::HullWall;
 }
 
@@ -613,6 +694,11 @@ void HullWalls(Builder& out, const QVector<Edge>& edges, int deck, int armor, co
 				const QVector3D b0 = Position(b + nb * p.offset, deck * DeckHeight + p.height);
 				const QVector3D a1 = Position(a + na * q.offset, deck * DeckHeight + q.height);
 				const QVector3D b1 = Position(b + nb * q.offset, deck * DeckHeight + q.height);
+				if(p.strip == 3)
+				{
+					SideTurret(out, deck, a0, b0, b1, a1);
+					continue;
+				}
 				out.Quad(material, deck, false, a0, b0, b1, a1);
 				out.Triangle(material, deck, true, a0, b1, b0, {0, 0}, {1, 1}, {1, 0});
 				out.Triangle(material, deck, true, a0, a1, b1, {0, 0}, {0, 1}, {1, 1});
@@ -660,13 +746,24 @@ const QPoint Corners[4] = {{4, 0}, {4, 4}, {0, 4}, {0, 0}};
 void DeckSurfaces(Builder& out, const Raster& raster, int deck, int armor, const QVector<Detail>& details)
 {
 	const QVector<Hatch> hatches = Hatches(details, deck);
+	QSet<quint16> turrets;
+	for(const Detail& detail : details)
+	{
+		if(detail.deck != deck || (detail.detailType != 22 && detail.detailType != 33)
+			|| turrets.contains(detail.packedXY)) continue;
+		turrets.insert(detail.packedXY);
+		const bool top = detail.detailType == 22;
+		const QVector3D center = Position(DecodePoint(detail.packedXY), deck * DeckHeight);
+		TurretDome(out, TurretPoints(center, {1, 0, 0}, {0, 0, top ? 1.0f : -1.0f},
+			{0, top ? -1.0f : 1.0f, 0}), top ? deck - 1 : deck, false);
+	}
 	DetailGrid wallDetails;
 	QSet<quint32> wallPositions;
 	for(const Detail& detail : details)
 	{
 		const int type = detail.detailType;
 		if(detail.deck != deck || (type != 3 && type != 5 && type != 9 && type != 49 && type != 50
-			&& type != 53 && type != 54 && type != 55)) continue;
+			&& type != 53 && type != 54 && type != 55 && type != 56 && !IsSideTurret(type))) continue;
 		const quint32 id = (quint32(type) << 16) | detail.packedXY;
 		if(wallPositions.contains(id)) continue;
 		wallPositions.insert(id);
@@ -742,6 +839,23 @@ void DeckSurfaces(Builder& out, const Raster& raster, int deck, int armor, const
 		{
 			if(span.detail == 55) continue;
 			const double length = Length(span.b - span.a);
+			if(span.detail == 56)
+			{
+				// RenderInterior 180430ca3: top rail is .3 ft high at z=3;
+				// end posts use .1 ft of the normalized boundary direction.
+				const QPointF post = (span.b - span.a) * (.1 / length);
+				const double floor = deck * DeckHeight;
+				out.Quad(Material::Railing, deck, true,
+					Position(span.b, floor + 2.7), Position(span.a, floor + 2.7),
+					Position(span.a, floor + 3), Position(span.b, floor + 3));
+				out.Quad(Material::RailingPost, deck, true,
+					Position(span.a + post, floor), Position(span.a, floor),
+					Position(span.a, floor + 2.7), Position(span.a + post, floor + 2.7));
+				out.Quad(Material::RailingPost, deck, true,
+					Position(span.b, floor), Position(span.b - post, floor),
+					Position(span.b - post, floor + 2.7), Position(span.b, floor + 2.7));
+				continue;
+			}
 			Material material = InteriorWall(Type(edge.tag), length);
 			switch(span.detail)
 			{
@@ -816,15 +930,17 @@ Mesh BuildMesh(const Design& design)
 		raster.NextDeck();
 	}
 	if(builder.truncated) builder.Warning(QStringLiteral("The render preview exceeded its geometry limit and was truncated."));
+	AppendEquipment(design, builder.mesh);
+	AppendResourceEquipment(design, builder.mesh);
+	AppendStairGeometry(design, builder.mesh);
 	for(const Detail& detail : design.details)
-		if(!IsHatch(detail.detailType) && detail.detailType != 0 && detail.detailType != 76
-			&& detail.detailType != 3 && detail.detailType != 5 && detail.detailType != 9
-			&& detail.detailType != 49 && detail.detailType != 50 && detail.detailType != 53
-			&& detail.detailType != 54 && detail.detailType != 55)
-		{
-			builder.Warning(QStringLiteral("Equipment models, turrets, railings, ladders and stairs are not yet recovered in the 3D preview."));
-			break;
-		}
+	{
+		const int type = detail.detailType;
+		if(detail.hiddenRaw || !type || detail.deck < MinimumDeck || detail.deck > MaximumDeck) continue;
+		// The resource importer reports missing vehicle commodities/assets.
+		if((type >= 57 && type <= 64) || EquipmentSupported(type) || ResourceEquipmentSupported(type)) continue;
+		builder.Warning(QStringLiteral("Equipment type %1 has no recovered 3D preview model.").arg(type));
+	}
 	return builder.mesh;
 }
 }

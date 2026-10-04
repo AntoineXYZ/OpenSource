@@ -1,0 +1,55 @@
+Read-only Ghidra capture from the original 2016 client. Not original source.
+
+/* public: bool __cdecl DgData::SpaceShipDesignAddPivotPoint(unsigned int,class AuPoint const &
+   __ptr64) __ptr64 */
+
+bool __thiscall DgData::SpaceShipDesignAddPivotPoint(DgData *this,uint param_1,AuPoint *param_2)
+
+{
+  bool bVar1;
+  ushort uVar2;
+  DnDetailArray *this_00;
+  double dVar3;
+  uint local_res10 [2];
+  DnDetail local_68;
+  undefined1 local_67;
+  uint local_64;
+  uint local_60;
+  double local_58;
+  double local_50;
+  double local_48;
+  
+  local_res10[0] = param_1;
+                    /* 0x143160  5598  ?SpaceShipDesignAddPivotPoint@DgData@@QEAA_NIAEBVAuPoint@@@Z
+                        */
+  bVar1 = SpaceShipDesignIsReadOnly(this,param_1);
+  if (bVar1) {
+    return false;
+  }
+  dVar3 = (double)round(*(double *)(param_2 + 0x10) * 0.125);
+  bVar1 = DnSpaceShip::IsValidGridCoord(param_2);
+  if (bVar1) {
+    uVar2 = DnBuilding::EncodeGridCoord(param_2);
+    DnDetail::DnDetail(&local_68);
+    local_67 = 0x4c;
+    local_60 = local_res10[0];
+    local_68 = SUB41((int)dVar3,0);
+    local_58 = (double)(int)(char)(uVar2 >> 8) * 2.8284271245;
+    local_50 = (double)(int)(char)uVar2 * 2.8284271245;
+    local_48 = (double)(int)(char)SUB41((int)dVar3,0) * 8.0;
+    bVar1 = SpaceShipDesignTestDetail(this,&local_68);
+    if (bVar1) {
+      SpaceShipDesignDeletePivotPoint(this,local_res10[0]);
+      local_64 = SpaceShipDesignNextDetailId(this,local_res10[0]);
+      this_00 = std::
+                unordered_map<unsigned_int,DnDetailArray,AuDesignIdHash,std::equal_to<unsigned_int>,std::allocator<std::pair<unsigned_int_const_,DnDetailArray>_>_>
+                ::operator[]((unordered_map<unsigned_int,DnDetailArray,AuDesignIdHash,std::equal_to<unsigned_int>,std::allocator<std::pair<unsigned_int_const_,DnDetailArray>_>_>
+                              *)(this + 0x138),local_res10);
+      DnDetailArray::Add(this_00,&local_68);
+      (**(code **)(**(longlong **)gp_AuGlobal_exref + 0x270))
+                (*(longlong **)gp_AuGlobal_exref,local_60,local_64);
+      return true;
+    }
+  }
+  return false;
+}

@@ -1,0 +1,62 @@
+Read-only Ghidra capture from the original 2016 client. Not original source.
+
+/* public: void __cdecl DnDetailArray::Add(class DnDetail const & __ptr64) __ptr64 */
+
+void __thiscall DnDetailArray::Add(DnDetailArray *this,DnDetail *param_1)
+
+{
+  DnDetail DVar1;
+  DnDetail DVar2;
+  uint *puVar3;
+  DnDetail *pDVar4;
+  undefined8 *puVar5;
+  undefined8 *local_res8;
+  undefined1 local_res18 [8];
+  
+                    /* 0x15c210  2551  ?Add@DnDetailArray@@QEAAXAEBVDnDetail@@@Z */
+  puVar3 = *(uint **)this;
+  if (puVar3[3] != puVar3[2]) {
+    if (1 < *puVar3) {
+      QList<DnDetail>::detach_helper((QList<DnDetail> *)this,puVar3[1]);
+    }
+    pDVar4 = *(DnDetail **)(*(longlong *)this + 8 + (longlong)*(int *)(*(longlong *)this + 0xc) * 8)
+    ;
+    DVar1 = *param_1;
+    DVar2 = *pDVar4;
+    if (((char)DVar2 < (char)DVar1) ||
+       ((DVar1 == DVar2 &&
+        ((*(ushort *)(pDVar4 + 0x28) < *(ushort *)(param_1 + 0x28) ||
+         (((DVar1 == DVar2 && (*(ushort *)(param_1 + 0x28) == *(ushort *)(pDVar4 + 0x28))) &&
+          (*(uint *)(pDVar4 + 4) < *(uint *)(param_1 + 4))))))))) {
+      QList<DnDetail>::append((QList<DnDetail> *)this,param_1);
+      return;
+    }
+  }
+  if (1 < **(uint **)this) {
+    QList<DnDetail>::detach_helper((QList<DnDetail> *)this,(*(uint **)this)[1]);
+  }
+  puVar5 = (undefined8 *)(*(longlong *)this + ((longlong)*(int *)(*(longlong *)this + 8) + 2) * 8);
+  while( true ) {
+    if (1 < **(uint **)this) {
+      QList<DnDetail>::detach_helper((QList<DnDetail> *)this,(*(uint **)this)[1]);
+    }
+    if (puVar5 == (undefined8 *)
+                  (*(longlong *)this + (longlong)*(int *)(*(longlong *)this + 0xc) * 8 + 0x10))
+    break;
+    pDVar4 = (DnDetail *)*puVar5;
+    DVar1 = *param_1;
+    DVar2 = *pDVar4;
+    if (((char)DVar1 < (char)DVar2) ||
+       ((DVar2 == DVar1 &&
+        ((*(ushort *)(param_1 + 0x28) < *(ushort *)(pDVar4 + 0x28) ||
+         (((DVar2 == DVar1 && (*(ushort *)(pDVar4 + 0x28) == *(ushort *)(param_1 + 0x28))) &&
+          (*(uint *)(param_1 + 4) < *(uint *)(pDVar4 + 4))))))))) {
+      local_res8 = puVar5;
+      QList<DnDetail>::insert((QList<DnDetail> *)this,local_res18,&local_res8,param_1);
+      return;
+    }
+    puVar5 = puVar5 + 1;
+  }
+  QList<DnDetail>::append((QList<DnDetail> *)this,param_1);
+  return;
+}

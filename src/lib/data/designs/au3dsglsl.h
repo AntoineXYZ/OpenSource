@@ -1075,6 +1075,11 @@ public:		// Operators
 		return m_Name;
 	}
 
+	const QString& TextureFile() const
+	{
+		return m_TextureFile;
+	}
+
 	float SelfIllumination() const
 	{
 		return m_SelfIllumination;

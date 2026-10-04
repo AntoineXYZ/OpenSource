@@ -1,0 +1,245 @@
+Read-only Ghidra capture from the original 2016 client. Not original source.
+
+/* public: unsigned short __cdecl DgData::SpaceShipDesignAddDetail(unsigned int,class AuPoint const
+   & __ptr64,unsigned char,enum COMMODITYID) __ptr64 */
+
+ushort __thiscall
+DgData::SpaceShipDesignAddDetail
+          (DgData *this,uint param_1,AuPoint *param_2,uchar param_3,COMMODITYID param_4)
+
+{
+  unordered_map<unsigned_int,DnDetailArray,AuDesignIdHash,std::equal_to<unsigned_int>,std::allocator<std::pair<unsigned_int_const_,DnDetailArray>_>_>
+  *this_00;
+  byte bVar1;
+  longlong lVar2;
+  undefined8 *puVar3;
+  char *pcVar4;
+  undefined8 *puVar5;
+  bool bVar6;
+  bool bVar7;
+  ushort uVar8;
+  __uint64 _Var9;
+  AuPoint *pAVar10;
+  AuPoint *pAVar11;
+  undefined8 *puVar12;
+  DnDetailArray *this_01;
+  undefined8 *puVar13;
+  longlong *plVar14;
+  undefined8 *puVar15;
+  ulonglong uVar16;
+  int iVar17;
+  double dVar18;
+  uint local_res10 [2];
+  AuPointArray local_c8 [8];
+  undefined8 *local_c0;
+  longlong *local_b8;
+  AuDesignIdHash local_b0 [8];
+  double local_a8;
+  double dStack_a0;
+  double local_98;
+  DnDetail local_90;
+  byte local_8f;
+  uint local_8c;
+  uint local_88;
+  double local_80;
+  double dStack_78;
+  double local_70;
+  ushort local_68;
+  undefined2 local_66;
+  undefined1 local_60 [8];
+  undefined8 local_58;
+  undefined1 local_50 [8];
+  undefined1 local_48 [16];
+  
+                    /* 0x142960  5595
+                       ?SpaceShipDesignAddDetail@DgData@@QEAAGIAEBVAuPoint@@EW4COMMODITYID@@@Z */
+  local_58 = 0xfffffffffffffffe;
+  local_res10[0] = param_1;
+  bVar6 = SpaceShipDesignIsReadOnly(this,param_1);
+  if (bVar6) {
+    return 0;
+  }
+  dVar18 = (double)round(*(double *)(param_2 + 0x10) * 0.125);
+  iVar17 = (int)dVar18;
+  bVar6 = DnSpaceShip::IsValidGridCoord(param_2);
+  if (!bVar6) {
+    return 0;
+  }
+  uVar8 = DnBuilding::EncodeGridCoord(param_2);
+  local_a8 = (double)(int)(char)(uVar8 >> 8) * 2.8284271245;
+  dStack_a0 = (double)(int)(char)uVar8 * 2.8284271245;
+  local_98 = (double)(int)(char)SUB41(iVar17,0) * 8.0;
+  DnDetail::DnDetail(&local_90);
+  local_88 = local_res10[0];
+  local_80 = local_a8;
+  dStack_78 = dStack_a0;
+  local_70 = local_98;
+  local_66 = (undefined2)param_4;
+  this_00 = (unordered_map<unsigned_int,DnDetailArray,AuDesignIdHash,std::equal_to<unsigned_int>,std::allocator<std::pair<unsigned_int_const_,DnDetailArray>_>_>
+             *)(this + 0x138);
+  local_90 = SUB41(iVar17,0);
+  local_8f = param_3;
+  _Var9 = AuDesignIdHash::operator()(local_b0,local_res10);
+  uVar16 = *(ulonglong *)(this + 0x160) & _Var9;
+  if (*(ulonglong *)(this + 0x168) <= uVar16) {
+    uVar16 = uVar16 + (-1 - (*(ulonglong *)(this + 0x160) >> 1));
+  }
+  lVar2 = *(longlong *)(this + 0x148);
+  puVar12 = *(undefined8 **)(lVar2 + uVar16 * 0x10);
+  puVar3 = *(undefined8 **)this_00;
+  while( true ) {
+    puVar13 = puVar3;
+    if (*(undefined8 **)(lVar2 + uVar16 * 0x10) != puVar3) {
+      puVar13 = (undefined8 *)**(undefined8 **)(lVar2 + 8 + uVar16 * 0x10);
+    }
+    puVar15 = puVar3;
+    puVar5 = local_c0;
+    if ((puVar12 == puVar13) ||
+       (puVar15 = puVar12, puVar5 = puVar12, local_res10[0] == *(uint *)(puVar12 + 2))) break;
+    puVar12 = (undefined8 *)*puVar12;
+  }
+  local_c0 = puVar5;
+  if (puVar15 != *(undefined8 **)this_00) {
+    if (0x27 < local_8f - 0x65) {
+      if (1 < *(uint *)puVar15[3]) {
+        QList<DnDetail>::detach_helper((QList<DnDetail> *)(puVar15 + 3),((uint *)puVar15[3])[1]);
+      }
+      plVar14 = (longlong *)(puVar15[3] + ((longlong)*(int *)(puVar15[3] + 8) + 2) * 8);
+      do {
+        if (1 < *(uint *)puVar15[3]) {
+          QList<DnDetail>::detach_helper((QList<DnDetail> *)(puVar15 + 3),((uint *)puVar15[3])[1]);
+        }
+        if (plVar14 == (longlong *)(puVar15[3] + ((longlong)*(int *)(puVar15[3] + 0xc) + 2) * 8))
+        goto LAB_180142e4b;
+        pcVar4 = (char *)*plVar14;
+        if (((*pcVar4 == iVar17) && (pcVar4[1] != 'L')) && (1 < (byte)(pcVar4[1] + 0x9eU))) {
+          if ((byte)pcVar4[1] - 0x65 < 0x28) {
+            AuPointArray::AuPointArray(local_c8);
+            DnDetail::StairBoundary((DnDetail *)*plVar14,local_c8);
+            bVar6 = DnDetailType::CanBeOnStairEdge((uint)local_8f);
+            if (bVar6) {
+              bVar6 = AuPointArray::PointInBoundary(local_c8,(AuPoint *)&local_a8);
+            }
+            else {
+              bVar6 = AuPointArray::PointInBoundary(local_c8,(AuPoint *)&local_a8);
+              if (bVar6) goto LAB_180142e02;
+              bVar6 = AuPointArray::PointOnBoundary_2D(local_c8,(AuPoint *)&local_a8);
+            }
+            if (bVar6 != false) {
+LAB_180142e02:
+              AuPointArray::~AuPointArray(local_c8);
+              return 0;
+            }
+            AuPointArray::~AuPointArray(local_c8);
+          }
+          else {
+            bVar6 = AuPoint::FuzzyEquals((AuPoint *)(pcVar4 + 0x10),(AuPoint *)&local_a8);
+            if (bVar6) goto LAB_180142e13;
+          }
+        }
+        plVar14 = plVar14 + 1;
+      } while( true );
+    }
+    AuPointArray::AuPointArray(local_c8);
+    DnDetail::StairBoundary(&local_90,local_c8);
+    if (1 < *(uint *)puVar15[3]) {
+      QList<DnDetail>::detach_helper((QList<DnDetail> *)(puVar15 + 3),((uint *)puVar15[3])[1]);
+    }
+    plVar14 = (longlong *)(puVar15[3] + ((longlong)*(int *)(puVar15[3] + 8) + 2) * 8);
+LAB_180142b27:
+    while( true ) {
+      if (1 < *(uint *)puVar15[3]) {
+        QList<DnDetail>::detach_helper((QList<DnDetail> *)(puVar15 + 3),((uint *)puVar15[3])[1]);
+      }
+      if (plVar14 == (longlong *)(puVar15[3] + ((longlong)*(int *)(puVar15[3] + 0xc) + 2) * 8))
+      break;
+      pcVar4 = (char *)*plVar14;
+      if (((*pcVar4 != iVar17) || (bVar1 = pcVar4[1], bVar1 == 0x4c)) || ((byte)(bVar1 + 0x9e) < 2))
+      goto LAB_180142b60;
+      bVar6 = false;
+      if (bVar1 - 0x65 < 0x28) goto code_r0x000180142b88;
+      bVar6 = DnDetailType::CanBeOnStairEdge((uint)bVar1);
+      if (bVar6) {
+        bVar6 = AuPointArray::PointInBoundary(local_c8,(AuPoint *)(pcVar4 + 0x10));
+        if (!bVar6) goto LAB_180142b60;
+        (**(code **)(**(longlong **)gp_AuGlobal_exref + 0x280))
+                  (*(longlong **)gp_AuGlobal_exref,*(undefined4 *)(*plVar14 + 8),
+                   *(undefined4 *)(*plVar14 + 4));
+        local_b8 = plVar14;
+        puVar12 = (undefined8 *)
+                  QList<DnDetail>::erase((QList<DnDetail> *)(puVar15 + 3),local_50,&local_b8);
+        plVar14 = (longlong *)*puVar12;
+      }
+      else {
+        bVar6 = AuPointArray::PointInBoundary(local_c8,(AuPoint *)(pcVar4 + 0x10));
+        if ((bVar6) ||
+           (bVar6 = AuPointArray::PointOnBoundary_2D(local_c8,(AuPoint *)(*plVar14 + 0x10)), bVar6))
+        {
+          (**(code **)(**(longlong **)gp_AuGlobal_exref + 0x280))
+                    (*(longlong **)gp_AuGlobal_exref,*(undefined4 *)(*plVar14 + 8),
+                     *(undefined4 *)(*plVar14 + 4));
+          local_b8 = plVar14;
+          puVar12 = (undefined8 *)
+                    QList<DnDetail>::erase((QList<DnDetail> *)(puVar15 + 3),local_60,&local_b8);
+          plVar14 = (longlong *)*puVar12;
+        }
+        else {
+          plVar14 = plVar14 + 1;
+        }
+      }
+    }
+    AuPointArray::~AuPointArray(local_c8);
+  }
+LAB_180142e4b:
+  bVar6 = SpaceShipDesignTestDetail(this,&local_90);
+  if (!bVar6) {
+    return 0;
+  }
+  local_8c = SpaceShipDesignNextDetailId(this,local_res10[0]);
+  this_01 = std::
+            unordered_map<unsigned_int,DnDetailArray,AuDesignIdHash,std::equal_to<unsigned_int>,std::allocator<std::pair<unsigned_int_const_,DnDetailArray>_>_>
+            ::operator[](this_00,local_res10);
+  DnDetailArray::Add(this_01,&local_90);
+  (**(code **)(**(longlong **)gp_AuGlobal_exref + 0x270))
+            (*(longlong **)gp_AuGlobal_exref,local_88,local_8c);
+  return local_68;
+LAB_180142e13:
+  lVar2 = *plVar14;
+  if (*(uchar *)(lVar2 + 1) == param_3) {
+    return 0;
+  }
+  (**(code **)(**(longlong **)gp_AuGlobal_exref + 0x280))
+            (*(longlong **)gp_AuGlobal_exref,*(undefined4 *)(lVar2 + 8),*(undefined4 *)(lVar2 + 4));
+  local_b8 = plVar14;
+  QList<DnDetail>::erase((QList<DnDetail> *)(puVar15 + 3),local_60,&local_b8);
+  goto LAB_180142e4b;
+code_r0x000180142b88:
+  AuPointArray::AuPointArray((AuPointArray *)&local_c0);
+  DnDetail::StairBoundary((DnDetail *)*plVar14,(AuPointArray *)&local_c0);
+  pAVar10 = QVector<AuPoint>::cbegin((QVector<AuPoint> *)&local_c0);
+  pAVar11 = QVector<AuPoint>::cend((QVector<AuPoint> *)&local_c0);
+  if (pAVar10 != pAVar11) {
+    do {
+      bVar7 = AuPointArray::PointInBoundary(local_c8,pAVar10);
+      if (bVar7) {
+        (**(code **)(**(longlong **)gp_AuGlobal_exref + 0x280))
+                  (*(longlong **)gp_AuGlobal_exref,*(undefined4 *)(*plVar14 + 8),
+                   *(undefined4 *)(*plVar14 + 4));
+        local_b8 = plVar14;
+        puVar12 = (undefined8 *)
+                  QList<DnDetail>::erase((QList<DnDetail> *)(puVar15 + 3),local_48,&local_b8);
+        plVar14 = (longlong *)*puVar12;
+        bVar6 = true;
+        break;
+      }
+      pAVar10 = pAVar10 + 0x18;
+      pAVar11 = QVector<AuPoint>::cend((QVector<AuPoint> *)&local_c0);
+    } while (pAVar10 != pAVar11);
+  }
+  AuPointArray::~AuPointArray((AuPointArray *)&local_c0);
+  if (!bVar6) {
+LAB_180142b60:
+    plVar14 = plVar14 + 1;
+  }
+  goto LAB_180142b27;
+}

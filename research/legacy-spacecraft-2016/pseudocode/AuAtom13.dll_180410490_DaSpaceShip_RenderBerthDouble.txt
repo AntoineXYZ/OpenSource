@@ -1,0 +1,388 @@
+Read-only Ghidra capture for equipment recovery. Not original source.
+
+
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* protected: void __cdecl DaSpaceShip::RenderBerthDouble(class QList<class AuTriSpacecraft> &
+   __ptr64,class AuPoint const & __ptr64,double)const __ptr64 */
+
+void __thiscall
+DaSpaceShip::RenderBerthDouble
+          (DaSpaceShip *this,QList<AuTriSpacecraft> *param_1,AuPoint *param_2,double param_3)
+
+{
+  float fVar1;
+  float fVar2;
+  float fVar3;
+  float fVar4;
+  float fVar5;
+  double dVar6;
+  double *pdVar7;
+  float fVar8;
+  float fVar9;
+  float fVar10;
+  float fVar11;
+  float fVar12;
+  float fVar13;
+  float fVar14;
+  undefined1 auStackY_2e8 [32];
+  float local_208;
+  float local_204;
+  float local_200;
+  float local_1fc;
+  float local_1f8 [2];
+  undefined8 local_1f0;
+  undefined8 uStack_1e8;
+  undefined8 local_1e0;
+  undefined8 local_1d8;
+  undefined8 uStack_1d0;
+  undefined8 local_1c8;
+  undefined8 local_1c0;
+  undefined8 uStack_1b8;
+  undefined8 local_1b0;
+  undefined8 local_1a8;
+  undefined8 uStack_1a0;
+  undefined8 local_198;
+  undefined8 local_190;
+  undefined8 uStack_188;
+  undefined8 local_180;
+  float local_178;
+  float local_174;
+  double local_170;
+  double local_168;
+  double local_160;
+  double local_158;
+  double local_150;
+  double local_148;
+  float local_140;
+  float local_13c;
+  float local_138 [2];
+  double local_130;
+  float local_128 [2];
+  double local_120;
+  float local_118;
+  double local_110;
+  double local_108;
+  double local_100;
+  double local_f8;
+  double local_f0;
+  double local_e8;
+  double local_e0;
+  undefined8 local_d8;
+  undefined8 uStack_d0;
+  undefined8 local_c8;
+  ulonglong local_c0;
+  
+                    /* 0x410490  5870
+                       ?RenderBerthDouble@DaSpaceShip@@IEBAXAEAV?$QList@VAuTriSpacecraft@@@@AEBVAuPoint@@N@Z
+                        */
+  local_c0 = DAT_180a0ecf0 ^ (ulonglong)auStackY_2e8;
+  local_148 = param_3;
+  ShipTexture(0,&local_1fc,&local_204,&local_208,local_1f8);
+  ShipTexture(1,local_128,&local_13c,&local_140,local_138);
+  fVar9 = local_208 - local_1fc;
+  local_168 = (double)fVar9 * 0.0 + (double)local_1fc;
+  local_108 = (double)fVar9 * 0.2421875 + (double)local_1fc;
+  local_f0 = (double)fVar9 * 0.2578125 + (double)local_1fc;
+  local_100 = (double)fVar9 * 0.9921875 + (double)local_1fc;
+  fVar9 = local_1f8[0] - local_204;
+  local_170 = (double)fVar9 * 0.0 + (double)local_204;
+  local_f8 = (double)fVar9 * 0.46875 + (double)local_204;
+  fVar5 = fVar9 * 0.5 + local_204;
+  fVar8 = fVar9 * 0.96875 + local_204;
+  EffectTexture(this,0,&local_1fc,&local_204,&local_208,local_1f8);
+  dVar6 = local_148;
+  local_208 = local_208 - local_1fc;
+  fVar2 = local_208 * 0.0 + local_1fc;
+  local_c8 = 0x3fe0000000000000;
+  fVar9 = local_208 * 0.2421875 + local_1fc;
+  local_e8 = (double)local_208 * 0.2578125 + (double)local_1fc;
+  local_e0 = (double)local_208 * 0.9921875 + (double)local_1fc;
+  local_1f8[0] = local_1f8[0] - local_204;
+  fVar4 = local_1f8[0] * 0.0 + local_204;
+  local_110 = *(double *)param_2;
+  fVar3 = local_1f8[0] * 0.46875 + local_204;
+  fVar10 = local_1f8[0] * 0.5 + local_204;
+  local_130 = *(double *)(param_2 + 0x10);
+  fVar1 = local_1f8[0] * 0.96875 + local_204;
+  local_120 = *(double *)(param_2 + 8);
+  local_d8 = 0xbff6a09e6676c64a;
+  uStack_d0 = 0xbff6a09e6676c64a;
+  pdVar7 = (double *)AuPoint::RotateZ((AuPoint *)&local_d8,local_110);
+  local_190 = 0x4016a09e6676c64a;
+  uStack_188 = 0x4006a09e6676c64a;
+  local_160 = local_110 + *pdVar7;
+  local_1a8 = 0x4016a09e6676c64a;
+  uStack_1a0 = 0x4006a09e6676c64a;
+  local_180 = 0;
+  local_158 = local_120 + pdVar7[1];
+  local_198 = 0x3ff0000000000000;
+  local_1c8 = 0x3ff0000000000000;
+  local_150 = local_130 + pdVar7[2];
+  local_1b0 = 0;
+  local_1e0 = 0;
+  local_d8 = 0;
+  uStack_d0._0_4_ = 1;
+  local_1c0 = 0x3ff0000000000000;
+  uStack_1b8 = 0;
+  local_1d8 = 0x4016a09e6676c64a;
+  uStack_1d0 = 0;
+  local_1f0 = 0x4016a09e6676c64a;
+  uStack_1e8 = 0;
+  fVar11 = (float)local_168;
+  fVar14 = (float)local_108;
+  fVar13 = (float)dVar6;
+  local_108 = (double)CONCAT44(local_108._4_4_,fVar2);
+  local_208 = fVar9;
+  local_204 = fVar8;
+  local_200 = fVar13;
+  local_1fc = fVar11;
+  local_174 = fVar5;
+  local_130 = local_150;
+  local_120 = local_158;
+  local_118 = fVar10;
+  local_110 = local_160;
+  ModelAdd(param_1,(AuPoint *)&local_1c0,(int *)&local_d8,0.0,false,(AuPoint *)&local_160,fVar13,
+           fVar11,fVar5,fVar2,fVar10,(AuPoint *)&local_1f0,fVar11,fVar8,fVar2,fVar1,
+           (AuPoint *)&local_1d8,fVar14,fVar8,fVar9,fVar1,(AuPoint *)&local_1a8,fVar14,fVar5,fVar9,
+           fVar10,(AuPoint *)&local_190);
+  local_1c0 = 0xbff0000000000000;
+  uStack_1b8 = 0;
+  local_1d8 = 0;
+  uStack_1d0 = 0;
+  local_1f0 = 0;
+  uStack_1e8 = 0;
+  fVar12 = (float)local_f8;
+  fVar8 = (float)local_170;
+  local_1a8 = 0;
+  uStack_1a0 = 0x4006a09e6676c64a;
+  local_190 = 0;
+  uStack_188 = 0x4006a09e6676c64a;
+  local_1b0 = 0;
+  local_1e0 = 0;
+  local_1c8 = 0x3ff0000000000000;
+  local_198 = 0x3ff0000000000000;
+  local_180 = 0;
+  local_170 = (double)CONCAT44(local_170._4_4_,fVar8);
+  local_208 = fVar12;
+  local_1f8[0] = fVar3;
+  local_178 = fVar4;
+  ModelAdd(param_1,(AuPoint *)&local_1c0,(int *)&local_d8,0.0,false,(AuPoint *)&local_160,fVar13,
+           fVar11,fVar8,fVar2,fVar4,(AuPoint *)&local_190,fVar11,fVar12,fVar2,fVar3,
+           (AuPoint *)&local_1a8,fVar14,fVar12,fVar9,fVar3,(AuPoint *)&local_1d8,fVar14,fVar8,fVar9,
+           fVar4,(AuPoint *)&local_1f0);
+  fVar2 = local_170._0_4_;
+  local_1c0 = 0;
+  uStack_1b8 = 0x3ff0000000000000;
+  fVar10 = (float)local_100;
+  fVar13 = (float)local_e8;
+  local_1c8 = 0x3ff0000000000000;
+  local_198 = 0x3ff0000000000000;
+  fVar11 = (float)local_e0;
+  local_1f0 = 0;
+  uStack_1e8 = 0x4006a09e6676c64a;
+  local_1d8 = 0;
+  uStack_1d0 = 0x4006a09e6676c64a;
+  local_1b0 = 0;
+  local_1e0 = 0;
+  fVar8 = (float)local_f0;
+  local_1a8 = 0x4016a09e6676c64a;
+  uStack_1a0 = 0x4006a09e6676c64a;
+  local_190 = 0x4016a09e6676c64a;
+  uStack_188 = 0x4006a09e6676c64a;
+  local_168 = (double)CONCAT44(local_168._4_4_,fVar8);
+  local_180 = 0;
+  local_148 = (double)CONCAT44(local_148._4_4_,fVar10);
+  ModelAdd(param_1,(AuPoint *)&local_1c0,(int *)&local_d8,0.0,false,(AuPoint *)&local_160,local_200,
+           fVar10,local_170._0_4_,fVar11,fVar4,(AuPoint *)&local_190,fVar10,fVar12,fVar11,fVar3,
+           (AuPoint *)&local_1a8,fVar8,fVar12,fVar13,fVar3,(AuPoint *)&local_1d8,fVar8,
+           local_170._0_4_,fVar13,fVar4,(AuPoint *)&local_1f0);
+  fVar8 = local_200;
+  local_1c8 = 0x3ff0000000000000;
+  local_198 = 0x3ff0000000000000;
+  local_1c0 = 0;
+  uStack_1b8 = 0xbff0000000000000;
+  local_1f0 = 0x4016a09e6676c64a;
+  uStack_1e8 = 0;
+  local_1d8 = 0x4016a09e6676c64a;
+  uStack_1d0 = 0;
+  local_1b0 = 0;
+  local_1e0 = 0;
+  local_180 = 0;
+  fVar5 = local_168._0_4_;
+  local_1a8 = 0;
+  uStack_1a0 = 0;
+  local_190 = 0;
+  uStack_188 = 0;
+  ModelAdd(param_1,(AuPoint *)&local_1c0,(int *)&local_d8,0.0,false,(AuPoint *)&local_160,local_200,
+           local_168._0_4_,fVar2,fVar13,fVar4,(AuPoint *)&local_190,local_168._0_4_,fVar12,fVar13,
+           fVar3,(AuPoint *)&local_1a8,fVar10,fVar12,fVar11,fVar3,(AuPoint *)&local_1d8,fVar10,fVar2
+           ,fVar11,fVar4,(AuPoint *)&local_1f0);
+  local_1c0 = 0;
+  uStack_1b8 = 0;
+  uStack_d0._0_4_ = 0;
+  local_1f0 = 0x4016a09e6676c64a;
+  uStack_1e8 = 0;
+  local_1d8 = 0x4016a09e6676c64a;
+  uStack_1d0 = 0x4006a09e6676c64a;
+  local_1a8 = 0;
+  uStack_1a0 = 0x4006a09e6676c64a;
+  local_190 = 0;
+  uStack_188 = 0;
+  local_1b0 = 0x3ff0000000000000;
+  local_1e0 = 0x3ff0000000000000;
+  local_1c8 = 0x3ff0000000000000;
+  local_198 = 0x3ff0000000000000;
+  local_180 = 0x3ff0000000000000;
+  ModelAdd(param_1,(AuPoint *)&local_1c0,(int *)&local_d8,0.0,false,(AuPoint *)&local_160,fVar8,
+           fVar5,local_174,-1.0,-1.0,(AuPoint *)&local_190,fVar5,local_204,-1.0,-1.0,
+           (AuPoint *)&local_1a8,fVar10,local_204,-1.0,-1.0,(AuPoint *)&local_1d8,fVar10,local_174,
+           -1.0,-1.0,(AuPoint *)&local_1f0);
+  local_1c0 = 0;
+  uStack_1b8 = 0;
+  local_1f0 = 0x4016a09e6676c64a;
+  uStack_1e8 = 0x4006a09e6676c64a;
+  local_1d8 = 0x4016a09e6676c64a;
+  uStack_1d0 = 0;
+  local_1a8 = 0;
+  uStack_1a0 = 0;
+  local_1b0 = 0xbff0000000000000;
+  local_1e0 = 0;
+  local_1c8 = 0;
+  local_198 = 0;
+  local_180 = 0;
+  local_190 = 0;
+  uStack_188 = 0x4006a09e6676c64a;
+  ModelAdd(param_1,(AuPoint *)&local_1c0,(int *)&local_d8,0.0,false,(AuPoint *)&local_160,local_200,
+           local_128[0],local_13c,-1.0,-1.0,(AuPoint *)&local_190,local_128[0],local_138[0],-1.0,
+           -1.0,(AuPoint *)&local_1a8,local_140,local_138[0],-1.0,-1.0,(AuPoint *)&local_1d8,
+           local_140,local_13c,-1.0,-1.0,(AuPoint *)&local_1f0);
+  local_160 = local_110 + 0.0;
+  local_1f0 = 0x4016a09e6676c64a;
+  uStack_1e8 = 0x4006a09e6676c64a;
+  local_1d8 = 0x4016a09e6676c64a;
+  uStack_1d0 = 0x4006a09e6676c64a;
+  uStack_d0._0_4_ = 1;
+  local_158 = local_120 + 0.0;
+  local_1c8 = 0x3ff0000000000000;
+  local_198 = 0x3ff0000000000000;
+  local_150 = local_130 + 3.5;
+  local_1b0 = 0;
+  local_1e0 = 0;
+  local_180 = 0;
+  local_1c0 = 0x3ff0000000000000;
+  uStack_1b8 = 0;
+  local_1a8 = 0x4016a09e6676c64a;
+  uStack_1a0 = 0;
+  local_190 = 0x4016a09e6676c64a;
+  uStack_188 = 0;
+  fVar8 = local_108._0_4_;
+  ModelAdd(param_1,(AuPoint *)&local_1c0,(int *)&local_d8,0.0,false,(AuPoint *)&local_160,local_200,
+           local_1fc,local_174,local_108._0_4_,local_118,(AuPoint *)&local_190,local_1fc,local_204,
+           local_108._0_4_,fVar1,(AuPoint *)&local_1a8,fVar14,local_204,fVar9,fVar1,
+           (AuPoint *)&local_1d8,fVar14,local_174,fVar9,local_118,(AuPoint *)&local_1f0);
+  fVar1 = local_1f8[0];
+  local_1b0 = 0;
+  local_1e0 = 0;
+  local_1f0 = 0;
+  uStack_1e8 = 0;
+  local_1c0 = 0xbff0000000000000;
+  uStack_1b8 = 0;
+  local_1d8 = 0;
+  uStack_1d0 = 0;
+  local_1c8 = 0x3ff0000000000000;
+  local_198 = 0x3ff0000000000000;
+  local_180 = 0;
+  local_1a8 = 0;
+  uStack_1a0 = 0x4006a09e6676c64a;
+  local_190 = 0;
+  uStack_188 = 0x4006a09e6676c64a;
+  ModelAdd(param_1,(AuPoint *)&local_1c0,(int *)&local_d8,0.0,false,(AuPoint *)&local_160,local_200,
+           local_1fc,local_170._0_4_,fVar8,local_178,(AuPoint *)&local_190,local_1fc,local_208,fVar8
+           ,local_1f8[0],(AuPoint *)&local_1a8,fVar14,local_208,fVar9,local_1f8[0],
+           (AuPoint *)&local_1d8,fVar14,local_170._0_4_,fVar9,local_178,(AuPoint *)&local_1f0);
+  fVar9 = local_208;
+  local_1c0 = 0;
+  uStack_1b8 = 0x3ff0000000000000;
+  local_1f0 = 0;
+  uStack_1e8 = 0x4006a09e6676c64a;
+  local_1d8 = 0;
+  uStack_1d0 = 0x4006a09e6676c64a;
+  local_1a8 = 0x4016a09e6676c64a;
+  uStack_1a0 = 0x4006a09e6676c64a;
+  local_190 = 0x4016a09e6676c64a;
+  uStack_188 = 0x4006a09e6676c64a;
+  local_1c8 = 0x3ff0000000000000;
+  local_198 = 0x3ff0000000000000;
+  local_1b0 = 0;
+  local_1e0 = 0;
+  local_180 = 0;
+  fVar3 = local_148._0_4_;
+  ModelAdd(param_1,(AuPoint *)&local_1c0,(int *)&local_d8,0.0,false,(AuPoint *)&local_160,local_200,
+           local_148._0_4_,local_170._0_4_,fVar11,local_178,(AuPoint *)&local_190,local_148._0_4_,
+           local_208,fVar11,fVar1,(AuPoint *)&local_1a8,local_168._0_4_,local_208,fVar13,fVar1,
+           (AuPoint *)&local_1d8,local_168._0_4_,local_170._0_4_,fVar13,local_178,
+           (AuPoint *)&local_1f0);
+  fVar8 = local_200;
+  local_1c0 = 0;
+  uStack_1b8 = 0xbff0000000000000;
+  local_1f0 = 0x4016a09e6676c64a;
+  uStack_1e8 = 0;
+  local_1d8 = 0x4016a09e6676c64a;
+  uStack_1d0 = 0;
+  local_1a8 = 0;
+  uStack_1a0 = 0;
+  local_1c8 = 0x3ff0000000000000;
+  local_198 = 0x3ff0000000000000;
+  local_1b0 = 0;
+  local_190 = 0;
+  uStack_188 = 0;
+  local_1e0 = 0;
+  local_180 = 0;
+  fVar2 = local_168._0_4_;
+  ModelAdd(param_1,(AuPoint *)&local_1c0,(int *)&local_d8,0.0,false,(AuPoint *)&local_160,local_200,
+           local_168._0_4_,local_170._0_4_,fVar13,local_178,(AuPoint *)&local_190,local_168._0_4_,
+           fVar9,fVar13,fVar1,(AuPoint *)&local_1a8,fVar3,fVar9,fVar11,fVar1,(AuPoint *)&local_1d8,
+           fVar3,local_170._0_4_,fVar11,local_178,(AuPoint *)&local_1f0);
+  local_1b0 = 0x3ff0000000000000;
+  local_1c0 = 0;
+  uStack_1b8 = 0;
+  uStack_d0 = (ulonglong)uStack_d0._4_4_ << 0x20;
+  local_1f0 = 0x4016a09e6676c64a;
+  uStack_1e8 = 0;
+  local_1d8 = 0x4016a09e6676c64a;
+  uStack_1d0 = 0x4006a09e6676c64a;
+  local_1a8 = 0;
+  uStack_1a0 = 0x4006a09e6676c64a;
+  local_190 = 0;
+  uStack_188 = 0;
+  local_1e0 = 0x3ff0000000000000;
+  local_1c8 = 0x3ff0000000000000;
+  local_198 = 0x3ff0000000000000;
+  local_180 = 0x3ff0000000000000;
+  ModelAdd(param_1,(AuPoint *)&local_1c0,(int *)&local_d8,0.0,false,(AuPoint *)&local_160,fVar8,
+           fVar2,local_174,-1.0,-1.0,(AuPoint *)&local_190,fVar2,local_204,-1.0,-1.0,
+           (AuPoint *)&local_1a8,fVar3,local_204,-1.0,-1.0,(AuPoint *)&local_1d8,fVar3,local_174,
+           -1.0,-1.0,(AuPoint *)&local_1f0);
+  local_1c0 = 0;
+  uStack_1b8 = 0;
+  local_1f0 = 0x4016a09e6676c64a;
+  uStack_1e8 = 0x4006a09e6676c64a;
+  local_1d8 = 0x4016a09e6676c64a;
+  uStack_1d0 = 0;
+  local_1b0 = 0xbff0000000000000;
+  local_1e0 = 0;
+  local_1c8 = 0;
+  local_198 = 0;
+  local_180 = 0;
+  local_1a8 = 0;
+  uStack_1a0 = 0;
+  local_190 = 0;
+  uStack_188 = 0x4006a09e6676c64a;
+  ModelAdd(param_1,(AuPoint *)&local_1c0,(int *)&local_d8,0.0,false,(AuPoint *)&local_160,fVar8,
+           local_128[0],local_13c,-1.0,-1.0,(AuPoint *)&local_190,local_128[0],local_138[0],-1.0,
+           -1.0,(AuPoint *)&local_1a8,local_140,local_138[0],-1.0,-1.0,(AuPoint *)&local_1d8,
+           local_140,local_13c,-1.0,-1.0,(AuPoint *)&local_1f0);
+  return;
+}
+
+

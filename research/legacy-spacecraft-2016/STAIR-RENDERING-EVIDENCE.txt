@@ -1,0 +1,66 @@
+2016 spacecraft stairs
+=======================
+
+Read-only Ghidra captures, all from AuAtom13.dll:
+  RenderStairsStraight   0x1804466b0
+  RenderStairsTurnLeft   0x180447020
+  RenderStairsTurnRight  0x180448990
+  RenderStairsUTurnLeft  0x180449780
+  RenderStairsUTurnRight 0x18044a570
+
+The new aulegacyshipstairs.cpp appends the recovered five stair families to
+the mesh. Types 101..140 comprise five consecutive groups of eight angles.
+DnDetailType::Rotation returns a float angle, promoted to double for the
+original point transform. Odd orientations select the diagonal dimensions.
+The final RenderInterior furniture loop skips details with hidden != 0.
+
+Common geometry:
+  StairCasing material 59, StairRiser 60, StairTread 61.
+  Edge inset: 1/96 foot, named e below.
+  Total rise: 8-e = 7.989583333333333 feet.
+  Each step: one riser quad, one tread quad, two triangular side faces.
+  The underside is a sloping casing quad, not a solid rectangular stair box.
+  Turns have a six-face landing slab at half the total rise. Its underside
+  sits one half-flight riser below its top. Landing sides use Riser, the
+  upper face Tread, and the lower face Casing.
+
+Straight:
+  ceil(12.370968122512082) = 13 steps.
+  Axis length 11.313708498, width 5.656854249 feet.
+  Diagonal length 12, width 4 feet.
+  Width is inset e at both outer edges. Positive local X climbs the stair.
+  Result: 240 vertices (6 casing, 156 riser/sides, 78 tread).
+
+Quarter-turn left/right:
+  Two flights of ceil(6.185484061256041) = 7 steps each.
+  Axis flight length and width both 5.656854249 feet.
+  Diagonal flight length 8, width 4 feet.
+  The first flight climbs positive X; the second climbs positive Y for a
+  left turn or negative Y for a right turn. The landing spans local X from
+  flight length to flight length+width-e. Flights inset e at side edges.
+  Result: 300 vertices (18 casing, 192 riser/sides, 90 tread).
+
+U-turn left/right:
+  Two flights of 7 steps each; the second climbs negative local X.
+  Axis flight length, width and landing depth all 5.656854249 feet.
+  Diagonal flight length 8, width 6, landing depth 4 feet.
+  The landing spans the combined two-flight width, with e at the outer
+  edges. The shared center edge has no inset. Overall diagonal footprint
+  is 12x12 feet before the outer edge inset.
+  Result: 300 vertices with the same material counts as quarter-turns.
+
+Riser and tread coordinates use full individual atlas rectangles for every
+step. Side triangles use the corresponding triangular half of the riser
+rectangle. Right-handed variants retain the original flight point order,
+which matters for UV orientation. Casing normals follow the original fixed
+45-degree slope normal; face winding is made consistent with that normal.
+
+Floor openings are authored separately. RenderInteriorFloors/Ceilings test
+IsAnyHatch and turret detail types 22/33 for apertures; they do not query
+stairs. Stair IsValid checks its same-deck footprint only. Consequently the
+mesh retains authored open-below rooms and does not invent automatic stair
+holes or require an upper room that the original placement rules did not.
+
+The independent manual native harness tests/native_ship_stairs.cpp checks
+original vertex/material counts, cardinal bounds, rise, all 40 rotations,
+visibility and winding. It has not been built or run by the assistant.

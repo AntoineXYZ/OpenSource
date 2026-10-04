@@ -1,0 +1,1370 @@
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* public: virtual void __cdecl DaSpaceShip::RenderEnvironmentObject(class AuMatrix4x4 const &
+   __ptr64,class AuMatrix4x4 const & __ptr64,class AuAtomRenderInfo const & __ptr64,class DaPerson
+   const * __ptr64,class AuRenderLastMap & __ptr64) __ptr64 */
+
+void __thiscall
+DaSpaceShip::RenderEnvironmentObject
+          (DaSpaceShip *this,AuMatrix4x4 *param_1,AuMatrix4x4 *param_2,AuAtomRenderInfo *param_3,
+          DaPerson *param_4,AuRenderLastMap *param_5)
+
+{
+  double dVar1;
+  double dVar2;
+  double dVar3;
+  bool bVar4;
+  bool bVar5;
+  bool bVar6;
+  bool bVar7;
+  bool bVar8;
+  bool bVar9;
+  char cVar10;
+  INTERIOR_LIGHT IVar11;
+  int iVar12;
+  int iVar13;
+  ROOMTYPE RVar14;
+  DaDesignEnvironment *this_00;
+  DaSpaceShip *pDVar15;
+  double *pdVar16;
+  undefined8 uVar17;
+  AuPoint *pAVar18;
+  AuGLVAO *pAVar19;
+  longlong *plVar20;
+  longlong *plVar21;
+  longlong lVar22;
+  undefined8 *puVar23;
+  DaAtom *this_01;
+  int *piVar24;
+  ulonglong uVar25;
+  ulonglong uVar26;
+  AuMatrix4x4 *pAVar27;
+  ulonglong uVar28;
+  ulonglong uVar29;
+  AuRenderLastMap *pAVar30;
+  QReadWriteLock *pQVar31;
+  float fVar32;
+  undefined4 in_XMM1_Da;
+  undefined4 uVar33;
+  uint in_XMM1_Db;
+  uint uVar34;
+  undefined4 uVar35;
+  undefined4 uVar36;
+  undefined4 uVar37;
+  uint uVar38;
+  undefined4 uVar39;
+  undefined4 uVar40;
+  undefined1 auStackY_598 [32];
+  ushort local_514;
+  AuPointArray local_510 [8];
+  char local_508;
+  float local_504;
+  float local_500;
+  float local_4fc;
+  undefined1 local_4f8 [16];
+  double local_4e8;
+  undefined8 local_4e0;
+  undefined8 uStack_4d8;
+  undefined8 local_4d0;
+  AuMatrix4x4 *local_4c8;
+  AuRenderLastMap *local_4c0;
+  uint local_4b8;
+  float local_4b4;
+  undefined4 local_4b0;
+  longlong *local_4a8;
+  AuMatrix4x4 *local_4a0;
+  undefined4 local_498;
+  undefined4 local_494;
+  double local_488;
+  double local_480;
+  double local_478;
+  double local_470;
+  double local_468;
+  double local_460;
+  AuPoint local_458 [40];
+  undefined8 local_430;
+  undefined8 local_428;
+  undefined8 uStack_420;
+  undefined8 local_418;
+  undefined8 uStack_410;
+  undefined8 local_408;
+  undefined8 uStack_400;
+  undefined8 local_3f8;
+  undefined8 uStack_3f0;
+  undefined8 local_3e8;
+  undefined8 uStack_3e0;
+  undefined8 local_3d8;
+  undefined8 uStack_3d0;
+  undefined8 local_3c8;
+  undefined8 uStack_3c0;
+  undefined8 local_3b8;
+  undefined8 uStack_3b0;
+  undefined8 local_3a8;
+  undefined8 uStack_3a0;
+  undefined8 local_398;
+  undefined8 uStack_390;
+  undefined8 local_388;
+  undefined8 uStack_380;
+  undefined8 local_378;
+  undefined8 uStack_370;
+  undefined8 local_368;
+  undefined8 uStack_360;
+  undefined8 local_358;
+  undefined8 uStack_350;
+  undefined8 local_348;
+  undefined8 uStack_340;
+  undefined8 local_338;
+  undefined8 uStack_330;
+  char local_328;
+  undefined8 local_318;
+  undefined8 uStack_310;
+  undefined8 local_308;
+  undefined8 uStack_300;
+  undefined8 local_2f8;
+  undefined8 uStack_2f0;
+  undefined8 local_2e8;
+  undefined8 uStack_2e0;
+  undefined8 local_2d8;
+  undefined8 uStack_2d0;
+  undefined8 local_2c8;
+  undefined8 uStack_2c0;
+  undefined8 local_2b8;
+  undefined8 uStack_2b0;
+  undefined8 local_2a8;
+  undefined8 uStack_2a0;
+  undefined8 local_298;
+  undefined8 uStack_290;
+  undefined8 local_288;
+  undefined8 uStack_280;
+  undefined8 local_278;
+  undefined8 uStack_270;
+  undefined8 local_268;
+  undefined8 uStack_260;
+  undefined8 local_258;
+  undefined8 uStack_250;
+  undefined8 local_248;
+  undefined8 uStack_240;
+  undefined8 local_238;
+  undefined8 uStack_230;
+  undefined8 local_228;
+  undefined8 uStack_220;
+  char local_218;
+  AuMatrix4x4 local_208 [272];
+  ulonglong local_f8;
+  
+                    /* 0x423a60  5914
+                       ?RenderEnvironmentObject@DaSpaceShip@@UEAAXAEBVAuMatrix4x4@@0AEBVAuAtomRenderInfo@@PEBVDaPerson@@AEAVAuRenderLastMap@@@Z
+                        */
+  local_430 = 0xfffffffffffffffe;
+  local_f8 = DAT_180a0ecf0 ^ (ulonglong)auStackY_598;
+  local_4c0 = param_5;
+  local_4b8 = 0;
+  local_4c8 = param_2;
+  local_4a0 = param_1;
+  QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x88));
+  lVar22 = *(longlong *)(this + 0x90);
+  QReadWriteLock::unlock((QReadWriteLock *)(this + 0x88));
+  if (lVar22 == 0) {
+    return;
+  }
+  DaAtom::Transform((DaAtom *)this);
+  AuMatrix4x4::operator*(param_2,(AuMatrix4x4 *)&local_428);
+  bVar8 = false;
+  local_4f8 = ZEXT816(0);
+  uVar39 = 0;
+  uVar40 = 0;
+  QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x1c0));
+  uVar17 = *(undefined8 *)(this + 0x1d0);
+  QReadWriteLock::unlock((QReadWriteLock *)(this + 0x1c0));
+  this_00 = (DaDesignEnvironment *)
+            __RTDynamicCast(uVar17,0,&DaAtom::RTTI_Type_Descriptor,
+                            &DaDesignEnvironment::RTTI_Type_Descriptor);
+  bVar5 = false;
+  local_508 = '\0';
+  if ((param_4 == (DaPerson *)0x0) || (this_00 == (DaDesignEnvironment *)0x0)) {
+    bVar7 = false;
+    QReadWriteLock::lockForRead((QReadWriteLock *)(param_4 + 0x88));
+    uVar38 = *(uint *)(*(longlong *)(param_4 + 0x90) + 0x20);
+    QReadWriteLock::unlock((QReadWriteLock *)(param_4 + 0x88));
+    bVar4 = true;
+    if ((uVar38 >> 5 & 1) == 0) {
+LAB_180423cda:
+      pdVar16 = (double *)DqDesignAnalysis::CenterOffset((DqDesignAnalysis *)(this + 0x778));
+      AuMatrix4x4::Project
+                ((AuMatrix4x4 *)&local_428,(double)CONCAT44(in_XMM1_Db,in_XMM1_Da),*pdVar16,
+                 pdVar16[1]);
+      dVar3 = local_488 * local_488 + local_480 * local_480 + local_478 * local_478;
+      if (local_478 < 0.0) {
+LAB_180423d6c:
+        if (dVar3 < 2690977.604177425) {
+          bVar6 = true;
+          goto LAB_180423dbe;
+        }
+        pAVar18 = (AuPoint *)AuPoint::operator-((AuPoint *)(this + 0x800),(AuPoint *)&local_4e0);
+        dVar1 = AuPoint::Length2(pAVar18);
+        bVar4 = true;
+        if (dVar1 * 50000.0 <= dVar3) {
+          local_508 = '\x01';
+        }
+      }
+      else {
+        pAVar18 = (AuPoint *)AuPoint::operator-((AuPoint *)(this + 0x818),(AuPoint *)&local_4e0);
+        dVar1 = AuPoint::Length2(pAVar18);
+        if (dVar3 <= dVar1 * 0.5) goto LAB_180423d6c;
+        bVar4 = false;
+      }
+      bVar6 = false;
+    }
+    else {
+      QReadWriteLock::lockForRead((QReadWriteLock *)(param_4 + 0x1c0));
+      pDVar15 = *(DaSpaceShip **)(param_4 + 0x1d0);
+      QReadWriteLock::unlock((QReadWriteLock *)(param_4 + 0x1c0));
+      if (((pDVar15 != this) &&
+          (pDVar15 = DaAtom::FindParentSpaceShip((DaAtom *)param_4), pDVar15 != this)) &&
+         ((pDVar15 == (DaSpaceShip *)0x0 ||
+          (pDVar15 = DaAtom::FindParentSpaceShip((DaAtom *)pDVar15), pDVar15 != this))))
+      goto LAB_180423cda;
+      bVar6 = true;
+      if (((((*(int *)(param_3 + 0x48) == 2) && (*(int *)(this + 0x860) <= *(int *)(param_3 + 0x2c))
+            ) && (*(int *)(param_3 + 0x2c) <= *(int *)(this + 0x7f8))) &&
+          (bVar9 = DaCreature::IsGameTablePose((DaCreature *)param_4), !bVar9)) &&
+         ((bVar9 = IsCrewMember(this,(AuId *)(param_4 + 0x14)), bVar9 ||
+          (bVar9 = InChainOfCommand(this,param_4), bVar9)))) {
+        bVar5 = true;
+      }
+    }
+LAB_180423dbe:
+    dVar3 = *(double *)(this + 0x7e0);
+    uVar37 = SUB84(dVar3,0);
+    uVar38 = (uint)((ulonglong)dVar3 >> 0x20);
+    dVar1 = *(double *)(this + 0x7e8);
+    uVar35 = SUB84(dVar1,0);
+    uVar36 = (undefined4)((ulonglong)dVar1 >> 0x20);
+    dVar2 = *(double *)(this + 0x7f0);
+    uVar39 = SUB84(dVar2,0);
+    uVar40 = (undefined4)((ulonglong)dVar2 >> 0x20);
+    in_XMM1_Db = uVar38 ^ 0x80000000;
+    in_XMM1_Da = uVar37;
+    AuMatrix4x4::Translate((AuMatrix4x4 *)&local_428,-dVar3,-dVar1,-dVar2);
+    if (!bVar4) {
+      bVar8 = IsSpaceStation(this);
+      pAVar27 = local_4c8;
+      if (((bVar8) && (bVar8 = DaAtom::IsInAtmosphere((DaAtom *)this), pAVar27 = local_4c8, !bVar8))
+         && (*(float *)(param_3 + 0x28) != 0.0)) {
+        DaAtom::Transform((DaAtom *)this);
+        pAVar27 = local_4c8;
+        AuMatrix4x4::operator*(local_4c8,local_208);
+        RenderStationNavBeacon
+                  (this,param_1,local_208,param_4,*(float *)(param_3 + 0x28),
+                   *(AuGLEffects **)(param_3 + 0x20));
+      }
+      RenderAudioSources(this,param_4,(AuMatrix4x4 *)&local_428,*(AuGLEffects **)(param_3 + 0x20),
+                         *(float *)param_3);
+      pAVar30 = local_4c0;
+      goto LAB_18042623c;
+    }
+  }
+  else {
+    local_4b4 = 0.0;
+    bVar8 = DaDesignEnvironment::IsRenderSolid(this_00,(AuId *)&local_4b4);
+    bVar8 = !bVar8;
+    bVar7 = true;
+    bVar6 = true;
+    uVar35 = local_4f8._8_4_;
+    uVar36 = local_4f8._12_4_;
+    uVar37 = local_4f8._0_4_;
+    uVar38 = local_4f8._4_4_;
+  }
+  if (*(int *)(this + 0xcc8) != 0) {
+    *(undefined1 *)((longlong)*(int *)(this + 0xcc8) * 0x58 + 0x818 + *(longlong *)(param_3 + 0x20))
+         = 0;
+  }
+  AuMatrix4x4::Project((AuMatrix4x4 *)&local_428,(double)CONCAT44(in_XMM1_Db,in_XMM1_Da),0.0,0.0);
+  pAVar27 = local_4c8;
+  dVar3 = local_468 * local_468 + local_470 * local_470 + local_460 * local_460;
+  uVar33 = SUB84(dVar3,0);
+  uVar17 = FUN_1801fecd0(local_208,this,local_4c8);
+  pAVar30 = local_4c0;
+  uVar34 = (uint)((ulonglong)dVar3 >> 0x20) ^ 0x80000000;
+  FUN_18020f870(local_4c0,uVar33,uVar17);
+  if (bVar5) {
+    RenderDeckTactical(this,param_1,(AuMatrix4x4 *)&local_428,*(AuGLEffects **)(param_3 + 0x20),
+                       *(int *)(param_3 + 0x2c));
+  }
+  else if (bVar8) {
+    RenderDesign(this,param_1,(AuMatrix4x4 *)&local_428,*(AuGLEffects **)(param_3 + 0x20),
+                 *(QOpenGLWidget **)(param_3 + 0x10),*(QFont **)(param_3 + 8));
+  }
+  else {
+    (**(code **)(*(longlong *)this + 0x110))(this,param_4,&local_504,&local_500);
+    QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x88));
+    AuPoint::AuPoint((AuPoint *)&local_4e0,(AuPoint *)(*(longlong *)(this + 0x90) + 0x60));
+    QReadWriteLock::unlock((QReadWriteLock *)(this + 0x88));
+    AuMatrix4x4::Project((AuMatrix4x4 *)&local_428,(double)CONCAT44(uVar34,uVar33),0.0,0.0);
+    pAVar18 = (AuPoint *)AuMatrix4x4::Project((AuMatrix4x4 *)&local_428,local_458);
+    AuPoint::operator-(pAVar18,(AuPoint *)&local_488);
+    bVar8 = local_4b4 <= 0.0;
+    if (bVar8) {
+      (**(code **)(**(longlong **)(*(longlong *)(param_3 + 0x20) + 0x388) + 0x18))();
+      FUN_1800d9cf0(*(undefined8 *)(*(longlong *)(*(longlong *)(param_3 + 0x20) + 0x388) + 0x10),
+                    *(undefined4 *)(*(longlong *)(*(longlong *)(param_3 + 0x20) + 0x388) + 0x2c),
+                    param_1);
+      FUN_1800d9cf0(*(undefined8 *)(*(longlong *)(*(longlong *)(param_3 + 0x20) + 0x388) + 0x10),
+                    *(undefined4 *)(*(longlong *)(*(longlong *)(param_3 + 0x20) + 0x388) + 0x20),
+                    &local_428);
+      QOpenGLFunctions_3_2_Core::glUniform3f
+                (*(QOpenGLFunctions_3_2_Core **)
+                  (*(longlong *)(*(longlong *)(param_3 + 0x20) + 0x388) + 0x10),
+                 *(int *)(*(longlong *)(*(longlong *)(param_3 + 0x20) + 0x388) + 0x290),local_504,
+                 local_500,local_4fc);
+      QOpenGLFunctions_3_2_Core::glUniform3f
+                (*(QOpenGLFunctions_3_2_Core **)
+                  (*(longlong *)(*(longlong *)(param_3 + 0x20) + 0x388) + 0x10),
+                 *(int *)(*(longlong *)(*(longlong *)(param_3 + 0x20) + 0x388) + 0x294),
+                 (float)local_488,(float)local_480,(float)local_478);
+      uVar26 = 0;
+      uVar25 = uVar26;
+      uVar28 = uVar26;
+      do {
+        lVar22 = *(longlong *)(param_3 + 0x20);
+        FUN_180462450(*(undefined8 *)(lVar22 + 0x388),uVar28,
+                      *(undefined1 *)(lVar22 + 0x710 + uVar25),
+                      *(undefined4 *)(lVar22 + 0x6f8 + uVar25));
+        uVar34 = (int)uVar28 + 1;
+        uVar28 = (ulonglong)uVar34;
+        uVar25 = uVar25 + 0x60;
+        uVar29 = uVar26;
+      } while ((int)uVar34 < 3);
+      do {
+        lVar22 = *(longlong *)(param_3 + 0x20);
+        FUN_180461fb0(*(undefined8 *)(lVar22 + 0x388),uVar29,
+                      *(undefined1 *)(lVar22 + 0x818 + uVar26),
+                      *(undefined4 *)(lVar22 + 0x81c + uVar26));
+        uVar34 = (int)uVar29 + 1;
+        uVar26 = uVar26 + 0x58;
+        uVar29 = (ulonglong)uVar34;
+      } while ((int)uVar34 < 4);
+      RenderShaderTextureOffsets(this,*(AuGLEffects **)(param_3 + 0x20));
+      if (bVar6) {
+        QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x4c0));
+        iVar12 = *(int *)(this + 0x518);
+        QReadWriteLock::unlock((QReadWriteLock *)(this + 0x4c0));
+        if (iVar12 != 1) goto LAB_1804246df;
+        QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x4c0));
+        fVar32 = *(float *)(this + 0x4c8);
+        QReadWriteLock::unlock((QReadWriteLock *)(this + 0x4c0));
+        if (fVar32 == 0.0) goto LAB_1804246df;
+        fVar32 = 0.2;
+      }
+      else {
+LAB_1804246df:
+        fVar32 = 0.0;
+      }
+      QOpenGLFunctions_3_2_Core::glUniform1f
+                (*(QOpenGLFunctions_3_2_Core **)
+                  (*(longlong *)(*(longlong *)(param_3 + 0x20) + 0x388) + 0x10),
+                 *(int *)(*(longlong *)(*(longlong *)(param_3 + 0x20) + 0x388) + 0x18),fVar32);
+      pQVar31 = (QReadWriteLock *)(this + 0x4c0);
+      QReadWriteLock::lockForRead(pQVar31);
+      iVar12 = *(int *)(this + 0x518);
+      QReadWriteLock::unlock(pQVar31);
+      uVar34 = DAT_180a38518;
+      if (iVar12 != 0) {
+        QReadWriteLock::lockForRead(pQVar31);
+        fVar32 = *(float *)(this + 0x4c8);
+        QReadWriteLock::unlock(pQVar31);
+        uVar34 = DAT_180a38518;
+        if (fVar32 != 0.0) {
+          uVar34 = DAT_180a3851c;
+        }
+      }
+      lVar22 = *(longlong *)(*(longlong *)(param_3 + 0x20) + 0x388);
+      QOpenGLFunctions_3_2_Core::glUniform1i
+                (*(QOpenGLFunctions_3_2_Core **)(lVar22 + 0x10),*(int *)(lVar22 + 0x34),0);
+      QOpenGLFunctions_3_2_Core::glActiveTexture
+                (*(QOpenGLFunctions_3_2_Core **)(lVar22 + 0x10),0x84c0);
+      QOpenGLFunctions_3_2_Core::glBindTexture
+                (*(QOpenGLFunctions_3_2_Core **)(lVar22 + 0x10),0xde1,uVar34);
+      lVar22 = *(longlong *)(*(longlong *)(param_3 + 0x20) + 0x388);
+      iVar12 = *(int *)(lVar22 + 0x30);
+    }
+    else {
+      (**(code **)(**(longlong **)(*(longlong *)(param_3 + 0x20) + 0x390) + 0x18))();
+      FUN_1800d9cf0(*(undefined8 *)(*(longlong *)(*(longlong *)(param_3 + 0x20) + 0x390) + 0x10),
+                    *(undefined4 *)(*(longlong *)(*(longlong *)(param_3 + 0x20) + 0x390) + 0x34),
+                    param_1);
+      FUN_1800d9cf0(*(undefined8 *)(*(longlong *)(*(longlong *)(param_3 + 0x20) + 0x390) + 0x10),
+                    *(undefined4 *)(*(longlong *)(*(longlong *)(param_3 + 0x20) + 0x390) + 0x28),
+                    &local_428);
+      FUN_180461f60(*(undefined8 *)(*(longlong *)(param_3 + 0x20) + 0x390),local_4b4,local_498,
+                    local_494);
+      QOpenGLFunctions_3_2_Core::glUniform3f
+                (*(QOpenGLFunctions_3_2_Core **)
+                  (*(longlong *)(*(longlong *)(param_3 + 0x20) + 0x390) + 0x10),
+                 *(int *)(*(longlong *)(*(longlong *)(param_3 + 0x20) + 0x390) + 0x298),local_504,
+                 local_500,local_4fc);
+      QOpenGLFunctions_3_2_Core::glUniform3f
+                (*(QOpenGLFunctions_3_2_Core **)
+                  (*(longlong *)(*(longlong *)(param_3 + 0x20) + 0x390) + 0x10),
+                 *(int *)(*(longlong *)(*(longlong *)(param_3 + 0x20) + 0x390) + 0x29c),
+                 (float)local_488,(float)local_480,(float)local_478);
+      uVar26 = 0;
+      uVar25 = uVar26;
+      uVar28 = uVar26;
+      do {
+        lVar22 = *(longlong *)(param_3 + 0x20);
+        FUN_180462520(*(undefined8 *)(lVar22 + 0x390),uVar28,
+                      *(undefined1 *)(lVar22 + 0x710 + uVar25),
+                      *(undefined4 *)(lVar22 + 0x6f8 + uVar25));
+        uVar34 = (int)uVar28 + 1;
+        uVar28 = (ulonglong)uVar34;
+        uVar25 = uVar25 + 0x60;
+        uVar29 = uVar26;
+      } while ((int)uVar34 < 3);
+      do {
+        lVar22 = *(longlong *)(param_3 + 0x20);
+        FUN_1804620e0(*(undefined8 *)(lVar22 + 0x390),uVar29,
+                      *(undefined1 *)(lVar22 + 0x818 + uVar26),
+                      *(undefined4 *)(lVar22 + 0x81c + uVar26));
+        uVar34 = (int)uVar29 + 1;
+        uVar26 = uVar26 + 0x58;
+        uVar29 = (ulonglong)uVar34;
+      } while ((int)uVar34 < 4);
+      RenderShaderTextureOffsetsFog(this,*(AuGLEffects **)(param_3 + 0x20));
+      if (bVar6) {
+        QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x4c0));
+        iVar12 = *(int *)(this + 0x518);
+        QReadWriteLock::unlock((QReadWriteLock *)(this + 0x4c0));
+        if (iVar12 != 1) goto LAB_18042434f;
+        QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x4c0));
+        fVar32 = *(float *)(this + 0x4c8);
+        QReadWriteLock::unlock((QReadWriteLock *)(this + 0x4c0));
+        if (fVar32 == 0.0) goto LAB_18042434f;
+        fVar32 = 0.2;
+      }
+      else {
+LAB_18042434f:
+        fVar32 = 0.0;
+      }
+      QOpenGLFunctions_3_2_Core::glUniform1f
+                (*(QOpenGLFunctions_3_2_Core **)
+                  (*(longlong *)(*(longlong *)(param_3 + 0x20) + 0x390) + 0x10),
+                 *(int *)(*(longlong *)(*(longlong *)(param_3 + 0x20) + 0x390) + 0x18),fVar32);
+      pQVar31 = (QReadWriteLock *)(this + 0x4c0);
+      QReadWriteLock::lockForRead(pQVar31);
+      iVar12 = *(int *)(this + 0x518);
+      QReadWriteLock::unlock(pQVar31);
+      uVar34 = DAT_180a38518;
+      if (iVar12 != 0) {
+        QReadWriteLock::lockForRead(pQVar31);
+        fVar32 = *(float *)(this + 0x4c8);
+        QReadWriteLock::unlock(pQVar31);
+        uVar34 = DAT_180a38518;
+        if (fVar32 != 0.0) {
+          uVar34 = DAT_180a3851c;
+        }
+      }
+      lVar22 = *(longlong *)(*(longlong *)(param_3 + 0x20) + 0x390);
+      QOpenGLFunctions_3_2_Core::glUniform1i
+                (*(QOpenGLFunctions_3_2_Core **)(lVar22 + 0x10),*(int *)(lVar22 + 0x3c),0);
+      QOpenGLFunctions_3_2_Core::glActiveTexture
+                (*(QOpenGLFunctions_3_2_Core **)(lVar22 + 0x10),0x84c0);
+      QOpenGLFunctions_3_2_Core::glBindTexture
+                (*(QOpenGLFunctions_3_2_Core **)(lVar22 + 0x10),0xde1,uVar34);
+      lVar22 = *(longlong *)(*(longlong *)(param_3 + 0x20) + 0x390);
+      iVar12 = *(int *)(lVar22 + 0x38);
+    }
+    uVar34 = DAT_180a38514;
+    pQVar31 = (QReadWriteLock *)(this + 0x4c0);
+    QOpenGLFunctions_3_2_Core::glUniform1i(*(QOpenGLFunctions_3_2_Core **)(lVar22 + 0x10),iVar12,1);
+    QOpenGLFunctions_3_2_Core::glActiveTexture
+              (*(QOpenGLFunctions_3_2_Core **)(lVar22 + 0x10),0x84c1);
+    QOpenGLFunctions_3_2_Core::glBindTexture
+              (*(QOpenGLFunctions_3_2_Core **)(lVar22 + 0x10),0xde1,uVar34);
+    if (local_508 == '\0') {
+      if (*(int *)(this + 0xdc0) == 0) {
+        if (!bVar7) {
+          if (*(int *)(this + 0xf50) == 0) {
+            pAVar19 = (AuGLVAO *)CreateExteriorNoModel(this,(AuGLEffects *)local_458);
+            AuGLVAO::operator=((AuGLVAO *)(this + 0xf38),pAVar19);
+            AuGLVAO::~AuGLVAO((AuGLVAO *)local_458);
+            if (*(int *)(this + 0xf50) == 0) goto LAB_180424bcc;
+          }
+          if ((this[0x495] == (DaSpaceShip)0x0) || (fVar32 = CapacitorLevel(this), fVar32 == 0.0)) {
+            if (*(int *)(this + 0xf50) != 0) {
+              pAVar19 = (AuGLVAO *)(this + 0xf38);
+              AuGLVAO::SelectGL(pAVar19);
+              AuGLVAO::DrawGL(pAVar19);
+              AuGLVAO::DeselectGL(pAVar19);
+            }
+          }
+          else {
+            if (bVar8) {
+              lVar22 = *(longlong *)(*(longlong *)(param_3 + 0x20) + 0x388);
+              iVar12 = *(int *)(lVar22 + 0x290);
+            }
+            else {
+              lVar22 = *(longlong *)(*(longlong *)(param_3 + 0x20) + 0x390);
+              iVar12 = *(int *)(lVar22 + 0x298);
+            }
+            QOpenGLFunctions_3_2_Core::glUniform3f
+                      (*(QOpenGLFunctions_3_2_Core **)(lVar22 + 0x10),iVar12,0.5,0.49019608,
+                       0.47843137);
+            pAVar19 = (AuGLVAO *)(this + 0xf38);
+            AuGLVAO::SelectGL(pAVar19);
+            AuGLVAO::DrawGL(pAVar19);
+            AuGLVAO::DeselectGL(pAVar19);
+          }
+        }
+LAB_180424bcc:
+        if (bVar6) {
+          RenderInteriorNoModel
+                    (this,param_1,(AuMatrix4x4 *)&local_428,*(AuGLEffects **)(param_3 + 0x20));
+        }
+      }
+      else {
+        if (this[0x495] == (DaSpaceShip)0x0) {
+LAB_18042499a:
+          pAVar19 = (AuGLVAO *)(this + 0xda8);
+          AuGLVAO::SelectGL(pAVar19);
+          AuGLVAO::DrawGL(pAVar19);
+          AuGLVAO::DeselectGL(pAVar19);
+        }
+        else {
+          QReadWriteLock::lockForRead(pQVar31);
+          fVar32 = *(float *)(this + 0x4c8);
+          QReadWriteLock::unlock(pQVar31);
+          if (fVar32 == 0.0) goto LAB_18042499a;
+          if (bVar8) {
+            lVar22 = *(longlong *)(*(longlong *)(param_3 + 0x20) + 0x388);
+            iVar12 = *(int *)(lVar22 + 0x290);
+          }
+          else {
+            lVar22 = *(longlong *)(*(longlong *)(param_3 + 0x20) + 0x390);
+            iVar12 = *(int *)(lVar22 + 0x298);
+          }
+          QOpenGLFunctions_3_2_Core::glUniform3f
+                    (*(QOpenGLFunctions_3_2_Core **)(lVar22 + 0x10),iVar12,0.5,0.49019608,0.47843137
+                    );
+          pAVar19 = (AuGLVAO *)(this + 0xda8);
+          AuGLVAO::SelectGL(pAVar19);
+          AuGLVAO::DrawGL(pAVar19);
+          AuGLVAO::DeselectGL(pAVar19);
+        }
+        if (bVar6) {
+          InteriorAmbientLight(this,&local_504,&local_500,&local_4fc);
+          if (bVar8) {
+            lVar22 = *(longlong *)(*(longlong *)(param_3 + 0x20) + 0x388);
+            QOpenGLFunctions_3_2_Core::glUniform3f
+                      (*(QOpenGLFunctions_3_2_Core **)(lVar22 + 0x10),*(int *)(lVar22 + 0x290),
+                       local_504,local_500,local_4fc);
+            IVar11 = InteriorLight(this);
+            if ((IVar11 != 1) || (fVar32 = CapacitorLevel(this), fVar32 == 0.0)) {
+              lVar22 = *(longlong *)(*(longlong *)(param_3 + 0x20) + 0x388);
+              goto LAB_180424a9e;
+            }
+            lVar22 = *(longlong *)(*(longlong *)(param_3 + 0x20) + 0x388);
+            fVar32 = 0.2;
+          }
+          else {
+            lVar22 = *(longlong *)(*(longlong *)(param_3 + 0x20) + 0x390);
+            QOpenGLFunctions_3_2_Core::glUniform3f
+                      (*(QOpenGLFunctions_3_2_Core **)(lVar22 + 0x10),*(int *)(lVar22 + 0x298),
+                       local_504,local_500,local_4fc);
+            IVar11 = InteriorLight(this);
+            if ((IVar11 == 1) && (fVar32 = CapacitorLevel(this), fVar32 != 0.0)) {
+              lVar22 = *(longlong *)(*(longlong *)(param_3 + 0x20) + 0x390);
+              fVar32 = 0.2;
+            }
+            else {
+              lVar22 = *(longlong *)(*(longlong *)(param_3 + 0x20) + 0x390);
+LAB_180424a9e:
+              fVar32 = 0.1;
+            }
+          }
+          QOpenGLFunctions_3_2_Core::glUniform1f
+                    (*(QOpenGLFunctions_3_2_Core **)(lVar22 + 0x10),*(int *)(lVar22 + 0x18),fVar32);
+          pDVar15 = this + 0xdc8;
+          goto LAB_1804248a2;
+        }
+      }
+    }
+    else {
+      if (*(int *)(this + 0xf50) == 0) {
+        pAVar19 = (AuGLVAO *)CreateExteriorNoModel(this,(AuGLEffects *)local_458);
+        AuGLVAO::operator=((AuGLVAO *)(this + 0xf38),pAVar19);
+        AuGLVAO::~AuGLVAO((AuGLVAO *)local_458);
+        if (*(int *)(this + 0xf50) == 0) goto LAB_180424bf1;
+      }
+      if (this[0x495] != (DaSpaceShip)0x0) {
+        QReadWriteLock::lockForRead(pQVar31);
+        fVar32 = *(float *)(this + 0x4c8);
+        QReadWriteLock::unlock(pQVar31);
+        if (fVar32 != 0.0) {
+          if (bVar8) {
+            lVar22 = *(longlong *)(*(longlong *)(param_3 + 0x20) + 0x388);
+            iVar12 = *(int *)(lVar22 + 0x290);
+          }
+          else {
+            lVar22 = *(longlong *)(*(longlong *)(param_3 + 0x20) + 0x390);
+            iVar12 = *(int *)(lVar22 + 0x298);
+          }
+          QOpenGLFunctions_3_2_Core::glUniform3f
+                    (*(QOpenGLFunctions_3_2_Core **)(lVar22 + 0x10),iVar12,0.5,0.49019608,0.47843137
+                    );
+          pDVar15 = this + 0xf38;
+LAB_1804248a2:
+          AuGLVAO::SelectGL((AuGLVAO *)pDVar15);
+          AuGLVAO::DrawGL((AuGLVAO *)pDVar15);
+          AuGLVAO::DeselectGL((AuGLVAO *)pDVar15);
+          goto LAB_180424bf1;
+        }
+      }
+      pAVar19 = (AuGLVAO *)(this + 0xf38);
+      AuGLVAO::SelectGL(pAVar19);
+      AuGLVAO::DrawGL(pAVar19);
+      AuGLVAO::DeselectGL(pAVar19);
+    }
+LAB_180424bf1:
+    if (bVar8) {
+      plVar20 = *(longlong **)(*(longlong *)(param_3 + 0x20) + 0x388);
+    }
+    else {
+      plVar20 = *(longlong **)(*(longlong *)(param_3 + 0x20) + 0x390);
+    }
+    (**(code **)(*plVar20 + 0x10))();
+    if (bVar6) {
+      InteriorAmbientLight(this,&local_504,&local_500,&local_4fc);
+      AuGLEffects::SetAmbientLight
+                (*(AuGLEffects **)(param_3 + 0x20),local_504,local_500,local_4fc,1.0);
+      AuGLEffects::SetFog(*(AuGLEffects **)(param_3 + 0x20),0.0,0.0,0.0,0.0);
+      AuPointArray::AuPointArray(local_510);
+      ListVisiblyOccupiedConsoleLocations(this,param_4,local_510);
+      AuMatrix4x4::LoadIdentity(local_208);
+      AuMatrix4x4::Translate
+                (local_208,(double)CONCAT44(uVar38,uVar37),(double)CONCAT44(uVar36,uVar35),
+                 (double)CONCAT44(uVar40,uVar39));
+      AuPointArray::Transform(local_510,local_208);
+      local_514 = 0;
+      AuMatrix4x4::LoadIdentity((AuMatrix4x4 *)&local_318);
+      lVar22 = *(longlong *)gp_AuGlobal_exref;
+      bVar8 = QReadWriteLock::tryLockForRead((QReadWriteLock *)(lVar22 + 0x1e0));
+      if ((bVar8) && (lVar22 = *(longlong *)(lVar22 + 0x68), lVar22 != 0)) {
+        QReadWriteLock::lockForRead(pQVar31);
+        uVar39 = *(undefined4 *)(this + 0x514);
+        QReadWriteLock::unlock(pQVar31);
+        local_4b0 = uVar39;
+        std::
+        _Hash<std::_Umap_traits<unsigned_int,DnDetailArray,std::_Uhash_compare<unsigned_int,AuDesignIdHash,std::equal_to<unsigned_int>_>,std::allocator<std::pair<unsigned_int_const_,DnDetailArray>_>,0>_>
+        ::find((_Hash<std::_Umap_traits<unsigned_int,DnDetailArray,std::_Uhash_compare<unsigned_int,AuDesignIdHash,std::equal_to<unsigned_int>_>,std::allocator<std::pair<unsigned_int_const_,DnDetailArray>_>,0>_>
+                *)(lVar22 + 0x138),(uint *)&local_4a8);
+        plVar20 = (longlong *)
+                  std::
+                  _Hash<std::_Umap_traits<unsigned_int,DnDetailArray,std::_Uhash_compare<unsigned_int,AuDesignIdHash,std::equal_to<unsigned_int>_>,std::allocator<std::pair<unsigned_int_const_,DnDetailArray>_>,0>_>
+                  ::end((_Hash<std::_Umap_traits<unsigned_int,DnDetailArray,std::_Uhash_compare<unsigned_int,AuDesignIdHash,std::equal_to<unsigned_int>_>,std::allocator<std::pair<unsigned_int_const_,DnDetailArray>_>,0>_>
+                         *)(lVar22 + 0x138));
+        if (local_4a8 != (longlong *)*plVar20) {
+          plVar20 = (longlong *)QList<DnDetail>::cbegin((QList<DnDetail> *)(local_4a8 + 3));
+          plVar20 = (longlong *)*plVar20;
+          plVar21 = (longlong *)QList<DnDetail>::cend((QList<DnDetail> *)(local_4a8 + 3));
+          if (plVar20 != (longlong *)*plVar21) {
+            do {
+              lVar22 = *plVar20;
+              switch(*(undefined1 *)(lVar22 + 1)) {
+              case 1:
+                bVar8 = AuPointArray::DoesContain(local_510,(AuPoint *)(lVar22 + 0x10));
+                if (!bVar8) {
+                  local_318 = local_428;
+                  uStack_310 = uStack_420;
+                  local_308 = local_418;
+                  uStack_300 = uStack_410;
+                  local_2f8 = local_408;
+                  uStack_2f0 = uStack_400;
+                  local_2e8 = local_3f8;
+                  uStack_2e0 = uStack_3f0;
+                  local_2d8 = local_3e8;
+                  uStack_2d0 = uStack_3e0;
+                  local_2c8 = local_3d8;
+                  uStack_2c0 = uStack_3d0;
+                  local_2b8 = local_3c8;
+                  uStack_2b0 = uStack_3c0;
+                  local_2a8 = local_3b8;
+                  uStack_2a0 = uStack_3b0;
+                  local_218 = local_328;
+                  if (local_328 != '\0') {
+                    local_298 = local_3a8;
+                    uStack_290 = uStack_3a0;
+                    local_288 = local_398;
+                    uStack_280 = uStack_390;
+                    local_278 = local_388;
+                    uStack_270 = uStack_380;
+                    local_268 = local_378;
+                    uStack_260 = uStack_370;
+                    local_258 = local_368;
+                    uStack_250 = uStack_360;
+                    local_248 = local_358;
+                    uStack_240 = uStack_350;
+                    local_238 = local_348;
+                    uStack_230 = uStack_340;
+                    local_228 = local_338;
+                    uStack_220 = uStack_330;
+                  }
+                  lVar22 = *plVar20;
+                  AuMatrix4x4::Translate
+                            ((AuMatrix4x4 *)&local_318,*(double *)(lVar22 + 0x10),
+                             *(double *)(lVar22 + 0x18),*(double *)(lVar22 + 0x20));
+                  (**(code **)(*(longlong *)(this + 0xde8) + 0x50))
+                            (this + 0xde8,param_1,&local_318,param_4);
+                }
+                break;
+              case 4:
+                bVar8 = AuPointArray::DoesContain(local_510,(AuPoint *)(lVar22 + 0x10));
+                if (!bVar8) {
+                  local_318 = local_428;
+                  uStack_310 = uStack_420;
+                  local_308 = local_418;
+                  uStack_300 = uStack_410;
+                  local_2f8 = local_408;
+                  uStack_2f0 = uStack_400;
+                  local_2e8 = local_3f8;
+                  uStack_2e0 = uStack_3f0;
+                  local_2d8 = local_3e8;
+                  uStack_2d0 = uStack_3e0;
+                  local_2c8 = local_3d8;
+                  uStack_2c0 = uStack_3d0;
+                  local_2b8 = local_3c8;
+                  uStack_2b0 = uStack_3c0;
+                  local_2a8 = local_3b8;
+                  uStack_2a0 = uStack_3b0;
+                  local_218 = local_328;
+                  if (local_328 != '\0') {
+                    local_298 = local_3a8;
+                    uStack_290 = uStack_3a0;
+                    local_288 = local_398;
+                    uStack_280 = uStack_390;
+                    local_278 = local_388;
+                    uStack_270 = uStack_380;
+                    local_268 = local_378;
+                    uStack_260 = uStack_370;
+                    local_258 = local_368;
+                    uStack_250 = uStack_360;
+                    local_248 = local_358;
+                    uStack_240 = uStack_350;
+                    local_238 = local_348;
+                    uStack_230 = uStack_340;
+                    local_228 = local_338;
+                    uStack_220 = uStack_330;
+                  }
+                  lVar22 = *plVar20;
+                  AuMatrix4x4::Translate
+                            ((AuMatrix4x4 *)&local_318,*(double *)(lVar22 + 0x10),
+                             *(double *)(lVar22 + 0x18),*(double *)(lVar22 + 0x20));
+                  (**(code **)(*(longlong *)(this + 0xf10) + 0x50))
+                            (this + 0xf10,param_1,&local_318,param_4);
+                }
+                break;
+              case 6:
+                bVar8 = AuPointArray::DoesContain(local_510,(AuPoint *)(lVar22 + 0x10));
+                if (!bVar8) {
+                  local_318 = local_428;
+                  uStack_310 = uStack_420;
+                  local_308 = local_418;
+                  uStack_300 = uStack_410;
+                  local_2f8 = local_408;
+                  uStack_2f0 = uStack_400;
+                  local_2e8 = local_3f8;
+                  uStack_2e0 = uStack_3f0;
+                  local_2d8 = local_3e8;
+                  uStack_2d0 = uStack_3e0;
+                  local_2c8 = local_3d8;
+                  uStack_2c0 = uStack_3d0;
+                  local_2b8 = local_3c8;
+                  uStack_2b0 = uStack_3c0;
+                  local_2a8 = local_3b8;
+                  uStack_2a0 = uStack_3b0;
+                  local_218 = local_328;
+                  if (local_328 != '\0') {
+                    local_298 = local_3a8;
+                    uStack_290 = uStack_3a0;
+                    local_288 = local_398;
+                    uStack_280 = uStack_390;
+                    local_278 = local_388;
+                    uStack_270 = uStack_380;
+                    local_268 = local_378;
+                    uStack_260 = uStack_370;
+                    local_258 = local_368;
+                    uStack_250 = uStack_360;
+                    local_248 = local_358;
+                    uStack_240 = uStack_350;
+                    local_238 = local_348;
+                    uStack_230 = uStack_340;
+                    local_228 = local_338;
+                    uStack_220 = uStack_330;
+                  }
+                  lVar22 = *plVar20;
+                  AuMatrix4x4::Translate
+                            ((AuMatrix4x4 *)&local_318,*(double *)(lVar22 + 0x10),
+                             *(double *)(lVar22 + 0x18),*(double *)(lVar22 + 0x20));
+                  (**(code **)(*(longlong *)(this + 0xca0) + 0x50))
+                            (this + 0xca0,param_1,&local_318,param_4);
+                }
+                break;
+              case 7:
+                bVar8 = AuPointArray::DoesContain(local_510,(AuPoint *)(lVar22 + 0x10));
+                if (!bVar8) {
+                  local_318 = local_428;
+                  uStack_310 = uStack_420;
+                  local_308 = local_418;
+                  uStack_300 = uStack_410;
+                  local_2f8 = local_408;
+                  uStack_2f0 = uStack_400;
+                  local_2e8 = local_3f8;
+                  uStack_2e0 = uStack_3f0;
+                  local_2d8 = local_3e8;
+                  uStack_2d0 = uStack_3e0;
+                  local_2c8 = local_3d8;
+                  uStack_2c0 = uStack_3d0;
+                  local_2b8 = local_3c8;
+                  uStack_2b0 = uStack_3c0;
+                  local_2a8 = local_3b8;
+                  uStack_2a0 = uStack_3b0;
+                  local_218 = local_328;
+                  if (local_328 != '\0') {
+                    local_298 = local_3a8;
+                    uStack_290 = uStack_3a0;
+                    local_288 = local_398;
+                    uStack_280 = uStack_390;
+                    local_278 = local_388;
+                    uStack_270 = uStack_380;
+                    local_268 = local_378;
+                    uStack_260 = uStack_370;
+                    local_258 = local_368;
+                    uStack_250 = uStack_360;
+                    local_248 = local_358;
+                    uStack_240 = uStack_350;
+                    local_238 = local_348;
+                    uStack_230 = uStack_340;
+                    local_228 = local_338;
+                    uStack_220 = uStack_330;
+                  }
+                  lVar22 = *plVar20;
+                  AuMatrix4x4::Translate
+                            ((AuMatrix4x4 *)&local_318,*(double *)(lVar22 + 0x10),
+                             *(double *)(lVar22 + 0x18),*(double *)(lVar22 + 0x20));
+                  (**(code **)(*(longlong *)(this + 0xcd0) + 0x50))
+                            (this + 0xcd0,param_1,&local_318,param_4);
+                }
+                break;
+              case 0xc:
+                bVar8 = AuPointArray::DoesContain(local_510,(AuPoint *)(lVar22 + 0x10));
+                if (!bVar8) {
+                  local_318 = local_428;
+                  uStack_310 = uStack_420;
+                  local_308 = local_418;
+                  uStack_300 = uStack_410;
+                  local_2f8 = local_408;
+                  uStack_2f0 = uStack_400;
+                  local_2e8 = local_3f8;
+                  uStack_2e0 = uStack_3f0;
+                  local_2d8 = local_3e8;
+                  uStack_2d0 = uStack_3e0;
+                  local_2c8 = local_3d8;
+                  uStack_2c0 = uStack_3d0;
+                  local_2b8 = local_3c8;
+                  uStack_2b0 = uStack_3c0;
+                  local_2a8 = local_3b8;
+                  uStack_2a0 = uStack_3b0;
+                  local_218 = local_328;
+                  if (local_328 != '\0') {
+                    local_298 = local_3a8;
+                    uStack_290 = uStack_3a0;
+                    local_288 = local_398;
+                    uStack_280 = uStack_390;
+                    local_278 = local_388;
+                    uStack_270 = uStack_380;
+                    local_268 = local_378;
+                    uStack_260 = uStack_370;
+                    local_258 = local_368;
+                    uStack_250 = uStack_360;
+                    local_248 = local_358;
+                    uStack_240 = uStack_350;
+                    local_238 = local_348;
+                    uStack_230 = uStack_340;
+                    local_228 = local_338;
+                    uStack_220 = uStack_330;
+                  }
+                  lVar22 = *plVar20;
+                  AuMatrix4x4::Translate
+                            ((AuMatrix4x4 *)&local_318,*(double *)(lVar22 + 0x10),
+                             *(double *)(lVar22 + 0x18),*(double *)(lVar22 + 0x20));
+                  (**(code **)(*(longlong *)(this + 0xe60) + 0x50))
+                            (this + 0xe60,param_1,&local_318,param_4);
+                }
+                break;
+              case 0xd:
+                bVar8 = AuPointArray::DoesContain(local_510,(AuPoint *)(lVar22 + 0x10));
+                if (!bVar8) {
+                  local_318 = local_428;
+                  uStack_310 = uStack_420;
+                  local_308 = local_418;
+                  uStack_300 = uStack_410;
+                  local_2f8 = local_408;
+                  uStack_2f0 = uStack_400;
+                  local_2e8 = local_3f8;
+                  uStack_2e0 = uStack_3f0;
+                  local_2d8 = local_3e8;
+                  uStack_2d0 = uStack_3e0;
+                  local_2c8 = local_3d8;
+                  uStack_2c0 = uStack_3d0;
+                  local_2b8 = local_3c8;
+                  uStack_2b0 = uStack_3c0;
+                  local_2a8 = local_3b8;
+                  uStack_2a0 = uStack_3b0;
+                  local_218 = local_328;
+                  if (local_328 != '\0') {
+                    local_298 = local_3a8;
+                    uStack_290 = uStack_3a0;
+                    local_288 = local_398;
+                    uStack_280 = uStack_390;
+                    local_278 = local_388;
+                    uStack_270 = uStack_380;
+                    local_268 = local_378;
+                    uStack_260 = uStack_370;
+                    local_258 = local_368;
+                    uStack_250 = uStack_360;
+                    local_248 = local_358;
+                    uStack_240 = uStack_350;
+                    local_238 = local_348;
+                    uStack_230 = uStack_340;
+                    local_228 = local_338;
+                    uStack_220 = uStack_330;
+                  }
+                  lVar22 = *plVar20;
+                  AuMatrix4x4::Translate
+                            ((AuMatrix4x4 *)&local_318,*(double *)(lVar22 + 0x10),
+                             *(double *)(lVar22 + 0x18),*(double *)(lVar22 + 0x20));
+                  (**(code **)(*(longlong *)(this + 0xe88) + 0x50))
+                            (this + 0xe88,param_1,&local_318,param_4);
+                }
+                break;
+              case 0xf:
+                bVar8 = AuPointArray::DoesContain(local_510,(AuPoint *)(lVar22 + 0x10));
+                if (!bVar8) {
+                  local_318 = local_428;
+                  uStack_310 = uStack_420;
+                  local_308 = local_418;
+                  uStack_300 = uStack_410;
+                  local_2f8 = local_408;
+                  uStack_2f0 = uStack_400;
+                  local_2e8 = local_3f8;
+                  uStack_2e0 = uStack_3f0;
+                  local_2d8 = local_3e8;
+                  uStack_2d0 = uStack_3e0;
+                  local_2c8 = local_3d8;
+                  uStack_2c0 = uStack_3d0;
+                  local_2b8 = local_3c8;
+                  uStack_2b0 = uStack_3c0;
+                  local_2a8 = local_3b8;
+                  uStack_2a0 = uStack_3b0;
+                  local_218 = local_328;
+                  if (local_328 != '\0') {
+                    local_298 = local_3a8;
+                    uStack_290 = uStack_3a0;
+                    local_288 = local_398;
+                    uStack_280 = uStack_390;
+                    local_278 = local_388;
+                    uStack_270 = uStack_380;
+                    local_268 = local_378;
+                    uStack_260 = uStack_370;
+                    local_258 = local_368;
+                    uStack_250 = uStack_360;
+                    local_248 = local_358;
+                    uStack_240 = uStack_350;
+                    local_238 = local_348;
+                    uStack_230 = uStack_340;
+                    local_228 = local_338;
+                    uStack_220 = uStack_330;
+                  }
+                  lVar22 = *plVar20;
+                  AuMatrix4x4::Translate
+                            ((AuMatrix4x4 *)&local_318,*(double *)(lVar22 + 0x10),
+                             *(double *)(lVar22 + 0x18),*(double *)(lVar22 + 0x20));
+                  (**(code **)(*(longlong *)(this + 0xeb8) + 0x50))
+                            (this + 0xeb8,param_1,&local_318,param_4);
+                }
+                break;
+              case 0x11:
+                bVar8 = AuPointArray::DoesContain(local_510,(AuPoint *)(lVar22 + 0x10));
+                if (!bVar8) {
+                  local_318 = local_428;
+                  uStack_310 = uStack_420;
+                  local_308 = local_418;
+                  uStack_300 = uStack_410;
+                  local_2f8 = local_408;
+                  uStack_2f0 = uStack_400;
+                  local_2e8 = local_3f8;
+                  uStack_2e0 = uStack_3f0;
+                  local_2d8 = local_3e8;
+                  uStack_2d0 = uStack_3e0;
+                  local_2c8 = local_3d8;
+                  uStack_2c0 = uStack_3d0;
+                  local_2b8 = local_3c8;
+                  uStack_2b0 = uStack_3c0;
+                  local_2a8 = local_3b8;
+                  uStack_2a0 = uStack_3b0;
+                  local_218 = local_328;
+                  if (local_328 != '\0') {
+                    local_298 = local_3a8;
+                    uStack_290 = uStack_3a0;
+                    local_288 = local_398;
+                    uStack_280 = uStack_390;
+                    local_278 = local_388;
+                    uStack_270 = uStack_380;
+                    local_268 = local_378;
+                    uStack_260 = uStack_370;
+                    local_258 = local_368;
+                    uStack_250 = uStack_360;
+                    local_248 = local_358;
+                    uStack_240 = uStack_350;
+                    local_238 = local_348;
+                    uStack_230 = uStack_340;
+                    local_228 = local_338;
+                    uStack_220 = uStack_330;
+                  }
+                  lVar22 = *plVar20;
+                  AuMatrix4x4::Translate
+                            ((AuMatrix4x4 *)&local_318,*(double *)(lVar22 + 0x10),
+                             *(double *)(lVar22 + 0x18),*(double *)(lVar22 + 0x20));
+                  (**(code **)(*(longlong *)(this + 0xee0) + 0x50))
+                            (this + 0xee0,param_1,&local_318,param_4);
+                }
+                break;
+              case 0x13:
+                bVar8 = AuPointArray::DoesContain(local_510,(AuPoint *)(lVar22 + 0x10));
+                if (!bVar8) {
+                  local_318 = local_428;
+                  uStack_310 = uStack_420;
+                  local_308 = local_418;
+                  uStack_300 = uStack_410;
+                  local_2f8 = local_408;
+                  uStack_2f0 = uStack_400;
+                  local_2e8 = local_3f8;
+                  uStack_2e0 = uStack_3f0;
+                  local_2d8 = local_3e8;
+                  uStack_2d0 = uStack_3e0;
+                  local_2c8 = local_3d8;
+                  uStack_2c0 = uStack_3d0;
+                  local_2b8 = local_3c8;
+                  uStack_2b0 = uStack_3c0;
+                  local_2a8 = local_3b8;
+                  uStack_2a0 = uStack_3b0;
+                  local_218 = local_328;
+                  if (local_328 != '\0') {
+                    local_298 = local_3a8;
+                    uStack_290 = uStack_3a0;
+                    local_288 = local_398;
+                    uStack_280 = uStack_390;
+                    local_278 = local_388;
+                    uStack_270 = uStack_380;
+                    local_268 = local_378;
+                    uStack_260 = uStack_370;
+                    local_258 = local_368;
+                    uStack_250 = uStack_360;
+                    local_248 = local_358;
+                    uStack_240 = uStack_350;
+                    local_238 = local_348;
+                    uStack_230 = uStack_340;
+                    local_228 = local_338;
+                    uStack_220 = uStack_330;
+                  }
+                  lVar22 = *plVar20;
+                  AuMatrix4x4::Translate
+                            ((AuMatrix4x4 *)&local_318,*(double *)(lVar22 + 0x10),
+                             *(double *)(lVar22 + 0x18),*(double *)(lVar22 + 0x20));
+                  (**(code **)(*(longlong *)(this + 0x2220) + 0x50))
+                            (this + 0x2220,param_1,&local_318,param_4);
+                }
+                break;
+              case 0x15:
+                bVar8 = AuPointArray::DoesContain(local_510,(AuPoint *)(lVar22 + 0x10));
+                if (bVar8) break;
+                local_4e8 = 4.0 - (DAT_180a39220 + DAT_180a39208) * 0.5;
+                lVar22 = *plVar20;
+                local_4f8._8_8_ = *(double *)(lVar22 + 0x18) + 0.0;
+                local_4f8._0_8_ = *(double *)(lVar22 + 0x10) + 2.0;
+                local_4d0 = 0;
+                goto LAB_180424e3e;
+              case 0x16:
+                bVar8 = AuPointArray::DoesContain(local_510,(AuPoint *)(lVar22 + 0x10));
+                dVar3 = DAT_180a39220;
+                goto joined_r0x000180424e0a;
+              case 0x21:
+                bVar8 = AuPointArray::DoesContain(local_510,(AuPoint *)(lVar22 + 0x10));
+                dVar3 = DAT_180a39208;
+joined_r0x000180424e0a:
+                if (!bVar8) {
+                  local_4e8 = -dVar3;
+                  lVar22 = *plVar20;
+                  dVar3 = *(double *)(lVar22 + 0x18) + 0.0;
+                  local_4f8._8_4_ = SUB84(dVar3,0);
+                  local_4f8._0_8_ = *(double *)(lVar22 + 0x10) + 0.0;
+                  local_4f8._12_4_ = (int)((ulonglong)dVar3 >> 0x20);
+LAB_180424e31:
+                  local_4d0 = 0x3ff921fb54442d18;
+LAB_180424e3e:
+                  uStack_4d8 = 0;
+                  local_4e0 = 0;
+                  local_4e8 = local_4e8 + *(double *)(lVar22 + 0x20);
+                  RenderGun(this,param_1,*(AuGLEffects **)(param_3 + 0x20),(AuMatrix4x4 *)&local_428
+                            ,(AuPoint *)local_4f8,(AuPoint *)&local_4e0);
+                }
+                break;
+              case 0x22:
+                bVar8 = AuPointArray::DoesContain(local_510,(AuPoint *)(lVar22 + 0x10));
+                if (!bVar8) {
+                  local_4e8 = 4.0 - (DAT_180a39220 + DAT_180a39208) * 0.5;
+                  lVar22 = *plVar20;
+                  dVar3 = *(double *)(lVar22 + 0x18) + 1.414;
+                  local_4f8._8_4_ = SUB84(dVar3,0);
+                  local_4f8._0_8_ = *(double *)(lVar22 + 0x10) + 1.414;
+                  local_4f8._12_4_ = (int)((ulonglong)dVar3 >> 0x20);
+                  local_4d0 = 0x3fe921fb54442d18;
+                  goto LAB_180424e3e;
+                }
+                break;
+              case 0x23:
+                bVar8 = AuPointArray::DoesContain(local_510,(AuPoint *)(lVar22 + 0x10));
+                if (bVar8) break;
+                local_4e8 = 4.0 - (DAT_180a39220 + DAT_180a39208) * 0.5;
+                lVar22 = *plVar20;
+                local_4f8._8_8_ = *(double *)(lVar22 + 0x18) + 2.0;
+                local_4f8._0_8_ = *(double *)(lVar22 + 0x10) + 0.0;
+                goto LAB_180424e31;
+              case 0x24:
+                bVar8 = AuPointArray::DoesContain(local_510,(AuPoint *)(lVar22 + 0x10));
+                if (!bVar8) {
+                  local_4e8 = 4.0 - (DAT_180a39220 + DAT_180a39208) * 0.5;
+                  lVar22 = *plVar20;
+                  local_4f8._8_8_ = *(double *)(lVar22 + 0x18) + 1.414;
+                  local_4f8._0_8_ = *(double *)(lVar22 + 0x10) - 1.414;
+                  local_4d0 = 0x4002d97c7f3321d2;
+                  goto LAB_180424e3e;
+                }
+                break;
+              case 0x25:
+                bVar8 = AuPointArray::DoesContain(local_510,(AuPoint *)(lVar22 + 0x10));
+                if (!bVar8) {
+                  local_4e8 = 4.0 - (DAT_180a39220 + DAT_180a39208) * 0.5;
+                  lVar22 = *plVar20;
+                  local_4f8._8_8_ = *(double *)(lVar22 + 0x18) + 0.0;
+                  local_4f8._0_8_ = *(double *)(lVar22 + 0x10) - 2.0;
+                  local_4d0 = 0x400921fb54442d18;
+                  goto LAB_180424e3e;
+                }
+                break;
+              case 0x26:
+                bVar8 = AuPointArray::DoesContain(local_510,(AuPoint *)(lVar22 + 0x10));
+                if (!bVar8) {
+                  local_4e8 = 4.0 - (DAT_180a39220 + DAT_180a39208) * 0.5;
+                  lVar22 = *plVar20;
+                  dVar3 = *(double *)(lVar22 + 0x18) - 1.414;
+                  local_4f8._8_4_ = SUB84(dVar3,0);
+                  local_4f8._0_8_ = *(double *)(lVar22 + 0x10) - 1.414;
+                  local_4f8._12_4_ = (int)((ulonglong)dVar3 >> 0x20);
+                  local_4d0 = 0x400f6a7a2955385e;
+                  goto LAB_180424e3e;
+                }
+                break;
+              case 0x27:
+                bVar8 = AuPointArray::DoesContain(local_510,(AuPoint *)(lVar22 + 0x10));
+                if (!bVar8) {
+                  local_4e8 = 4.0 - (DAT_180a39220 + DAT_180a39208) * 0.5;
+                  lVar22 = *plVar20;
+                  local_4f8._8_8_ = *(double *)(lVar22 + 0x18) - 2.0;
+                  local_4f8._0_8_ = *(double *)(lVar22 + 0x10) + 0.0;
+                  local_4d0 = 0x4012d97c7f3321d2;
+                  goto LAB_180424e3e;
+                }
+                break;
+              case 0x28:
+                bVar8 = AuPointArray::DoesContain(local_510,(AuPoint *)(lVar22 + 0x10));
+                if (!bVar8) {
+                  local_4e8 = 4.0 - (DAT_180a39220 + DAT_180a39208) * 0.5;
+                  lVar22 = *plVar20;
+                  local_4f8._8_8_ = *(double *)(lVar22 + 0x18) - 1.414;
+                  local_4f8._0_8_ = *(double *)(lVar22 + 0x10) + 1.414;
+                  local_4d0 = 0xbfe921fb54442d18;
+                  goto LAB_180424e3e;
+                }
+                break;
+              case 0x49:
+                bVar8 = AuPointArray::DoesContain(local_510,(AuPoint *)(lVar22 + 0x10));
+                if (!bVar8) {
+                  local_318 = local_428;
+                  uStack_310 = uStack_420;
+                  local_308 = local_418;
+                  uStack_300 = uStack_410;
+                  local_2f8 = local_408;
+                  uStack_2f0 = uStack_400;
+                  local_2e8 = local_3f8;
+                  uStack_2e0 = uStack_3f0;
+                  local_2d8 = local_3e8;
+                  uStack_2d0 = uStack_3e0;
+                  local_2c8 = local_3d8;
+                  uStack_2c0 = uStack_3d0;
+                  local_2b8 = local_3c8;
+                  uStack_2b0 = uStack_3c0;
+                  local_2a8 = local_3b8;
+                  uStack_2a0 = uStack_3b0;
+                  local_218 = local_328;
+                  if (local_328 != '\0') {
+                    local_298 = local_3a8;
+                    uStack_290 = uStack_3a0;
+                    local_288 = local_398;
+                    uStack_280 = uStack_390;
+                    local_278 = local_388;
+                    uStack_270 = uStack_380;
+                    local_268 = local_378;
+                    uStack_260 = uStack_370;
+                    local_258 = local_368;
+                    uStack_250 = uStack_360;
+                    local_248 = local_358;
+                    uStack_240 = uStack_350;
+                    local_238 = local_348;
+                    uStack_230 = uStack_340;
+                    local_228 = local_338;
+                    uStack_220 = uStack_330;
+                  }
+                  lVar22 = *plVar20;
+                  AuMatrix4x4::Translate
+                            ((AuMatrix4x4 *)&local_318,*(double *)(lVar22 + 0x10),
+                             *(double *)(lVar22 + 0x18),*(double *)(lVar22 + 0x20));
+                  (**(code **)(*(longlong *)(this + 0xc68) + 0x50))
+                            (this + 0xc68,param_1,&local_318,param_4);
+                }
+                break;
+              case 0x4a:
+                fVar32 = 0.0;
+                goto LAB_180425ed1;
+              case 0x4b:
+                fVar32 = 0.7853982;
+LAB_180425ed1:
+                RenderGameTable(this,param_1,(AuMatrix4x4 *)&local_428,
+                                *(AuGLEffects **)(param_3 + 0x20),(AuPoint *)(lVar22 + 0x10),fVar32,
+                                local_514);
+                local_514 = local_514 + 1;
+              }
+              plVar20 = plVar20 + 1;
+              puVar23 = (undefined8 *)QList<DnDetail>::cend((QList<DnDetail> *)(local_4a8 + 3));
+            } while (plVar20 != (longlong *)*puVar23);
+          }
+        }
+        QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1e0));
+      }
+      AuPointArray::~AuPointArray(local_510);
+    }
+    bVar8 = IsSpaceStation(this);
+    pAVar27 = local_4c8;
+    pAVar30 = local_4c0;
+    if (bVar8) {
+      QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x88));
+      uVar38 = *(uint *)(*(longlong *)(this + 0x90) + 0x20);
+      QReadWriteLock::unlock((QReadWriteLock *)(this + 0x88));
+      pAVar27 = local_4c8;
+      pAVar30 = local_4c0;
+      if (((uVar38 >> 4 & 1) == 0) && (*(float *)(param_3 + 0x28) != 0.0)) {
+        DaAtom::Transform((DaAtom *)this);
+        pAVar27 = local_4c8;
+        AuMatrix4x4::operator*(local_4c8,local_208);
+        RenderStationNavBeacon
+                  (this,param_1,local_208,param_4,*(float *)(param_3 + 0x28),
+                   *(AuGLEffects **)(param_3 + 0x20));
+        pAVar30 = local_4c0;
+      }
+    }
+  }
+  QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x1e0));
+  plVar20 = *(longlong **)(this + 0x1e8);
+  local_4a8 = plVar20;
+  if (plVar20 != (longlong *)0x0) {
+    DaAtom::Transform((DaAtom *)this);
+    AuMatrix4x4::operator*(pAVar27,local_208);
+    puVar23 = (undefined8 *)*plVar20;
+    if (bVar5) {
+      if (puVar23 != (undefined8 *)plVar20[1]) {
+        do {
+          this_01 = (DaAtom *)
+                    __RTDynamicCast(*puVar23,0,&DaAtom::RTTI_Type_Descriptor,
+                                    &DaUnit::RTTI_Type_Descriptor);
+          if (this_01 != (DaAtom *)0x0) {
+            QReadWriteLock::lockForRead((QReadWriteLock *)(this_01 + 0x88));
+            lVar22 = *(longlong *)(this_01 + 0x90);
+            QReadWriteLock::unlock((QReadWriteLock *)(this_01 + 0x88));
+            pAVar30 = local_4c0;
+            param_1 = local_4a0;
+            if (lVar22 != 0) {
+              QReadWriteLock::lockForRead((QReadWriteLock *)(this_01 + 0x88));
+              cVar10 = *(char *)(*(longlong *)(this_01 + 0x90) + 0xa4);
+              QReadWriteLock::unlock((QReadWriteLock *)(this_01 + 0x88));
+              pAVar30 = local_4c0;
+              param_1 = local_4a0;
+              if ((int)cVar10 == *(int *)(param_3 + 0x2c)) {
+                iVar12 = (**(code **)(*(longlong *)param_4 + 0x1e8))(param_4);
+                iVar13 = (**(code **)(*(longlong *)this_01 + 0x1e8))(this_01);
+                if ((iVar13 != iVar12) &&
+                   (cVar10 = (**(code **)(*(longlong *)this_01 + 0x488))(this_01,param_4,1),
+                   cVar10 == '\0')) {
+                  RVar14 = DaAtom::ShipRoomType(this_01);
+                  if (RVar14 == 3) {
+                    piVar24 = (int *)DaPerson::SpawnShip(param_4);
+                    local_4b8 = local_4b8 | 1;
+                    if (*(int *)(this + 0x14) != *piVar24) goto LAB_180426127;
+                    bVar8 = false;
+                  }
+                  else {
+LAB_180426127:
+                    bVar8 = true;
+                  }
+                  if ((local_4b8 & 1) != 0) {
+                    local_4b8 = local_4b8 & 0xfffffffe;
+                  }
+                  if (bVar8) {
+                    (**(code **)(*(longlong *)param_4 + 0x1e8))(param_4);
+                    uVar39 = (**(code **)(*(longlong *)this_01 + 0x1e8))(this_01);
+                    uVar25 = FUN_18016c140(uVar39);
+                    pAVar30 = local_4c0;
+                    param_1 = local_4a0;
+                    if ((uVar25 & 0xfffffffb) != 0) goto LAB_180426198;
+                  }
+                }
+                param_1 = local_4a0;
+                pAVar30 = local_4c0;
+                (**(code **)(*(longlong *)*puVar23 + 0x408))
+                          ((longlong *)*puVar23,local_4a0,local_208,param_3);
+              }
+            }
+          }
+LAB_180426198:
+          puVar23 = puVar23 + 1;
+        } while (puVar23 != (undefined8 *)local_4a8[1]);
+      }
+    }
+    else if (puVar23 != (undefined8 *)plVar20[1]) {
+      do {
+        (**(code **)(*(longlong *)*puVar23 + 0x408))((longlong *)*puVar23,param_1,local_208,param_3)
+        ;
+        puVar23 = puVar23 + 1;
+      } while (puVar23 != (undefined8 *)plVar20[1]);
+    }
+  }
+  QReadWriteLock::unlock((QReadWriteLock *)(this + 0x1e0));
+  if (*(int *)(this + 0xcc8) != 0) {
+    *(undefined1 *)((longlong)*(int *)(this + 0xcc8) * 0x58 + 0x818 + *(longlong *)(param_3 + 0x20))
+         = 1;
+  }
+  RenderAudioSources(this,param_4,(AuMatrix4x4 *)&local_428,*(AuGLEffects **)(param_3 + 0x20),
+                     *(float *)param_3);
+  pAVar27 = local_4c8;
+LAB_18042623c:
+  DaAtom::RenderEnvironmentObject((DaAtom *)this,param_1,pAVar27,param_3,param_4,pAVar30);
+  return;
+}

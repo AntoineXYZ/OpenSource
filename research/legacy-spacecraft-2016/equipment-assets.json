@@ -1,0 +1,432 @@
+[
+  {
+    "name": "dc_Console.bmp",
+    "current": "resources/atoms/bundle/data/dc_Console.bmp",
+    "original_sha256": "94b738aa96b9dfec56f6115385af90d9cf59e94bc52212eddc9289e5908d1b2b",
+    "current_sha256": "94b738aa96b9dfec56f6115385af90d9cf59e94bc52212eddc9289e5908d1b2b",
+    "bytes_equal": true
+  },
+  {
+    "name": "ec_Console.bmp",
+    "current": "resources/atoms/bundle/data/ec_Console.bmp",
+    "original_sha256": "7b273d600aeb48c57a438ea2bd2b07476eda25280d6afa0c04b8b749cd76df35",
+    "current_sha256": "7b273d600aeb48c57a438ea2bd2b07476eda25280d6afa0c04b8b749cd76df35",
+    "bytes_equal": true
+  },
+  {
+    "name": "HelicopterTex.tga",
+    "original_exists": false,
+    "current_exists": false
+  },
+  {
+    "name": "mAT.3dsN",
+    "current": "resources/models/shards/05/data/mAT.3dsN",
+    "original_sha256": "c5df8333e800e6937470756042b3bcae69c403b6d8c33393327e3ec4ca6d5ad4",
+    "current_sha256": "c5df8333e800e6937470756042b3bcae69c403b6d8c33393327e3ec4ca6d5ad4",
+    "bytes_equal": true
+  },
+  {
+    "name": "mAT.png",
+    "current": "resources/models/shards/05/data/mAT.png",
+    "original_sha256": "bc7d873cdff0e910465c52988e7dab80c73c4f47640084b43614f03556f64134",
+    "current_sha256": "f43abdf6dd77f58ba0fc4c8e28224dbef69bfb0d1bf469e4f86c0c8e1ccb4f40",
+    "bytes_equal": false,
+    "rgba_equal": true,
+    "original_size": [
+      2048,
+      2048
+    ],
+    "current_size": [
+      2048,
+      2048
+    ],
+    "changed_channels": 0
+  },
+  {
+    "name": "mConsoleScreen.3dsN",
+    "current": "resources/models/shards/02/data/mConsoleScreen.3dsN",
+    "original_sha256": "03c85b79ea656cb1585e2a40adbb50a6bd9d6bc7efae5d985200a501f62be986",
+    "current_sha256": "03c85b79ea656cb1585e2a40adbb50a6bd9d6bc7efae5d985200a501f62be986",
+    "bytes_equal": true
+  },
+  {
+    "name": "mConsoleSeat.3dsN",
+    "current": "resources/models/shards/02/data/mConsoleSeat.3dsN",
+    "original_sha256": "5148ed70b95d3068524f425c37bfbd2f5bfc277486cd0f3d6ca27116610b7bf7",
+    "current_sha256": "5148ed70b95d3068524f425c37bfbd2f5bfc277486cd0f3d6ca27116610b7bf7",
+    "bytes_equal": true
+  },
+  {
+    "name": "mConsoleTex.png",
+    "current": "resources/models/shards/02/data/mConsoleTex.png",
+    "original_sha256": "97b56d9c89cc5af1dd4ee3a8ad2465687732bd97dd86f8076c285147f6b61dea",
+    "current_sha256": "822756645ddbd7e036d83351fd59a82577b62dd6ecd0948afea82e6513efaabe",
+    "bytes_equal": false,
+    "rgba_equal": true,
+    "original_size": [
+      512,
+      512
+    ],
+    "current_size": [
+      512,
+      512
+    ],
+    "changed_channels": 0
+  },
+  {
+    "name": "mFarmEquipment.3dsN",
+    "current": "resources/models/shards/02/data/mFarmEquipment.3dsN",
+    "original_sha256": "334f333c00fe8ce9bc89339696ea677e9d85752c597c3416ad0856757e0a9677",
+    "current_sha256": "334f333c00fe8ce9bc89339696ea677e9d85752c597c3416ad0856757e0a9677",
+    "bytes_equal": true
+  },
+  {
+    "name": "mFarmEquipment.png",
+    "current": "resources/models/shards/02/data/mFarmEquipment.png",
+    "original_sha256": "d470ca75512910e8494d722b0a9b53b68c451bfa77f5ec9480458609d64bca5d",
+    "current_sha256": "5c6cf6c63045b6f48a9645bb3cfbeea5899a035795f2c78e76752a88b8ffc6ac",
+    "bytes_equal": false,
+    "rgba_equal": true,
+    "original_size": [
+      1024,
+      1024
+    ],
+    "current_size": [
+      1024,
+      1024
+    ],
+    "changed_channels": 0
+  },
+  {
+    "name": "mFlyingAT.3dsN",
+    "current": "resources/models/shards/07/data/mFlyingAT.3dsN",
+    "original_sha256": "f59bdae46e21698dedb2365e53c6f3980d7cf6b3184702aa9aec0e72b21c1f46",
+    "current_sha256": "f59bdae46e21698dedb2365e53c6f3980d7cf6b3184702aa9aec0e72b21c1f46",
+    "bytes_equal": true
+  },
+  {
+    "name": "mFlyingAT.png",
+    "current": "resources/models/shards/07/data/mFlyingAT.png",
+    "original_sha256": "fb3d623be42abe2eb968ab36e1157b57ffa366370399784117ff9919554c5ec6",
+    "current_sha256": "b69603ba24b0dc4a0cea4bc614b8934ee46a87849637789e89da230fb058b511",
+    "bytes_equal": false,
+    "rgba_equal": true,
+    "original_size": [
+      2048,
+      2048
+    ],
+    "current_size": [
+      2048,
+      2048
+    ],
+    "changed_channels": 0
+  },
+  {
+    "name": "mGameChair.3dsN",
+    "current": "resources/models/shards/03/data/mGameChair.3dsN",
+    "original_sha256": "c5ea29e4010720990fe5f05810bd63636fa52007d93aa5a90611f28a508d12ae",
+    "current_sha256": "c5ea29e4010720990fe5f05810bd63636fa52007d93aa5a90611f28a508d12ae",
+    "bytes_equal": true
+  },
+  {
+    "name": "mGameTable.3dsN",
+    "current": "resources/models/shards/03/data/mGameTable.3dsN",
+    "original_sha256": "2bb7802ae56d875e758f5600b0281ccfbf52dbc4798801c902a128c9cd20100b",
+    "current_sha256": "2bb7802ae56d875e758f5600b0281ccfbf52dbc4798801c902a128c9cd20100b",
+    "bytes_equal": true
+  },
+  {
+    "name": "mGameTableTex.png",
+    "current": "resources/models/shards/02/data/mGameTableTex.png",
+    "original_sha256": "b3aa1955f538d9bccdad7e4f42c89b031ef1cee7b654d854e237ef30e1dcb3c1",
+    "current_sha256": "2f3abb8a71ea68572923d831151d7a5ff605194ca137c9a99f971f7f563bfadc",
+    "bytes_equal": false,
+    "rgba_equal": true,
+    "original_size": [
+      512,
+      512
+    ],
+    "current_size": [
+      512,
+      512
+    ],
+    "changed_channels": 0
+  },
+  {
+    "name": "mGameTableTex.png",
+    "current": "resources/models/shards/03/data/mGameTableTex.png",
+    "original_sha256": "b3aa1955f538d9bccdad7e4f42c89b031ef1cee7b654d854e237ef30e1dcb3c1",
+    "current_sha256": "6f56286b4c6ce91f7ee6a6bc41c11787d260d9db5dc8bbabc4422a34f61ecfd8",
+    "bytes_equal": false,
+    "rgba_equal": true,
+    "original_size": [
+      512,
+      512
+    ],
+    "current_size": [
+      512,
+      512
+    ],
+    "changed_channels": 0
+  },
+  {
+    "name": "mHelicopter.3dsN",
+    "current": "resources/models/shards/04/data/mHelicopter.3dsN",
+    "original_sha256": "0ee1d4ad7c08fc62edb2bcf5cf29edf615e3561c412db1d92b69c275d3a5121f",
+    "current_sha256": "0ee1d4ad7c08fc62edb2bcf5cf29edf615e3561c412db1d92b69c275d3a5121f",
+    "bytes_equal": true
+  },
+  {
+    "name": "mHelicopter.png",
+    "current": "resources/models/shards/04/data/mHelicopter.png",
+    "original_sha256": "b04ee690b95f777933eeba9398a874ca5414692f766b5aed3754a41290812416",
+    "current_sha256": "a4cee529ba5cf0b95bb898b5fad6cc5282ba840409efb044ea2a533b961ab714",
+    "bytes_equal": false,
+    "rgba_equal": true,
+    "original_size": [
+      1024,
+      1024
+    ],
+    "current_size": [
+      1024,
+      1024
+    ],
+    "changed_channels": 0
+  },
+  {
+    "name": "mMotorBike.3dsN",
+    "current": "resources/models/shards/02/data/mMotorBike.3dsN",
+    "original_sha256": "41281faa3f287528de902ab6652a6008d5a1c2538dd2edf30c85894357409b01",
+    "current_sha256": "41281faa3f287528de902ab6652a6008d5a1c2538dd2edf30c85894357409b01",
+    "bytes_equal": true
+  },
+  {
+    "name": "mMotorBike.png",
+    "current": "resources/models/shards/02/data/mMotorBike.png",
+    "original_sha256": "ad41384f23c15b210b482a21ab61fe6c41bff00bc1ca782ca1288704663c844c",
+    "current_sha256": "34dfa76f40f295d2cd90e2ee62e80b81d6e77990ee2e2709c7e144833e79b320",
+    "bytes_equal": false,
+    "rgba_equal": true,
+    "original_size": [
+      512,
+      512
+    ],
+    "current_size": [
+      512,
+      512
+    ],
+    "changed_channels": 0
+  },
+  {
+    "name": "mNeptune.3dsX",
+    "current": "resources/models/shards/02/data/mNeptune.3dsX",
+    "original_sha256": "141ab2d2a338f0ae2662c0a1902316fe52352c1a5c3ea84af9b6a4b07b99a42a",
+    "current_sha256": "141ab2d2a338f0ae2662c0a1902316fe52352c1a5c3ea84af9b6a4b07b99a42a",
+    "bytes_equal": true
+  },
+  {
+    "name": "mNeptune.bmp",
+    "current": "resources/models/shards/02/data/mNeptune.bmp",
+    "original_sha256": "b073caf0328e589c8455a099d1b2014fe16b45532dc50e2dfb7dc0f204c94542",
+    "current_sha256": "b073caf0328e589c8455a099d1b2014fe16b45532dc50e2dfb7dc0f204c94542",
+    "bytes_equal": true
+  },
+  {
+    "name": "mRocketShip.3dsX",
+    "current": "resources/models/shards/02/data/mRocketShip.3dsX",
+    "original_sha256": "489cbb3d746c6931a40f378e9f8bde4a950e92c7959b3fd038d83f826360a682",
+    "current_sha256": "489cbb3d746c6931a40f378e9f8bde4a950e92c7959b3fd038d83f826360a682",
+    "bytes_equal": true
+  },
+  {
+    "name": "mRocketShip.bmp",
+    "current": "resources/models/shards/02/data/mRocketShip.bmp",
+    "original_sha256": "79d61d32740aa1a92721b1844180ff05b18254ce016b0efaed4405608d1c7fdc",
+    "current_sha256": "79d61d32740aa1a92721b1844180ff05b18254ce016b0efaed4405608d1c7fdc",
+    "bytes_equal": true
+  },
+  {
+    "name": "mSpacefighter.3dsN",
+    "current": "resources/models/shards/07/data/mSpacefighter.3dsN",
+    "original_sha256": "665f45d9e27d5ec49e5cf84873b5019cb0a5c982892447a7a260a7754632127a",
+    "current_sha256": "665f45d9e27d5ec49e5cf84873b5019cb0a5c982892447a7a260a7754632127a",
+    "bytes_equal": true
+  },
+  {
+    "name": "mSpacefighter.png",
+    "current": "resources/models/shards/07/data/mSpacefighter.png",
+    "original_sha256": "53a40857f30a3029bda018c7b1cf5384ab82ef4832962ab0631d84ec70820524",
+    "current_sha256": "e00c8fe5e7cfa10b39cd96723af0ff7144c8ef036982df543230a294e2dd6d6e",
+    "bytes_equal": false,
+    "rgba_equal": true,
+    "original_size": [
+      512,
+      512
+    ],
+    "current_size": [
+      512,
+      512
+    ],
+    "changed_channels": 0
+  },
+  {
+    "name": "mSpaceFighter2.3dsN",
+    "current": "resources/models/shards/03/data/mSpaceFighter2.3dsN",
+    "original_sha256": "e5523ef332b8fdc67b2088cf868f39400c3e24e23f98d66d205bacb0097d7912",
+    "current_sha256": "e5523ef332b8fdc67b2088cf868f39400c3e24e23f98d66d205bacb0097d7912",
+    "bytes_equal": true
+  },
+  {
+    "name": "mSpaceFighter2.png",
+    "current": "resources/models/shards/03/data/mSpaceFighter2.png",
+    "original_sha256": "1c783a6b33ff330df8195adcdd043ceb6fb4373cc4a6d4f18a3296d67262de49",
+    "current_sha256": "7df2ff4d8e9147b667a52a2e886c5a80c3dcd8a42cfcb8f37bf2f7ed515fb3ab",
+    "bytes_equal": false,
+    "rgba_equal": true,
+    "original_size": [
+      2048,
+      2048
+    ],
+    "current_size": [
+      2048,
+      2048
+    ],
+    "changed_channels": 0
+  },
+  {
+    "name": "mSUV.3dsN",
+    "current": "resources/models/shards/10/data/mSUV.3dsN",
+    "original_sha256": "8916a790dc220f6551ca686d28b61eead3919b064646257b8f8c2bc88a781e53",
+    "current_sha256": "8916a790dc220f6551ca686d28b61eead3919b064646257b8f8c2bc88a781e53",
+    "bytes_equal": true
+  },
+  {
+    "name": "mSUV.png",
+    "current": "resources/models/shards/10/data/mSUV.png",
+    "original_sha256": "90df2f20d39d1449cda93f7b15e61476154263d6d1cdce2a8bdb7df115bbcbcc",
+    "current_sha256": "74f4a475cd9ae6065308742a0746828f057e80123cc3387dbfd11a9d07eef565",
+    "bytes_equal": false,
+    "rgba_equal": true,
+    "original_size": [
+      1024,
+      1024
+    ],
+    "current_size": [
+      1024,
+      1024
+    ],
+    "changed_channels": 0
+  },
+  {
+    "name": "mTurretGun.3dsN",
+    "current": "resources/models/shards/02/data/mTurretGun.3dsN",
+    "original_sha256": "7ee05e14aa27275ffc978b6c2980df58bbc03c7f2c23f4c8148e0f43e7a46b23",
+    "current_sha256": "7ee05e14aa27275ffc978b6c2980df58bbc03c7f2c23f4c8148e0f43e7a46b23",
+    "bytes_equal": true
+  },
+  {
+    "name": "mTurretGun.png",
+    "current": "resources/models/shards/02/data/mTurretGun.png",
+    "original_sha256": "c6c74437ba4c67194eaa46fabd0b065309507a890973da08755084f34e4c378e",
+    "current_sha256": "06f3274fb0793d433c4317ebc5da872c909dd8eedb21e1edf51b8358b070d169",
+    "bytes_equal": false,
+    "rgba_equal": true,
+    "original_size": [
+      512,
+      512
+    ],
+    "current_size": [
+      512,
+      512
+    ],
+    "changed_channels": 0
+  },
+  {
+    "name": "mWoodenBoat.3dsX",
+    "current": "resources/models/shards/02/data/mWoodenBoat.3dsX",
+    "original_sha256": "87fa25e8d07e7429e6fcf979d5e56ed421a13d11102a81e140dae433ca60da5b",
+    "current_sha256": "87fa25e8d07e7429e6fcf979d5e56ed421a13d11102a81e140dae433ca60da5b",
+    "bytes_equal": true
+  },
+  {
+    "name": "mWoodenBoat.bmp",
+    "current": "resources/models/shards/02/data/mWoodenBoat.bmp",
+    "original_sha256": "3bb4bb6db1b4736f595b062c63c52d9f28c311eadc679f081082dfcc484945e3",
+    "current_sha256": "3bb4bb6db1b4736f595b062c63c52d9f28c311eadc679f081082dfcc484945e3",
+    "bytes_equal": true
+  },
+  {
+    "name": "pc_Console.bmp",
+    "current": "resources/atoms/bundle/data/pc_Console.bmp",
+    "original_sha256": "53521a667e2c971a898582c7c2eacffe98b822e159d1e42e1eac92cd5078ec8c",
+    "current_sha256": "6c4baa6994efd8857d1e2280c3937d2ac8df85cfdb946b13a0b2f07cadbb0ea7",
+    "bytes_equal": false,
+    "legacy_override_exact": true
+  },
+  {
+    "name": "sc_Console.bmp",
+    "current": "resources/atoms/bundle/data/sc_Console.bmp",
+    "original_sha256": "41b0ceaed15c8165816293aed0c4b3d78fb41b522571a258bf290ff690f54b36",
+    "current_sha256": "41b0ceaed15c8165816293aed0c4b3d78fb41b522571a258bf290ff690f54b36",
+    "bytes_equal": true
+  },
+  {
+    "name": "txConsole_Lower.bmp",
+    "current": "resources/atoms/bundle/data/txConsole_Lower.bmp",
+    "original_sha256": "f5aa956fd5be7d0ec1cb7efdb0c052da678ed669bede77721827174107b01446",
+    "current_sha256": "f5aa956fd5be7d0ec1cb7efdb0c052da678ed669bede77721827174107b01446",
+    "bytes_equal": true
+  },
+  {
+    "name": "txConsoleNav.bmp",
+    "current": "resources/atoms/bundle/data/txConsoleNav.bmp",
+    "original_sha256": "e693c950b446f1b79404e0d19879e0a16ed0eabbd7e625e51cc20a037f4dfa7a",
+    "current_sha256": "e693c950b446f1b79404e0d19879e0a16ed0eabbd7e625e51cc20a037f4dfa7a",
+    "bytes_equal": true
+  },
+  {
+    "name": "txConsoleShield.bmp",
+    "current": "resources/atoms/bundle/data/txConsoleShield.bmp",
+    "original_sha256": "ad0f6c8b7a37d1a1e251073da14cbce319fbc61b77e32ac8b6d2c2db177dd35c",
+    "current_sha256": "ad0f6c8b7a37d1a1e251073da14cbce319fbc61b77e32ac8b6d2c2db177dd35c",
+    "bytes_equal": true
+  },
+  {
+    "name": "txConsoleSurgery.bmp",
+    "current": "resources/atoms/bundle/data/txConsoleSurgery.bmp",
+    "original_sha256": "09006f23f4a3a996f501b2a6dbc3b371ea87eaf24e47403b027096002cfa089d",
+    "current_sha256": "09006f23f4a3a996f501b2a6dbc3b371ea87eaf24e47403b027096002cfa089d",
+    "bytes_equal": true
+  },
+  {
+    "name": "txConsoleTransporter.bmp",
+    "current": "resources/atoms/bundle/data/txConsoleTransporter.bmp",
+    "original_sha256": "81ce5e9950021c929512c68c0997dafb01533429fc717acc93807e3e7368214f",
+    "current_sha256": "81ce5e9950021c929512c68c0997dafb01533429fc717acc93807e3e7368214f",
+    "bytes_equal": true
+  },
+  {
+    "name": "txConsoleWeapon.bmp",
+    "current": "resources/atoms/bundle/data/txConsoleWeapon.bmp",
+    "original_sha256": "c25cacffcb4395966fa2f6e2a140d440f2c94d2d7ec6aa0078feaa73e629d5c2",
+    "current_sha256": "c25cacffcb4395966fa2f6e2a140d440f2c94d2d7ec6aa0078feaa73e629d5c2",
+    "bytes_equal": true
+  },
+  {
+    "name": "txSpacecraft0Lit.png",
+    "current": "resources/textures/ships/data/txSpacecraft0Lit.png",
+    "original_sha256": "f98f63d25dbb55276c5ad0dd3073d9ef848f989e94df1583f59b40e6aa0da2a9",
+    "current_sha256": "ae2f2ce9b9bc9fb6c714fb7c5bdfd25b4693eaf8624a5e340da5c3c2d347d9c3",
+    "bytes_equal": false,
+    "rgba_equal": false,
+    "original_size": [
+      256,
+      8192
+    ],
+    "current_size": [
+      128,
+      4096
+    ],
+    "legacy_override_exact": true
+  }
+]

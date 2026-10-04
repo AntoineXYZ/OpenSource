@@ -71,6 +71,55 @@ void CheckMesh(const Mesh& mesh)
 		}
 	}
 }
+
+void CheckTurret(const Mesh& mesh, int deck, const QVector3D& center, const QVector3D& outward,
+	const QVector3D& right, bool side)
+{
+	int domeTriangles[2] = {0, 0};
+	double frameArea[2] = {0, 0};
+	for(const Batch& batch : mesh.batches)
+	{
+		if(batch.material != Material::Turret || batch.deck != deck) continue;
+		const int face = batch.interior ? 1 : 0;
+		for(int i = 0; i + 2 < batch.vertices.size(); i += 3)
+		{
+			const Vertex& a = batch.vertices[i];
+			const Vertex& b = batch.vertices[i + 1];
+			const Vertex& c = batch.vertices[i + 2];
+			const QVector3D centroid = (a.position + b.position + c.position) / 3 - center;
+			const bool frame = Near(QVector3D::dotProduct(a.position - center, outward), 0)
+				&& Near(QVector3D::dotProduct(b.position - center, outward), 0)
+				&& Near(QVector3D::dotProduct(c.position - center, outward), 0);
+			const float sign = batch.interior ? -1.0f : 1.0f;
+			if(frame)
+			{
+				frameArea[face] += QVector3D::crossProduct(b.position - a.position, c.position - a.position).length() * .5;
+				Require(QVector3D::dotProduct(a.normal, outward) * sign > .999f, "turret frame normals face correctly");
+			}
+			else
+			{
+				++domeTriangles[face];
+				Require(QVector3D::dotProduct(a.normal, centroid) * sign > 0, "turret dome normals face correctly");
+			}
+			for(int j = 0; j < 3; ++j)
+			{
+				const Vertex& vertex = batch.vertices[i + j];
+				const double depth = QVector3D::dotProduct(vertex.position - center, outward);
+				Require(depth > -.002 && depth < CoordinateSpacing + .002, "turret stays within original dome depth");
+				if(side && frame && Near(std::abs(QVector3D::dotProduct(vertex.position - center, right)), 2)
+					&& Near(std::abs(vertex.position.z() - center.z()), 2))
+					Require(Near(vertex.uv.x(), .6767767) && Near(vertex.uv.y(), .6767767),
+						"side turret frame retains original diagonal texture coordinates");
+			}
+		}
+	}
+	for(int face = 0; face < 2; ++face)
+	{
+		Require(domeTriangles[face] == 16, "turret has sixteen dome triangles per face");
+		Require(Near(frameArea[face], side ? 4 * CoordinateSpacing * CoordinateSpacing - 8 * CoordinateSpacing : 0),
+			"turret frame surrounds the exact octagonal aperture");
+	}
+}
 }
 
 int main(int argc, char** argv)
@@ -159,6 +208,43 @@ int main(int argc, char** argv)
 		Require(Near(Area(mesh, Material::InteriorHatch, 0, true), 16),
 			"closed hatch covers its aperture without overlapping the floor");
 	}
+	design.details.clear();
+
+	// The top and bottom turret share an octagonal opening, not the sixteen
+	// square-foot hatch. The top record belongs to the plane above its room.
+	Detail turret;
+	turret.packedXY = 0;
+	for(bool top : {false, true})
+	{
+		turret.deck = top ? 1 : 0;
+		turret.detailType = top ? 22 : 33;
+		design.details = {turret};
+		design.rooms = {MakeRoom(6, 0, rectangle)};
+		mesh = BuildMesh(design);
+		CheckMesh(mesh);
+		const double apertureArea = 8 * CoordinateSpacing;
+		Require(Near(Area(mesh, top ? Material::HullTop : Material::HullBottom, 0, false), 4 * cellArea - apertureArea),
+			"top/bottom turret cuts exact octagonal hull opening");
+		Require(Near(Area(mesh, Material::InteriorFloor, 0, true), 4 * cellArea - (top ? 0 : apertureArea)),
+			"bottom turret cuts matching interior floor opening");
+		Require(Near(Area(mesh, Material::InteriorHatch, 0, true), 0), "turret aperture is not covered by a hatch");
+		CheckTurret(mesh, 0, QVector3D(0, 0, top ? 8 : 0), QVector3D(0, 0, top ? 1 : -1),
+			QVector3D(1, 0, 0), false);
+		Require(Near(top ? mesh.maximum.z() : mesh.minimum.z(), top ? 8 + CoordinateSpacing : -CoordinateSpacing),
+			"top/bottom turret extends exactly one half-cell beyond the hull plane");
+	}
+	// Type 31's side profile stands 1.5 feet off the wall; the dome starts
+	// there at height four and cuts the whole 4 +/- CoordinateSpacing strip.
+	turret.deck = 0;
+	turret.detailType = 21;
+	turret.packedXY = 0xfe00;
+	design.details = {turret};
+	mesh = BuildMesh(design);
+	CheckMesh(mesh);
+	CheckTurret(mesh, 0, QVector3D(float(-GridSpacing - 1.5), 0, 4), QVector3D(-1, 0, 0),
+		QVector3D(0, 1, 0), true);
+	Require(Near(mesh.minimum.x(), -GridSpacing - 1.5 - CoordinateSpacing), "side turret uses original profile outset and radius");
+	Require(Near(Area(mesh, Material::InteriorFloor, 0, true), 4 * cellArea), "side turret leaves horizontal floor intact");
 	design.details.clear();
 
 	design.rooms = {MakeRoom(6, 0, Rectangle(-1, 0, 0, 1)), MakeRoom(6, 0, Rectangle(0, 0, 1, 1))};

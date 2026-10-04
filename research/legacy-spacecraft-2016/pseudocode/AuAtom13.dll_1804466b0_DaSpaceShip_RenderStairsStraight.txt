@@ -1,0 +1,244 @@
+Read-only Ghidra capture for equipment recovery. Not original source.
+
+
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* protected: void __cdecl DaSpaceShip::RenderStairsStraight(class QList<class AuTriSpacecraft> &
+   __ptr64,class AuPoint const & __ptr64,double,bool)const __ptr64 */
+
+void __thiscall
+DaSpaceShip::RenderStairsStraight
+          (DaSpaceShip *this,QList<AuTriSpacecraft> *param_1,AuPoint *param_2,double param_3,
+          bool param_4)
+
+{
+  double dVar1;
+  double dVar2;
+  double dVar3;
+  double dVar4;
+  double dVar5;
+  double dVar6;
+  double dVar7;
+  float fVar8;
+  AuPoint *this_00;
+  double *extraout_RAX;
+  AuPoint *this_01;
+  double *pdVar9;
+  AuPoint *this_02;
+  double *pdVar10;
+  AuPointSpacecraft *pAVar11;
+  AuPointSpacecraft *pAVar12;
+  AuPointSpacecraft *pAVar13;
+  undefined8 uVar14;
+  AuPoint *this_03;
+  AuPoint *pAVar15;
+  AuPoint *this_04;
+  AuPoint *pAVar16;
+  AuPoint *this_05;
+  AuPoint *pAVar17;
+  int iVar18;
+  int iVar19;
+  float fVar20;
+  float fVar21;
+  undefined4 uVar22;
+  undefined4 uVar23;
+  undefined4 uVar24;
+  undefined4 uVar25;
+  float fVar26;
+  undefined4 uVar27;
+  float fVar28;
+  undefined1 auStackY_5b8 [32];
+  float local_4d8;
+  float local_4d4;
+  float local_4d0 [2];
+  double local_4c8;
+  float local_4c0 [2];
+  undefined8 local_4b8;
+  undefined8 uStack_4b0;
+  undefined8 local_4a8;
+  double local_4a0;
+  float local_498;
+  float local_494;
+  float local_490;
+  float local_48c;
+  float local_488;
+  float local_484;
+  double local_480;
+  double dStack_478;
+  double local_470;
+  undefined8 local_468;
+  double local_460;
+  undefined8 local_458;
+  undefined8 local_450;
+  double local_448;
+  undefined8 local_440;
+  undefined8 local_438;
+  undefined8 uStack_430;
+  undefined8 local_428;
+  undefined8 local_420;
+  undefined8 local_418;
+  undefined8 uStack_410;
+  undefined8 local_408;
+  double local_400;
+  undefined8 local_3f8;
+  AuPoint local_3f0 [24];
+  AuPoint local_3d8 [24];
+  AuPoint local_3c0 [24];
+  undefined8 local_3a8;
+  undefined8 local_3a0;
+  undefined8 uStack_398;
+  AuPoint local_378 [24];
+  AuPoint local_360 [24];
+  AuPoint local_348 [32];
+  AuPointSpacecraft local_328 [96];
+  AuPointSpacecraft local_2c8 [96];
+  AuPointSpacecraft local_268 [96];
+  AuTriSpacecraft local_208 [272];
+  int local_f8 [4];
+  ulonglong local_e8;
+  
+                    /* 0x4466b0  6047
+                       ?RenderStairsStraight@DaSpaceShip@@IEBAXAEAV?$QList@VAuTriSpacecraft@@@@AEBVAuPoint@@N_N@Z
+                        */
+  local_e8 = DAT_180a0ecf0 ^ (ulonglong)auStackY_5b8;
+  if (param_4) {
+    uVar25 = 0;
+    uVar27 = 0x40280000;
+    uVar23 = 0;
+    uVar24 = 0x40100000;
+  }
+  else {
+    uVar25 = 0x6676c64a;
+    uVar27 = 0x4026a09e;
+    uVar23 = 0x6676c64a;
+    uVar24 = 0x4016a09e;
+  }
+  ShipTexture(0x3b,&local_488,(float *)&local_4c8,(float *)&local_4a0,&local_494);
+  ShipTexture(0x3c,local_4c0,local_4d0,&local_4d8,&local_4d4);
+  ShipTexture(0x3d,&local_490,&local_484,&local_48c,&local_498);
+  iVar19 = 0;
+  local_4b8 = 0x3fe6a0902de00d1b;
+  uStack_4b0 = 0;
+  local_f8[0] = 0;
+  local_f8[1] = 0;
+  local_f8[2] = 0;
+  local_438 = 0;
+  uStack_430 = 0x3f85555555555555;
+  uVar22 = 0;
+  local_4a8 = 0xbfe6a0902de00d1b;
+  fVar28 = (float)param_3;
+  dVar7 = (double)CONCAT44(uVar24,uVar23) - 0.010416666666666666;
+  local_418 = 0x3f85555555555555;
+  uStack_410 = 0x401ff55555555555;
+  local_450 = 0;
+  local_440 = 0;
+  local_468 = CONCAT44(uVar27,uVar25);
+  local_458 = 0x401ff55555555555;
+  local_420 = CONCAT44(uVar27,uVar25);
+  local_428 = 0;
+  local_460 = dVar7;
+  local_448 = dVar7;
+  ModelAdd(param_1,(AuPoint *)&local_4b8,local_f8,0.0,false,param_2,fVar28,local_488,local_4c8._0_4_
+           ,-1.0,-1.0,(AuPoint *)&local_438,local_4a0._0_4_,local_4c8._0_4_,-1.0,-1.0,
+           (AuPoint *)&local_420,local_4a0._0_4_,local_494,-1.0,-1.0,(AuPoint *)&local_468,local_488
+           ,local_494,-1.0,-1.0,(AuPoint *)&local_450);
+  dVar6 = ceil(12.370968122512082);
+  local_3a8 = CONCAT44(uVar27,uVar25);
+  iVar18 = (int)dVar6;
+  local_408 = 0;
+  local_400 = -((double)CONCAT44(uVar24,uVar23) - 0.020833333333333332);
+  local_3f8 = 0;
+  local_3a0 = 0;
+  uStack_398 = 0x401ff55555555555;
+  if (0 < iVar18) {
+    local_4c8 = (double)fVar28;
+    fVar21 = local_4a0._0_4_;
+    fVar26 = local_4d0[0];
+    fVar20 = local_4d8;
+    local_4a0 = (double)CONCAT44(uVar27,uVar25) / (double)iVar18;
+    do {
+      dVar6 = local_4a0;
+      local_480 = 0.0;
+      local_470 = 0.0;
+      dStack_478 = dVar7;
+      AuPoint::operator*((AuPoint *)&local_3a8,(double)CONCAT44(uVar22,fVar21));
+      AuPoint::operator/(this_00,(double)CONCAT44(uVar22,fVar21));
+      AuPoint::operator+((AuPoint *)&local_480,(AuPoint *)&local_450);
+      AuPoint::operator+((AuPoint *)&local_450,local_3c0);
+      local_480 = 0.0;
+      dStack_478 = 0.0;
+      local_470 = 7.989583333333333 / (double)iVar18;
+      AuPoint::operator+((AuPoint *)&local_450,(AuPoint *)&local_468);
+      dStack_478 = 0.0;
+      local_470 = 0.0;
+      local_480 = dVar6;
+      AuPoint::operator+((AuPoint *)&local_468,(AuPoint *)&local_438);
+      AuPoint::operator+((AuPoint *)&local_438,local_3d8);
+      AuPoint::operator+((AuPoint *)&local_468,(AuPoint *)&local_420);
+      local_4a8 = 0;
+      local_4b8 = 0xbff0000000000000;
+      uStack_4b0 = 0;
+      ModelAdd(param_1,(AuPoint *)&local_4b8,local_f8,0.0,false,param_2,fVar28,local_4c0[0],
+               local_4d4,-1.0,-1.0,(AuPoint *)&local_450,local_4c0[0],fVar26,-1.0,-1.0,
+               (AuPoint *)&local_468,fVar20,fVar26,-1.0,-1.0,(AuPoint *)&local_420,fVar20,local_4d4,
+               -1.0,-1.0,local_3c0);
+      local_4b8 = 0;
+      uStack_4b0 = 0;
+      uVar23 = 0;
+      local_4a8 = 0x3ff0000000000000;
+      fVar20 = local_48c;
+      ModelAdd(param_1,(AuPoint *)&local_4b8,local_f8,0.0,false,param_2,fVar28,local_490,local_484,
+               -1.0,-1.0,(AuPoint *)&local_468,local_490,local_498,-1.0,-1.0,(AuPoint *)&local_438,
+               local_48c,local_498,-1.0,-1.0,local_3d8,local_48c,local_484,-1.0,-1.0,
+               (AuPoint *)&local_420);
+      local_4a8 = 0;
+      local_4b8 = 0;
+      uStack_4b0 = 0x3ff0000000000000;
+      AuPoint::RotateZ((AuPoint *)&local_450,(double)CONCAT44(uVar23,fVar20));
+      dVar6 = *(double *)param_2;
+      dVar1 = extraout_RAX[1];
+      dVar2 = extraout_RAX[2];
+      dVar3 = *extraout_RAX;
+      dVar4 = *(double *)(param_2 + 8);
+      dVar5 = *(double *)(param_2 + 0x10);
+      AuPoint::RotateZ((AuPoint *)&local_468,(double)CONCAT44(uVar23,fVar20));
+      pdVar9 = (double *)AuPoint::operator+(this_01,(AuPoint *)&local_480);
+      AuPoint::RotateZ((AuPoint *)&local_438,(double)CONCAT44(uVar23,fVar20));
+      pdVar10 = (double *)AuPoint::operator+(this_02,local_360);
+      pAVar11 = (AuPointSpacecraft *)
+                AuPointSpacecraft::AuPointSpacecraft
+                          (local_328,dVar6 + dVar3,dVar1 + dVar4,dVar2 + dVar5,local_4d8,local_4d4,
+                           (AuPoint *)&local_4b8,0.0,-1.0,-1.0,local_f8);
+      fVar26 = local_4d0[0];
+      fVar20 = local_4d8;
+      pAVar12 = (AuPointSpacecraft *)
+                AuPointSpacecraft::AuPointSpacecraft
+                          (local_2c8,*pdVar9,pdVar9[1],pdVar9[2],local_4d8,local_4d0[0],
+                           (AuPoint *)&local_4b8,0.0,-1.0,-1.0,local_f8);
+      fVar8 = local_4c0[0];
+      dVar6 = *pdVar10;
+      fVar21 = SUB84(dVar6,0);
+      uVar22 = (undefined4)((ulonglong)dVar6 >> 0x20);
+      pAVar13 = (AuPointSpacecraft *)
+                AuPointSpacecraft::AuPointSpacecraft
+                          (local_268,dVar6,pdVar10[1],pdVar10[2],local_4c0[0],fVar26,
+                           (AuPoint *)&local_4b8,0.0,-1.0,-1.0,local_f8);
+      uVar14 = AuTriSpacecraft::AuTriSpacecraft(local_208,pAVar13,pAVar12,pAVar11);
+      FUN_1800e0080(param_1,uVar14);
+      local_4a8 = 0;
+      local_4b8 = 0;
+      uStack_4b0 = 0x3ff0000000000000;
+      AuPoint::RotateZ(local_3d8,(double)CONCAT44(uVar22,fVar21));
+      pAVar15 = (AuPoint *)AuPoint::operator+(this_03,local_378);
+      AuPoint::RotateZ((AuPoint *)&local_420,(double)CONCAT44(uVar22,fVar21));
+      pAVar16 = (AuPoint *)AuPoint::operator+(this_04,local_3f0);
+      AuPoint::RotateZ(local_3c0,(double)CONCAT44(uVar22,fVar21));
+      pAVar17 = (AuPoint *)AuPoint::operator+(this_05,local_348);
+      ModelAdd(param_1,(AuPoint *)&local_4b8,local_f8,0.0,false,fVar8,local_4d4,-1.0,-1.0,pAVar17,
+               fVar8,fVar26,-1.0,-1.0,pAVar16,fVar20,fVar26,-1.0,-1.0,pAVar15);
+      iVar19 = iVar19 + 1;
+    } while (iVar19 < iVar18);
+  }
+  return;
+}
+
+

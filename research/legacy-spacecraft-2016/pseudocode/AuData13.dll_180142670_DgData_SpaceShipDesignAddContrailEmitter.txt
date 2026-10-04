@@ -1,0 +1,116 @@
+Read-only Ghidra capture from the original 2016 client. Not original source.
+
+/* public: bool __cdecl DgData::SpaceShipDesignAddContrailEmitter(unsigned int,class AuPoint const &
+   __ptr64) __ptr64 */
+
+bool __thiscall
+DgData::SpaceShipDesignAddContrailEmitter(DgData *this,uint param_1,AuPoint *param_2)
+
+{
+  QList<DnDetail> *this_00;
+  unordered_map<unsigned_int,DnDetailArray,AuDesignIdHash,std::equal_to<unsigned_int>,std::allocator<std::pair<unsigned_int_const_,DnDetailArray>_>_>
+  *this_01;
+  longlong lVar1;
+  undefined8 *puVar2;
+  undefined8 *puVar3;
+  bool bVar4;
+  ushort uVar5;
+  __uint64 _Var6;
+  undefined8 *puVar7;
+  DnDetailArray *this_02;
+  ulonglong uVar8;
+  undefined8 *puVar9;
+  undefined8 *puVar10;
+  longlong *plVar11;
+  int iVar12;
+  double dVar13;
+  uint local_res10 [2];
+  undefined8 *local_res20;
+  DnDetail local_78;
+  undefined1 local_77;
+  uint local_74;
+  uint local_70;
+  double local_68;
+  double local_60;
+  double local_58;
+  
+  local_res10[0] = param_1;
+                    /* 0x142670  5593
+                       ?SpaceShipDesignAddContrailEmitter@DgData@@QEAA_NIAEBVAuPoint@@@Z */
+  bVar4 = SpaceShipDesignIsReadOnly(this,param_1);
+  if (bVar4) {
+    return false;
+  }
+  dVar13 = (double)round(*(double *)(param_2 + 0x10) * 0.125);
+  bVar4 = DnSpaceShip::IsValidGridCoord(param_2);
+  if (bVar4) {
+    uVar5 = DnBuilding::EncodeGridCoord(param_2);
+    DnDetail::DnDetail(&local_78);
+    local_77 = 0x62;
+    local_70 = local_res10[0];
+    local_78 = SUB41((int)dVar13,0);
+    local_68 = (double)(int)(char)(uVar5 >> 8) * 2.8284271245;
+    local_60 = (double)(int)(char)uVar5 * 2.8284271245;
+    local_58 = (double)(int)(char)SUB41((int)dVar13,0) * 8.0;
+    bVar4 = SpaceShipDesignTestDetail(this,&local_78);
+    if (!bVar4) {
+      return false;
+    }
+    iVar12 = 0;
+    this_01 = (unordered_map<unsigned_int,DnDetailArray,AuDesignIdHash,std::equal_to<unsigned_int>,std::allocator<std::pair<unsigned_int_const_,DnDetailArray>_>_>
+               *)(this + 0x138);
+    _Var6 = AuDesignIdHash::operator()((AuDesignIdHash *)&local_res20,local_res10);
+    uVar8 = *(ulonglong *)(this + 0x160) & _Var6;
+    if (*(ulonglong *)(this + 0x168) <= uVar8) {
+      uVar8 = uVar8 + (-1 - (*(ulonglong *)(this + 0x160) >> 1));
+    }
+    lVar1 = *(longlong *)(this + 0x148);
+    puVar2 = *(undefined8 **)this_01;
+    puVar7 = *(undefined8 **)(lVar1 + uVar8 * 0x10);
+    while( true ) {
+      puVar10 = puVar2;
+      if (*(undefined8 **)(lVar1 + uVar8 * 0x10) != puVar2) {
+        puVar10 = (undefined8 *)**(undefined8 **)(lVar1 + 8 + uVar8 * 0x10);
+      }
+      puVar9 = puVar2;
+      puVar3 = local_res20;
+      if ((puVar7 == puVar10) ||
+         (puVar9 = puVar7, puVar3 = puVar7, local_res10[0] == *(uint *)(puVar7 + 2))) break;
+      puVar7 = (undefined8 *)*puVar7;
+    }
+    local_res20 = puVar3;
+    if (puVar9 != *(undefined8 **)this_01) {
+      this_00 = (QList<DnDetail> *)(puVar9 + 3);
+      if (1 < *(uint *)puVar9[3]) {
+        QList<DnDetail>::detach_helper(this_00,((uint *)puVar9[3])[1]);
+      }
+      plVar11 = (longlong *)
+                (*(longlong *)this_00 + ((longlong)*(int *)(*(longlong *)this_00 + 8) + 2) * 8);
+      while( true ) {
+        if (1 < **(uint **)this_00) {
+          QList<DnDetail>::detach_helper(this_00,(*(uint **)this_00)[1]);
+        }
+        if (plVar11 ==
+            (longlong *)
+            (*(longlong *)this_00 + (longlong)*(int *)(*(longlong *)this_00 + 0xc) * 8 + 0x10))
+        break;
+        if (*(char *)(*plVar11 + 1) == 'b') {
+          iVar12 = iVar12 + 1;
+        }
+        plVar11 = plVar11 + 1;
+      }
+      if (9 < iVar12) {
+        return false;
+      }
+    }
+    local_74 = SpaceShipDesignNextDetailId(this,local_res10[0]);
+    this_02 = std::
+              unordered_map<unsigned_int,DnDetailArray,AuDesignIdHash,std::equal_to<unsigned_int>,std::allocator<std::pair<unsigned_int_const_,DnDetailArray>_>_>
+              ::operator[](this_01,local_res10);
+    DnDetailArray::Add(this_02,&local_78);
+    (**(code **)(**(longlong **)gp_AuGlobal_exref + 0x270))
+              (*(longlong **)gp_AuGlobal_exref,local_70,local_74);
+    return true;
+  }
+  return false;
+}

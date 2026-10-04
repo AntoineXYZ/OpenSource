@@ -1,0 +1,38 @@
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* protected: void __cdecl DaSpaceShip::RenderGameChair(class AuMatrix4x4 const & __ptr64,class
+   AuMatrix4x4 const & __ptr64,class AuGLEffects & __ptr64,class AuPoint const &
+   __ptr64,float,float) __ptr64 */
+
+void __thiscall
+DaSpaceShip::RenderGameChair
+          (DaSpaceShip *this,AuMatrix4x4 *param_1,AuMatrix4x4 *param_2,AuGLEffects *param_3,
+          AuPoint *param_4,float param_5,float param_6)
+
+{
+  AuPoint *this_00;
+  double dVar1;
+  undefined1 auStackY_2e8 [32];
+  AuPoint local_2a8 [80];
+  AuMatrix4x4 local_258 [272];
+  AuMatrix4x4 local_148 [272];
+  ulonglong local_38;
+  
+                    /* 0x42e790  5938
+                       ?RenderGameChair@DaSpaceShip@@IEAAXAEBVAuMatrix4x4@@0AEAVAuGLEffects@@AEBVAuPoint@@MM@Z
+                        */
+  local_38 = DAT_180a0ecf0 ^ (ulonglong)auStackY_2e8;
+  AuMatrix4x4::LoadIdentity(local_258);
+  AuMatrix4x4::Translate
+            (local_258,*(double *)param_4,*(double *)(param_4 + 8),*(double *)(param_4 + 0x10));
+  AuMatrix4x4::RotateZ(local_258,(double)param_6);
+  AuMatrix4x4::Translate(local_258,4.5,4.5,-(double)DAT_180a39178);
+  dVar1 = (double)(param_5 - param_6);
+  AuMatrix4x4::RotateZ(local_258,dVar1);
+  AuMatrix4x4::operator*(param_2,local_148);
+  AuMatrix4x4::Project(local_148,dVar1,0.0,0.0);
+  this_00 = (AuPoint *)AuMatrix4x4::Project(local_148,dVar1,0.0,0.0);
+  AuPoint::operator-(this_00,local_2a8);
+  Au3dsGLSLModelInstance::RenderGLSLModel
+            (DAT_180a384f0,param_1,local_148,param_3,local_2a8,false,1.0);
+  return;
+}

@@ -1,8 +1,14 @@
 #include "aulegacyshiprender.h"
 #include "aulegacyship.h"
 #include "aulegacyshipmesh.h"
+#include "aulegacyshipatlas.h"
+#include "aulegacyshipeffects.h"
+#include "aulegacyshiphelm.h"
 
+#include <QByteArray>
 #include <QImage>
+#include <QElapsedTimer>
+#include <QTimer>
 #include <QKeyEvent>
 #include <QMap>
 #include <QMatrix4x4>
@@ -63,6 +69,72 @@ const TextureRegion ShipTextures[] = {
 	{ 0, 416, 128, 32 }, { 0, 412, 128, 36 }, { 0, 384, 128, 32 }
 };
 
+const TextureRegion EffectTextures[] = {
+	{ 352, 0, 128, 32 },
+	{ 352, 32, 128, 32 },
+	{ 352, 64, 128, 32 },
+	{ 352, 96, 128, 32 },
+	{ 96, 96, 32, 32 },
+	{ 96, 64, 32, 32 },
+	{ 96, 32, 32, 32 },
+	{ 96, 0, 32, 32 },
+	{ 224, 96, 32, 32 },
+	{ 224, 64, 32, 32 },
+	{ 224, 32, 32, 32 },
+	{ 224, 0, 32, 32 },
+	{ 160, 96, 32, 32 },
+	{ 160, 64, 32, 32 },
+	{ 160, 32, 32, 32 },
+	{ 160, 0, 32, 32 },
+	{ 32, 96, 32, 32 },
+	{ 32, 64, 32, 32 },
+	{ 32, 32, 32, 32 },
+	{ 32, 0, 32, 32 },
+	{ 128, 96, 32, 32 },
+	{ 128, 64, 32, 32 },
+	{ 128, 32, 32, 32 },
+	{ 128, 0, 32, 32 },
+	{ 256, 0, 32, 128 },
+	{ 288, 0, 32, 128 },
+	{ 320, 0, 32, 128 },
+	{ 0, 96, 32, 32 },
+	{ 0, 64, 32, 32 },
+	{ 0, 32, 32, 32 },
+	{ 0, 0, 32, 32 },
+	{ 768, 96, 32, 32 },
+	{ 768, 64, 32, 32 },
+	{ 768, 32, 32, 32 },
+	{ 768, 0, 32, 32 },
+	{ 0, 0, 32, 32 },
+	{ 64, 96, 32, 32 },
+	{ 64, 64, 32, 32 },
+	{ 64, 32, 32, 32 },
+	{ 64, 0, 32, 32 },
+	{ 480, 0, 64, 128 },
+	{ 544, 0, 64, 128 },
+	{ 608, 0, 64, 128 },
+	{ 736, 96, 32, 32 },
+	{ 736, 64, 32, 32 },
+	{ 736, 32, 32, 32 },
+	{ 736, 0, 32, 32 },
+	{ 704, 96, 32, 32 },
+	{ 704, 64, 32, 32 },
+	{ 704, 32, 32, 32 },
+	{ 704, 0, 32, 32 },
+	{ 672, 96, 32, 32 },
+	{ 672, 64, 32, 32 },
+	{ 672, 32, 32, 32 },
+	{ 672, 0, 32, 32 },
+	{ 192, 96, 32, 32 },
+	{ 192, 64, 32, 32 },
+	{ 192, 32, 32, 32 },
+	{ 192, 0, 32, 32 },
+	{ 832, 96, 32, 32 },
+	{ 832, 64, 32, 32 },
+	{ 832, 32, 32, 32 },
+	{ 832, 0, 32, 32 }
+};
+
 struct RenderVertex
 {
 	float position[3];
@@ -72,7 +144,7 @@ struct RenderVertex
 
 struct DrawBatch
 {
-	int material;
+	int source;
 	int first;
 	int count;
 	int deck;
@@ -80,7 +152,7 @@ struct DrawBatch
 
 struct TransparentTriangle
 {
-	int material;
+	int source;
 	int first;
 	int deck;
 	QVector3D center;
@@ -102,9 +174,12 @@ public:
 	QOpenGLBuffer transparentBuffer{QOpenGLBuffer::IndexBuffer};
 	QOpenGLVertexArrayObject vao;
 	QOpenGLShaderProgram* program = nullptr;
-	QMap<int, QOpenGLTexture*> textures;
-	QSet<int> transparentMaterials;
+	QMap<QString, QOpenGLTexture*> textures;
+	QSet<QString> transparentTextures;
+	QOpenGLTexture* effectTexture = nullptr;
 	QImage atlas;
+	QElapsedTimer animationClock;
+	QTimer* animationTimer = nullptr;
 	QMetaObject::Connection contextConnection;
 	QVector3D target;
 	QPoint mouse;
@@ -151,18 +226,19 @@ public:
 		}
 		QVector<RenderVertex> vertices;
 		vertices.reserve(int(vertexCount));
-		for (const auto& batch : mesh.batches)
+		for (int source = 0; source < mesh.batches.size(); ++source)
 		{
+			const auto& batch = mesh.batches[source];
 			if (batch.vertices.isEmpty())
 				continue;
-			DrawBatch draw = { int(batch.material), vertices.size(), batch.vertices.size(), batch.deck };
+			DrawBatch draw = { source, vertices.size(), batch.vertices.size(), batch.deck };
 			batches.append(draw);
-			Texture(draw.material);
-			if (transparentMaterials.contains(draw.material))
+			Texture(source);
+			if (batch.tint.w() < 0.999f || transparentTextures.contains(TextureKey(source)))
 			{
 				for (int i = 0; i + 2 < batch.vertices.size(); i += 3)
 				{
-					TransparentTriangle triangle = { draw.material, draw.first + i, draw.deck,
+					TransparentTriangle triangle = { source, draw.first + i, draw.deck,
 						(batch.vertices[i].position + batch.vertices[i + 1].position + batch.vertices[i + 2].position) / 3.0f };
 					transparentTriangles.append(triangle);
 				}
@@ -195,15 +271,44 @@ public:
 		return true;
 	}
 
-	QOpenGLTexture* Texture(int material)
+	QString TextureKey(int source) const
 	{
-		if (textures.contains(material))
-			return textures.value(material);
+		const auto& batch = mesh.batches[source];
+		return batch.textureFile.isEmpty() ? QStringLiteral("atlas:%1").arg(int(batch.material)) : batch.textureFile;
+	}
+
+	QOpenGLTexture* Texture(int source)
+	{
+		const auto& batch = mesh.batches[source];
+		const int material = int(batch.material);
+		const QString key = TextureKey(source);
+		if (textures.contains(key))
+			return textures.value(key);
 		QImage tile;
-		if (material >= 0 && material < int(sizeof(ShipTextures) / sizeof(ShipTextures[0])))
+		if (batch.textureFile == QStringLiteral("legacy:pc_Console.bmp"))
+			tile = QImage::fromData(qUncompress(QByteArray::fromBase64(LegacyShipHelmBmp)), "BMP").mirrored();
+		else if (!batch.textureFile.isEmpty())
+			tile = QImage(batch.textureFile).mirrored();
+		else if (material < 0)
+		{
+			tile = QImage(1, 1, QImage::Format_RGBA8888);
+			tile.fill(Qt::white);
+		}
+		else if (material >= 0 && material < int(sizeof(ShipTextures) / sizeof(ShipTextures[0])))
 		{
 			if (atlas.isNull())
-				atlas.load(QStringLiteral(":/data/txSpacecraft0Lit.png"));
+			{
+				QByteArray encoded;
+				encoded.reserve(3502520);
+				for (const char* part : LegacyShipAtlasPng)
+					encoded.append(part);
+				atlas.loadFromData(QByteArray::fromBase64(encoded), "PNG");
+				if (atlas.isNull())
+				{
+					textureWarnings.append(QStringLiteral("The original spacecraft atlas could not be decoded; using the current source atlas."));
+					atlas.load(QStringLiteral(":/data/txSpacecraft0Lit.png"));
+				}
+			}
 			if (!atlas.isNull())
 			{
 				const TextureRegion& region = ShipTextures[material];
@@ -216,14 +321,14 @@ public:
 		}
 		if (tile.isNull())
 		{
-			const QString warning = QStringLiteral("The original spacecraft texture could not be loaded (material %1).")
-				.arg(material);
+			const QString warning = QStringLiteral("The original spacecraft texture could not be loaded (%1).")
+				.arg(key);
 			textureWarnings.append(warning);
 			tile = QImage(1, 1, QImage::Format_RGBA8888);
 			tile.fill(QColor(175, 185, 195));
 		}
 		tile = tile.convertToFormat(QImage::Format_ARGB32);
-		for (int y = 0; y < tile.height() && !transparentMaterials.contains(material); ++y)
+		for (int y = 0; y < tile.height() && !transparentTextures.contains(key); ++y)
 		{
 			const QRgb* pixels = reinterpret_cast<const QRgb*>(tile.constScanLine(y));
 			for (int x = 0; x < tile.width(); ++x)
@@ -231,7 +336,7 @@ public:
 				const int alpha = qAlpha(pixels[x]);
 				if (alpha < 255)
 				{
-					transparentMaterials.insert(material);
+					transparentTextures.insert(key);
 					break;
 				}
 			}
@@ -240,8 +345,38 @@ public:
 		texture->setWrapMode(QOpenGLTexture::Repeat);
 		texture->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
 		texture->setMagnificationFilter(QOpenGLTexture::Linear);
-		textures.insert(material, texture);
+		textures.insert(key, texture);
 		return texture;
+	}
+
+	void BindEffect(const AuLegacyShip::Rendering::Batch& batch, qint64 elapsed)
+	{
+		const bool enabled = batch.effectFirstFrame >= 0 && batch.effectFrameCount > 0;
+		program->setUniformValue("u_hasEffect", enabled);
+		if (!enabled)
+			return;
+		if (!effectTexture)
+		{
+			QByteArray encoded;
+			for (const char* part : LegacyShipEffectsPng)
+				encoded.append(part);
+			const QImage effects = QImage::fromData(QByteArray::fromBase64(encoded), "PNG").mirrored();
+			effectTexture = new QOpenGLTexture(effects);
+			effectTexture->setWrapMode(QOpenGLTexture::ClampToEdge);
+			effectTexture->setMinificationFilter(QOpenGLTexture::Linear);
+			effectTexture->setMagnificationFilter(QOpenGLTexture::Linear);
+		}
+		const qint64 duration = std::max<qint64>(1, qint64(batch.effectFrameSeconds * 1000));
+		const int frame = batch.effectFirstFrame + int((elapsed / duration) % batch.effectFrameCount);
+		if (frame < 0 || frame >= int(sizeof(EffectTextures) / sizeof(EffectTextures[0])))
+		{
+			program->setUniformValue("u_hasEffect", false);
+			return;
+		}
+		const TextureRegion& region = EffectTextures[frame];
+		program->setUniformValue("u_effectRect", QVector4D((region.x + 0.5f) / 1024,
+			(region.y + 0.5f) / 128, (region.width - 1.0f) / 1024, (region.height - 1.0f) / 128));
+		effectTexture->bind(1);
 	}
 };
 
@@ -257,6 +392,13 @@ AuLegacyShipRender::AuLegacyShipRender(QWidget* parent)
 	setToolTip(QStringLiteral("Drag to orbit. Right, middle, or Shift-drag to pan. "
 		"Scroll to zoom. Press F or Home to fit the spacecraft."));
 	setMinimumSize(160, 120);
+	m_Impl->animationClock.start();
+	m_Impl->animationTimer = new QTimer(this);
+	m_Impl->animationTimer->setInterval(100);
+	connect(m_Impl->animationTimer, &QTimer::timeout, this, [this]() {
+		if (isVisible())
+			update();
+	});
 }
 
 AuLegacyShipRender::~AuLegacyShipRender()
@@ -271,6 +413,13 @@ void AuLegacyShipRender::SetDesign(const AuLegacyShip::Design& design)
 	m_Impl->mesh = AuLegacyShip::Rendering::BuildMesh(design);
 	m_Impl->radius = std::max(1.0f, (m_Impl->mesh.maximum - m_Impl->mesh.minimum).length() * 0.5f);
 	m_Impl->dirty = true;
+	bool animated = false;
+	for (const auto& batch : m_Impl->mesh.batches)
+		animated = animated || batch.effectFrameCount > 1 || batch.degreesPerSecond != 0 || !batch.uvVelocity.isNull();
+	if (animated)
+		m_Impl->animationTimer->start();
+	else
+		m_Impl->animationTimer->stop();
 	if (m_Impl->ready)
 		m_Impl->glError.clear();
 	if (wasEmpty || m_Impl->autoFit)
@@ -325,15 +474,17 @@ IN vec3 a_position;
 IN vec3 a_normal;
 IN vec2 a_uv;
 uniform mat4 u_mvp;
+uniform mat4 u_model;
+uniform vec2 u_uvOffset;
 OUT vec3 v_normal;
 OUT vec3 v_position;
 OUT vec2 v_uv;
 void main()
 {
-	v_position = a_position;
-	v_normal = a_normal;
-	v_uv = a_uv;
-	gl_Position = u_mvp * vec4(a_position, 1.0);
+	v_position = (u_model * vec4(a_position, 1.0)).xyz;
+	v_normal = mat3(u_model) * a_normal;
+	v_uv = a_uv + u_uvOffset;
+	gl_Position = u_mvp * vec4(v_position, 1.0);
 }
 )";
 	const QByteArray fragment = version + (es
@@ -343,6 +494,14 @@ IN vec3 v_normal;
 IN vec3 v_position;
 IN vec2 v_uv;
 uniform sampler2D u_texture;
+uniform sampler2D u_effect;
+uniform bool u_hasEffect;
+uniform vec4 u_effectRect;
+uniform vec4 u_tint;
+uniform float u_selfIllumination;
+uniform bool u_equipment;
+uniform bool u_atlas;
+uniform bool u_twoSided;
 uniform vec2 u_inset;
 uniform vec3 u_light;
 uniform float u_clipHeight;
@@ -350,15 +509,23 @@ uniform bool u_cutaway;
 uniform bool u_translucentPass;
 void main()
 {
-	if (u_cutaway && v_position.z > u_clipHeight)
+	if (u_cutaway && !u_equipment && v_position.z > u_clipHeight)
 		discard;
-	vec2 uv = fract(v_uv);
-	uv = mix(u_inset, vec2(1.0) - u_inset, uv);
-	vec4 texel = SAMPLE(u_texture, uv);
+	vec2 uv = u_atlas ? mix(u_inset, vec2(1.0) - u_inset, fract(v_uv)) : v_uv;
+	vec4 texel = SAMPLE(u_texture, uv) * u_tint;
 	if (texel.a < 0.01 || u_translucentPass != (texel.a < 0.999))
 		discard;
-	float diffuse = max(0.0, dot(normalize(v_normal), u_light));
-	COLOR = vec4(texel.rgb * (0.48 + 0.52 * diffuse), texel.a);
+	vec3 normal = normalize(v_normal);
+	if (u_twoSided && !gl_FrontFacing)
+		normal = -normal;
+	float diffuse = max(0.0, dot(normal, u_light));
+	vec3 color = texel.rgb * mix(0.48 + 0.52 * diffuse, 1.0, u_selfIllumination);
+	if (u_hasEffect)
+	{
+		vec4 effect = SAMPLE(u_effect, u_effectRect.xy + fract(v_uv) * u_effectRect.zw);
+		color = mix(color, effect.rgb, effect.a);
+	}
+	COLOR = vec4(color, texel.a);
 }
 )";
 	if (!m_Impl->program->addShaderFromSourceCode(QOpenGLShader::Vertex, vertex)
@@ -402,7 +569,9 @@ void AuLegacyShipRender::CleanupGL()
 		makeCurrent();
 	qDeleteAll(m_Impl->textures);
 	m_Impl->textures.clear();
-	m_Impl->transparentMaterials.clear();
+	m_Impl->transparentTextures.clear();
+	delete m_Impl->effectTexture;
+	m_Impl->effectTexture = nullptr;
 	m_Impl->vao.destroy();
 	m_Impl->buffer.destroy();
 	m_Impl->transparentBuffer.destroy();
@@ -447,24 +616,52 @@ void AuLegacyShipRender::paintGL()
 		m_Impl->vao.bind();
 		m_Impl->program->setUniformValue("u_mvp", projection * view);
 		m_Impl->program->setUniformValue("u_texture", 0);
+		m_Impl->program->setUniformValue("u_effect", 1);
 		m_Impl->program->setUniformValue("u_cutaway", m_Impl->cutaway);
 		m_Impl->program->setUniformValue("u_clipHeight", float(m_Impl->deck * AuLegacyShip::DeckHeight + 4.0));
 		m_Impl->program->setUniformValue("u_light", (direction + QVector3D(0.15f, -0.1f, 0.5f)).normalized());
 		m_Impl->program->setUniformValue("u_translucentPass", false);
-		const auto bindTexture = [this](int material)
+		const qint64 elapsed = m_Impl->animationClock.elapsed();
+		const float seconds = float(elapsed) / 1000;
+		QVector<QMatrix4x4> transforms(m_Impl->mesh.batches.size());
+		for (int i = 0; i < transforms.size(); ++i)
 		{
-			QOpenGLTexture* texture = m_Impl->Texture(material);
-			texture->bind(0);
-			const bool known = material >= 0 && material < int(sizeof(ShipTextures) / sizeof(ShipTextures[0]));
-			m_Impl->program->setUniformValue("u_inset", known
+			const auto& batch = m_Impl->mesh.batches[i];
+			if (batch.degreesPerSecond != 0)
+			{
+				transforms[i].translate(batch.rotationPivot);
+				transforms[i].rotate(std::fmod(seconds * batch.degreesPerSecond, 360.0f), batch.rotationAxis);
+				transforms[i].translate(-batch.rotationPivot);
+			}
+		}
+		const auto bindBatch = [this, gl, elapsed, seconds, &transforms](int source)
+		{
+			const auto& batch = m_Impl->mesh.batches[source];
+			const int material = int(batch.material);
+			m_Impl->Texture(source)->bind(0);
+			const bool atlas = batch.textureFile.isEmpty() && material >= 0
+				&& material < int(sizeof(ShipTextures) / sizeof(ShipTextures[0]));
+			m_Impl->program->setUniformValue("u_atlas", atlas);
+			m_Impl->program->setUniformValue("u_inset", atlas
 				? QVector2D(0.5f / ShipTextures[material].width, 0.5f / ShipTextures[material].height)
-				: QVector2D(0.0f, 0.0f));
+				: QVector2D());
+			m_Impl->program->setUniformValue("u_model", transforms[source]);
+			m_Impl->program->setUniformValue("u_uvOffset", batch.uvVelocity * seconds);
+			m_Impl->program->setUniformValue("u_tint", batch.tint);
+			m_Impl->program->setUniformValue("u_selfIllumination", batch.selfIllumination);
+			m_Impl->program->setUniformValue("u_equipment", batch.equipment);
+			m_Impl->program->setUniformValue("u_twoSided", batch.twoSided);
+			if (batch.twoSided)
+				gl->glDisable(GL_CULL_FACE);
+			else
+				gl->glEnable(GL_CULL_FACE);
+			m_Impl->BindEffect(batch, elapsed);
 		};
 		for (const DrawBatch& batch : m_Impl->batches)
 		{
 			if (m_Impl->cutaway && batch.deck > m_Impl->deck)
 				continue;
-			bindTexture(batch.material);
+			bindBatch(batch.source);
 			gl->glDrawArrays(GL_TRIANGLES, batch.first, batch.count);
 		}
 		QVector<const TransparentTriangle*> transparent;
@@ -472,18 +669,19 @@ void AuLegacyShipRender::paintGL()
 		for (const TransparentTriangle& triangle : m_Impl->transparentTriangles)
 			if (!m_Impl->cutaway || triangle.deck <= m_Impl->deck)
 				transparent.append(&triangle);
-		std::sort(transparent.begin(), transparent.end(), [&direction](const TransparentTriangle* a, const TransparentTriangle* b)
+		std::sort(transparent.begin(), transparent.end(), [&direction, &transforms](const TransparentTriangle* a, const TransparentTriangle* b)
 		{
-			return QVector3D::dotProduct(a->center, direction) < QVector3D::dotProduct(b->center, direction);
+			return QVector3D::dotProduct(transforms[a->source].map(a->center), direction)
+				< QVector3D::dotProduct(transforms[b->source].map(b->center), direction);
 		});
 		QVector<quint32> indices;
 		QVector<DrawBatch> transparentBatches;
 		indices.reserve(transparent.size() * 3);
 		for (const TransparentTriangle* triangle : transparent)
 		{
-			if (transparentBatches.isEmpty() || transparentBatches.last().material != triangle->material)
+			if (transparentBatches.isEmpty() || transparentBatches.last().source != triangle->source)
 			{
-				DrawBatch batch = { triangle->material, indices.size(), 0, triangle->deck };
+				DrawBatch batch = { triangle->source, indices.size(), 0, triangle->deck };
 				transparentBatches.append(batch);
 			}
 			transparentBatches.last().count += 3;
@@ -504,7 +702,7 @@ void AuLegacyShipRender::paintGL()
 				m_Impl->program->setUniformValue("u_translucentPass", true);
 				for (const DrawBatch& batch : transparentBatches)
 				{
-					bindTexture(batch.material);
+					bindBatch(batch.source);
 					gl->glDrawElements(GL_TRIANGLES, batch.count, GL_UNSIGNED_INT,
 						reinterpret_cast<const void*>(quintptr(batch.first) * sizeof(quint32)));
 				}
@@ -518,6 +716,9 @@ void AuLegacyShipRender::paintGL()
 		gl->glDisable(GL_BLEND);
 		m_Impl->vao.release();
 		m_Impl->program->release();
+		gl->glActiveTexture(GL_TEXTURE1);
+		gl->glBindTexture(GL_TEXTURE_2D, 0);
+		gl->glActiveTexture(GL_TEXTURE0);
 		gl->glBindTexture(GL_TEXTURE_2D, 0);
 		gl->glDisable(GL_CULL_FACE);
 		gl->glDisable(GL_DEPTH_TEST);

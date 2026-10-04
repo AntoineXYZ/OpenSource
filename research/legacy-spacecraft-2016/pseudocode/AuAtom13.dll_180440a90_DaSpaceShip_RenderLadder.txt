@@ -1,0 +1,182 @@
+Read-only Ghidra capture for equipment recovery. Not original source.
+
+
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* protected: void __cdecl DaSpaceShip::RenderLadder(class QList<class AuTriSpacecraft> &
+   __ptr64,class AuPoint const & __ptr64,float)const __ptr64 */
+
+void __thiscall
+DaSpaceShip::RenderLadder
+          (DaSpaceShip *this,QList<AuTriSpacecraft> *param_1,AuPoint *param_2,float param_3)
+
+{
+  undefined8 *extraout_RAX;
+  undefined4 in_XMM1_Da;
+  undefined4 uVar1;
+  undefined4 in_XMM1_Db;
+  undefined4 uVar2;
+  undefined1 auStackY_268 [32];
+  undefined8 local_188;
+  undefined8 uStack_180;
+  ulonglong local_178;
+  undefined8 local_170;
+  undefined8 uStack_168;
+  undefined8 local_160;
+  undefined8 local_158;
+  undefined8 uStack_150;
+  undefined8 local_148;
+  undefined8 local_140;
+  undefined8 uStack_138;
+  undefined8 local_130;
+  undefined8 local_128;
+  undefined8 uStack_120;
+  undefined8 local_118;
+  float local_110;
+  float local_10c;
+  float local_108;
+  float local_104;
+  float local_100;
+  float local_fc;
+  float local_f8;
+  float local_f4;
+  AuPoint local_f0 [24];
+  undefined8 local_d8;
+  ulonglong uStack_d0;
+  undefined8 local_c8;
+  ulonglong local_c0;
+  
+                    /* 0x440a90  5977
+                       ?RenderLadder@DaSpaceShip@@IEBAXAEAV?$QList@VAuTriSpacecraft@@@@AEBVAuPoint@@M@Z
+                        */
+  local_c0 = DAT_180a0ecf0 ^ (ulonglong)auStackY_268;
+  local_c8 = 0;
+  local_d8 = 0x3ffd5810624dd2f2;
+  uStack_d0 = 0;
+  AuPoint::RotateZ((AuPoint *)&local_d8,(double)CONCAT44(in_XMM1_Db,in_XMM1_Da));
+  AuPoint::operator+(param_2,local_f0);
+  ShipTexture(0x2c,&local_fc,&local_f8,&local_100,&local_104);
+  ShipTexture(0x2d,&local_110,&local_f4,&local_108,&local_10c);
+  local_148 = 0;
+  uStack_d0 = uStack_d0 & 0xffffffff00000000;
+  local_158 = 0x3ff0000000000000;
+  uStack_150 = 0;
+  local_d8 = 0;
+  AuPoint::RotateZ((AuPoint *)&local_158,(double)CONCAT44(in_XMM1_Db,in_XMM1_Da));
+  local_158 = 0;
+  uStack_150 = 0x3fee2b7dddf3b30d;
+  local_128 = 0;
+  uStack_120 = 0x3fee2b7dddf3b30d;
+  local_148 = 0xc020000000000000;
+  local_118 = 0;
+  local_130 = 0;
+  local_160 = 0xc020000000000000;
+  local_140 = 0;
+  uStack_138 = 0xbfee2b7dddf3b30d;
+  local_170 = 0;
+  uStack_168 = 0xbfee2b7dddf3b30d;
+  ModelAdd(param_1,(AuPoint *)&local_188,(int *)&local_d8,0.0,false,local_f0,param_3,local_fc,
+           local_f8,-1.0,-1.0,(AuPoint *)&local_170,local_fc,local_104,-1.0,-1.0,
+           (AuPoint *)&local_140,local_100,local_104,-1.0,-1.0,(AuPoint *)&local_128,local_100,
+           local_f8,-1.0,-1.0,(AuPoint *)&local_158);
+  local_178 = local_178 ^ 0x8000000000000000;
+  local_160 = 0xc020000000000000;
+  local_130 = 0;
+  local_170 = 0;
+  uStack_168 = 0xbfee2b7dddf3b30d;
+  local_140 = 0;
+  uStack_138 = 0xbfee2b7dddf3b30d;
+  uVar1 = 0;
+  uVar2 = 0;
+  local_118 = 0;
+  local_148 = 0xc020000000000000;
+  local_188 = local_188 ^ 0x8000000000000000;
+  uStack_180 = uStack_180 ^ 0x8000000000000000;
+  local_128 = 0;
+  uStack_120 = 0x3fee2b7dddf3b30d;
+  local_158 = 0;
+  uStack_150 = 0x3fee2b7dddf3b30d;
+  ModelAdd(param_1,(AuPoint *)&local_188,(int *)&local_d8,0.0,false,local_f0,param_3,local_100,
+           local_f8,-1.0,-1.0,(AuPoint *)&local_158,local_100,local_104,-1.0,-1.0,
+           (AuPoint *)&local_128,local_fc,local_104,-1.0,-1.0,(AuPoint *)&local_140,local_fc,
+           local_f8,-1.0,-1.0,(AuPoint *)&local_170);
+  local_160 = 0;
+  local_170 = 0;
+  uStack_168 = 0x3ff0000000000000;
+  AuPoint::RotateZ((AuPoint *)&local_170,(double)CONCAT44(uVar2,uVar1));
+  local_188 = *extraout_RAX;
+  uStack_180 = extraout_RAX[1];
+  local_178 = extraout_RAX[2];
+  local_160 = 0xc020000000000000;
+  local_130 = 0;
+  local_170 = 0xbfc3333333333333;
+  uStack_168 = 0xbfe8fc043bcdd047;
+  local_140 = 0xbfc3333333333333;
+  uStack_138 = 0xbfe8fc043bcdd047;
+  local_118 = 0;
+  local_148 = 0xc020000000000000;
+  local_128 = 0x3fc3333333333333;
+  uStack_120 = 0xbfe8fc043bcdd047;
+  local_158 = 0x3fc3333333333333;
+  uStack_150 = 0xbfe8fc043bcdd047;
+  ModelAdd(param_1,(AuPoint *)&local_188,(int *)&local_d8,0.0,false,local_f0,param_3,local_110,
+           local_f4,-1.0,-1.0,(AuPoint *)&local_158,local_110,local_10c,-1.0,-1.0,
+           (AuPoint *)&local_128,local_108,local_10c,-1.0,-1.0,(AuPoint *)&local_140,local_108,
+           local_f4,-1.0,-1.0,(AuPoint *)&local_170);
+  local_160 = 0xc020000000000000;
+  local_178 = local_178 ^ 0x8000000000000000;
+  local_130 = 0;
+  local_170 = 0x3fc3333333333333;
+  uStack_168 = 0xbfe8fc043bcdd047;
+  local_140 = 0x3fc3333333333333;
+  uStack_138 = 0xbfe8fc043bcdd047;
+  local_118 = 0;
+  local_148 = 0xc020000000000000;
+  local_128 = 0xbfc3333333333333;
+  uStack_120 = 0xbfe8fc043bcdd047;
+  local_158 = 0xbfc3333333333333;
+  uStack_150 = 0xbfe8fc043bcdd047;
+  local_188._4_4_ = local_188._4_4_ ^ 0x80000000;
+  uStack_180._4_4_ = uStack_180._4_4_ ^ 0x80000000;
+  ModelAdd(param_1,(AuPoint *)&local_188,(int *)&local_d8,0.0,false,local_f0,param_3,local_108,
+           local_f4,-1.0,-1.0,(AuPoint *)&local_158,local_108,local_10c,-1.0,-1.0,
+           (AuPoint *)&local_128,local_110,local_10c,-1.0,-1.0,(AuPoint *)&local_140,local_110,
+           local_f4,-1.0,-1.0,(AuPoint *)&local_170);
+  local_160 = 0xc020000000000000;
+  local_130 = 0;
+  local_118 = 0;
+  local_170 = 0x3fc3333333333333;
+  uStack_168 = 0x3fe8fc043bcdd047;
+  local_140 = 0x3fc3333333333333;
+  uStack_138 = 0x3fe8fc043bcdd047;
+  local_148 = 0xc020000000000000;
+  local_128 = 0xbfc3333333333333;
+  uStack_120 = 0x3fe8fc043bcdd047;
+  local_158 = 0xbfc3333333333333;
+  uStack_150 = 0x3fe8fc043bcdd047;
+  ModelAdd(param_1,(AuPoint *)&local_188,(int *)&local_d8,0.0,false,local_f0,param_3,local_108,
+           local_f4,-1.0,-1.0,(AuPoint *)&local_158,local_108,local_10c,-1.0,-1.0,
+           (AuPoint *)&local_128,local_110,local_10c,-1.0,-1.0,(AuPoint *)&local_140,local_110,
+           local_f4,-1.0,-1.0,(AuPoint *)&local_170);
+  local_160 = 0xc020000000000000;
+  local_178 = local_178 ^ 0x8000000000000000;
+  local_170 = 0xbfc3333333333333;
+  uStack_168 = 0x3fe8fc043bcdd047;
+  local_140 = 0xbfc3333333333333;
+  uStack_138 = 0x3fe8fc043bcdd047;
+  local_188 = CONCAT44(local_188._4_4_,(undefined4)local_188) ^ 0x8000000000000000;
+  uStack_180 = CONCAT44(uStack_180._4_4_,(undefined4)uStack_180) ^ 0x8000000000000000;
+  local_130 = 0;
+  local_118 = 0;
+  local_148 = 0xc020000000000000;
+  local_128 = 0x3fc3333333333333;
+  uStack_120 = 0x3fe8fc043bcdd047;
+  local_158 = 0x3fc3333333333333;
+  uStack_150 = 0x3fe8fc043bcdd047;
+  ModelAdd(param_1,(AuPoint *)&local_188,(int *)&local_d8,0.0,false,local_f0,param_3,local_110,
+           local_f4,-1.0,-1.0,(AuPoint *)&local_158,local_110,local_10c,-1.0,-1.0,
+           (AuPoint *)&local_128,local_108,local_10c,-1.0,-1.0,(AuPoint *)&local_140,local_108,
+           local_f4,-1.0,-1.0,(AuPoint *)&local_170);
+  return;
+}
+
+

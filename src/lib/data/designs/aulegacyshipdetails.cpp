@@ -1,5 +1,6 @@
 #include "aulegacyshipdetails.h"
 
+#include <QSet>
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -627,6 +628,515 @@ DetailResult TestDetail(Detail& d, const QVector<Geometry>& rooms,
 	if((placement.room==-5||placement.room==-2)&&count!=1) return DetailResult::Invalid;
 	return DetailResult::Valid;
 }
+
+bool CollectRooms(const Design& design, QVector<Geometry>& rooms, QString& error)
+{
+	rooms.reserve(design.rooms.size());
+	for(const Room& room : design.rooms)
+	{
+		QString geometryError;
+		const QPolygonF polygon = RoomBoundary(room, &geometryError);
+		if(!geometryError.isEmpty()) { error = geometryError; return false; }
+		if(!polygon.isEmpty()) rooms.append({&room, polygon});
+	}
+	return true;
+}
+
+bool SnapDetail(const QPointF& cursor, quint16& packed)
+{
+	const double x = std::round(cursor.x() / CoordinateSpacing);
+	const double y = std::round(cursor.y() / CoordinateSpacing);
+	if(!std::isfinite(x) || !std::isfinite(y) || std::abs(x) > 120 || std::abs(y) > 120)
+		return false;
+	packed = quint16(((int(x) & 255) << 8) | (int(y) & 255));
+	return true;
+}
+
+bool CanBeOnStairEdge(int type)
+{
+	if(IsStairs(type)) return true;
+	switch(type)
+	{
+	case 3: case 5: case 9: case 21: case 34: case 35: case 36: case 37:
+	case 38: case 39: case 40: case 49: case 50: case 53: case 54: case 55:
+	case 56: case 76: case 98: case 99: return true;
+	default: return false;
+	}
+}
+
+quint32 NextDetailId(const QVector<Detail>& details)
+{
+	QSet<quint32> used;
+	for(const Detail& detail : details) used.insert(detail.detailId);
+	for(quint32 id = 1; id != 0; ++id)
+		if(!used.contains(id)) return id;
+	return 0;
+}
+
+void InsertDetail(QVector<Detail>& details, const Detail& detail)
+{
+	int at = 0;
+	for(; at < details.size(); ++at)
+	{
+		const Detail& other = details.at(at);
+		if(detail.deck < other.deck || (detail.deck == other.deck &&
+			(detail.roomId < other.roomId || (detail.roomId == other.roomId && detail.detailId < other.detailId))))
+			break;
+	}
+	details.insert(at, detail);
+}
+
+enum class PlacementResult { Added, Unchanged, Rejected, Unavailable };
+
+PlacementResult PlaceOne(QVector<Detail>& details, const QVector<Geometry>& rooms,
+	quint32 designId, int deck, quint16 packed, int type, quint16 commodity,
+	Detail& placed, int& removed, QString& error)
+{
+	Detail detail;
+	detail.deck = qint8(deck);
+	detail.detailType = quint8(type);
+	detail.designId = designId;
+	detail.packedXY = packed;
+	detail.commodityIdRaw = commodity;
+	detail.commodityIdNormalized = commodity == 0xf9 ? 0xf8 : commodity == 0xfb ? 0xfa : commodity;
+	const QPointF point = DecodePoint(packed);
+	QVector<Detail> candidate = details;
+	removed = 0;
+	if(type != 76 && type != 98 && type != 99)
+	{
+		const QPolygonF stair = IsStairs(type) ? StairBoundary(detail) : QPolygonF();
+		for(int i = 0; i < candidate.size();)
+		{
+			const Detail& other = candidate.at(i);
+			if(other.deck != deck || other.detailType == 76 || other.detailType == 98 || other.detailType == 99)
+			{ ++i; continue; }
+			bool replace = false;
+			if(IsStairs(type))
+			{
+				if(IsStairs(other.detailType))
+				{
+					for(const QPointF& vertex : StairBoundary(other))
+						if(Inside(stair, vertex)) { replace = true; break; }
+				}
+				else
+				{
+					const QPointF location = DecodePoint(other.packedXY);
+					replace = Inside(stair, location) || (!CanBeOnStairEdge(other.detailType) && On(stair, location));
+				}
+			}
+			else if(IsStairs(other.detailType))
+			{
+				const QPolygonF boundary = StairBoundary(other);
+				if(Inside(boundary, point) || (!CanBeOnStairEdge(type) && On(boundary, point)))
+				{
+					error = QStringLiteral("%1 cannot overlap these stairs.").arg(DetailName(type));
+					return PlacementResult::Rejected;
+				}
+			}
+			else if(other.packedXY == packed)
+			{
+				if(other.detailType == type) { placed = other; return PlacementResult::Unchanged; }
+				replace = true;
+			}
+			if(replace)
+			{
+				candidate.removeAt(i);
+				++removed;
+				if(!IsStairs(type)) break;
+			}
+			else ++i;
+		}
+	}
+	const DetailResult valid = TestDetail(detail, rooms, candidate, error);
+	if(valid == DetailResult::Unavailable) return PlacementResult::Unavailable;
+	if(valid == DetailResult::Invalid)
+	{
+		error = QStringLiteral("Cannot place %1 here. %2 Check its clearance from other equipment.")
+			.arg(DetailName(type), DetailPlacementDescription(type));
+		return PlacementResult::Rejected;
+	}
+	if(type == 76)
+	{
+		for(int i = candidate.size() - 1; i >= 0; --i)
+			if(candidate.at(i).detailType == 76) { candidate.removeAt(i); ++removed; }
+	}
+	else if(type == 98)
+	{
+		int count = 0;
+		for(const Detail& other : candidate) if(other.detailType == 98) ++count;
+		if(count >= 10)
+		{
+			error = QStringLiteral("A spacecraft can have at most ten contrail emitters.");
+			return PlacementResult::Rejected;
+		}
+	}
+	if(candidate.size() >= MaximumRecords)
+	{
+		error = QStringLiteral("The equipment record limit has been reached.");
+		return PlacementResult::Unavailable;
+	}
+	detail.detailId = NextDetailId(candidate);
+	if(!detail.detailId)
+	{
+		error = QStringLiteral("No equipment identifier is available.");
+		return PlacementResult::Unavailable;
+	}
+	InsertDetail(candidate, detail);
+	details = std::move(candidate);
+	placed = detail;
+	return PlacementResult::Added;
+}
+
+int DeleteOne(QVector<Detail>& details, int deck, quint16 packed, int type)
+{
+	for(int i = 0; i < details.size(); ++i)
+	{
+		const Detail& detail = details.at(i);
+		if(detail.deck != deck || detail.packedXY != packed) continue;
+		if(type && detail.detailType != type) return -1;
+		const int removedType = detail.detailType;
+		details.removeAt(i);
+		return removedType;
+	}
+	return -1;
+}
+
+bool ValidEditInput(int deck, const QPointF& cursor, int brushRadius, quint16& packed, QString& error)
+{
+	if(deck < -42 || deck > 42)
+	{
+		error = QStringLiteral("Equipment must be on a legacy deck from -42 through 42.");
+		return false;
+	}
+	if(brushRadius < 0 || brushRadius > 25)
+	{
+		error = QStringLiteral("The equipment brush radius is outside the legacy grid.");
+		return false;
+	}
+	if(!SnapDetail(cursor, packed))
+	{
+		error = QStringLiteral("The equipment position is outside the legacy design grid.");
+		return false;
+	}
+	return true;
+}
+}
+
+QString DetailName(int type)
+{
+	static const char* const names[] = {
+		"None",
+		"Navigator Station",
+		"Double Berth",
+		"Large Hull Door",
+		"Medic Station",
+		"Door",
+		"Engineer Station",
+		"Fire Control Station",
+		"Hatch",
+		"Hull Opening",
+		"Maneuver Drive",
+		"Surgery Unit",
+		"Helm",
+		"Power Relay Station",
+		"Power Plant",
+		"Sensor Station",
+		"Sensors",
+		"Shield Station",
+		"Shields",
+		"Transporter Station",
+		"Transporter Pad",
+		"Turret (Side)",
+		"Turret (Top/Bottom)",
+		"Weapon System",
+		"FTL Drive",
+		"Double Berth",
+		"Double Berth",
+		"Double Berth",
+		"Double Berth",
+		"Double Berth",
+		"Double Berth",
+		"Double Berth",
+		"Life Support",
+		"Turret (Top/Bottom)",
+		"Turret (Side)",
+		"Turret (Side)",
+		"Turret (Side)",
+		"Turret (Side)",
+		"Turret (Side)",
+		"Turret (Side)",
+		"Turret (Side)",
+		"Space Fighter Location",
+		"Space Fighter Location",
+		"Space Fighter Location",
+		"Space Fighter Location",
+		"Space Fighter Location",
+		"Space Fighter Location",
+		"Space Fighter Location",
+		"Space Fighter Location",
+		"Crew Door",
+		"Hull Door",
+		"Crew Hatch",
+		"Hull Hatch",
+		"Large Door",
+		"Large Crew Door",
+		"Wall Opening",
+		"Railing",
+		"Vehicle Location",
+		"Vehicle Location",
+		"Vehicle Location",
+		"Vehicle Location",
+		"Vehicle Location",
+		"Vehicle Location",
+		"Vehicle Location",
+		"Vehicle Location",
+		"Single Berth",
+		"Single Berth",
+		"Single Berth",
+		"Single Berth",
+		"Single Berth",
+		"Single Berth",
+		"Single Berth",
+		"Single Berth",
+		"Captain's Chair",
+		"Game Table",
+		"Game Table",
+		"Pivot Point",
+		"Hatch",
+		"Hatch",
+		"Hatch",
+		"Hatch",
+		"Hatch",
+		"Hatch",
+		"Hatch",
+		"Crew Hatch",
+		"Crew Hatch",
+		"Crew Hatch",
+		"Crew Hatch",
+		"Crew Hatch",
+		"Crew Hatch",
+		"Crew Hatch",
+		"Hull Hatch",
+		"Hull Hatch",
+		"Hull Hatch",
+		"Hull Hatch",
+		"Hull Hatch",
+		"Hull Hatch",
+		"Hull Hatch",
+		"Contrail Emitter",
+		"Weapon Emitter",
+		"Flag Pole",
+		"Stairs, Straight",
+		"Stairs, Straight",
+		"Stairs, Straight",
+		"Stairs, Straight",
+		"Stairs, Straight",
+		"Stairs, Straight",
+		"Stairs, Straight",
+		"Stairs, Straight",
+		"Stairs, Turn Left",
+		"Stairs, Turn Left",
+		"Stairs, Turn Left",
+		"Stairs, Turn Left",
+		"Stairs, Turn Left",
+		"Stairs, Turn Left",
+		"Stairs, Turn Left",
+		"Stairs, Turn Left",
+		"Stairs, Turn Right",
+		"Stairs, Turn Right",
+		"Stairs, Turn Right",
+		"Stairs, Turn Right",
+		"Stairs, Turn Right",
+		"Stairs, Turn Right",
+		"Stairs, Turn Right",
+		"Stairs, Turn Right",
+		"Stairs, U-turn Left",
+		"Stairs, U-turn Left",
+		"Stairs, U-turn Left",
+		"Stairs, U-turn Left",
+		"Stairs, U-turn Left",
+		"Stairs, U-turn Left",
+		"Stairs, U-turn Left",
+		"Stairs, U-turn Left",
+		"Stairs, U-turn Right",
+		"Stairs, U-turn Right",
+		"Stairs, U-turn Right",
+		"Stairs, U-turn Right",
+		"Stairs, U-turn Right",
+		"Stairs, U-turn Right",
+		"Stairs, U-turn Right",
+		"Stairs, U-turn Right",
+		"Troop Station",
+		"Light Pole"
+	};
+	return type >= 0 && type < int(sizeof(names) / sizeof(names[0]))
+		? QString::fromLatin1(names[type]) : QStringLiteral("Unknown equipment (%1)").arg(type);
+}
+
+QString DetailPlacementDescription(int type)
+{
+	if(type <= 0 || type >= int(sizeof(Placements) / sizeof(Placements[0])))
+		return QStringLiteral("This equipment type is unavailable.");
+	const Placement placement = Placements[type];
+	QString text;
+	switch(placement.room)
+	{
+	case -1: text = QStringLiteral("Place inside an apartment, captain's cabin, crew cabin or stateroom; the berth must fit."); break;
+	case -2: text = QStringLiteral("Place on an exterior wall, away from room corners and fuel cells."); break;
+	case -3: text = QStringLiteral("Place on a wall shared by exactly two rooms, away from room corners and fuel cells."); break;
+	case -4: text = QStringLiteral("Place inside rooms on this deck and the deck below, away from walls and fuel cells."); break;
+	case -5: text = QStringLiteral("Place inside exactly one room on this deck or the deck below, away from walls and fuel cells."); break;
+	case -6: text = QStringLiteral("Place within the ship's overall bounds; replaces its existing pivot point."); break;
+	case -7: text = QStringLiteral("Place inside or on a room; no duplicate at the same position, at most ten per ship."); break;
+	case -8: text = QStringLiteral("This outdoor building equipment cannot be placed in a spacecraft."); break;
+	case -9: text = QStringLiteral("The complete stair footprint must fit on this deck, outside fuel cells and roofs."); break;
+	case -10: text = QStringLiteral("Place inside a room, away from walls and fuel cells."); break;
+	default:
+	{
+		QString room;
+		switch(placement.room)
+		{
+		case 2: room = QStringLiteral("bridge"); break;
+		case 8: room = QStringLiteral("engine room"); break;
+		case 13: room = QStringLiteral("vehicle bay"); break;
+		case 14: room = QStringLiteral("lounge or galley"); break;
+		case 16: room = QStringLiteral("sensor room"); break;
+		case 17: room = QStringLiteral("shield room"); break;
+		case 18: room = QStringLiteral("sick bay"); break;
+		case 20: room = QStringLiteral("transporter room"); break;
+		case 21: room = QStringLiteral("weapon room"); break;
+		default: room = QStringLiteral("room type %1").arg(placement.room); break;
+		}
+		if(placement.bridge && placement.room != 2) room += QStringLiteral(" or bridge");
+		text = QStringLiteral("Requires a %1.").arg(room);
+		if(LimitOne(type)) text += QStringLiteral(" One station of this type per room.");
+		if(type >= 57 && type <= 64) text += QStringLiteral(" The complete vehicle footprint must fit inside.");
+		if(type == 99) text += QStringLiteral(" One emitter per Room Number, including other decks.");
+		break;
+	}
+	}
+	return text;
+}
+
+int CanonicalDetailType(int type)
+{
+	if(type >= 25 && type <= 31) return 2;
+	if(type == 33) return 22;
+	if(type >= 34 && type <= 40) return 21;
+	if(type >= 57 && type <= 64) return 57;
+	if(type >= 65 && type <= 72) return 65;
+	if(type == 75) return 74;
+	if(type >= 77 && type <= 83) return 8;
+	if(type >= 84 && type <= 90) return 51;
+	if(type >= 91 && type <= 97) return 52;
+	if(IsStairs(type)) return 101 + ((type - 101) / 8) * 8;
+	return type;
+}
+
+int DetailRotationStep(int type) { return RotationStep(type); }
+
+int RotateDetailType(int type, int steps)
+{
+	const int base = CanonicalDetailType(type);
+	const int count = base == 74 ? 2 : 8;
+	const int step = ((RotationStep(type) + steps % count) % count + count) % count;
+	if(base == 2) return step ? 24 + step : base;
+	if(base == 8) return step ? 76 + step : base;
+	if(base == 21) return step ? 33 + step : base;
+	if(base == 51) return step ? 83 + step : base;
+	if(base == 52) return step ? 90 + step : base;
+	if(base == 57 || base == 65 || base == 74 || IsStairs(base)) return base + step;
+	return type;
+}
+
+DetailEditResult PlaceDetail(Design& design, int deck, const QPointF& cursor,
+	int type, quint16 commodity, int brushRadius)
+{
+	DetailEditResult result;
+	quint16 packed = 0;
+	if(!ValidEditInput(deck, cursor, brushRadius, packed, result.error)) return result;
+	if(type <= 0 || type >= int(sizeof(Placements) / sizeof(Placements[0])))
+	{
+		result.error = QStringLiteral("The selected equipment type is unavailable.");
+		return result;
+	}
+	QVector<Geometry> rooms;
+	if(!CollectRooms(design, rooms, result.error)) return result;
+	QVector<Detail> details = design.details;
+	Detail center;
+	int removed = 0;
+	const PlacementResult placed = PlaceOne(details, rooms, design.header.designId, deck,
+		packed, type, commodity, center, removed, result.error);
+	if(placed == PlacementResult::Rejected || placed == PlacementResult::Unavailable) return result;
+	result.accepted = true;
+	result.detailId = center.detailId;
+	if(placed == PlacementResult::Unchanged) return result;
+	result.added = 1;
+	result.removed = removed;
+	// The original special marker tools do not use the equipment brush.
+	if(brushRadius && type != 76 && type != 98 && type != 99 && center.roomId)
+	{
+		const Geometry* room = nullptr;
+		for(const Geometry& candidate : rooms)
+			if(candidate.room->roomId == center.roomId) { room = &candidate; break; }
+		if(room)
+		{
+			const bool boundaryAllowed = type < 24 && ((0x854400U >> type) & 1) != 0;
+			for(int x = -brushRadius; x <= brushRadius; ++x)
+				for(int y = -brushRadius; y <= brushRadius; ++y)
+				{
+					if(x == 0 && y == 0) continue;
+					// The brush loop multiplies its offsets in single precision,
+					// then rounds each resulting location back to the legacy grid.
+					const QPointF location = cursor + QPointF(double(float(x) * float(CoordinateSpacing)),
+						double(float(y) * float(CoordinateSpacing)));
+					quint16 brushPoint = 0;
+					if(!SnapDetail(location, brushPoint)) continue;
+					const QPointF snapped = DecodePoint(brushPoint);
+					if(!Inside(room->polygon, snapped) && !(boundaryAllowed && On(room->polygon, snapped))) continue;
+					Detail next;
+					QString error;
+					const PlacementResult applied = PlaceOne(details, rooms, design.header.designId,
+						deck, brushPoint, type, commodity, next, removed, error);
+					if(applied == PlacementResult::Unavailable)
+					{
+						DetailEditResult failed;
+						failed.error = error;
+						return failed;
+					}
+					if(applied == PlacementResult::Added) { ++result.added; result.removed += removed; }
+				}
+		}
+	}
+	design.details = std::move(details);
+	result.changed = true;
+	return result;
+}
+
+DetailEditResult DeleteDetails(Design& design, int deck, const QPointF& cursor, int brushRadius)
+{
+	DetailEditResult result;
+	quint16 packed = 0;
+	if(!ValidEditInput(deck, cursor, brushRadius, packed, result.error)) return result;
+	result.accepted = true;
+	QVector<Detail> details = design.details;
+	const int type = DeleteOne(details, deck, packed, 0);
+	if(type < 0) return result;
+	result.removed = 1;
+	// The original still deletes a type-zero source record, but its zero
+	// return value prevents the caller from expanding the erase brush.
+	for(int x = -brushRadius; type != 0 && x <= brushRadius; ++x)
+		for(int y = -brushRadius; y <= brushRadius; ++y)
+		{
+			if(x == 0 && y == 0) continue;
+			const QPointF location = cursor + QPointF(double(float(x) * float(CoordinateSpacing)),
+				double(float(y) * float(CoordinateSpacing)));
+			quint16 brushPoint = 0;
+			if(SnapDetail(location, brushPoint) && DeleteOne(details, deck, brushPoint, type) >= 0) ++result.removed;
+		}
+	design.details = std::move(details);
+	result.changed = true;
+	return result;
 }
 
 bool ReconcileDetails(Design& candidate, QString& error)

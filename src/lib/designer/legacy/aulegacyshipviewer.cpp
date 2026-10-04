@@ -1,9 +1,12 @@
 #include "aulegacyshipviewer.h"
 #include "aulegacyship.h"
 #include "aulegacyshipedit.h"
+#include "aulegacyshipdetails.h"
+#include "aulegacyshipequipment.h"
 #include "aulegacyshipgeometry.h"
 #include "aulegacyshipicons.h"
 #include "aulegacyshiprender.h"
+#include "aulegacyshipvehicles.h"
 
 #include <QAction>
 #include <QActionGroup>
@@ -25,12 +28,14 @@
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QKeySequence>
+#include <QKeyEvent>
 #include <QLabel>
 #include <QMap>
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPlainTextEdit>
+#include <QPixmap>
 #include <QSet>
 #include <QSettings>
 #include <QScrollBar>
@@ -112,6 +117,119 @@ const RoomChoice RoomChoices[] = {
 	{ 16, "Sensor Room", "dp_SensorRoom" }, { 17, "Shield Room", "dp_ShieldRoom" },
 	{ 18, "Sickbay", "dp_SickBay" }, { 19, "Stateroom", "dp_Stateroom" },
 	{ 20, "Transporter Room", "dp_TransporterRoom" }, { 21, "Weapon Bay", "dp_WeaponBay" }
+};
+
+struct EquipmentChoice
+{
+	int type;
+	quint16 commodity;
+	const char* name;
+	const char* icon;
+	int row;
+	int column;
+};
+
+// Original AuView equipment slots and AuTabDesign vehicle commodity IDs.
+const EquipmentChoice EquipmentChoices[] = {
+	{73, 0, "Captain's chair", "dp_CmdConsole", 0, 1},
+	{12, 0, "Helm", "dp_PilotConsole", 0, 2},
+	{6, 0, "Engineer station", "dp_EngineerConsole", 0, 3},
+	{17, 0, "Shield station", "dp_ShieldConsole", 0, 4},
+	{15, 0, "Sensor station", "dp_SensorConsole", 0, 5},
+	{1, 0, "Navigator station", "dp_NavConsole", 0, 6},
+	{7, 0, "Fire control station", "dp_FireControlConsole", 0, 7},
+	{13, 0, "Power relay station", "dp_PowerConsole", 0, 8},
+	{4, 0, "Medic station", "dp_SurgeryConsole", 0, 9},
+	{19, 0, "Transporter station", "dp_TransporterConsole", 0, 10},
+	{22, 0, "Top/bottom turret", "dp_TurretTopBottom", 0, 11},
+	{21, 0, "Side turret", "dp_TurretSide", 0, 12},
+	{10, 0, "Maneuver drive", "dp_ManeuverDrive", 1, 2},
+	{14, 0, "Power plant", "dp_PowerPlant", 1, 3},
+	{18, 0, "Shields", "dp_Shield", 1, 4},
+	{16, 0, "Sensors", "dp_Sensor", 1, 5},
+	{24, 0, "FTL drive", "dp_WormholeDrive", 1, 6},
+	{23, 0, "Weapon system", "dp_Weapon", 1, 7},
+	{32, 0, "Life support", "dp_LifeSupport", 1, 8},
+	{11, 0, "Surgery unit", "dp_OperatingTable", 1, 9},
+	{20, 0, "Transporter pad", "dp_TransporterPad", 1, 10},
+	{65, 0, "Single berth", "dp_Berth0", 1, 11},
+	{2, 0, "Double berth", "dp_Berth2", 1, 12},
+	{50, 0, "Hull door", "dp_HullDoor", 2, 1},
+	{49, 0, "Crew door", "dp_CrewDoor", 2, 2},
+	{5, 0, "Door", "dp_Door", 2, 3},
+	{3, 0, "Large hull door", "dp_CargoDoor", 2, 4},
+	{54, 0, "Large crew door", "dp_LargeCrewDoor", 2, 5},
+	{53, 0, "Large door", "dp_LargeDoor", 2, 6},
+	{52, 0, "Hull hatch", "dp_HullHatch", 2, 7},
+	{51, 0, "Crew hatch", "dp_CrewHatch", 2, 8},
+	{8, 0, "Hatch", "dp_Hatch", 2, 9},
+	{55, 0, "Wall opening", "dp_WallOpening", 2, 10},
+	{9, 0, "Hull opening", "dp_HullOpening", 2, 11},
+	{56, 0, "Railing", "dp_Railing", 2, 12},
+	{141, 0, "Troop station", "Troop", 3, 6},
+	{101, 0, "Straight stairs", "dp_StairsStraight", 3, 8},
+	{109, 0, "Stairs turning left", "dp_StairsTurnLeft", 3, 9},
+	{117, 0, "Stairs turning right", "dp_StairsTurnRight", 3, 10},
+	{125, 0, "Stairs U-turn left", "dp_StairsUTurnLeft", 3, 11},
+	{133, 0, "Stairs U-turn right", "dp_StairsUTurnRight", 3, 12},
+	{76, 0, "Pivot point", "dp_PivotPoint", 4, 0},
+	{98, 0, "Contrail emitter", "dp_ContrailEmitter", 4, 1},
+	{99, 0, "Weapon emitter", "dp_WeaponEmitter", 4, 2},
+	{74, 0, "Game table", "dp_GameTable", 4, 4},
+	{57, 9, "Space transport", "c_CommercialAircraft", 4, 6},
+	{57, 8, "Space fighter F1", "c_SpaceFighter", 4, 7},
+	{57, 231, "Space fighter F2", "c_SpaceFighter2", 4, 8},
+	{57, 104, "APC", "c_APC", 4, 10},
+	{57, 133, "Motorbike", "c_MotorBike", 4, 11},
+	{57, 82, "SUV", "c_Suv", 4, 12}
+};
+
+const EquipmentChoice* EquipmentFor(int type, quint16 commodity)
+{
+	const int base = AuLegacyShip::CanonicalDetailType(type);
+	for (const EquipmentChoice& choice : EquipmentChoices)
+		if (choice.type == base && (base != 57 || choice.commodity == commodity))
+			return &choice;
+	return nullptr;
+}
+
+bool EquipmentUsesBrush(int type)
+{
+	return type == 10 || type == 14 || type == 16 || type == 18
+		|| type == 23 || type == 24 || type == 32;
+}
+
+bool EquipmentCanRotate(int type)
+{
+	const int base = AuLegacyShip::CanonicalDetailType(type);
+	return base == 2 || base == 8 || base == 51 || base == 52 || base == 57
+		|| base == 65 || base == 74 || (base >= 101 && base <= 133);
+}
+
+// Borders follow grid cells so resizing/docking preserves the original layout.
+class PaletteGroups : public QWidget
+{
+public:
+	explicit PaletteGroups(QWidget* parent) : QWidget(parent) {}
+	QVector<QRect> groups;
+
+protected:
+	void paintEvent(QPaintEvent* event) override
+	{
+		QWidget::paintEvent(event);
+		const QGridLayout* grid = static_cast<QGridLayout*>(layout());
+		if (!grid) return;
+		QPainter painter(this);
+		painter.setRenderHint(QPainter::Antialiasing);
+		painter.setPen(QPen(QColor(160, 57, 64, 210), 1.0));
+		painter.setBrush(Qt::NoBrush);
+		for (const QRect& group : groups)
+		{
+			const QRectF bounds = grid->cellRect(group.top(), group.left())
+				.united(grid->cellRect(group.bottom(), group.right()));
+			painter.drawRoundedRect(bounds.adjusted(-1.0, -1.0, 1.0, 1.0), 4.0, 4.0);
+		}
+	}
 };
 
 QString RoomName(int type)
@@ -204,12 +322,19 @@ public:
 	quint8 gridMask = 5;
 	bool editing = false;
 	bool erasing = false;
+	bool equipmentTool = false;
+	int equipmentBrushRadius = 0;
+	int equipmentRotation = 0;
+	QIcon equipmentIcon;
+	QRectF equipmentFootprint;
 	QString emptyMessage;
 	std::function<void(const QPointF&)> cursorMoved;
 	std::function<void(const QPointF&)> cellEntered;
+	std::function<void(int)> rotateEquipment;
 
 	void SetEditing(bool active, bool erase)
 	{
+		ResetEquipmentStroke();
 		editing = active;
 		erasing = erase;
 		setDragMode(active ? QGraphicsView::NoDrag : QGraphicsView::ScrollHandDrag);
@@ -217,7 +342,24 @@ public:
 		viewport()->update();
 	}
 
+	void ResetEquipmentStroke()
+	{
+		m_LastEquipmentPointKnown = false;
+	}
+
 protected:
+	void keyPressEvent(QKeyEvent* event) override
+	{
+		if (editing && equipmentTool && rotateEquipment
+			&& (event->key() == Qt::Key_Left || event->key() == Qt::Key_Right))
+		{
+			rotateEquipment(event->key() == Qt::Key_Left ? 1 : -1);
+			event->accept();
+			return;
+		}
+		QGraphicsView::keyPressEvent(event);
+	}
+
 	void wheelEvent(QWheelEvent* event) override
 	{
 		const int delta = event->angleDelta().y();
@@ -248,8 +390,8 @@ protected:
 		}
 		if (editing && event->button() == Qt::LeftButton)
 		{
-			if (cellEntered)
-				cellEntered(m_Cursor);
+			ResetEquipmentStroke();
+			EditCursor();
 			event->accept();
 			return;
 		}
@@ -271,8 +413,8 @@ protected:
 		if (editing)
 		{
 			UpdateCursor(event->pos());
-			if ((event->buttons() & Qt::LeftButton) && cellEntered)
-				cellEntered(m_Cursor);
+			if (event->buttons() & Qt::LeftButton)
+				EditCursor();
 			event->accept();
 			return;
 		}
@@ -292,6 +434,7 @@ protected:
 		}
 		if (editing && event->button() == Qt::LeftButton)
 		{
+			ResetEquipmentStroke();
 			event->accept();
 			return;
 		}
@@ -364,6 +507,39 @@ protected:
 		QGraphicsView::drawForeground(painter, rect);
 		if (!editing || !m_CursorKnown)
 			return;
+		if (equipmentTool)
+		{
+			const double spacing = AuLegacyShip::CoordinateSpacing;
+			const QPointF point = ScenePoint(QPointF(std::round(m_Cursor.x() / spacing) * spacing,
+				std::round(m_Cursor.y() / spacing) * spacing));
+			painter->save();
+			painter->translate(point);
+			QPen pen(erasing ? QColor(255, 116, 110) : QColor(129, 218, 255), 1.5);
+			pen.setCosmetic(true);
+			painter->setPen(pen);
+			painter->setBrush(Qt::NoBrush);
+			if (!equipmentFootprint.isEmpty())
+			{
+				painter->save();
+				painter->rotate(-equipmentRotation * 45.0);
+				painter->drawRect(equipmentFootprint);
+				painter->restore();
+			}
+			else
+			{
+				const double radius = (equipmentBrushRadius + 0.5) * spacing;
+				painter->drawRect(QRectF(-radius, -radius, radius * 2, radius * 2));
+			}
+			painter->drawLine(QPointF(-spacing / 3, 0), QPointF(spacing / 3, 0));
+			painter->drawLine(QPointF(0, -spacing / 3), QPointF(0, spacing / 3));
+			const double pixelScale = std::max(0.05, transform().m11());
+			painter->scale(1.0 / pixelScale, 1.0 / pixelScale);
+			painter->rotate(-equipmentRotation * 45.0);
+			if (!equipmentIcon.isNull())
+				painter->drawPixmap(QRect(-12, -12, 24, 24), equipmentIcon.pixmap(24, 24));
+			painter->restore();
+			return;
+		}
 		QPolygonF cell = AuLegacyShip::Geometry::FillShape(gridMask, m_Cursor);
 		if (cell.isEmpty())
 			return;
@@ -392,6 +568,22 @@ protected:
 	}
 
 private:
+	void EditCursor()
+	{
+		if (!cellEntered)
+			return;
+		if (equipmentTool)
+		{
+			const QPointF snapped(std::round(m_Cursor.x() / AuLegacyShip::CoordinateSpacing),
+				std::round(m_Cursor.y() / AuLegacyShip::CoordinateSpacing));
+			if (m_LastEquipmentPointKnown && snapped == m_LastEquipmentPoint)
+				return;
+			m_LastEquipmentPoint = snapped;
+			m_LastEquipmentPointKnown = true;
+		}
+		cellEntered(m_Cursor);
+	}
+
 	void UpdateCursor(const QPoint& pixel)
 	{
 		m_Cursor = ScenePoint(mapToScene(pixel));
@@ -402,6 +594,8 @@ private:
 	}
 
 	QPointF m_Cursor;
+	QPointF m_LastEquipmentPoint;
+	bool m_LastEquipmentPointKnown = false;
 	QPoint m_PanPosition;
 	bool m_CursorKnown = false;
 	bool m_Panning = false;
@@ -410,21 +604,37 @@ private:
 class DetailMarker : public QGraphicsItem
 {
 public:
-	explicit DetailMarker(unsigned int detailType)
-		: m_Color(RecordColor(detailType)), m_Shape(detailType % 3u)
+	explicit DetailMarker(const AuLegacyShip::Detail& detail)
+		: m_Color(RecordColor(detail.detailType)), m_Shape(detail.detailType % 3u)
 	{
 		setFlags(QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIgnoresTransformations);
 		setZValue(10.0);
+		const EquipmentChoice* choice = EquipmentFor(detail.detailType, detail.commodityIdNormalized);
+		if (choice)
+			m_Icon = AuLegacyShipIcon(QString::fromLatin1(choice->icon)).pixmap(16, 16);
+		m_Rotation = AuLegacyShip::DetailRotationStep(detail.detailType);
 	}
 
 	QRectF boundingRect() const override
 	{
-		return QRectF(-5.0, -5.0, 10.0, 10.0);
+		return QRectF(-13.0, -13.0, 26.0, 26.0);
 	}
 
 	void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget*) override
 	{
 		const bool selected = (option->state & QStyle::State_Selected) != 0;
+		if (!m_Icon.isNull())
+		{
+			if (selected)
+			{
+				painter->setPen(QPen(Qt::white, 1.2));
+				painter->setBrush(QColor(32, 49, 72, 210));
+				painter->drawRoundedRect(QRectF(-11, -11, 22, 22), 3, 3);
+			}
+			painter->rotate(-45.0 * m_Rotation);
+			painter->drawPixmap(-8, -8, m_Icon);
+			return;
+		}
 		QPen pen(selected ? QColor(Qt::white) : m_Color, selected ? 2.0 : 1.2);
 		pen.setCosmetic(true);
 		painter->setPen(pen);
@@ -446,13 +656,15 @@ public:
 private:
 	QColor m_Color;
 	unsigned int m_Shape;
+	QPixmap m_Icon;
+	int m_Rotation = 0;
 };
 }
 
 class AuLegacyShipViewer::Impl
 {
 public:
-	enum ToolMode { InspectMode, PaintMode, EraseMode };
+	enum ToolMode { InspectMode, PaintMode, EraseMode, EquipmentMode, DeleteEquipmentMode, DeleteEquipmentAreaMode };
 
 	explicit Impl(AuLegacyShipViewer* owner) : window(owner),
 		settings(QSettings::NativeFormat, QSettings::UserScope,
@@ -496,7 +708,7 @@ public:
 			view->viewport()->update();
 		});
 
-		QActionGroup* tools = new QActionGroup(window);
+		tools = new QActionGroup(window);
 		tools->setExclusive(true);
 		inspectAction = MakeAction("Inspect", "dp_Select", "Select a room or equipment marker to inspect it.");
 		eraseAction = MakeAction("Erase room cells", "dp_DelRoomCells", "Erase cells from the current deck.");
@@ -627,13 +839,16 @@ public:
 			"- Combine the four grid directions to change the cell shape.<br>"
 			"- Room Number distinguishes rooms of the same type on the same deck. Change it before painting a separate room.<br>"
 			"- Left click or drag to paint. Select Erase Room Cells to erase.<br>"
+			"- Select equipment, then left click or drag to place it. Its tooltip lists the room restrictions.<br>"
+			"- Left/right arrow keys rotate berths, vehicles, hatches and stairs before placement.<br>"
+			"- The brush arrows resize machinery placement and Erase Equipment Area.<br>"
 			"- Middle drag pans; the mouse wheel zooms.<br>"
 			"- Use the selection arrow to inspect rooms and equipment.<br><br>"
 			"- Render Mode switches between the floor plan and the textured spacecraft.<br>"
 			"- In 3D, left drag orbits, middle/right drag pans, and the wheel zooms. F fits the ship.<br>"
 			"- Cut away above current deck exposes the interior; the deck arrows move the cut.<br><br>"
 			"<b>CURRENT EDITOR</b><br>"
-			"Room painting and erasing are available in the floor plan. Equipment placement and saving are not available yet; their buttons are disabled.<br><br>"
+			"Rooms and equipment can be edited in the floor plan. Unavailable tools remain disabled. Saving is not available yet.<br><br>"
 			"<b>WHEN FINISHED</b><br>"
 			"Press Escape to exit the designer.<br>"
 			"Edits last for this session. New, Open and Exit ask before discarding changes.<br>"
@@ -666,6 +881,11 @@ public:
 			coordinates->setText(QStringLiteral("X %1   Y %2 ft").arg(point.x(), 0, 'f', 2).arg(point.y(), 0, 'f', 2));
 		};
 		view->cellEntered = [this](const QPointF& point) { EditAt(point); };
+		view->rotateEquipment = [this](int steps) {
+			if (toolMode != EquipmentMode || !EquipmentCanRotate(selectedEquipmentType)) return;
+			selectedEquipmentType = AuLegacyShip::RotateDetailType(selectedEquipmentType, steps);
+			SetToolMode(EquipmentMode);
+		};
 		QObject::connect(scene, &QGraphicsScene::selectionChanged, window, [this]() { ShowSelection(); });
 		ShowOverview();
 	}
@@ -675,6 +895,7 @@ public:
 		QObject::disconnect(scene, nullptr, window, nullptr);
 		view->cursorMoved = std::function<void(const QPointF&)>();
 		view->cellEntered = std::function<void(const QPointF&)>();
+		view->rotateEquipment = std::function<void(int)>();
 	}
 
 	QAction* MakeAction(const char* text, const char* icon, const char* tip)
@@ -724,9 +945,10 @@ public:
 		AddButton(outer, lineActions[3], 3, 2);
 		AddButton(outer, UnavailableAction("Move or copy", "dp_Move", "Moving and copying rooms is not available yet."), 3, 4);
 
-		QWidget* roomPalette = new QWidget(parent);
+		PaletteGroups* roomPalette = new PaletteGroups(parent);
+		roomPalette->groups << QRect(0, 0, 8, 3) << QRect(9, 0, 1, 3);
 		QGridLayout* rooms = new QGridLayout(roomPalette);
-		rooms->setContentsMargins(0, 0, 0, 0);
+		rooms->setContentsMargins(2, 2, 2, 2);
 		rooms->setSpacing(2);
 		rooms->setColumnMinimumWidth(8, 6);
 		rooms->setColumnStretch(8, 1);
@@ -749,46 +971,63 @@ public:
 		AddButton(rooms, roomDown, 2, 9);
 		outer->addWidget(roomPalette, 0, 6, 4, 8);
 
-		QFrame* equipmentPalette = new QFrame(parent);
-		equipmentPalette->setStyleSheet(QStringLiteral("QFrame { border-top: 1px solid #2e466f; } QToolButton, QLabel { border-top: 0; }"));
+		PaletteGroups* equipmentPalette = new PaletteGroups(parent);
+		equipmentPalette->groups << QRect(0, 0, 1, 2) << QRect(1, 0, 12, 2)
+			<< QRect(1, 2, 12, 1) << QRect(13, 0, 2, 3) << QRect(8, 3, 5, 1)
+			<< QRect(0, 4, 3, 1) << QRect(6, 4, 7, 1);
 		QGridLayout* equipment = new QGridLayout(equipmentPalette);
-		equipment->setContentsMargins(0, 6, 0, 3);
-		equipment->setSpacing(2);
-		struct EquipmentButton { const char* name; const char* icon; int row; int column; };
-		const EquipmentButton buttons[] = {
-			{"Erase equipment", "dp_DelDetail", 0, 0}, {"Captain's chair", "dp_CmdConsole", 0, 1},
-			{"Helm", "dp_PilotConsole", 0, 2}, {"Engineer station", "dp_EngineerConsole", 0, 3},
-			{"Shield station", "dp_ShieldConsole", 0, 4}, {"Sensor station", "dp_SensorConsole", 0, 5},
-			{"Navigator station", "dp_NavConsole", 0, 6}, {"Fire control station", "dp_FireControlConsole", 0, 7},
-			{"Power relay station", "dp_PowerConsole", 0, 8}, {"Medic station", "dp_SurgeryConsole", 0, 9},
-			{"Transporter station", "dp_TransporterConsole", 0, 10}, {"Top/bottom turret", "dp_TurretTopBottom", 0, 11},
-			{"Side turret", "dp_TurretSide", 0, 12}, {"Increase equipment brush size", "dp_BrushSzUp", 0, 14},
-			{"Erase equipment area", "dp_DelDetails", 1, 0}, {"Maneuver drive", "dp_ManeuverDrive", 1, 2},
-			{"Power plant", "dp_PowerPlant", 1, 3}, {"Shields", "dp_Shield", 1, 4},
-			{"Sensors", "dp_Sensor", 1, 5}, {"FTL drive", "dp_WormholeDrive", 1, 6},
-			{"Weapon system", "dp_Weapon", 1, 7}, {"Life support", "dp_LifeSupport", 1, 8},
-			{"Surgery unit", "dp_OperatingTable", 1, 9}, {"Transporter pad", "dp_TransporterPad", 1, 10},
-			{"Single berth", "dp_Berth0", 1, 11}, {"Double berth", "dp_Berth2", 1, 12},
-			{"Hull door", "dp_HullDoor", 2, 1}, {"Crew door", "dp_CrewDoor", 2, 2},
-			{"Door", "dp_Door", 2, 3}, {"Large hull door", "dp_CargoDoor", 2, 4},
-			{"Large crew door", "dp_LargeCrewDoor", 2, 5}, {"Large door", "dp_LargeDoor", 2, 6},
-			{"Hull hatch", "dp_HullHatch", 2, 7}, {"Crew hatch", "dp_CrewHatch", 2, 8},
-			{"Hatch", "dp_Hatch", 2, 9}, {"Wall opening", "dp_WallOpening", 2, 10},
-			{"Hull opening", "dp_HullOpening", 2, 11}, {"Railing", "dp_Railing", 2, 12},
-			{"Decrease equipment brush size", "dp_BrushSzDown", 2, 14}, {"Troop station", "Troop", 3, 6},
-			{"Straight stairs", "dp_StairsStraight", 3, 8}, {"Stairs turning left", "dp_StairsTurnLeft", 3, 9},
-			{"Stairs turning right", "dp_StairsTurnRight", 3, 10}, {"Stairs U-turn left", "dp_StairsUTurnLeft", 3, 11},
-			{"Stairs U-turn right", "dp_StairsUTurnRight", 3, 12}, {"Pivot point", "dp_PivotPoint", 4, 0},
-			{"Contrail emitter", "dp_ContrailEmitter", 4, 1}, {"Weapon emitter", "dp_WeaponEmitter", 4, 2},
-			{"Game table", "dp_GameTable", 4, 4}, {"Space transport", "c_CommercialAircraft", 4, 6},
-			{"Space fighter F1", "c_SpaceFighter", 4, 7}, {"Space fighter F2", "c_SpaceFighter2", 4, 8},
-			{"APC", "c_APC", 4, 10}, {"Motorbike", "c_MotorBike", 4, 11}, {"SUV", "c_Suv", 4, 12}
-		};
-		for (const EquipmentButton& button : buttons)
-			AddButton(equipment, UnavailableAction(button.name, button.icon, "Equipment placement and erasure are not available yet."), button.row, button.column);
-		QLabel* brushSize = new QLabel(QStringLiteral("1"), equipmentPalette);
+		equipment->setContentsMargins(2, 6, 2, 3);
+		equipment->setSpacing(3);
+		deleteEquipmentAction = MakeAction("Erase equipment", "dp_DelDetail", "Remove equipment at the cursor. Left click or drag.");
+		deleteEquipmentAreaAction = MakeAction("Erase equipment area", "dp_DelDetails", "Remove equipment at the cursor, then equipment of that same type within the brush.");
+		for (QAction* action : { deleteEquipmentAction, deleteEquipmentAreaAction })
+		{
+			action->setCheckable(true);
+			tools->addAction(action);
+		}
+		QObject::connect(deleteEquipmentAction, &QAction::triggered, window, [this]() { SetToolMode(DeleteEquipmentMode); });
+		QObject::connect(deleteEquipmentAreaAction, &QAction::triggered, window, [this]() { SetToolMode(DeleteEquipmentAreaMode); });
+		AddButton(equipment, deleteEquipmentAction, 0, 0);
+		AddButton(equipment, deleteEquipmentAreaAction, 1, 0);
+		for (const EquipmentChoice& choice : EquipmentChoices)
+		{
+			QAction* action = MakeAction(choice.name, choice.icon, choice.name);
+			const bool supported = choice.commodity ? AuLegacyShip::Rendering::VehicleSupported(choice.commodity)
+				: AuLegacyShip::Rendering::EquipmentSupported(choice.type)
+					|| AuLegacyShip::Rendering::ResourceEquipmentSupported(choice.type);
+			action->setEnabled(supported);
+			action->setCheckable(true);
+			tools->addAction(action);
+			QString tip = QString::fromLatin1(choice.name) + QLatin1Char('\n')
+				+ AuLegacyShip::DetailPlacementDescription(choice.type);
+			if (EquipmentCanRotate(choice.type))
+				tip += QStringLiteral("\nLeft/right arrow keys rotate the placement tool.");
+			if (EquipmentUsesBrush(choice.type))
+				tip += QStringLiteral("\nUses the equipment brush size.");
+			if (choice.type == 76 || choice.type == 98 || choice.type == 99 || choice.type == 141)
+				tip += QStringLiteral("\nPosition marker; has no physical model in the stationary preview.");
+			if (!supported)
+				tip += QStringLiteral("\nThis object's 2016 model is not available yet.");
+			action->setToolTip(tip);
+			const EquipmentChoice* selected = &choice;
+			QObject::connect(action, &QAction::triggered, window, [this, selected, action]() {
+				selectedEquipment = selected;
+				selectedEquipmentType = selected->type;
+				selectedEquipmentAction = action;
+				SetToolMode(EquipmentMode);
+			});
+			AddButton(equipment, action, choice.row, choice.column);
+		}
+		brushUpAction = MakeAction("Increase equipment brush size", "dp_BrushSzUp", "Increase the equipment brush. The original radius range is 0 to 25.");
+		brushDownAction = MakeAction("Decrease equipment brush size", "dp_BrushSzDown", "Decrease the equipment brush; the smallest brush places one object.");
+		QObject::connect(brushUpAction, &QAction::triggered, window, [this]() { ChangeEquipmentBrush(1); });
+		QObject::connect(brushDownAction, &QAction::triggered, window, [this]() { ChangeEquipmentBrush(-1); });
+		AddButton(equipment, brushUpAction, 0, 14);
+		AddButton(equipment, brushDownAction, 2, 14);
+		brushSize = new QLabel(QStringLiteral("1"), equipmentPalette);
 		brushSize->setAlignment(Qt::AlignCenter);
-		brushSize->setToolTip(QStringLiteral("Equipment brush size. Equipment editing is not available yet."));
+		brushSize->setToolTip(QStringLiteral("Equipment brush size, 1 to 26. Applies to machinery and Erase Equipment Area."));
+		brushDownAction->setEnabled(false);
 		equipment->addWidget(brushSize, 1, 13, 1, 2);
 		outer->addWidget(equipmentPalette, 4, 0, 1, 14);
 
@@ -939,12 +1178,45 @@ public:
 		if (renderAction->isChecked())
 			renderAction->setChecked(false);
 		toolMode = mode;
-		view->SetEditing(loaded && mode != InspectMode, mode == EraseMode);
+		view->equipmentTool = mode == EquipmentMode || mode == DeleteEquipmentMode || mode == DeleteEquipmentAreaMode;
+		view->equipmentBrushRadius = mode == DeleteEquipmentAreaMode
+			|| (mode == EquipmentMode && EquipmentUsesBrush(selectedEquipmentType)) ? equipmentBrushRadius : 0;
+		view->equipmentIcon = mode == EquipmentMode && selectedEquipment
+			? AuLegacyShipIcon(QString::fromLatin1(selectedEquipment->icon)) : QIcon();
+		view->equipmentRotation = AuLegacyShip::DetailRotationStep(selectedEquipmentType);
+		view->equipmentFootprint = mode == EquipmentMode && selectedEquipment && selectedEquipment->commodity
+			? AuLegacyShip::Rendering::VehicleFootprint(selectedEquipment->commodity) : QRectF();
+		view->SetEditing(loaded && mode != InspectMode,
+			mode == EraseMode || mode == DeleteEquipmentMode || mode == DeleteEquipmentAreaMode);
 		inspectAction->setChecked(mode == InspectMode);
 		eraseAction->setChecked(mode == EraseMode);
+		deleteEquipmentAction->setChecked(mode == DeleteEquipmentMode);
+		deleteEquipmentAreaAction->setChecked(mode == DeleteEquipmentAreaMode);
 		if (mode == PaintMode)
 			roomActions.value(selectedRoomType)->setChecked(true);
+		if (mode == EquipmentMode && selectedEquipmentAction)
+			selectedEquipmentAction->setChecked(true);
 		roomNumber->setEnabled(loaded);
+		if (view->equipmentTool)
+		{
+			QString text;
+			if (mode == EquipmentMode && selectedEquipment)
+			{
+				text = QString::fromLatin1(selectedEquipment->name) + QStringLiteral(": ")
+					+ AuLegacyShip::DetailPlacementDescription(selectedEquipmentType);
+				if (EquipmentCanRotate(selectedEquipmentType))
+					text += QStringLiteral(" Left/right arrows rotate (%1 degrees).")
+						.arg(AuLegacyShip::DetailRotationStep(selectedEquipmentType) * 45);
+			}
+			else
+				text = mode == DeleteEquipmentAreaMode
+					? QStringLiteral("Erase Equipment Area: click equipment to remove that type within the brush.")
+					: QStringLiteral("Erase Equipment: left click or drag over equipment.");
+			toolLabel->setText(text);
+			window->statusBar()->showMessage(text);
+			view->setFocus();
+			return;
+		}
 		toolLabel->setText(mode == InspectMode ? QStringLiteral("Selection tool: click a room or equipment marker.")
 			: (mode == EraseMode ? QStringLiteral("Erase Room Cells: left click or drag.")
 				: QStringLiteral("Paint %1: left click or drag.").arg(RoomName(selectedRoomType))));
@@ -952,6 +1224,16 @@ public:
 			? QStringLiteral("Click a room or detail to inspect it. Middle drag pans; the wheel zooms.")
 			: QStringLiteral("Left click or drag to %1 cells. Middle drag pans. Edits are not saved.")
 				.arg(mode == EraseMode ? QStringLiteral("erase") : QStringLiteral("paint")));
+	}
+
+	void ChangeEquipmentBrush(int delta)
+	{
+		equipmentBrushRadius = std::max(0, std::min(25, equipmentBrushRadius + delta));
+		brushSize->setText(QString::number(equipmentBrushRadius + 1));
+		brushUpAction->setEnabled(equipmentBrushRadius < 25);
+		brushDownAction->setEnabled(equipmentBrushRadius > 0);
+		if (view->equipmentTool)
+			SetToolMode(toolMode);
 	}
 
 	void UpdateGrid()
@@ -973,6 +1255,32 @@ public:
 		if (!loaded || renderAction->isChecked() || toolMode == InspectMode)
 			return;
 		const int deck = currentDeck;
+		if (view->equipmentTool)
+		{
+			if (toolMode == EquipmentMode && !selectedEquipment) return;
+			const AuLegacyShip::DetailEditResult result = toolMode == EquipmentMode
+				? AuLegacyShip::PlaceDetail(design, deck, cursor, selectedEquipmentType,
+					selectedEquipment->commodity, view->equipmentBrushRadius)
+				: AuLegacyShip::DeleteDetails(design, deck, cursor, view->equipmentBrushRadius);
+			if (!result.accepted)
+			{
+				window->statusBar()->showMessage(result.error.isEmpty()
+					? QStringLiteral("Equipment cannot be placed here.") : result.error);
+				return;
+			}
+			if (result.changed)
+			{
+				modified = true;
+				renderDirty = true;
+				IndexDecks();
+				UpdateTitle();
+				ShowDeck(deck, false);
+			}
+			window->statusBar()->showMessage(result.error.isEmpty()
+				? (result.changed ? QStringLiteral("Equipment updated (%1 added, %2 removed). Session edits are not saved.")
+					.arg(result.added).arg(result.removed) : QStringLiteral("No equipment change at this point.")) : result.error);
+			return;
+		}
 		const int type = toolMode == EraseMode ? -1 : selectedRoomType;
 		const AuLegacyShip::CellEditResult result = AuLegacyShip::EditCell(design, deck, cursor,
 			view->gridMask, type, quint8(roomNumber->value() - 1));
@@ -1028,7 +1336,7 @@ public:
 		text += modified ? QStringLiteral("\nThis design has session edits. Saving is not available yet.\n")
 			: QStringLiteral("\nNo session edits. Saving is not available yet.\n");
 		text += QStringLiteral("\nUse Inspect to select a room or detail for its record. "
-			"Marker shapes and colors distinguish records; they do not represent recovered equipment shapes.\n");
+			"Equipment uses the original palette icons; Render Mode shows its 3D geometry.\n");
 		if (!geometryWarnings.isEmpty())
 			text += QStringLiteral("\nGeometry warnings for this deck:\n") + geometryWarnings.join(QLatin1Char('\n'));
 		if (!renderDirty && !renderView->Warnings().isEmpty())
@@ -1080,13 +1388,16 @@ public:
 			"Design ID: %6\nRecord index: %7\nStream offset: %8\nPacked coordinate: %9\n")
 			.arg(detail.detailId).arg(int(detail.deck)).arg(point.x(), 0, 'f', 4).arg(point.y(), 0, 'f', 4)
 			.arg(int(detail.deck) * AuLegacyShip::DeckHeight).arg(detail.designId).arg(index)
-			.arg(Hex(detail.streamOffset, 8)).arg(Hex(detail.packedXY, 4))
+			.arg(detail.streamOffset < 0 ? QStringLiteral("new equipment") : Hex(detail.streamOffset, 8))
+			.arg(Hex(detail.packedXY, 4))
 			+ QStringLiteral("\nNumeric detail type: %1\nHidden byte (raw): %2\n"
 				"Room ID: %3\nCommodity ID (raw): %4\n"
 				"Commodity ID after legacy normalization: %5\n\n"
-				"This view uses numeric equipment types and marker symbols. Hidden details are included in this inspection view.")
+				"Hidden details are included in this inspection view.")
 				.arg(Hex(detail.detailType)).arg(Hex(detail.hiddenRaw)).arg(detail.roomId)
-				.arg(Hex(detail.commodityIdRaw, 4)).arg(Hex(detail.commodityIdNormalized, 4));
+				.arg(Hex(detail.commodityIdRaw, 4)).arg(Hex(detail.commodityIdNormalized, 4))
+			+ QStringLiteral("\n\n%1\n%2").arg(AuLegacyShip::DetailName(detail.detailType),
+				AuLegacyShip::DetailPlacementDescription(detail.detailType));
 	}
 
 	void ShowSelection()
@@ -1139,6 +1450,8 @@ public:
 	void ShowDeck(int deck, bool fit = true)
 	{
 		deck = std::max(AuLegacyShip::MinimumDeck, std::min(AuLegacyShip::MaximumDeck, deck));
+		if (deck != currentDeck)
+			view->ResetEquipmentStroke();
 		currentDeck = deck;
 		if (renderAction->isChecked())
 			RefreshRendering();
@@ -1199,12 +1512,14 @@ public:
 		{
 			const AuLegacyShip::Detail& detail = design.details[index];
 			const QPointF point = ScenePoint(AuLegacyShip::DecodePoint(detail.packedXY));
-			DetailMarker* item = new DetailMarker(detail.detailType);
+			DetailMarker* item = new DetailMarker(detail);
 			item->setPos(point);
 			item->setData(RecordKind, DetailKind);
 			item->setData(RecordIndex, index);
-			item->setToolTip(QStringLiteral("Detail %1 | numeric type %2 | deck %3")
-				.arg(detail.detailId).arg(Hex(detail.detailType)).arg(deck));
+			const EquipmentChoice* choice = EquipmentFor(detail.detailType, detail.commodityIdNormalized);
+			item->setToolTip(QStringLiteral("%1 | detail %2 | deck %3")
+				.arg(choice ? QString::fromLatin1(choice->name) : AuLegacyShip::DetailName(detail.detailType))
+				.arg(detail.detailId).arg(deck));
 			item->setVisible(detailsAction->isChecked());
 			scene->addItem(item);
 			const QRectF pointBounds(point - QPointF(0.1, 0.1), QSizeF(0.2, 0.2));
@@ -1300,6 +1615,7 @@ public:
 	QComboBox* minimumTech;
 	QLabel* toolLabel;
 	QLabel* coordinates;
+	QLabel* brushSize;
 	QPlainTextEdit* inspector;
 	QAction* roomsAction;
 	QAction* detailsAction;
@@ -1308,6 +1624,12 @@ public:
 	QAction* closeAction;
 	QAction* inspectAction;
 	QAction* eraseAction;
+	QAction* deleteEquipmentAction;
+	QAction* deleteEquipmentAreaAction;
+	QAction* brushUpAction;
+	QAction* brushDownAction;
+	QAction* selectedEquipmentAction = nullptr;
+	QActionGroup* tools;
 	QAction* deckUpAction;
 	QAction* deckDownAction;
 	QAction* armorUpAction;
@@ -1323,6 +1645,9 @@ public:
 	QRectF deckBounds = GridBounds();
 	ToolMode toolMode = InspectMode;
 	int selectedRoomType = 2;
+	const EquipmentChoice* selectedEquipment = nullptr;
+	int selectedEquipmentType = 0;
+	int equipmentBrushRadius = 0;
 	int currentDeck = 0;
 	int occupiedDeckCount = 0;
 	bool loaded = false;
