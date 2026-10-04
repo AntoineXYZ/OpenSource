@@ -198,6 +198,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QTimer>
+#include <QtMath>
 #include <QToolTip>
 #include <QWheelEvent>
 
@@ -648,6 +649,7 @@ QString AuViewButton::Image(VIEWBUTTON vb)
 		":data/RangeSystem.png",		// VB_LocatorSystemScan,
 		":data/c_ScDesignDrawing.png",	// VB_SpacecraftSpecs,
 		"",	// VB_UNUSED7,
+		":data/c_DesignDisk.png",		// VB_LegacySpacecraftDesign,
 		"",								// VB_COUNT,
 	};
 	if(vb == VB_About)
@@ -737,6 +739,7 @@ QString AuViewButton::Name(VIEWBUTTON vb)
 		"System Map",					// VB_LocatorSystemScan,
 		"Specifications",				// VB_SpacecraftSpecs,
 		"",						// VB_UNUSED7,
+		"Spacecraft Design",			// VB_LegacySpacecraftDesign,
 		"",								// VB_COUNT,
 	};
 	if(vb < 0 || vb >= sizeof(names)/sizeof(QString))
@@ -825,6 +828,7 @@ QString AuViewButton::SettingsName(VIEWBUTTON vb)
 		"Locator System Map",			// VB_LocatorSystemScan,
 		"Spacecraft Specifications",	// VB_SpacecraftSpecs,
 		"",	// VB_UNUSED7,
+		"Legacy Spacecraft Design",	// VB_LegacySpacecraftDesign,
 		"",								// VB_COUNT,
 	};
 	if(vb < 0 || vb >= sizeof(names)/sizeof(QString))
@@ -1084,6 +1088,7 @@ QString AuViewButton::TipBase(VIEWBUTTON vb)
 		QObject::tr("<b>Spacecraft Specifications</b> %2<br>"						// VB_SpacecraftSpecs
 			"Show the <i>Spacecraft Specifications</i> window to view the design specifications of the spacecraft you are aboard."),
 		QObject::tr("<b>UNUSED7</b> %2<br>"),								// VB_UNUSED7
+		QObject::tr("<b>Spacecraft Design</b> %2<br>Show or hide the spacecraft design tools."),
 		"",																		// VB_COUNT,
 	};
 	if(vb < 0 || vb >= sizeof(tips)/sizeof(QString) || tips[vb].isEmpty())
@@ -1128,6 +1133,9 @@ QString AuViewButton::Tip(const QString& tipBase) const
 	case VB_WarDimensionStandings:
 	case VB_Wiki:
 	case VB_COUNT:
+		break;
+	case VB_LegacySpacecraftDesign:
+		keycommand = frame->ControlBinding(AuFrame::CI_ToggleDesignPartsUI);
 		break;
 	case VB_Recall:
 		{
@@ -1318,6 +1326,9 @@ bool AuViewButton::IsHidden(SCENE_CONTEXT sceneContext, bool hasEmpire) const
 	case VB_COUNT:
 		// These buttons are never visible.
 		return true;
+
+	case VB_LegacySpacecraftDesign:
+		return sceneContext != SCENE_Designer;
 
 	case VB_FullScreen:
 	case VB_Exit:
@@ -1946,13 +1957,7 @@ void AuDesignerView::initializeGL()
 	//qDebug() << "AuDesignerView::initializeGL swapInt" << fmt.swapInterval() << "swapBehave" << fmt.swapBehavior()
 		//<< "opaquePaint" << testAttribute(Qt::WA_OpaquePaintEvent);
 
-	m_RenderInfo->InitializeGL();
-
-	m_RenderInfo->re->glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &m_GLTextureUnits);
-	// GL_MAX_UNIFORM_LOCATIONS is undefined on MacOS. 1024 is minimum per OpenGL. It is only used for info anyway, not needed.
-#if !defined(Q_OS_MACOS)
-	m_RenderInfo->re->glGetIntegerv(GL_MAX_UNIFORM_LOCATIONS, &m_GLUniformLocs);
-#endif
+	InitializeSceneInterface();
 
 	// Init all lights. The arbvp1 shader profile fails if we don't do this.
 	m_RenderInfo->re->SetAmbientLight(0,0,0,0);
@@ -2010,8 +2015,6 @@ void AuDesignerView::initializeGL()
 	connect(this, SIGNAL(RequestScreenShot()), SLOT(ScreenShot()), Qt::QueuedConnection);
 
 	setMouseTracking(true);
-
-	CreateViewButtons();
 
 	if(!m_SpawnWaitVAO.VAO())
 	{
@@ -2098,6 +2101,86 @@ void AuDesignerView::initializeGL()
 
 		m_GLThread->start();
 	}
+}
+
+void AuDesignerView::InitializeSceneInterface(bool legacyDesigner)
+{
+	m_RenderInfo->InitializeGL();
+
+	m_RenderInfo->re->glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &m_GLTextureUnits);
+	// GL_MAX_UNIFORM_LOCATIONS is undefined on MacOS. 1024 is minimum per OpenGL. It is only used for info anyway, not needed.
+#if !defined(Q_OS_MACOS)
+	m_RenderInfo->re->glGetIntegerv(GL_MAX_UNIFORM_LOCATIONS, &m_GLUniformLocs);
+#endif
+
+	if(legacyDesigner)
+		m_SceneContext = SCENE_Designer;
+	m_InputModeChanged.start();
+	CreateViewButtons(legacyDesigner);
+}
+
+void AuDesignerView::ShowViewButtonTip()
+{
+	if(m_ViewButtonAt != AuViewButton::VB_Invalid && m_ViewButtonEntered.isValid())
+	{
+		if(m_ViewButtonEntered.elapsed() > 1000)
+		{
+			// Locate the button to get the tooltip text.
+			m_ViewButtonEntered = AuElapsedTimer();
+			for(QList<AuViewButton>::const_iterator bi = m_ViewButtons.cbegin(); bi != m_ViewButtons.cend(); bi++)
+				if((*bi).m_Id == m_ViewButtonAt)
+				{
+					QToolTip::showText(mapToGlobal(m_MouseLast), (*bi).Tip());
+					break;
+				}
+		}
+	}
+}
+
+void AuDesignerView::SetSceneInterfaceInput(bool characterInput)
+{
+	const INPUTMODE mode = characterInput ? Character : UI;
+	if(mode != m_InputMode)
+	{
+		m_InputMode = mode;
+		m_InputModeChanged.restart();
+	}
+	SetCursor(nullptr);
+}
+
+void AuDesignerView::RenderSceneInterface(bool characterInput)
+{
+	SetSceneInterfaceInput(characterInput);
+	m_MouseLast = mapFromGlobal(QCursor::pos());
+	RenderViewButtons();
+	ShowViewButtonTip();
+}
+
+bool AuDesignerView::SceneInterfaceMousePress(const QPoint& position)
+{
+	if(IsCharacterInputMode()) return false;
+	PositionViewButtons();
+	const AuViewButton::VIEWBUTTON button = ViewButtonAt(position);
+	m_ViewButtonPressed = ViewButtonIsEnabled(button) ? button : AuViewButton::VB_Invalid;
+	return m_ViewButtonPressed != AuViewButton::VB_Invalid;
+}
+
+bool AuDesignerView::SceneInterfaceMouseRelease(const QPoint& position)
+{
+	if(m_ViewButtonPressed == AuViewButton::VB_Invalid) return false;
+	const AuViewButton::VIEWBUTTON pressed = m_ViewButtonPressed;
+	m_ViewButtonPressed = AuViewButton::VB_Invalid;
+	if(!IsCharacterInputMode() && pressed == ViewButtonAt(position))
+		ViewButtonClicked(pressed);
+	return true;
+}
+
+int AuDesignerView::SceneInterfaceWidth()
+{
+	if(g_AuClient.ViewButtonTransparency() >= 100) return 0;
+	PositionViewButtons();
+	if(!m_ViewButtonColumns) return 0;
+	return qCeil((m_ViewButtonColumns * 2.1 + .9) * ViewButtonRadius() * height() / 2.);
 }
 
 void AuDesignerView::paintGL()
@@ -2230,20 +2313,7 @@ void AuDesignerView::AnimateScene()
 	AuElapsedTimer lastAnim(m_Animated);
 	m_Animated.restart();
 
-	if(m_ViewButtonAt != AuViewButton::VB_Invalid && m_ViewButtonEntered.isValid())
-	{
-		if(m_ViewButtonEntered.elapsed() > 1000)
-		{
-			// Locate the button to get the tooltip text.
-			m_ViewButtonEntered = AuElapsedTimer();
-			for(QList<AuViewButton>::const_iterator bi = m_ViewButtons.cbegin(); bi != m_ViewButtons.cend(); bi++)
-				if((*bi).m_Id == m_ViewButtonAt)
-				{
-					QToolTip::showText(mapToGlobal(m_MouseLast), (*bi).Tip());
-					break;
-				}
-		}
-	}
+	ShowViewButtonTip();
 
 	if(m_bWaitingForScene)
 	{
@@ -9048,12 +9118,22 @@ void AuDesignerView::ShowItemManipulator(const DaItem& item)
 	m_ItemManipulator->show();
 }
 
-void AuDesignerView::CreateViewButtons()
+void AuDesignerView::CreateViewButtons(bool legacyDesigner)
 {
 	const DgData& gd = g_Au.LockDataForRead();
 	bool isAgent = gd.ClientPlayerIsAgent();
 	g_Au.UnlockData();
-	if(auApp->IsSingleUserDesignerMode())
+	m_ViewButtons.clear();
+	if(legacyDesigner)
+	{
+		m_ViewButtons << AuViewButton(AuViewButton::VB_About)
+			<< AuViewButton(AuViewButton::VB_LegacySpacecraftDesign)
+			<< AuViewButton(AuViewButton::VB_HideWindows)
+			<< AuViewButton(AuViewButton::VB_FullScreen)
+			<< AuViewButton(AuViewButton::VB_Settings)
+			<< AuViewButton(AuViewButton::VB_Exit);
+	}
+	else if(auApp->IsSingleUserDesignerMode())
 	{
 		// Buttons for spacecraft or building designer mode.
 		class AuViewButton sceneClient[] =
@@ -10076,6 +10156,9 @@ void AuDesignerView::ViewButtonClicked(AuViewButton::VIEWBUTTON button)
 	case AuViewButton::VB_UNUSED8:
 	case AuViewButton::VB_COUNT:
 		return;
+	case AuViewButton::VB_LegacySpacecraftDesign:
+		connect(&a, SIGNAL(triggered()), pFrame, SLOT(ToggleDesignPartsUi()), Qt::QueuedConnection);
+		break;
 	case AuViewButton::VB_SaveSolitaire:
 		connect(&a, SIGNAL(triggered()), this, SLOT(SaveSolitaireCheckPoint()), Qt::QueuedConnection);
 		break;
@@ -16103,4 +16186,3 @@ bool AuDesignerView::FindClosestFencePost(AuPoint& postLoc, AuId& platformId)
 	UnlockSceneAtom();
 	return foundPost;
 }
-

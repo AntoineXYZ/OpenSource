@@ -1374,7 +1374,7 @@ void AuDesignerFrame::ToggleSettingsUi()
 		}
 		else
 		{
-			m_Settings = new AuSettingsDialog(false, this);		// Do not show Shift+F12 tip on title.
+			m_Settings = new AuSettingsDialog(m_LegacyDesigner != nullptr, this);
 			connect(m_Settings, SIGNAL(ControlsChanged()), SLOT(ControlsChanged()));
 			connect(m_Settings, SIGNAL(SoundGainChanged(int)), auApp, SLOT(SoundGainChanged(int)));
 			connect(m_Settings, SIGNAL(SoundOverrideChanged(int)), auApp, SLOT(SoundOverrideChanged(int)));
@@ -1402,6 +1402,11 @@ void AuDesignerFrame::ToggleCharacterUi()
 
 void AuDesignerFrame::ToggleDesignPartsUi()
 {
+	if(m_LegacyDesigner)
+	{
+		m_LegacyDesigner->ToggleTools();
+		return;
+	}
 	if(m_View && m_View->SceneContext() == SCENE_Designer)
 	{
 		if(m_DesignerPartsDock)
@@ -1554,6 +1559,11 @@ void AuDesignerFrame::ToggleHandCraftUi()
 
 void AuDesignerFrame::ToggleAllUis()
 {
+	if(m_LegacyDesigner)
+	{
+		m_LegacyDesigner->ToggleTools();
+		return;
+	}
 	// Determine what state we want them to be in.
 	if(m_DockBars.AnyVisible())
 	{
@@ -2888,6 +2898,8 @@ void AuDesignerFrame::ControlsChanged()
 
 	// Update title bars of dock windows with appropriate F-key shortcut.
 	m_DockBars.UpdateTitleShortcuts();
+	if(m_LegacyDesigner)
+		m_LegacyDesigner->ControlsChanged();
 }
 
 void AuDesignerFrame::RestoreDefaultControls()
@@ -2978,9 +2990,12 @@ void AuDesignerFrame::EnumControlInputs(DiControlInputArray& aAllControls) const
 
 void AuDesignerFrame::KeyPressed(QKeyEvent* e)
 {
-	if(m_LegacyDesigner)
+	if(m_LegacyDesigner && (QApplication::activeModalWidget() || QApplication::activePopupWidget()))
+	{
+		QMutexLocker lock(&m_ControlLock);
+		m_ActiveKeys.clear();
 		return;
-
+	}
 	//qDebug() << "AuDesignerFrame::KeyPressed" << e->key() << e->modifiers() << m_ActiveKeys.contains((Qt::Key)e->key());
 	// View does not get tab key press events so we'll forward this one.
 	if(m_View && e->key() == Qt::Key_Tab)
@@ -3000,9 +3015,12 @@ void AuDesignerFrame::KeyPressed(QKeyEvent* e)
 
 void AuDesignerFrame::KeyReleased(QKeyEvent* e)
 {
-	if(m_LegacyDesigner)
+	if(m_LegacyDesigner && (QApplication::activeModalWidget() || QApplication::activePopupWidget()))
+	{
+		QMutexLocker lock(&m_ControlLock);
+		m_ActiveKeys.clear();
 		return;
-
+	}
 	m_ControlLock.lock();
 	//qDebug() << "AuDesignerFrame::KeyReleased" << e->key() << e->modifiers() << m_ActiveKeys.contains((Qt::Key)e->key());
 	Q_ASSERT(m_pControls);
@@ -3010,7 +3028,17 @@ void AuDesignerFrame::KeyReleased(QKeyEvent* e)
 	// Sample the controls requested by the user for activation.
 	Qt::KeyboardModifiers keyMods = m_pControls->FilterModState(m_ActiveKeys, e->modifiers());
 	DiControlInputArray aActiveControls;
-	m_pControls->SampleKeyInput(aActiveControls, m_ActiveKeys, keyMods, AuId(0), 0, false, AuPoint(0,0), 0);
+	if(m_LegacyDesigner)
+	{
+		// Only the released key should activate a window command. A held
+		// window shortcut must not repeat when movement keys are released.
+		unordered_map<Qt::Key, AuElapsedTimer, AuKey_Hash> released;
+		auto key = m_ActiveKeys.find((Qt::Key)e->key());
+		if(key != m_ActiveKeys.end()) released.insert(*key);
+		m_pControls->SampleKeyInput(aActiveControls, released, keyMods, AuId(0), 0, false, AuPoint(0,0), 0);
+	}
+	else
+		m_pControls->SampleKeyInput(aActiveControls, m_ActiveKeys, keyMods, AuId(0), 0, false, AuPoint(0,0), 0);
 
 	unordered_map<Qt::Key, AuElapsedTimer, AuKey_Hash>::iterator ki = m_ActiveKeys.find((Qt::Key)e->key());
 	if(ki != m_ActiveKeys.end())
@@ -3027,6 +3055,18 @@ void AuDesignerFrame::ProcessControlInput(const DiControlInputArray& aActiveCont
 {
 	for(DiControlInputArray::const_iterator ci = aActiveControls.cbegin(); ci != aActiveControls.cend(); ci++)
 	{
+		if(m_LegacyDesigner)
+		{
+			// Keep the normal window bindings available without dispatching
+			// world-only commands to the absent modern scene widget.
+			switch((*ci).GetId())
+			{
+			case CI_About: case CI_ExitGame: case CI_ToggleAllUIs:
+			case CI_FullScreenToggle: case CI_ToggleSettingsUI: case CI_ToggleDesignPartsUI:
+				break;
+			default: continue;
+			}
+		}
 		switch((*ci).GetId())
 		{
 		case CI_Title:
@@ -5609,6 +5649,13 @@ void AuDesignerFrame::LaunchDesigner()
 		return;
 	auApp->SetDefaultHuman(dlg.Name(), dlg.Handedness(), dlg.Gender(), dlg.DNA());
 	auApp->SetRunState(AuApp::Designer);
+}
+
+void AuDesignerFrame::OpenLegacyDesign(const QString& fileName)
+{
+	LaunchLegacyDesigner();
+	if(m_LegacyDesigner && !fileName.isEmpty())
+		m_LegacyDesigner->OpenFile(fileName);
 }
 
 void AuDesignerFrame::LaunchLegacyDesigner()

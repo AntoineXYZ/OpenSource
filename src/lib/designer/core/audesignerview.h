@@ -212,6 +212,7 @@ public:
 		VB_LocatorSystemScan,
 		VB_SpacecraftSpecs,
 		VB_UNUSED7,
+		VB_LegacySpacecraftDesign,
 		VB_COUNT						// LAST ITEM
 	};
 
@@ -1289,6 +1290,15 @@ public:
 	}
 
 protected:
+	// Shared scene interface for renderers with their own scene geometry.
+	void InitializeSceneInterface(bool legacyDesigner = false);
+	void SetSceneInterfaceInput(bool characterInput);
+	void RenderSceneInterface(bool characterInput);
+	bool SceneInterfaceMousePress(const QPoint& position);
+	bool SceneInterfaceMouseRelease(const QPoint& position);
+	int SceneInterfaceWidth();
+	void ShowViewButtonTip();
+
 	virtual void initializeGL();
 	virtual void paintGL();
 
@@ -1870,7 +1880,7 @@ private:
 
 	void RenderTactical(DaPerson* sceneAtom, DaAtom* pEnvironment);
 
-	void CreateViewButtons();
+	void CreateViewButtons(bool legacyDesigner = false);
 
 	void RenderControlButtons();
 

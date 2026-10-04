@@ -8,6 +8,8 @@
 #include "aulegacyshiprender.h"
 #include "aulegacyshipsave.h"
 #include "aulegacyshipvehicles.h"
+#include "auapp.h"
+#include "audesignerframe.h"
 
 #include <QAction>
 #include <QActionGroup>
@@ -44,7 +46,6 @@
 #include <QShowEvent>
 #include <QSpinBox>
 #include <QStandardPaths>
-#include <QStackedWidget>
 #include <QStringList>
 #include <QStyle>
 #include <QStyleOptionGraphicsItem>
@@ -267,7 +268,7 @@ QWidget* DesignerDockTitle(QDockWidget* dock, const QIcon& icon)
 	};
 	QToolButton* floating = button(QStyle::SP_TitleBarNormalButton, QStringLiteral("Dock/float tools"));
 	QObject::connect(floating, &QToolButton::clicked, dock, [dock]() { dock->setFloating(!dock->isFloating()); });
-	QToolButton* close = button(QStyle::SP_TitleBarCloseButton, QStringLiteral("Hide tools (F6)"));
+	QToolButton* close = button(QStyle::SP_TitleBarCloseButton, QStringLiteral("Hide tools"));
 	QObject::connect(close, &QToolButton::clicked, dock, &QWidget::close);
 	// Unhandled title-bar mouse events propagate to QDockWidget for dragging
 	// and double-click docking; only the two controls consume their clicks.
@@ -712,9 +713,7 @@ public:
 		scene = new QGraphicsScene(window);
 		view = new DeckView(scene, window);
 		renderView = new AuLegacyShipRender(window);
-		views = new QStackedWidget(window);
-		views->addWidget(view);
-		views->addWidget(renderView);
+		renderView->SetFloorPlan(view);
 		scene->setSceneRect(GridBounds());
 
 		QAction* newAction = MakeAction("New spacecraft", "dp_New", "Start a new spacecraft (Ctrl+N).");
@@ -825,7 +824,7 @@ public:
 		QWidget* central = new QWidget(window);
 		QVBoxLayout* layout = new QVBoxLayout(central);
 		layout->setContentsMargins(6, 4, 6, 4);
-		layout->addWidget(views, 1);
+		layout->addWidget(renderView, 1);
 		window->setCentralWidget(central);
 
 		toolDock = new QDockWidget(QStringLiteral("Spacecraft Design (F6)"), window);
@@ -901,7 +900,8 @@ public:
 			"<b>WHEN FINISHED</b><br>"
 			"Press Escape to exit the designer.<br>"
 			"Use Save or Ctrl+S to save a .ship file. New, Open and Exit offer to save changes.<br>"
-			"F6 hides or shows this panel. Drag its title to dock it elsewhere or float it beside the deck view."));
+			"The sidebar designer button or your Design Parts window binding hides or shows this panel. "
+			"Drag its title to dock it elsewhere or float it beside the deck view."));
 		informationTabs->addTab(tips, QStringLiteral("Tips"));
 		inspector = new QPlainTextEdit(informationTabs);
 		inspector->setReadOnly(true);
@@ -917,13 +917,13 @@ public:
 		toolDock->setMinimumWidth(380);
 		window->addDockWidget(Qt::RightDockWidgetArea, toolDock);
 		window->resizeDocks(QList<QDockWidget*>() << toolDock, QList<int>() << 380, Qt::Horizontal);
-		QAction* showTools = toolDock->toggleViewAction();
+		showTools = toolDock->toggleViewAction();
 		showTools->setText(QStringLiteral("Spacecraft Design tools"));
 		showTools->setIcon(designerIcon);
-		showTools->setShortcut(QKeySequence(Qt::Key_F6));
 		toolDock->addAction(showTools);
 		toolDock->addAction(closeAction);
 		window->addAction(showTools);
+		RefreshControlLabels();
 
 		view->cellEntered = [this](const QPointF& point) { EditAt(point); };
 		view->rotateEquipment = [this](int steps) {
@@ -940,6 +940,15 @@ public:
 		QObject::disconnect(scene, nullptr, window, nullptr);
 		view->cellEntered = std::function<void(const QPointF&)>();
 		view->rotateEquipment = std::function<void(int)>();
+	}
+
+	void RefreshControlLabels()
+	{
+		AuDesignerFrame* frame = qobject_cast<AuDesignerFrame*>(auApp->Frame());
+		if(!frame) return;
+		const QString binding = frame->ControlBinding(AuFrame::CI_ToggleDesignPartsUI);
+		toolDock->setWindowTitle(QStringLiteral("Spacecraft Design")
+			+ (binding.isEmpty() ? QString() : QStringLiteral(" (%1)").arg(binding)));
 	}
 
 	QAction* MakeAction(const char* text, const char* icon, const char* tip)
@@ -1183,8 +1192,8 @@ public:
 	{
 		if (!renderAction->isChecked())
 			return;
-		toolLabel->setText(QStringLiteral("Walkthrough: WASD moves, mouse looks, Shift runs. E engages/releases a ladder; C/Z climbs. Space jumps or brakes.\n"
-			"Return/right-click toggles avatar/hand input; hold Ctrl for the hand. Click doors or use Ctrl+P/C to open/close. Home returns to the selected deck.\n"
+		toolLabel->setText(QStringLiteral("Walkthrough uses your Avatar and Scene control bindings. Use hand input for the sidebar and door clicks.\n"
+			"Settings changes apply here immediately. Legacy Ctrl+P/C opens/closes nearby doors unless rebound; Home returns to the selected deck unless rebound.\n"
 			"Studio gravity is %1; ship interiors retain their own gravity. Render Mode returns to the floor plan.")
 			.arg(gravityAction->isChecked() ? QStringLiteral("on") : QStringLiteral("off")));
 	}
@@ -1193,7 +1202,7 @@ public:
 	{
 		if (solid)
 			RefreshRendering();
-		views->setCurrentWidget(solid ? static_cast<QWidget*>(renderView) : static_cast<QWidget*>(view));
+		renderView->SetWalkthrough(solid);
 		if (solid)
 		{
 			renderView->setFocus();
@@ -1700,7 +1709,7 @@ public:
 	QGraphicsScene* scene;
 	DeckView* view;
 	AuLegacyShipRender* renderView;
-	QStackedWidget* views;
+	QAction* showTools;
 	QSpinBox* roomNumber;
 	QWidget* editPanel;
 	QDockWidget* toolDock;
@@ -1767,6 +1776,18 @@ void AuLegacyShipViewer::SetExitHandler(const std::function<void()>& handler)
 {
 	m_Impl->exitHandler = handler;
 	m_Impl->closeAction->setText(handler ? QStringLiteral("E&xit Designer") : QStringLiteral("&Close"));
+}
+
+void AuLegacyShipViewer::ControlsChanged()
+{
+	m_Impl->renderView->ControlsChanged();
+	m_Impl->RefreshControlLabels();
+	m_Impl->ShowRenderHelp();
+}
+
+void AuLegacyShipViewer::ToggleTools()
+{
+	m_Impl->showTools->trigger();
 }
 
 void AuLegacyShipViewer::showEvent(QShowEvent* event)

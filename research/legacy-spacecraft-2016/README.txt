@@ -5,9 +5,11 @@ Current implementation
 ----------------------
 The modern client can open the legacy designer from the launch-screen chooser
 or with -legacy-spacecraft [path/to/design.ship]. Both entry paths initialize
-the normal game globals, resources and shared AuApp sound service. The standalone
-path opens the designer directly without the login frame. The solid view uses
-a local OpenGL widget and the recovered original spacecraft atlas. In the normal client,
+the normal client frame, game globals, resources and shared AuApp sound service.
+The direct-launch path enters the designer within that frame. The solid view
+extends AuDesignerView with the recovered original spacecraft geometry and atlas.
+Both floor plan and walkthrough use its native sidebar renderer, button settings,
+tooltips and window actions, including Spacecraft Design and Settings. In the normal client,
 Legacy occupies the existing window; exit before choosing the other designer.
 Launch-screen music stops during Legacy and resumes only if previously playing.
 
@@ -19,7 +21,8 @@ the original label colors and black shadow; see PANEL-RECOVERY.txt.
 The grid is the original finite 80x80-cell square with eight direction labels
 and brighter ten-cell lines (CELL-SHAPES.txt). Fit includes its edges and labels.
 The canvas has no visible scrollbars or top summary strip; middle drag pans.
-The original icon panel docks on the right by default and toggles with F6.
+The original icon panel docks on the right by default and toggles with the
+Spacecraft Design sidebar button or the configured Design Parts binding (default F6).
 Its title bar uses the original design-disk icon, both docked and floating.
 There is no bottom status bar; edit feedback appears in the tools panel.
 Deck arrows cover -41..41; new spacecraft rooms can be painted on -28..28.
@@ -38,11 +41,13 @@ remember LegacySpacecraft/LastOpenDirectory in the native user settings for
 Hazeron Freehold / Shores of Hazeron, shared by both launch paths.
 
 The original Render Mode button switches the floor plan to a first-person
-walkthrough. WASD moves, the captured mouse looks, Shift runs, Q toggles continuous
+walkthrough. It uses the game's Avatar and Scene bindings; with defaults,
+WASD moves, the captured mouse looks, Shift runs, Q toggles continuous
 forward movement, and Space jumps or brakes in zero gravity. C/Z moves up/down
 in zero gravity, gravity wells or on a ladder; E engages/releases a nearby
-ladder. Home finds a clear standing position on the selected deck.
-The Return/right-click avatar/hand input toggle and temporary Ctrl-held hand mode
+ladder. Home finds a clear standing position on the selected deck unless rebound.
+The configured avatar/hand input toggle (default Return/right-click) and
+temporary hand mode (default Ctrl)
 provide access to doors and the editor interface. Capture releases on focus
 loss, dialogs and leaving the scene, with no drag required for looking.
 The existing Gravity button controls studio gravity outside the ship; interiors retain
@@ -56,8 +61,9 @@ the original machinery/game-table obstacle cells. Consoles, berths, surgery
 units, transporter pads, chairs, vehicle previews and turret guns are passable.
 The local standing-human capsule remains an approximation of the original
 person path queries, as are ladder attachment and ship membership. The
-45-degree FOV, default-human speeds,
-jump impulse, gravity values and door animation timing are recovered. The
+default-human speeds, jump impulse, gravity values and door animation timing
+are recovered. FOV follows g_Au.FieldOfViewY and the game's aspect-ratio limit;
+mouse sensitivity, mouse-grab preference and hand cursor use game settings. The
 short near plane is a local adaptation. No visible third-person
 body, crouching, console occupation or vehicle driving is implemented here.
 

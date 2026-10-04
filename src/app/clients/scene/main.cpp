@@ -12,7 +12,6 @@
 #include "auclientlib.h"
 #include "auclientmailres.h"
 #include "auclientres.h"
-#include "aulegacyshipviewer.h"
 #include "aumodelres.h"
 #include "autexture.h"
 #include <iostream>
@@ -101,17 +100,6 @@ int main(int argc, char** argv)
 		AuUtil auUtil;
 
 		AuClientApp a(argc, argv);
-		if(legacySpacecraft)
-		{
-			// Initialize the usual game globals and OpenAL service even when
-			// opening the legacy designer directly without the login frame.
-			AuLegacyShipViewer viewer;
-			viewer.show();
-			if(!legacyShipFile.isEmpty())
-				viewer.OpenFile(legacyShipFile);
-			return a.exec();
-		}
-
 		QStringList args = a.arguments();
 		if(args.contains("-version") || args.contains("-v"))
 		{
@@ -123,6 +111,8 @@ int main(int argc, char** argv)
 		// Create the main frame window.
 		AuClientFrame cw;
 		a.SetFrame(&cw);
+		if(legacySpacecraft)
+			cw.OpenLegacyDesign(legacyShipFile);
 		cw.showNormal();
 
 		// Start chuggin'.

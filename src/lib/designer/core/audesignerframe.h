@@ -481,6 +481,7 @@ private:
 public:
 	AuDesignerFrame(QWidget *parent=0);
 	virtual ~AuDesignerFrame();
+	void OpenLegacyDesign(const QString& fileName);
 
 	virtual void DisableAFK();
 

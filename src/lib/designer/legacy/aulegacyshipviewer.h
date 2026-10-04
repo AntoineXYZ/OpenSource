@@ -20,6 +20,8 @@ public:
 	void ChooseFile();
 	void SetExitHandler(const std::function<void()>& handler);
 	bool ConfirmDiscardChanges();
+	void ControlsChanged();
+	void ToggleTools();
 
 protected:
 	void showEvent(QShowEvent* event) override;

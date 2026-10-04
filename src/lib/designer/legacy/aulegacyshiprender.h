@@ -1,7 +1,7 @@
 #ifndef AuLegacyShipRender_H
 #define AuLegacyShipRender_H
 
-#include <QOpenGLWidget>
+#include "audesignerview.h"
 #include <QStringList>
 
 namespace AuLegacyShip { struct Design; }
@@ -12,7 +12,7 @@ class QFocusEvent;
 class QHideEvent;
 class QShowEvent;
 
-class AuLegacyShipRender : public QOpenGLWidget
+class AuLegacyShipRender : public AuDesignerView
 {
 public:
 	explicit AuLegacyShipRender(QWidget* parent = nullptr);
@@ -22,11 +22,16 @@ public:
 	void SetDeck(int deck);
 	void SetGravity(bool enabled);
 	void ResetCharacter();
+	void SetFloorPlan(QWidget* floorPlan);
+	void SetWalkthrough(bool enabled);
+	void ControlsChanged();
 	QStringList Warnings() const;
 
 protected:
 	void initializeGL() override;
 	void resizeGL(int width, int height) override;
+	void resizeEvent(QResizeEvent* event) override;
+	bool event(QEvent* event) override;
 	void paintGL() override;
 	void mousePressEvent(QMouseEvent* event) override;
 	void mouseMoveEvent(QMouseEvent* event) override;
@@ -44,6 +49,7 @@ protected:
 private:
 	void CleanupGL();
 	void Tick();
+	float FieldOfView() const;
 	void UpdateTarget(qint64 now);
 	void UpdateMouseCapture();
 	void ReleaseMouseCapture();
