@@ -686,41 +686,11 @@ void DaSector::RenderEnvironment(const AuMatrix4x4& projection, const AuMatrix4x
 		m_Nebula->SetCloudTexture(cloudTexture);
 
 		// Now setup stars
-		m_Nebula->m_vStars.clear();
 
 		// Get Sector location in Sector Coordinates
 		sectorLoc /= 10.;									// Convert to a "sector" location.
-		int iDistance = pg->Radius() / 10;					// sectors.
-		int zDist = pg->CoreRadius() / 10;
 		//qDebug() << "galaxy radius" << iDistance << "sectors";
-		int step = sectorLoc.Length() / (iDistance*2);
-		if(step < 1)
-			step = 1;
-		for(int ix=-iDistance; ix<=iDistance; ix+=step)
-		{
-			for(int iy=-iDistance; iy<=iDistance; iy+=step)
-			{
-				for(int iz=-zDist; iz<=zDist; iz+=step)
-				{
-					AuPoint nbsec(ix, iy, iz);				// Neighboring sector. ix, iy, iz are sectors.
-					float fDensity = pg->StarDensity(nbsec*10);	// Returns a number from 0 to 1.
-					if(fDensity > 0)
-					{
-						double sdist = (nbsec - sectorLoc).Length() + 1;	// Distance from my sector, in sectors.
-						int iStars = (int)ceil(fDensity*50 / (sdist*8));
-						for(int i=0; i<iStars; i++)
-						{
-							float fX = dice.RandomMinMax(-step, step);
-							float fY = dice.RandomMinMax(-step, step);
-							float fZ = dice.RandomMinMax(-step, step);
-							galParticle nuParticle;
-							nuParticle.pos = nbsec + AuPoint(fX, fY, fZ) - sectorLoc;
-							m_Nebula->m_vStars.append(nuParticle);
-						}
-					}
-				}
-			}
-		}
+		m_Nebula->CreateGalacticStarField(*pg, sectorLoc, dice);
 		//qDebug() << "stars" << m_Nebula->m_vStars.count();
 
 		// Get System location inside its Sector Coordinates
@@ -1848,4 +1818,3 @@ void DaSector::operator<<(QDataStream& in)
 	in >> m_sName;
 	m_SectorLock.unlock();
 }
-

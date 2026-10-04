@@ -45,7 +45,9 @@ walkthrough. It uses the game's Avatar and Scene bindings; with defaults,
 WASD moves, the captured mouse looks, Shift runs, Q toggles continuous
 forward movement, and Space jumps or brakes in zero gravity. C/Z moves up/down
 in zero gravity, gravity wells or on a ladder; E engages/releases a nearby
-ladder. Home finds a clear standing position on the selected deck unless rebound.
+ladder. Attachment centers the avatar and faces the rungs once; free look
+continues while W/S or C/Z climbs vertically along the ladder. E or Space releases
+the ladder. Home finds a clear standing position on the selected deck unless rebound.
 The configured avatar/hand input toggle (default Return/right-click) and
 temporary hand mode (default Ctrl)
 provide access to doors and the editor interface. Capture releases on focus
@@ -53,6 +55,12 @@ loss, dialogs and leaving the scene, with no drag required for looking.
 The existing Gravity button controls studio gravity outside the ship; interiors retain
 their own gravity. Mode switching preserves the character pose and the
 independent floor-plan view. Painting and erasing return to the floor plan.
+Render mode uses the shared procedural skybox renderer and original texture
+pixels retained in the modern assets. Its repeatable preview environment is
+not the random temporary world from a particular 2016 session. Skybox graphics
+settings apply. The backdrop shares the in-game galactic star generator and
+uses a deep-space environment without a nearby nebula or artificial dimming.
+See WALKTHROUGH-SKY-LADDERS.txt for evidence and manual checks.
 The orbit camera and cutaway control are removed. Armor changes the recovered
 wall profiles and windows; Streamline Hull is a physics setting.
 

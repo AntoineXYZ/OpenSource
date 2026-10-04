@@ -48,6 +48,7 @@ protected:
 
 private:
 	void CleanupGL();
+	void RenderSky();
 	void Tick();
 	float FieldOfView() const;
 	void UpdateTarget(qint64 now);

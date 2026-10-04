@@ -16,6 +16,8 @@
 #include "daperson.h"
 #include "dicontrolinput.h"
 #include "aujoystick.h"
+#include "auNebula.h"
+#include "dagalaxy.h"
 
 #include <QByteArray>
 #include <QApplication>
@@ -47,6 +49,7 @@
 #include <cmath>
 #include <cstddef>
 #include <limits>
+#include <memory>
 
 namespace
 {
@@ -194,6 +197,10 @@ public:
 	WalkWorld world;
 	WalkState character;
 	SoundSession sound;
+	std::unique_ptr<auNebula> sky;
+	unsigned int skyPaneSize = 0;
+	bool skyMipMap = false;
+	AuPoint skyPosition;
 	QVector<DoorDefinition> doors;
 	QHash<quint32, DoorAnimation> doorStates;
 	std::unordered_map<Qt::Key, AuElapsedTimer, AuKey_Hash> keys;
@@ -565,6 +572,8 @@ void AuLegacyShipRender::SetDesign(const AuLegacyShip::Design& design)
 	m_Impl->sound.SetDesign(design);
 	m_Impl->haveDesign = true;
 	m_Impl->mesh = AuLegacyShip::Rendering::BuildMesh(design);
+	if(m_Impl->character.ladderEngaged)
+		m_Impl->world.ToggleLadder(m_Impl->character);
 	m_Impl->world.SetMesh(m_Impl->mesh, design);
 	m_Impl->hasTarget = false;
 	m_Impl->targetLevel = 0;
@@ -721,8 +730,16 @@ void AuLegacyShipRender::Tick()
 		if(active.HasId(DaPerson::CI_EnterExit))
 		{
 			if(m_Impl->world.ToggleLadder(m_Impl->character))
+			{
 				m_Impl->interaction = m_Impl->character.ladderEngaged
 					? QStringLiteral("On ladder.") : QStringLiteral("Released ladder.");
+				m_Impl->continuousForward = false;
+				if(m_Impl->character.ladderEngaged)
+				{
+					m_Impl->azimuth = m_Impl->character.ladderFacing;
+					m_Impl->elevation = 0;
+				}
+			}
 			else m_Impl->interaction = QStringLiteral("Move closer to a ladder.");
 			m_Impl->interactionUntil = now + 2500;
 		}
@@ -757,7 +774,9 @@ void AuLegacyShipRender::Tick()
 			direction = QVector3D(std::cos(yaw), std::sin(yaw), 0);
 		QVector3D motion = direction * forward + QVector3D(std::sin(yaw), -std::cos(yaw), 0) * sideways
 			+ QVector3D(0, 0, vertical);
-		if (m_Impl->character.gravityActive)
+		if (m_Impl->character.ladderEngaged)
+			motion = QVector3D(0, 0, Bounded(forward + vertical, -1.f, 1.f));
+		else if (m_Impl->character.gravityActive)
 		{
 			// Vertical input cannot fly in ship gravity, but Z still requests
 			// descent through a supporting automatic hatch. Keep that intent
@@ -987,6 +1006,11 @@ void AuLegacyShipRender::CleanupGL()
 	QObject::disconnect(m_Impl->contextConnection);
 	if (context())
 		makeCurrent();
+	if(m_Impl->sky)
+	{
+		m_Impl->sky->DeleteDeviceObjects(*SceneRenderInfo().re);
+		m_Impl->sky.reset();
+	}
 	qDeleteAll(m_Impl->textures);
 	m_Impl->textures.clear();
 	m_Impl->transparentTextures.clear();
@@ -1006,6 +1030,71 @@ void AuLegacyShipRender::CleanupGL()
 float AuLegacyShipRender::FieldOfView() const
 {
 	return float(AuGLEffects::WindowFieldOfViewY(rect(), g_Au.FieldOfViewY()) * 180.0 / Pi);
+}
+
+void AuLegacyShipRender::RenderSky()
+{
+	if(!g_Au.DrawSkyBox() || !g_AuClient.DesignerShowSkyBox()) return;
+	AuAtomRenderInfo& ari = SceneRenderInfo();
+	AuGLEffects& re = *ari.re;
+	const unsigned int paneSize = g_Au.SkyBoxPaneSize();
+	const bool mipMap = g_Au.SkyBoxMipMap();
+	if(m_Impl->sky && (m_Impl->skyPaneSize != paneSize || m_Impl->skyMipMap != mipMap))
+	{
+		m_Impl->sky->DeleteDeviceObjects(re);
+		m_Impl->sky.reset();
+	}
+	if(!m_Impl->sky)
+	{
+		// The 2016 studio generated a temporary Shores of Hazeron sector.
+		// Use a repeatable preview sector; no environment is stored in .ship.
+		DaGalaxy galaxy(ShoresOfHazeron);
+		AuDice dice;
+		dice.Seed(2016);
+		AuPoint sector;
+		for(int attempt = 0; attempt < 128; ++attempt)
+		{
+			const int radius = dice.Roll(1, int(galaxy.Radius() / 10));
+			sector = AuPoint(radius, 0).RotateZ(dice.RandomMinMax(0, 2 * Pi));
+			sector.Round(1);
+			if(galaxy.StarDensity(sector * 10) >= .2) break;
+		}
+		m_Impl->skyPosition = sector;
+		// Deep space uses the game's non-nebula sky. A nearby nebula must not
+		// be invented merely because the editor has no surrounding world.
+		m_Impl->sky.reset(new auNebula(0, 0, -2.9924924f, .38151205f, -1.8401746f, -1.8524430f,
+			30, 0, false, AuPoint(), 2016, 0, galaxy.Color()));
+		m_Impl->sky->CreateGalacticStarField(galaxy, sector, dice);
+		m_Impl->skyPaneSize = paneSize;
+		m_Impl->skyMipMap = mipMap;
+		GLint drawFramebuffer, readFramebuffer, viewport[4];
+		re.glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFramebuffer);
+		re.glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFramebuffer);
+		re.glGetIntegerv(GL_VIEWPORT, viewport);
+		re.glDisable(GL_DEPTH_TEST);
+		re.glDisable(GL_CULL_FACE);
+		re.glDisable(GL_SCISSOR_TEST);
+		re.glActiveTexture(GL_TEXTURE0);
+		m_Impl->sky->CreateSkyBox(ari, m_Impl->skyPosition, paneSize, mipMap);
+		// QOpenGLWidget renders into its own FBO, with a physical-pixel viewport.
+		re.glBindFramebuffer(GL_DRAW_FRAMEBUFFER, drawFramebuffer);
+		re.glBindFramebuffer(GL_READ_FRAMEBUFFER, readFramebuffer);
+		re.glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+	}
+	if(!m_Impl->sky->m_img) return;
+	QMatrix4x4 rotation;
+	rotation.lookAt(QVector3D(), m_Impl->CameraDirection(), QVector3D(0, 0, 1));
+	AuMatrix4x4 model, projection;
+	for(int i = 0; i < 16; ++i) model[i] = rotation.constData()[i];
+	projection.Perspective(FieldOfView() * Pi / 180., double(std::max(1, height())) / std::max(1, width()),
+		1, FeetPerParsec() * 2);
+	re.glDepthMask(GL_FALSE);
+	re.glDisable(GL_DEPTH_TEST);
+	re.glDisable(GL_CULL_FACE);
+	re.glDisable(GL_SCISSOR_TEST);
+	re.glDisable(GL_BLEND);
+	m_Impl->sky->RenderSkyBox(re, projection, model, 1);
+	re.glDepthMask(GL_TRUE);
 }
 
 void AuLegacyShipRender::resizeGL(int, int)
@@ -1046,6 +1135,7 @@ void AuLegacyShipRender::paintGL()
 	}
 	if (m_Impl->ready && (!m_Impl->dirty || m_Impl->Upload()))
 	{
+		RenderSky();
 		const QVector3D direction = m_Impl->CameraDirection();
 		const QVector3D eye = m_Impl->Eye();
 		QMatrix4x4 view;
@@ -1181,18 +1271,11 @@ void AuLegacyShipRender::paintGL()
 			QStringLiteral("Paint cells in the floor plan to create a spacecraft."));
 	else
 	{
-		const int deck = int(std::floor((m_Impl->character.feet.z() + .05) / AuLegacyShip::DeckHeight));
-		painter.drawText(QRect(12, 10, std::max(0, width() - 24), 24), Qt::AlignLeft | Qt::AlignVCenter,
-			QStringLiteral("Walkthrough · Deck %1 · Studio gravity %2").arg(deck)
-				.arg(m_Impl->gravity ? QStringLiteral("on") : QStringLiteral("off")));
 		painter.drawText(QRect(12, height() - 34, std::max(0, width() - 24), 24), Qt::AlignLeft | Qt::AlignVCenter,
 			QStringLiteral("Use your Avatar and Scene control bindings. Switch to hand input for the sidebar and doors."));
 		if (m_Impl->animationClock.elapsed() < m_Impl->interactionUntil)
 			painter.drawText(QRect(12, height() - 64, std::max(0, width() - 24), 28),
 				Qt::AlignLeft | Qt::AlignVCenter, m_Impl->interaction);
-		if (!m_Impl->textureWarnings.isEmpty())
-			painter.drawText(QRect(12, 38, std::max(0, width() - 24), 40), Qt::AlignLeft | Qt::TextWordWrap,
-				QStringLiteral("Original texture unavailable; showing untextured geometry."));
 	}
 	painter.beginNativePainting();
 	RenderSceneInterface(m_Impl->mouseCaptured);

@@ -1297,6 +1297,7 @@ protected:
 	bool SceneInterfaceMousePress(const QPoint& position);
 	bool SceneInterfaceMouseRelease(const QPoint& position);
 	int SceneInterfaceWidth();
+	AuAtomRenderInfo& SceneRenderInfo() { return *m_RenderInfo; }
 	void ShowViewButtonTip();
 
 	virtual void initializeGL();

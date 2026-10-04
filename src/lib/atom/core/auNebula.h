@@ -15,6 +15,7 @@
 #include <QVector>
 
 class AuAtomRenderInfo;
+class DaGalaxy;
 
 struct galParticle
 {
@@ -81,6 +82,8 @@ public:
 public:
 	void CreateNebula();
 	void CalculateColor();
+	// Shared in-game galactic star distribution; sectorLoc is in ten-parsec units.
+	void CreateGalacticStarField(const DaGalaxy& galaxy, const AuPoint& sectorLoc, AuDice& dice);
 
 	void DeleteDeviceObjects(AuOpenGLFunctions& GLf);
 
@@ -126,4 +129,3 @@ private:
 };
 
 #endif	// AUNEBULA_H
-

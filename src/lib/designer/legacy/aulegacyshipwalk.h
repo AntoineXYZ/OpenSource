@@ -27,6 +27,10 @@ struct WalkState
 	bool grounded = false;
 	bool onLadder = false;
 	bool ladderEngaged = false;
+	QVector3D ladderAnchor;
+	float ladderFacing = 0;
+	float ladderBottom = 0;
+	float ladderTop = 0;
 	bool gravitySuspended = false;
 	bool gravityActive = false;
 	bool inShip = false;
@@ -54,7 +58,8 @@ public:
 	void SetDesignPlane(float height);
 	// SetMesh clears door states. Reapply current states after rebuilding.
 	void SetDoorOpen(quint32 doorId, bool open);
-	// E explicitly attaches/detaches a nearby ladder; leaving its reach detaches.
+	// Attach to the nearest reachable hatch axis, or release the current ladder.
+	// ladderFacing is the initial camera azimuth in degrees, not a look constraint.
 	bool ToggleLadder(WalkState& state) const;
 	bool FindSpawn(const Design& design, int deck, WalkState& state) const;
 	// desiredVelocity is already expressed in world coordinates, in feet/s.

@@ -102,6 +102,41 @@ void auNebula::DeleteDeviceObjects(AuOpenGLFunctions& GLf)
 		m_SkyBoxVAO.DeleteGL();
 }
 
+void auNebula::CreateGalacticStarField(const DaGalaxy& galaxy, const AuPoint& sectorLoc, AuDice& dice)
+{
+	m_vStars.clear();
+	int iDistance = galaxy.Radius() / 10;
+	int zDist = galaxy.CoreRadius() / 10;
+	int step = sectorLoc.Length() / (iDistance*2);
+	if(step < 1)
+		step = 1;
+	for(int ix=-iDistance; ix<=iDistance; ix+=step)
+	{
+		for(int iy=-iDistance; iy<=iDistance; iy+=step)
+		{
+			for(int iz=-zDist; iz<=zDist; iz+=step)
+			{
+				AuPoint nbsec(ix, iy, iz);				// Neighboring sector. ix, iy, iz are sectors.
+				float fDensity = galaxy.StarDensity(nbsec*10);	// Returns a number from 0 to 1.
+				if(fDensity > 0)
+				{
+					double sdist = (nbsec - sectorLoc).Length() + 1;	// Distance from my sector, in sectors.
+					int iStars = (int)ceil(fDensity*50 / (sdist*8));
+					for(int i=0; i<iStars; i++)
+					{
+						float fX = dice.RandomMinMax(-step, step);
+						float fY = dice.RandomMinMax(-step, step);
+						float fZ = dice.RandomMinMax(-step, step);
+						galParticle nuParticle;
+						nuParticle.pos = nbsec + AuPoint(fX, fY, fZ) - sectorLoc;
+						m_vStars.append(nuParticle);
+					}
+				}
+			}
+		}
+	}
+}
+
 void auNebula::CreateSkyBox(AuAtomRenderInfo& ari, const AuPoint& pos, unsigned int paneSize, bool mipMap)
 {
 	//qDebug() << "auNebula::CreateSkyBox pos" << pos << "size" << paneSize << "mip" << mipMap;
@@ -1075,4 +1110,3 @@ AuPoint auNebula::GetRandomVector()
 
 	return vVector;
 }
-
