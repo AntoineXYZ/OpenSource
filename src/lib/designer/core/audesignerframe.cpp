@@ -68,6 +68,7 @@
 #include "auscpreviewinit.h"
 #include "ausetcontrols.h"
 #include "ausettingsdialog.h"
+#include "ausound.h"
 #include "auspacecraftaccount.h"
 #include "auspacecraftberths.h"
 #include "auspacecraftberthsdialog.h"
@@ -97,6 +98,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkDiskCache>
 #include <QNetworkReply>
+#include <QPushButton>
 #include <QTimer>
 #include <QUrl>
 
@@ -377,6 +379,9 @@ AuDesignerFrame::AuDesignerFrame(QWidget *parent) : AuFrame(parent)
 	m_SpacecraftShipmentsDock = 0;
 	m_SpacecraftSpecsDock = 0;
 	m_View = 0;
+	m_LegacyDesigner = 0;
+	m_IntroMenuVisible = false;
+	m_ResumeIntroMusic = false;
 	m_WaitTime.start();
 
 	// Designer
@@ -717,6 +722,9 @@ QSize AuDesignerFrame::sizeHint() const
 
 void AuDesignerFrame::Timer()
 {
+	if(m_LegacyDesigner)
+		return;
+
 	//qDebug() << "AuDesignerFrame::Timer" << auApp->RunState();
 	switch(auApp->RunState())
 	{
@@ -2964,6 +2972,9 @@ void AuDesignerFrame::EnumControlInputs(DiControlInputArray& aAllControls) const
 
 void AuDesignerFrame::KeyPressed(QKeyEvent* e)
 {
+	if(m_LegacyDesigner)
+		return;
+
 	//qDebug() << "AuDesignerFrame::KeyPressed" << e->key() << e->modifiers() << m_ActiveKeys.contains((Qt::Key)e->key());
 	// View does not get tab key press events so we'll forward this one.
 	if(m_View && e->key() == Qt::Key_Tab)
@@ -2983,6 +2994,9 @@ void AuDesignerFrame::KeyPressed(QKeyEvent* e)
 
 void AuDesignerFrame::KeyReleased(QKeyEvent* e)
 {
+	if(m_LegacyDesigner)
+		return;
+
 	m_ControlLock.lock();
 	//qDebug() << "AuDesignerFrame::KeyReleased" << e->key() << e->modifiers() << m_ActiveKeys.contains((Qt::Key)e->key());
 	Q_ASSERT(m_pControls);
@@ -3532,16 +3546,6 @@ void AuDesignerFrame::CreateDesignerMenu()
 
 		m_Designer_Open = fileMenu->addAction(tr("&Open..."), m_View, SLOT(DesignerOpen()), QKeySequence::Open);
 		m_Designer_Open->setIcon(QIcon(":data/dp_Load.png"));
-
-		QAction* legacyOpen = fileMenu->addAction(tr("View &Legacy Spacecraft..."));
-		connect(legacyOpen, &QAction::triggered, this, [this]()
-		{
-			AuLegacyShipViewer* viewer = new AuLegacyShipViewer(this);
-			viewer->setAttribute(Qt::WA_DeleteOnClose);
-			viewer->setWindowFlag(Qt::Window);
-			viewer->show();
-			viewer->ChooseFile();
-		});
 
 		m_Designer_Save = fileMenu->addAction(tr("&Save"), m_View, SLOT(DesignerSave()), QKeySequence::Save);
 		m_Designer_Save->setIcon(QIcon(":data/dp_Save.png"));
@@ -5534,6 +5538,30 @@ void AuDesignerFrame::SpawnTie()
 
 void AuDesignerFrame::LaunchDesigner()
 {
+	if(m_View || m_LegacyDesigner || !m_Intro || auApp->RunState() != AuApp::NotLoggedIn)
+		return;
+
+	QMessageBox choice(QMessageBox::Question, tr("Choose Designer"),
+		tr("Choose a designer. Exit the selected designer before choosing another.\n\n"
+			"Legacy Spacecraft opens saved 2016 .ship designs for inspection."),
+		QMessageBox::NoButton, this);
+	QPushButton* modern = choice.addButton(tr("Modern Designer"), QMessageBox::AcceptRole);
+	QPushButton* legacy = choice.addButton(tr("Legacy Spacecraft"), QMessageBox::ActionRole);
+	choice.addButton(QMessageBox::Cancel);
+	choice.setDefaultButton(modern);
+	choice.exec();
+
+	// The selection dialog runs an event loop; login may have progressed meanwhile.
+	if(m_View || m_LegacyDesigner || !m_Intro || auApp->RunState() != AuApp::NotLoggedIn)
+		return;
+	if(choice.clickedButton() == legacy)
+	{
+		LaunchLegacyDesigner();
+		return;
+	}
+	if(choice.clickedButton() != modern)
+		return;
+
 	// We can't show the designer until the basic game data has been loaded. It is stored in a local cache file whenever
 	// the player logs into the server farm.
 	DgData& gd = g_Au.LockDataForWrite();
@@ -5577,6 +5605,78 @@ void AuDesignerFrame::LaunchDesigner()
 	auApp->SetRunState(AuApp::Designer);
 }
 
+void AuDesignerFrame::LaunchLegacyDesigner()
+{
+	// A designer is chosen before creating the modern scene, never over an open design.
+	if(m_View || m_LegacyDesigner || !m_Intro || centralWidget() != m_Intro
+		|| auApp->RunState() != AuApp::NotLoggedIn)
+		return;
+
+	m_ResumeIntroMusic = auApp->IsClientSoundPlaying(MUSIC_ShroudOfGlory);
+	auApp->StopClientSound(MUSIC_ShroudOfGlory);
+
+	m_IntroWindowTitle = windowTitle();
+	m_IntroMenuVisible = menuWidget() && menuWidget()->isVisible();
+	if(menuWidget())
+		menuWidget()->hide();
+
+	QWidget* intro = takeCentralWidget();
+	intro->setParent(this);
+	intro->hide();
+
+	m_LegacyDesigner = new AuLegacyShipViewer(this);
+	m_LegacyDesigner->setWindowFlags(Qt::Widget);
+	AuLegacyShipViewer* viewer = m_LegacyDesigner;
+	viewer->SetExitHandler([this, viewer]()
+	{
+		if(m_LegacyDesigner == viewer)
+			ExitLegacyDesigner();
+	});
+	connect(viewer, &QWidget::windowTitleChanged, this, [this, viewer](const QString& title)
+	{
+		if(m_LegacyDesigner == viewer)
+			setWindowTitle(title);
+	});
+	setWindowTitle(m_LegacyDesigner->windowTitle());
+	setCentralWidget(m_LegacyDesigner);
+	m_LegacyDesigner->show();
+	m_LegacyDesigner->setFocus();
+
+	m_ControlLock.lock();
+	m_ActiveKeys.clear();
+	m_ActiveKeyMods = Qt::NoModifier;
+	m_ControlLock.unlock();
+}
+
+void AuDesignerFrame::ExitLegacyDesigner()
+{
+	if(!m_LegacyDesigner)
+		return;
+
+	AuLegacyShipViewer* viewer = m_LegacyDesigner;
+	takeCentralWidget();
+	viewer->hide();
+	viewer->setParent(this);
+	viewer->deleteLater();
+	m_LegacyDesigner = 0;
+
+	m_ControlLock.lock();
+	m_ActiveKeys.clear();
+	m_ActiveKeyMods = Qt::NoModifier;
+	m_ControlLock.unlock();
+
+	setCentralWidget(m_Intro);
+	m_Intro->show();
+	m_Intro->setFocus();
+	setWindowTitle(m_IntroWindowTitle);
+	if(menuWidget())
+		menuWidget()->setVisible(m_IntroMenuVisible);
+	if(m_ResumeIntroMusic && auApp->RunState() == AuApp::NotLoggedIn
+		&& !auApp->IsClientSoundPlaying(MUSIC_ShroudOfGlory))
+		auApp->PlayClientSound(MUSIC_ShroudOfGlory);
+	m_ResumeIntroMusic = false;
+}
+
 void AuDesignerFrame::TransferCitizensAvailable(QByteArray ba)
 {
 	if(m_CargoTransferDock)
@@ -5586,4 +5686,3 @@ void AuDesignerFrame::TransferCitizensAvailable(QByteArray ba)
 	if(m_HoldDockFree)
 		m_HoldDockFree->TransferCitizensAvailable(ba);
 }
-

@@ -25,7 +25,24 @@ Use a path appropriate to the executable's platform: a Windows executable uses
 C:\ paths even when launched from WSL. Relative input paths are resolved before
 the client's usual change of working directory to its executable directory.
 
-From a running modern design studio, use File > View Legacy Spacecraft...
+From the normal client launch screen, select the designer button, then choose
+Modern Designer or Legacy Spacecraft. Legacy takes over the existing main
+window, including its menus, toolbar, deck view, and inspector. File > Exit
+Designer returns to the launch screen so another designer can be chosen.
+The modern designer keeps its existing exit behavior (closing the client).
+Neither designer offers a command to switch directly to the other while open.
+The former modern File > View Legacy Spacecraft action has been removed.
+
+Legacy entry from the launch screen occurs before a modern view or scene is
+created. The launch screen is kept hidden and restored on exit. The frame's
+game timer and global keyboard handling are bypassed while Legacy is active,
+so game shortcuts cannot act on the legacy interface. Ordinary Qt shortcuts
+and the viewer's Open, Fit, and Exit commands remain available.
+
+The launch-screen music stops when Legacy opens. On exit it restarts from the
+beginning only if it had been playing before entry and the client is still at
+the launch screen. The legacy menu bar, popup menus, and toolbar controls use a
+local dark theme in both embedded and direct-launch modes.
 
 The standalone path creates a plain QApplication before any game application,
 game data, resource initialization, login, or OpenGL context. The original 2016
@@ -52,7 +69,8 @@ src/app/clients/scene/main.cpp
   signal handlers. The regular startup path remains available without the flag.
 
 src/lib/designer/core/audesignerframe.cpp and .vscode/launch.json
-  Design studio File menu entry and the already-built launch profiles.
+  Designer choice at entry, embedding in the main window, exit back to the
+  launch screen, and the already-built direct legacy launch profiles.
 
 The existing CMake recursive source discovery includes the new library files.
 No build-system target or runtime dependency was added.
@@ -105,12 +123,28 @@ owning room IDs. Verify zoom/pan/fit, reopening files, closing the viewer, and a
 failed load while another design is open. A failed load should preserve the
 previous design. Also launch the ordinary client without the new argument.
 
+For the embedded interface, verify Cancel at the designer choice leaves the
+launch screen intact; Legacy uses the same window; Ctrl+O and Fit still work;
+File > Exit Designer restores the launch screen and title; and opening Legacy
+again starts a fresh session. After exiting Legacy, select Modern and verify
+its usual initialization and controls, with no legacy command in its File menu.
+Test closing the main window from Legacy and the direct -legacy-spacecraft path.
+Verify music stops on entry and restarts on exit if previously playing; if it
+was already stopped, it must stay stopped. Check menu and toolbar text, hover,
+checked/disabled states, and the deck dropdown against the dark backgrounds.
+
 Verification limits
 -------------------
 Completed: independent static review of the reader and integration, whitespace
 checks, JSON/Python syntax checks, and validation of all 19 new evidence links.
 The three original samples were re-read with the Python inspector: SHA-256
 hashes and record counts still match the baseline, with exact EOF consumption.
+
+The user subsequently built and verified the original viewer: direct launch
+and the former modern File-menu path worked, with room types/subtypes and
+equipment positions displaying as expected. The later entry-choice/embedded
+interface change has passed static ownership/input review but awaits the user's
+build and runtime check.
 
 No build, compiler, or native runtime test was initiated during implementation.
 Source review and Python inspection of the original files support the recovered

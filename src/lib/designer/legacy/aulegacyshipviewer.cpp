@@ -16,6 +16,7 @@
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPalette>
 #include <QPlainTextEdit>
 #include <QSet>
 #include <QShowEvent>
@@ -226,12 +227,35 @@ public:
 			view->viewport()->update();
 		});
 
+		window->menuBar()->setNativeMenuBar(false);
+		const QString menuStyle = QStringLiteral(
+			"QMenuBar, QMenu { background: #141b23; color: #dce5ef; }"
+			"QMenuBar { border-bottom: 1px solid #344454; }"
+			"QMenuBar::item { background: transparent; padding: 5px 10px; }"
+			"QMenuBar::item:selected { background: #30465b; }"
+			"QMenuBar::item:pressed { background: #3c5972; }"
+			"QMenu { border: 1px solid #344454; padding: 4px; }"
+			"QMenu::item { padding: 6px 28px; }"
+			"QMenu::item:selected { background: #30465b; color: #ffffff; }"
+			"QMenu::separator { height: 1px; background: #344454; margin: 4px 8px; }"
+			"QMenuBar::item:disabled, QMenu::item:disabled { color: #7e8b99; }");
+		window->menuBar()->setStyleSheet(menuStyle);
 		QMenu* fileMenu = window->menuBar()->addMenu(QStringLiteral("&File"));
+		fileMenu->setStyleSheet(menuStyle);
 		fileMenu->addAction(openAction);
-		QAction* closeAction = fileMenu->addAction(QStringLiteral("&Close"));
+		closeAction = fileMenu->addAction(QStringLiteral("&Close"));
 		closeAction->setShortcut(QKeySequence::Close);
-		QObject::connect(closeAction, &QAction::triggered, window, &QWidget::close);
+		QObject::connect(closeAction, &QAction::triggered, window, [this]() {
+			if (exitHandler)
+			{
+				const std::function<void()> handler = exitHandler;
+				QTimer::singleShot(0, window, [handler]() { handler(); });
+			}
+			else
+				window->close();
+		});
 		QMenu* viewMenu = window->menuBar()->addMenu(QStringLiteral("&View"));
+		viewMenu->setStyleSheet(menuStyle);
 		viewMenu->addAction(fitAction);
 		viewMenu->addSeparator();
 		viewMenu->addAction(roomsAction);
@@ -240,6 +264,34 @@ public:
 
 		QToolBar* toolbar = window->addToolBar(QStringLiteral("Legacy spacecraft"));
 		toolbar->setMovable(false);
+		toolbar->setStyleSheet(QStringLiteral(
+			"QToolBar { background: #141b23; border: 0; border-bottom: 1px solid #344454; spacing: 4px; padding: 4px; }"
+			"QToolBar QLabel { color: #dce5ef; background: transparent; }"
+			"QToolBar::separator { background: #344454; width: 1px; margin: 4px 6px; }"
+			"QToolButton { color: #dce5ef; background: transparent; border-image: none;"
+			" border: 1px solid transparent; border-radius: 3px; padding: 5px 8px; }"
+			"QToolButton:checked { background: #24394b; border-color: #50728f; }"
+			"QToolButton:hover { background: #30465b; border-color: #6084a3; }"
+			"QToolButton:pressed { background: #3c5972; }"
+			"QToolButton:disabled { color: #7e8b99; background: transparent; border-color: transparent; }"
+			"QComboBox { color: #dce5ef; background: #1d2833; border-image: none;"
+			" border: 1px solid #50728f; border-radius: 3px; padding: 4px 24px 4px 8px; }"
+			"QComboBox:hover, QComboBox:focus { border-color: #89b9de; }"
+			"QComboBox:on { background: #30465b; }"
+			"QComboBox:disabled { color: #7e8b99; border-color: #344454; }"
+			"QComboBox::drop-down { subcontrol-origin: padding; subcontrol-position: top right;"
+			" width: 20px; border: 0; border-image: none; background: #24394b; }"
+			"QComboBox QAbstractItemView { background: #1d2833; color: #dce5ef;"
+			" border: 1px solid #50728f; selection-background-color: #30465b; selection-color: #ffffff; }"));
+		QPalette controlsPalette = toolbar->palette();
+		for (QPalette::ColorRole role : { QPalette::WindowText, QPalette::Text, QPalette::ButtonText })
+		{
+			controlsPalette.setColor(role, QColor(220, 229, 239));
+			controlsPalette.setColor(QPalette::Disabled, role, QColor(126, 139, 153));
+		}
+		toolbar->setPalette(controlsPalette);
+		fileMenu->setPalette(controlsPalette);
+		viewMenu->setPalette(controlsPalette);
 		toolbar->addAction(openAction);
 		toolbar->addAction(fitAction);
 		toolbar->addSeparator();
@@ -528,6 +580,8 @@ public:
 	QAction* roomsAction;
 	QAction* detailsAction;
 	QAction* gridAction;
+	QAction* closeAction;
+	std::function<void()> exitHandler;
 	AuLegacyShip::Design design;
 	QString fileName;
 	QStringList geometryWarnings;
@@ -547,6 +601,14 @@ AuLegacyShipViewer::AuLegacyShipViewer(QWidget* parent)
 AuLegacyShipViewer::~AuLegacyShipViewer()
 {
 	delete m_Impl;
+}
+
+void AuLegacyShipViewer::SetExitHandler(const std::function<void()>& handler)
+{
+	m_Impl->exitHandler = handler;
+	m_Impl->closeAction->setText(handler ? QStringLiteral("E&xit Designer") : QStringLiteral("&Close"));
+	if (handler)
+		menuBar()->setNativeMenuBar(false);
 }
 
 void AuLegacyShipViewer::showEvent(QShowEvent* event)

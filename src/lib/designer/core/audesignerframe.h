@@ -59,6 +59,7 @@ class AuHandCraftDialog;
 class AuIntroBase;
 class AuJoystick;
 class AuLaborDock;
+class AuLegacyShipViewer;
 class AuLocatorCompassDock;
 class AuLocatorDock;
 class AuLocatorGPSDock;
@@ -111,6 +112,10 @@ private:
 	AuSettingsDialog*					m_Settings;
 	QTimer*								m_Timer;
 	AuDesignerView*						m_View;
+	AuLegacyShipViewer*				m_LegacyDesigner;
+	QString								m_IntroWindowTitle;
+	bool								m_IntroMenuVisible;
+	bool								m_ResumeIntroMusic;
 	AuElapsedTimer						m_WaitTime;				// The amount of time waiting for basic game data
 																// After 30 seconds we will shut down.
 
@@ -856,6 +861,9 @@ public slots:
 
 protected:
 	virtual void closeEvent(QCloseEvent* event);
+
+	void LaunchLegacyDesigner();
+	void ExitLegacyDesigner();
 
 	void CreateDockWidgets();
 

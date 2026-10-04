@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QString>
+#include <functional>
 
 // Offline inspection of the recovered 2016 authoring format. Opening a design
 // here does not modify the file or convert it to the modern mesh design model.
@@ -14,6 +15,7 @@ public:
 
 	bool OpenFile(const QString& fileName);
 	void ChooseFile();
+	void SetExitHandler(const std::function<void()>& handler);
 
 protected:
 	void showEvent(QShowEvent* event) override;
