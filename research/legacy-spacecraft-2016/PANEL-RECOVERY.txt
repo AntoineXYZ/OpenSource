@@ -3,9 +3,9 @@ Original 2016 Spacecraft Design panel
 
 Recovered 2026-10-04 from the original Shores of Hazeron.exe constructor
 0x1402c91e0 (AuTabDesign RTTI) using direct x64 assembly. The constructor's
-decompilation exceeded the MCP time limit. panel-layout-evidence.json records
-all referenced strings and the actual QGridLayout::addWidget call arguments.
-inspect_panel_layout.py reproduces those read-only observations with objdump.
+decompilation exceeded the MCP time limit. inspect_panel_layout.py reproduces
+the referenced strings and QGridLayout::addWidget call arguments with objdump;
+the tables below retain the interpreted layout. Binary identity: sources.json.
 
 Coordinates below are zero-based Qt grid rows and columns. Blank cells matter:
 constructor creation order is not the visible palette order.
@@ -103,7 +103,7 @@ Minimum Tech Level constructor 0x1402ca689..0x1402ca77d iterates raw values
 31 down to 0, creates displayed numbers raw+1, stores the raw value in item
 data, and initially selects the last item. Visible choices 32..1 therefore
 map to header minimumTechLevel 31..0. TimerUpdate selects via findData.
-This dropdown does not control armor.
+This is the bottom-right dropdown; it controls neither deck nor armor.
 
 Grid tooltips:
   Grid0   Lateral Grid Lines / enable grid lines on the beam.
@@ -117,10 +117,31 @@ spacecraft mass rises 10%. Armor Increase/Decrease tooltips describe increasing
 or reducing physical defense and mass. The constructor itself does not prove
 the permitted armor range; do not infer a range from its two buttons.
 
-Original tips/status text is recorded in panel-layout-evidence.json's
-offline_spacecraft_help. It contains old walkthrough, save, load-in-game and
+inspect_panel_layout.py also extracts offline_spacecraft_help, containing
+the old walkthrough, save, load-in-game and
 Burn CD instructions. Those instructions describe 2016 capabilities and must
 not advertise unsupported actions in the new panel.
+
+Header control behavior
+------------------------
+Streamline is a Boolean UI choice: AuAtom13.dll SetDesignStreamline(bool)
+0x1804618b0 delegates to AuData13.dll 0x180149f90, which changes the byte at
+DnSpaceShip+0x14 only when different (getter 0x18014a090). Its shared tiny
+store may be labelled AuItem::SetHitPoints by Ghidra; that alias is unrelated
+to the control's meaning. A modern multivalue selector does not establish a
+multivalue 2016 control.
+
+Armor increase/decrease (AuData13.dll 0x180144420/0x180144320) step by one,
+refusing increase at >=10 and decrease at zero. Low-level SetArmor(short)
+0x18017e3a0 only narrows/stores at +0x15; displaying an unusual loaded byte
+must not silently normalize it. Both controls reject read-only designs and
+notify changes; AuAtom wrappers 0x1804615d0/0x1804616c0 and streamline also
+check CanDesignBeModified and invalidate cached geometry/path after success.
+
+The working constructor (AuData13.dll 0x180178f70) stores ushort 1 at +0x14:
+new streamline=1, armor=0. Loading preserves saved values. Header edits mark
+the native session dirty; their 3D effects await the deferred renderer. Raw
+control captures are in pseudocode/ship-header-control-evidence.txt.
 
 Assets and native scope
 ------------------------
@@ -139,14 +160,10 @@ byte counts and resource names. Existing modern dp_ resources are under
 resources/client/mail/data but omit many of this panel's icons; the helper
 preserves the complete original set for both launch paths.
 
-At recovery time the native editing API implements per-event cell add/erase,
-all twenty room purposes, grid masks and stored Room Number, deck selection,
-loading and inspection. It does not yet expose room-type/number reassignment,
-whole-room/deck erase, equipment placement/erase, brush painting, move/copy,
-path checks, avatar walkthrough, gravity, 3D render switching, Burn CD or save.
-New/header controls may be wired by the parent in this interface milestone;
-that does not expand the cell-edit API. Unsupported panel actions should
-remain visibly unavailable with accurate tooltips.
-
-No compiler, application build, original binary execution or Ghidra mutation
-was performed for this panel recovery.
+The native panel docks right by default, toggles with F6 and retains a
+Selection tab, Fit/Inspect controls and tool description for the 2D workflow.
+Deck up/down covers -28..28 with no deck dropdown. Depart Studio/Delete Design
+are omitted in this offline session. Unimplemented tools stay disabled with
+explanatory tooltips; Draw selects painting and Room Number selects the brush
+subtype rather than reassigning an existing room. README.txt lists current
+scope; TESTING.txt contains the manual panel checks.

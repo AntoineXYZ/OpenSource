@@ -6,10 +6,9 @@ Scope and provenance
 Read-only recovery from the fully analyzed x64 Shores of Hazeron.exe and
 AuAtom13.dll. Raw decompilation, embedded UI strings, vtable bytes, and the
 previous IDA baseline's Qt metadata-labelled action handlers are preserved in
-ghidra-control-evidence.json. No old executable, Ghidra database, game database,
-or design file was modified during recovery. The later native editing and panel
-milestones are documented separately in PAINTING-MILESTONE.txt and
-PANEL-RECOVERY.txt.
+pseudocode/room-control-evidence.txt. Relevant tooltip text is quoted below;
+the panel strings can be re-extracted with inspect_panel_layout.py. See
+README.txt for current implementation scope and PANEL-RECOVERY.txt for layout.
 
 Addresses below are virtual addresses in the indicated original binary. Qt slot
 names come from the old executable's QMetaObject data and its dispatcher. The

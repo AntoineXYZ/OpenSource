@@ -10,7 +10,7 @@ and original clockwise vertex order are recovered for every combination.
 
 cell_shapes.py is an executable, standard-library-only reference.
 cell-shapes.json contains the table in integer half-grid coordinates.
-cell-shapes.svg shows all eleven masks and the four cursor sectors.
+cell_shapes.py --atlas regenerates an SVG of all masks and cursor sectors.
 These artifacts describe GetFillShapeAt, before room painting, room merging,
 erasing, detail reconciliation or any deck constraints in its callers. No
 native editor behavior is implemented by this recovery artifact.
@@ -111,71 +111,29 @@ change one-ULP cases. For example, moving .25 one representable value toward
 zero while holding fy=.25 still selects S because .5-fx rounds to .25. A
 second step toward zero selects W. These are preserved by the reference.
 
-Complete shape table
---------------------
-Bits: H(horizontal)=1, D45=2, V(vertical)=4, D135=8. Coordinates below are
-integer multiples of H relative to (ix*G,iy*G). C=(1,1) is the square center.
-Every list gives the original first vertex and append order.
-
-Mask  Families       Sector(s)   Vertices
-----  -------------  ----------  --------------------------------------
-0x03  H+D45          E,S         (0,0) (2,2) (4,2) (2,0)
-                     N,W         (0,0) (-2,0) (0,2) (2,2)
-0x05  H+V            all         (0,0) (0,2) (2,2) (2,0)
-0x06  D45+V          E,S         (0,0) (2,2) (2,0) (0,-2)
-                     N,W         (0,0) (0,2) (2,4) (2,2)
-0x07  H+D45+V        E,S         (0,0) (2,2) (2,0)
-                     N,W         (0,0) (0,2) (2,2)
-0x09  H+D135         E,N         (0,2) (2,2) (4,0) (2,0)
-                     W,S         (0,2) (2,0) (0,0) (-2,2)
-0x0A  D45+D135       E           C (2,2) (3,1) (2,0)
-                     N           C (0,2) (1,3) (2,2)
-                     W           C (0,0) (-1,1) (0,2)
-                     S           C (2,0) (1,-1) (0,0)
-0x0B  H+D45+D135     E           C (2,2) (3,1) (2,0)
-                     N           C (0,2) (2,2)
-                     W           C (0,0) (-1,1) (0,2)
-                     S           C (2,0) (0,0)
-0x0C  V+D135         E,N         (0,2) (0,4) (2,2) (2,0)
-                     W,S         (0,2) (2,0) (2,-2) (0,0)
-0x0D  H+V+D135       E,N         (2,0) (0,2) (2,2)
-                     W,S         (2,0) (0,0) (0,2)
-0x0E  D45+V+D135     E           C (2,2) (2,0)
-                     N           C (0,2) (1,3) (2,2)
-                     W           C (0,0) (0,2)
-                     S           C (2,0) (1,-1) (0,0)
-0x0F  H+D45+V+D135   E           C (2,2) (2,0)
-                     N           C (0,2) (2,2)
-                     W           C (0,0) (0,2)
-                     S           C (2,0) (0,0)
+Shape table
+------------
+cell-shapes.json is the canonical table of ordered integer half-grid vertices
+for all eleven masks and four cursor sectors. Bits are horizontal=1, D45=2,
+vertical=4 and D135=8. Coordinates are relative to (ix*G,iy*G); (1,1) is the
+square center. Use cell_shapes.py --table for a readable dump or --atlas for
+an SVG. Keep original first vertices and clockwise append order.
 
 Masks 0,1,2,4,8 have no bounded cell and yield no vertices. Every remaining
 byte value outside 0..15 also yields no vertices through the switch default,
 although DoesGridFormBoundaries returns true for those values. Normal toggles
 preserve the four-bit range; the helper does not mask corrupt input to 0x0F.
 
-Validation and limits
----------------------
-Run from the repository root, without building the client:
-
+Reference use and limits
+-------------------------
+Run from the repository root (no client build):
     python3 -B research/legacy-spacecraft-2016/cell_shapes.py --self-test
-
-The reference passed 2,156 interior geometry checks against an independent
-half-plane clipping oracle, 8,624 translated positive/negative-coordinate
-checks, all 256 mask bytes, clockwise vertex checks, literal-bit checks,
-explicit sector ties and one-ULP neighbors, and negative-grid seam fixtures.
-The oracle constructs the polygon enclosed by enabled horizontal, vertical,
-y-x=integer and x+y=integer line families instead of copying the shape table.
-The geometry oracle excludes line ties; those are checked against explicit
-assembly-derived fixtures. Z passthrough is checked with fractional values.
-
-Useful read-only commands:
     python3 -B research/legacy-spacecraft-2016/cell_shapes.py --table
     python3 -B research/legacy-spacecraft-2016/cell_shapes.py --point 0xF 1 2 24
     python3 -B research/legacy-spacecraft-2016/cell_shapes.py --atlas
 
-This is static reconstruction plus independent geometric validation. The 2016
-binary was not executed by a test harness, and no controlled painting session
-has yet verified the selected polygons against original UI interaction. The
-geometry reference does not claim room identity, raster fill, clipping or
-equipment semantics; those must be recovered and tested in the editing chain.
+The independent oracle intersects enabled line-family half-planes rather than
+copying the table. It excludes line ties; explicit assembly-derived fixtures
+cover those. TESTING.txt records coverage. The reference is a static recovery,
+not a comparison against automated mouse input in the original client. Room
+identity, raster mutation and equipment rules are separate specifications.

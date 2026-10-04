@@ -3,7 +3,7 @@
 
 Inputs and outputs here are integer quarter-grid raster coordinates relative to
 the origin. The C++ adapter uses world feet. This models the recovered routines,
-not a generic polygon Boolean operation; see ROOM-RASTER-PORT.txt.
+not a generic polygon Boolean operation; see PAINTING-RULES.txt.
 """
 
 import argparse

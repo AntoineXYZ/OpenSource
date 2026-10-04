@@ -441,11 +441,6 @@ public:
 		roomNumber->setAlignment(Qt::AlignCenter);
 		roomNumber->setAccessibleName(QStringLiteral("Room number"));
 		roomNumber->setToolTip(QStringLiteral("Room Number: distinguishes rooms of the same type on the same deck. Values wrap from 256 to 1."));
-		deckCombo = new QComboBox(window);
-		deckCombo->setAccessibleName(QStringLiteral("Current deck"));
-		deckCombo->setMinimumContentsLength(12);
-		QObject::connect(deckCombo, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
-			window, [this](int index) { if (index >= 0) ShowDeck(deckCombo->itemData(index).toInt()); });
 		deckUpAction = MakeAction("Raise design grid", "dp_DeckAbove", "Move the design grid up one deck.");
 		deckDownAction = MakeAction("Lower design grid", "dp_DeckBelow", "Move the design grid down one deck.");
 		QObject::connect(deckUpAction, &QAction::triggered, window, [this]() { ChangeDeck(1); });
@@ -536,19 +531,18 @@ public:
 		editPanel->setObjectName(QStringLiteral("LegacyPalette"));
 		BuildPalette(editPanel, newAction, openAction, saveAction);
 		panelLayout->addWidget(editPanel);
-		QHBoxLayout* deckRow = new QHBoxLayout;
-		deckRow->addWidget(new QLabel(QStringLiteral("Deck"), panel));
-		deckRow->addWidget(deckCombo, 1);
+		QHBoxLayout* viewTools = new QHBoxLayout;
+		viewTools->addStretch();
 		QToolButton* fit = new QToolButton(panel);
 		fit->setDefaultAction(fitAction);
 		fit->setToolButtonStyle(Qt::ToolButtonTextOnly);
-		deckRow->addWidget(fit);
+		viewTools->addWidget(fit);
 		QToolButton* inspect = new QToolButton(panel);
 		inspect->setDefaultAction(inspectAction);
 		inspect->setIconSize(QSize(16, 16));
 		inspect->setAccessibleName(QStringLiteral("Inspect rooms and equipment"));
-		deckRow->addWidget(inspect);
-		panelLayout->addLayout(deckRow);
+		viewTools->addWidget(inspect);
+		panelLayout->addLayout(viewTools);
 		toolLabel = new QLabel(panel);
 		toolLabel->setWordWrap(true);
 		panelLayout->addWidget(toolLabel);
@@ -583,7 +577,7 @@ public:
 		panelScroll->setWidget(panel);
 		toolDock->setWidget(panelScroll);
 		toolDock->setMinimumWidth(380);
-		window->addDockWidget(Qt::LeftDockWidgetArea, toolDock);
+		window->addDockWidget(Qt::RightDockWidgetArea, toolDock);
 		window->resizeDocks(QList<QDockWidget*>() << toolDock, QList<int>() << 380, Qt::Horizontal);
 		QAction* showTools = toolDock->toggleViewAction();
 		showTools->setText(QStringLiteral("Spacecraft Design tools"));
@@ -758,10 +752,10 @@ public:
 
 	void ChangeDeck(int delta)
 	{
-		const int index = deckCombo->currentIndex();
-		if (index < 0) return;
-		const int next = deckCombo->findData(deckCombo->itemData(index).toInt() + delta);
-		if (next >= 0) deckCombo->setCurrentIndex(next);
+		if (!loaded) return;
+		const int next = currentDeck + delta;
+		if (next >= AuLegacyShip::MinimumDeck && next <= AuLegacyShip::MaximumDeck)
+			ShowDeck(next);
 	}
 
 	void ChangeArmor(int delta)
@@ -835,9 +829,9 @@ public:
 
 	void EditAt(const QPointF& cursor)
 	{
-		if (!loaded || toolMode == InspectMode || deckCombo->currentIndex() < 0)
+		if (!loaded || toolMode == InspectMode)
 			return;
-		const int deck = deckCombo->currentData().toInt();
+		const int deck = currentDeck;
 		const int type = toolMode == EraseMode ? -1 : selectedRoomType;
 		const AuLegacyShip::CellEditResult result = AuLegacyShip::EditCell(design, deck, cursor,
 			view->gridMask, type, quint8(roomNumber->value() - 1));
@@ -850,7 +844,7 @@ public:
 		if (result.changed)
 		{
 			modified = true;
-			IndexDecks(deck);
+			IndexDecks();
 			UpdateSummary();
 			ShowDeck(deck, false);
 		}
@@ -976,6 +970,8 @@ public:
 
 	void ShowDeck(int deck, bool fit = true)
 	{
+		deck = std::max(AuLegacyShip::MinimumDeck, std::min(AuLegacyShip::MaximumDeck, deck));
+		currentDeck = deck;
 		deckUpAction->setEnabled(loaded && deck < AuLegacyShip::MaximumDeck);
 		deckDownAction->setEnabled(loaded && deck > AuLegacyShip::MinimumDeck);
 		const QTransform previousTransform = view->transform();
@@ -1060,7 +1056,7 @@ public:
 		view->viewport()->update();
 	}
 
-	void IndexDecks(int selectedDeck)
+	void IndexDecks()
 	{
 		roomDecks.clear();
 		detailDecks.clear();
@@ -1081,15 +1077,6 @@ public:
 			occupied.insert(deck);
 		}
 		occupiedDeckCount = occupied.size();
-		selectedDeck = std::max(AuLegacyShip::MinimumDeck, std::min(AuLegacyShip::MaximumDeck, selectedDeck));
-		deckCombo->blockSignals(true);
-		deckCombo->clear();
-		for (int deck = AuLegacyShip::MinimumDeck; deck <= AuLegacyShip::MaximumDeck; ++deck)
-			deckCombo->addItem(QStringLiteral("%1  (Z %2 ft)%3").arg(deck).arg(deck * AuLegacyShip::DeckHeight)
-				.arg(occupied.contains(deck) ? QString() : QStringLiteral(" \u2014 empty")), deck);
-		deckCombo->setCurrentIndex(deckCombo->findData(selectedDeck));
-		deckCombo->setEnabled(true);
-		deckCombo->blockSignals(false);
 	}
 
 	void UpdateSummary()
@@ -1108,7 +1095,7 @@ public:
 		fileName = path.isEmpty() ? QString() : QFileInfo(path).absoluteFilePath();
 		loaded = true;
 		modified = false;
-		IndexDecks(0);
+		IndexDecks();
 		UpdateSummary();
 		editPanel->setEnabled(true);
 		RefreshHeaderControls();
@@ -1121,7 +1108,6 @@ public:
 	QSettings settings;
 	QGraphicsScene* scene;
 	DeckView* view;
-	QComboBox* deckCombo;
 	QSpinBox* roomNumber;
 	QWidget* editPanel;
 	QDockWidget* toolDock;
@@ -1153,6 +1139,7 @@ public:
 	QRectF deckBounds = QRectF(-40.0, -40.0, 80.0, 80.0);
 	ToolMode toolMode = InspectMode;
 	int selectedRoomType = 2;
+	int currentDeck = 0;
 	int occupiedDeckCount = 0;
 	bool loaded = false;
 	bool modified = false;

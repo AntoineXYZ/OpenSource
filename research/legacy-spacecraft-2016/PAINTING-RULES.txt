@@ -1,22 +1,19 @@
 2016 spacecraft room painting: recovered behavior
 Captured 2026-10-04. No build or original-client edit was run for this recovery.
 
-Follow-up: PAINTING-MILESTONE.txt describes the subsequent native in-memory
-cell editor. ROOM-RASTER-PORT.txt and EQUIPMENT-RECONCILIATION.txt resolve the
-implementation dependencies left open in this initial recovery report.
-
 Scope and evidence
 ------------------
 This is an implementation specification from read-only static analysis of the
 2016 AuAtom13.dll and AuData13.dll. Function names below come from PE exports.
-Raw decompilations are in pseudocode/; query results and assembly cross-checks
-are in ghidra-painting-evidence.json. Decompiled locals/types are not original
+Raw decompilations and assembly cross-checks are in pseudocode/.
+Decompiled locals/types are not original
 source. Conclusions marked INFERENCE still need controlled old-client edits.
 
 Cell shapes and UI gestures are recovered separately (see CONTROL-MAPPING.txt
 for the actual left-button commands). This document starts at
 DaDesignEnvironment::FillRoomCell and follows the spacecraft editing path.
-It does not implement editing, saving, or a full equipment validator.
+The native port is aulegacyshipgeometry.cpp / aulegacyshipedit.cpp; equipment
+rules are in EQUIPMENT-RECONCILIATION.txt. Current UI scope is in README.txt.
 
 Important consequence: rooms are not arbitrary independently paintable polygons.
 The ordinary add path identifies a room by (deck, type, subtype), and its
@@ -42,7 +39,7 @@ AuAtom13.dll 0x1802f8ed0, DaDesignEnvironment::FillRoomCell:
 
 The byte +0x3ba is the user-facing Room Number, separately recovered in
 CONTROL-MAPPING.txt; the parameter flow into DnRoom::rsub is direct. Increment
-and decrement wrap its byte modulo 256. See RENDER-EVIDENCE.txt for the SQL
+and decrement wrap its byte modulo 256. See FORMAT.txt for the SQL
 binding evidence identifying +0x07 as rtype and +0x08 as rsub.
 
 AuAtom13.dll 0x1803e55c0, DaSpaceShip::DesignRoom:
@@ -275,52 +272,42 @@ INFERENCE requiring particular care:
   fill that void in the resulting room. Do not claim this as old-client-tested
   behavior yet. The raw checks, not a presumed topological policy, are authority.
 
-6. Equipment reconciliation happens after room edits
-----------------------------------------------------
-AuData13.dll 0x18014b3f0, SpaceShipDesignVerifyDetails:
-  Iterate all design details in existing list order. Remember detail type
-  (+0x01) and room ID (+0x28), then call SpaceShipDesignTestDetail.
-  If valid, keep the detail and notify if type or room ID changed.
-  If invalid, notify removal and erase the detail from the array.
+6. Equipment reconciliation
+----------------------------
+After successful room operations, SpaceShipDesignVerifyDetails (AuData13.dll
+0x18014b3f0) processes details in existing order through SpaceShipDesignTestDetail
+0x18014a730 and DnDetail::IsValid 0x18015c9d0. Valid records may change type or
+room ID; invalid records are removed. Later checks see earlier corrections and
+deletions. Even an empty erase invokes this pass. Equipment has its own deck
+limit (abs(deck)<=42), independent of the paint-deck range. The full recovered
+rules and 143 original placement definitions are in EQUIPMENT-RECONCILIATION.txt.
 
-SpaceShipDesignTestDetail (0x18014a730) calls DnDetail::IsValid (0x18015c9d0)
-with the room array, current detail array, detail-type definitions, two output
-parameters for corrected detail type and room ID, and spacecraft=true. On
-success it writes those outputs back. Detail IDs and locations are not changed
-by these wrappers; reconciliation can change the type and room association or
-delete the detail. Later details see the array after earlier deletions.
+7. Native port contract and safety guards
+-----------------------------------------
+Geometry and equipment changes commit together. Working boundaries retain
+ordered doubles between strokes; do not quantize to saved packed bytes after
+each edit. Empty source room records are excluded from authoring/reconciliation
+lookups, matching the original loader's discard behavior (FORMAT.txt).
 
-The IsValid body is captured in full but its equipment-specific rules are NOT
-fully specified by this milestone. Directly visible checks include the shared
-XY grid bounds, abs(detail deck) <=42, existence of its detail-type definition,
-room/wall/floor placement categories, interior/exterior restrictions, and stair
-footprints. Some rules depend on the legacy DnDetailType data, not just dtype.
-Therefore do not implement reconciliation as a generic point-in-room test or
-assume the paint-deck [-28,28] limit also defines valid equipment decks.
+The port preserves exact point/order comparisons rather than Qt fuzzy equality.
+AuMath13.dll_geometry_segment_tests.txt establishes boundary self-contact at
+distance <=1e-5 feet from emitted open-array segments, with division by segment
+length twice. Preserve that operation order and the 10,000-step trace guard's
+final tests. CanSubtract accepts unchanged occupancy and full erasure; Subtract
+reports unchanged as false and successful full erasure as an empty polygon.
 
-7. Validation boundary and next implementation fixtures
--------------------------------------------------------
-The saved .ship format and viewer established earlier are unchanged by these
-research files. No native editing is enabled here, and no old client was
-automated. The original function chain and the surprising false return above
-are statically verified. End-to-end edit results still require comparison.
+Before rasterization, reject fewer than three points, nonfinite coordinates,
+unsafe buffer coordinates (including a two-sample neighbor margin), and edges
+that are neither axis-aligned nor 45-degree after raster rounding. The original
+sign-step loop can fail to terminate on arbitrary edges. These guards reject
+unsupported input explicitly; they never approximate it. Expanded ellipse roofs
+may therefore block partial erasure on their deck. Out-of-buffer reads return
+zero defensively. Failed operations leave the design unchanged and distinguish
+errors from ordinary unchanged geometry. Unknown vehicle footprints likewise
+reject an edit atomically rather than guessing.
 
-Recommended controlled old-client saves, each with before/after files:
-  - Add adjacent, overlapping, contained and disconnected same-key cells.
-  - Try same-key contact at a single corner and at a diagonal half-cell edge.
-  - Repaint into another subtype, then repaint over a narrow connection.
-  - Erase an edge, erase a bridge, erase a wholly interior cell, erase all.
-  - Use the actual Delete Room UI on either side of, and directly on, a shared
-    room boundary to establish point-hit selection. Keep the separate -2
-    polygon operation as a lower-level fixture, not a guessed UI gesture.
-  - Change a room's type with and without an existing same-deck target key;
-    compare IDs as well as visible shape, since freed IDs may be reused.
-  - Paint a loop around a void to resolve the add/inner-ring inference.
-  - Place representative equipment before each change and record deletion,
-    retyping and room-ID reassignment, including surviving boundary fixtures.
-  - Exercise XY half-grid limits +/-120 and decks -28/+28, then distinguish
-    an edit rejected for topology from one rejected for coordinates.
-
-Exact implementation still needs a reviewed translation of AddBoundary and
-ZeroBoundary (including sample repair) plus the complete equipment placement
-specification. Their pseudocode is now preserved locally for that work.
+room_raster.py is the executable integer quarter-grid reference. Thirteen
+fixtures in room-raster-fixtures.json include the enclosed-void add result
+predicted above; these are reconstructed results, not old-client saves.
+TESTING.txt centralizes reference coverage, native harness commands and the
+controlled old-client comparisons still needed for end-to-end parity.

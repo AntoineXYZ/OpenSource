@@ -1,0 +1,108 @@
+Recovery validation
+====================
+
+Build policy and evidence limits
+--------------------------------
+The user builds manually. The assistant must not run a compiler or client build.
+Native harnesses below are outside game targets and have not been built/run by
+the assistant. Synthetic fixtures test recovered algorithms; they do not prove
+original-client runtime or visual parity. The user verified the viewer, cell
+editing and fresh designs. The restored panel still needs native UI comparison.
+
+Reference checks (repository root; no build)
+--------------------------------------------
+  python3 -B research/legacy-spacecraft-2016/cell_shapes.py --self-test
+  python3 -B research/legacy-spacecraft-2016/room_raster.py --self-test
+  python3 -B research/legacy-spacecraft-2016/inspect_vehicle_bounds.py --self-test
+  python3 -B research/legacy-spacecraft-2016/tests/check_detail_placements.py \
+    '/path/to/design.ship'
+
+Recorded coverage: cell shapes passed 2,156 independent half-plane checks,
+8,624 translated checks, every byte mask, literal bits, ties and negative seams.
+The raster reference checked 19,160 occupancy/boundary points, 220 complete
+erasures, 105,840 interior subtraction samples, all 16 scanline predicates and
+13 topology fixtures. All 84 original sample room boundaries traced; all
+8,328 details passed the categorical placement audit. That audit does not test
+full spacing, vehicle geometry or native reconciliation. Original asset checks
+covered 143 detail definitions, 15 vehicle commodities and 111 unchanged PNGs.
+
+Sample baselines (full hashes and per-deck counts: sample-inspection.json):
+  File                          Bytes   Rooms   Stored vertices   Details
+  Antiflux Harvester MK2.ship    35755      29              312      2040
+  B8_Galatine_A1.ship            39059      30              332      2235
+  tl20StarDriver.ship           69654      25              204      4053
+All are version 2/state 0, consume exactly to EOF, and open in the 2016 client.
+None has empty/ellipse-control rooms. Version 0/1 coverage is synthetic.
+
+Manual native harnesses (commands for the user only)
+---------------------------------------------------
+From the repository root, with Qt 5 development packages and pkg-config:
+
+  c++ -std=c++11 -fPIC -no-pie -Isrc/lib/data/designs \
+    research/legacy-spacecraft-2016/tests/native_ship_reader.cpp \
+    src/lib/data/designs/aulegacyship.cpp \
+    $(pkg-config --cflags --libs Qt5Core Qt5Gui) -o /tmp/native_ship_reader
+
+  c++ -std=c++11 -fPIC -no-pie -Isrc/lib/data/designs \
+    research/legacy-spacecraft-2016/tests/native_ship_geometry.cpp \
+    src/lib/data/designs/aulegacyshipgeometry.cpp \
+    $(pkg-config --cflags --libs Qt5Core Qt5Gui) -o /tmp/native_ship_geometry
+
+  c++ -std=c++11 -fPIC -no-pie -Isrc/lib/data/designs \
+    research/legacy-spacecraft-2016/tests/native_detail_reconciliation.cpp \
+    src/lib/data/designs/aulegacyship.cpp \
+    src/lib/data/designs/aulegacyshipdetails.cpp \
+    $(pkg-config --cflags --libs Qt5Core Qt5Gui) -o /tmp/native_detail_reconciliation
+
+  c++ -std=c++11 -fPIC -no-pie -Isrc/lib/data/designs \
+    research/legacy-spacecraft-2016/tests/native_ship_edit.cpp \
+    src/lib/data/designs/aulegacyship.cpp \
+    src/lib/data/designs/aulegacyshipgeometry.cpp \
+    src/lib/data/designs/aulegacyshipdetails.cpp \
+    src/lib/data/designs/aulegacyshipedit.cpp \
+    $(pkg-config --cflags --libs Qt5Core Qt5Gui) -o /tmp/native_ship_edit
+
+Run the already-built harnesses:
+  /tmp/native_ship_reader --self-test
+  /tmp/native_ship_geometry research/legacy-spacecraft-2016/room-raster-fixtures.json \
+    research/legacy-spacecraft-2016/cell-shapes.json
+  /tmp/native_detail_reconciliation
+  /tmp/native_ship_edit
+
+Reader fixtures use Qt's own Qt_4_0 writer and cover versions 0/1/2, every
+truncation, exact EOF, UTF-16/null strings, count/size limits, atomic failure,
+signed coordinates, normalization and ellipse expansion/degeneracy. Geometry
+checks exact fixture outputs, 3,072 cell outputs and unsupported-input guards.
+Edit/detail fixtures cover room keys, ID reuse, competing repaint, atomicity,
+empty/full erasure, roofs, coordinate limits and equipment correction/removal.
+
+For full native/Python record parity, substitute an original sample path:
+  python3 -B research/legacy-spacecraft-2016/tests/compare_native_reader.py \
+    /tmp/native_ship_reader '/path/to/design.ship'
+Multiple sample paths are accepted. /tmp/native_ship_edit also accepts sample
+paths for in-memory new-deck edits and reconciliation; it never writes them.
+/tmp/native_ship_reader '/path/to/design.ship' emits a complete JSON dump.
+
+Manual UI and original-client comparisons
+-----------------------------------------
+Launch AuSceneClient -legacy-spacecraft [file] or use the designer chooser.
+The VS Code "Legacy spacecraft viewer (already built)" profiles have no build
+task. Paths must match the executable's platform (Windows uses C:\ paths).
+
+Check the right-docked palette, F6 hide/float/redock, icon availability without
+legacy DLLs, dark controls, selected tools, pan/zoom/fit and record inspection.
+Deck arrows must stop at -28/+28; Room Number wraps 1..256; minimum TL displays
+32..1. New defaults: streamline enabled, armor 0, minimum TL display 1. Loading
+must preserve header bytes without marking dirty. Disabled tools must do nothing.
+
+Test New/Open/Exit/close with Discard and Cancel, failed loads preserving edits,
+and last-directory persistence (successful opens only; missing folder fallback).
+Check embedded entry/exit, music restoration, reopening Legacy and subsequent
+Modern entry; the two designers cannot be switched directly while open.
+
+For original parity, save controlled before/after files in the old client:
+adjacent/contained/disconnected/corner-touch paints; competing type/subtype;
+edge/full/bridge/hole erases; a closed loop; diagonal cells and negative seams;
+XY +/-120 and deck +/-28 limits. Compare IDs, boundaries and equipment changes,
+not just appearance. Whole-room hit tests and type/number reassignment remain
+future comparisons; PAINTING-RULES.txt records their distinct original paths.

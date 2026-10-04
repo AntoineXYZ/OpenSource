@@ -1,0 +1,91 @@
+Legacy .ship format and working state
+=====================================
+
+Local-file path
+---------------
+Shores of Hazeron.exe 0x1402ec270 opens a local .ship; 0x1402ee9d0 saves it.
+Both set QDataStream version 7 (Qt_4_0). AuData13.dll LoadSpaceShipDesign
+0x18013e9a0 reads DnSpaceShip::Rx, DnRoomArray, then DnDetailArray. The stream
+SaveSpaceShipDesign overload 0x180140050 writes the same order. The object
+overload 0x18013fe50 inserts records into DgData; it is not the file serializer.
+
+Files are raw big-endian Qt streams: no SHIP header and no modern .SoH wrapper.
+QString uses Qt's byte-length-prefixed UTF-16 representation, including its
+null sentinel. The recovered reader supports versions 0, 1 and 2; real samples
+cover version 2. Other historic variants are unverified. Native reads are
+atomic, require exact EOF, and cap input at 64 MiB and 250,000 combined records
+(module pairs, rooms, vertices and details).
+
+Record order
+-------------
+Header: design ID u32, QString name, architect ID u32, streamline u8, armor u8,
+packed version/state u8 (high/low nibbles), QString architect name, an extra
+legacy QString for versions below 2, then minimum tech level u8. Version 2
+adds hull volume u32, structure u8 and tech level u8.
+Nonzero versions then carry module data: a u32
+count of u16 pairs, eight u16 scalar slots, and another counted u16 pair list.
+The module slot meanings remain incomplete; retain raw and normalized IDs.
+
+Rooms: u16 count, then design ID u32, room ID u16, deck i8, type u8, subtype u8,
+vertex count u16 and that many packed XY u16 values.
+
+Details: u32 count, then 17-byte records: deck i8, type u8, hidden u8, detail ID
+u32, design ID u32, packed XY u16, room ID u16, commodity ID u16. Commodity IDs
+0xf9 and 0xfb normalize to 0xf8 and 0xfa. Preserve the raw hidden byte and IDs.
+Orientation comes from directional detail-type variants, not the commodity ID
+or position. DnDetailType::Rotation at AuData13.dll 0x180044b20 gives the mapping.
+
+Packed XY uses signed high byte X and signed low byte Y. Each unit is
+2.8284271245 feet; full grid spacing is 5.656854249 feet, and Z=deck*8 feet.
+Keep the original constants rather than recomputing sqrt(32).
+
+Field-name evidence
+--------------------
+AuData13.dll DnDetail::Insert 0x18015c630 binds object offsets +0x00 deck,
++0x01 dtype, +0x02 hidden, +0x04 id, +0x08 idd, +0x10 location, +0x28 rid and
++0x2a cid to SQL columns. SystemCID/VehicleCID at 0x180046c40/0x180047690
+independently identify cid as a commodity ID. DnRoom::Insert 0x180172360 binds
++0x07 to rtype and +0x08 to rsub. These captured SQL statements establish names;
+the viewer does not execute them or require a database. The subtype is the
+stored Room Number minus one; persistent room IDs are separate.
+
+Ellipse rooms and empty records
+-------------------------------
+AuData13.dll 0x180167cf0 expands room type 0x18 with exactly three points:
+center C and axis endpoints A/B. With G=5.656854249:
+  facets = (int(ceilf(sqrtf(float(max(distance(C,A),distance(C,B))/G))))+1)*4
+AuMath13.dll CreateEllipse 0x180039600 uses double vectors U=A-C, V=B-C but
+float radii and trigonometry, unlike the surviving modern double implementation:
+  rx=float(length2D(U)); ry=float(length2D(V))
+  angle=6.2831855f-(float(i)*6.2831855f)/float(facets)
+  ca=cosf(angle)*rx; sa=sinf(angle)*ry
+  point=C+(U/double(rx))*double(ca)+(V/double(ry))*double(sa)
+Replace a contribution with the zero vector when ca or sa is exactly zero,
+including zero-radius axes. Preserve the three stored controls alongside the
+expanded clockwise polygon. The preview omits degenerate ellipses with a
+warning. No real sample contains ellipse controls; use synthetic fixtures.
+
+The original room-array reader discards empty boundaries. The inspector keeps
+them for file fidelity; display, authoring lookups and equipment checks exclude
+them. Retaining an empty record must not make it an eligible room.
+
+Writable working copy
+---------------------
+Opening a file does not import its state as a working-design lock. In AuAtom13,
+DesignSpaceShipLoaded (0x180207cb0/0x180207d90) calls NewDesign 0x1802fae60,
+then DesignNew 0x1803e46a0. AuData13 SpaceShipDesignNew 0x180148020 constructs
+a fresh design; constructor 0x180178f70 writes state zero at object+0x18.
+SpaceShipDesignLoaded 0x180147690 calls DesignLoaded 0x18017a350, which copies
+only +0x14/+0x15/+0x30 and modules at +0x38, not state, ID or architect fields.
+SpaceShipDesignIsReadOnly 0x180146ff0 tests state !=0. Thus local editing can
+retain the source header as metadata while treating the working session as
+writable. This does not define saving or permit rewriting metadata on load.
+
+Original offline startup
+-------------------------
+Shores of Hazeron.exe 0x1401331a0 sets app state 5 for -spacecraft or -designer;
+EnterSpaceShipDesignerMode 0x140136bf0 also sets 5. AuMainFrame::Timer
+0x140213980 loads cached basic game data and calls initializer 0x140244760.
+That creates galaxy/sector/system/world, DaDesignEnvironment(mode 1) and an
+avatar, then loads the working design. This old path depends on world entities;
+the modern standalone 2D path intentionally needs only Qt Widgets.

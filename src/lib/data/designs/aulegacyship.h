@@ -8,8 +8,7 @@
 #include <QVector>
 
 // Recovered 2016 .ship authoring records, independent of the modern mesh model.
-// Evidence: research/legacy-spacecraft-2016/RECONNAISSANCE.txt,
-// RENDER-EVIDENCE.txt, and pseudocode/.
+// Evidence: research/legacy-spacecraft-2016/FORMAT.txt and pseudocode/.
 // Coordinates are in feet; one packed coordinate step is half a legacy grid cell.
 namespace AuLegacyShip
 {
