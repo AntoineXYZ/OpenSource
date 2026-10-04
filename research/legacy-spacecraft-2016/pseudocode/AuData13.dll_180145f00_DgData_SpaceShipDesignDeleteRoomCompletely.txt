@@ -1,0 +1,122 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x180145f00
+Name provenance: PE export
+Captured: 2026-10-04
+
+/* public: bool __cdecl DgData::SpaceShipDesignDeleteRoomCompletely(unsigned int,class AuPointArray
+   const & __ptr64) __ptr64 */
+
+bool __thiscall
+DgData::SpaceShipDesignDeleteRoomCompletely(DgData *this,uint param_1,AuPointArray *param_2)
+
+{
+  QList<DnRoom> *this_00;
+  uint uVar1;
+  longlong lVar2;
+  undefined8 *puVar3;
+  uint *puVar4;
+  DnRoom *this_01;
+  undefined8 *puVar5;
+  bool bVar6;
+  AuPoint *pAVar7;
+  AuPoint *pAVar8;
+  __uint64 _Var9;
+  undefined8 *puVar10;
+  void **ppvVar11;
+  ulonglong uVar12;
+  undefined8 *puVar13;
+  undefined8 *puVar14;
+  double dVar15;
+  uint local_res10 [4];
+  undefined8 *local_res20;
+  
+  local_res10[0] = param_1;
+                    /* 0x145f00  5620
+                       ?SpaceShipDesignDeleteRoomCompletely@DgData@@QEAA_NIAEBVAuPointArray@@@Z */
+  bVar6 = SpaceShipDesignIsReadOnly(this,param_1);
+  if ((!bVar6) && (2 < *(int *)(*(longlong *)param_2 + 4))) {
+    pAVar7 = QVector<AuPoint>::cbegin((QVector<AuPoint> *)param_2);
+    pAVar8 = QVector<AuPoint>::cend((QVector<AuPoint> *)param_2);
+    if (pAVar7 != pAVar8) {
+      do {
+        bVar6 = DnSpaceShip::IsValidGridCoord(pAVar7);
+        if (!bVar6) {
+          return false;
+        }
+        pAVar7 = pAVar7 + 0x18;
+        pAVar8 = QVector<AuPoint>::cend((QVector<AuPoint> *)param_2);
+      } while (pAVar7 != pAVar8);
+    }
+    pAVar7 = QVector<AuPoint>::operator[]((QVector<AuPoint> *)param_2,0);
+    dVar15 = (double)round(*(double *)(pAVar7 + 0x10) * 0.125);
+    _Var9 = AuDesignIdHash::operator()((AuDesignIdHash *)&local_res20,local_res10);
+    uVar12 = *(ulonglong *)(this + 0x1a0) & _Var9;
+    if (*(ulonglong *)(this + 0x1a8) <= uVar12) {
+      uVar12 = uVar12 + (-1 - (*(ulonglong *)(this + 0x1a0) >> 1));
+    }
+    lVar2 = *(longlong *)(this + 0x188);
+    puVar3 = *(undefined8 **)(this + 0x178);
+    puVar10 = *(undefined8 **)(lVar2 + uVar12 * 0x10);
+    while( true ) {
+      puVar14 = puVar3;
+      if (*(undefined8 **)(lVar2 + uVar12 * 0x10) != puVar3) {
+        puVar14 = (undefined8 *)**(undefined8 **)(lVar2 + 8 + uVar12 * 0x10);
+      }
+      puVar13 = puVar3;
+      puVar5 = local_res20;
+      if ((puVar10 == puVar14) ||
+         (puVar13 = puVar10, puVar5 = puVar10, local_res10[0] == *(uint *)(puVar10 + 2))) break;
+      puVar10 = (undefined8 *)*puVar10;
+    }
+    local_res20 = puVar5;
+    if (puVar13 != *(undefined8 **)(this + 0x178)) {
+      this_00 = (QList<DnRoom> *)(puVar13 + 3);
+      if (1 < *(uint *)puVar13[3]) {
+        QList<DnRoom>::detach_helper(this_00,((uint *)puVar13[3])[1]);
+      }
+      ppvVar11 = (void **)(*(longlong *)this_00 +
+                          ((longlong)*(int *)(*(longlong *)this_00 + 8) + 2) * 8);
+      while( true ) {
+        if (1 < **(uint **)this_00) {
+          QList<DnRoom>::detach_helper(this_00,(*(uint **)this_00)[1]);
+        }
+        if (ppvVar11 ==
+            (void **)(*(longlong *)this_00 + (longlong)*(int *)(*(longlong *)this_00 + 0xc) * 8 +
+                     0x10)) break;
+        if (((int)*(char *)((longlong)*ppvVar11 + 6) == (int)dVar15) &&
+           (bVar6 = DnRoom::DoesIntersectRoomBoundary
+                              ((AuPointArray *)((longlong)*ppvVar11 + 0x10),param_2), bVar6)) {
+          (**(code **)(**(longlong **)gp_AuGlobal_exref + 0x298))
+                    (*(longlong **)gp_AuGlobal_exref,*(undefined4 *)*ppvVar11,
+                     *(undefined2 *)((longlong)*ppvVar11 + 4));
+          puVar4 = *(uint **)this_00;
+          if (1 < *puVar4) {
+            uVar1 = puVar4[2];
+            if (1 < *puVar4) {
+              QList<DnRoom>::detach_helper(this_00,puVar4[1]);
+            }
+            ppvVar11 = (void **)(*(longlong *)this_00 + 0x10 +
+                                 (longlong)*(int *)(*(longlong *)this_00 + 8) * 8 +
+                                (longlong)
+                                (int)((longlong)ppvVar11 +
+                                      (-(longlong)puVar4 - ((longlong)(int)uVar1 * 8 + 0x10)) >> 3)
+                                * 8);
+          }
+          this_01 = *ppvVar11;
+          if (this_01 != (DnRoom *)0x0) {
+            DnRoom::~DnRoom(this_01);
+            operator_delete(this_01);
+          }
+          ppvVar11 = QListData::erase((QListData *)this_00,ppvVar11);
+        }
+        else {
+          ppvVar11 = ppvVar11 + 1;
+        }
+      }
+    }
+    SpaceShipDesignVerifyDetails(this,local_res10[0]);
+    return true;
+  }
+  return false;
+}

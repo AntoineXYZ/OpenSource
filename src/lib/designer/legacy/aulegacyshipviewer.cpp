@@ -3,6 +3,7 @@
 
 #include <QAction>
 #include <QComboBox>
+#include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QGraphicsItem>
@@ -19,8 +20,10 @@
 #include <QPalette>
 #include <QPlainTextEdit>
 #include <QSet>
+#include <QSettings>
 #include <QShowEvent>
 #include <QSplitter>
+#include <QStandardPaths>
 #include <QStatusBar>
 #include <QStringList>
 #include <QStyleOptionGraphicsItem>
@@ -196,7 +199,9 @@ private:
 class AuLegacyShipViewer::Impl
 {
 public:
-	explicit Impl(AuLegacyShipViewer* owner) : window(owner)
+	explicit Impl(AuLegacyShipViewer* owner) : window(owner),
+		settings(QSettings::NativeFormat, QSettings::UserScope,
+			QStringLiteral("Hazeron Freehold"), QStringLiteral("Shores of Hazeron"))
 	{
 		scene = new QGraphicsScene(window);
 		view = new DeckView(scene, window);
@@ -571,6 +576,8 @@ public:
 	}
 
 	AuLegacyShipViewer* window;
+	// Use the same preference store for embedded and standalone launches.
+	QSettings settings;
 	QGraphicsScene* scene;
 	DeckView* view;
 	QComboBox* deckCombo;
@@ -632,13 +639,23 @@ bool AuLegacyShipViewer::OpenFile(const QString& fileName)
 		return false;
 	}
 	m_Impl->SetDesign(fileName, std::move(incoming));
+	m_Impl->settings.setValue(QStringLiteral("LegacySpacecraft/LastOpenDirectory"),
+		QFileInfo(fileName).absolutePath());
+	m_Impl->settings.sync();
 	return true;
 }
 
 void AuLegacyShipViewer::ChooseFile()
 {
+	QString directory = m_Impl->fileName.isEmpty()
+		? m_Impl->settings.value(QStringLiteral("LegacySpacecraft/LastOpenDirectory")).toString()
+		: QFileInfo(m_Impl->fileName).absolutePath();
+	if(directory.isEmpty() || !QFileInfo(directory).isDir())
+		directory = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+	if(directory.isEmpty() || !QFileInfo(directory).isDir())
+		directory = QDir::homePath();
 	const QString selected = QFileDialog::getOpenFileName(this, QStringLiteral("Open 2016 spacecraft design"),
-		m_Impl->fileName, QStringLiteral("2016 spacecraft designs (*.ship);;All files (*)"));
+		directory, QStringLiteral("2016 spacecraft designs (*.ship);;All files (*)"));
 	if (!selected.isEmpty())
 		OpenFile(selected);
 }

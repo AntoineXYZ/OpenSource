@@ -1,0 +1,216 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x18016fc70
+Name provenance: PE export
+Captured: 2026-10-04
+
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* public: bool __cdecl DnFloorBuffer8::ChaseBoundary(class AuPointArray & __ptr64,double,bool)const
+   __ptr64 */
+
+bool __thiscall
+DnFloorBuffer8::ChaseBoundary
+          (DnFloorBuffer8 *this,AuPointArray *param_1,double param_2,bool param_3)
+
+{
+  longlong lVar1;
+  AuPointArray *this_00;
+  bool bVar2;
+  int iVar3;
+  int iVar4;
+  int iVar5;
+  ulonglong uVar6;
+  ulonglong uVar7;
+  uint uVar8;
+  ulonglong uVar9;
+  int iVar10;
+  uint uVar11;
+  int iVar12;
+  ulonglong uVar13;
+  char cVar14;
+  undefined1 auStack_108 [32];
+  char local_e8;
+  char local_e7;
+  uint local_e4;
+  uint local_e0;
+  int local_dc;
+  int local_d8;
+  int local_d4;
+  AuPointArray *local_d0;
+  double local_c8;
+  double local_c0;
+  double local_b8;
+  int local_a8 [16];
+  ulonglong local_68;
+  
+                    /* 0x16fc70  2887  ?ChaseBoundary@DnFloorBuffer8@@QEBA_NAEAVAuPointArray@@N_N@Z
+                        */
+  local_68 = DAT_18039f2a0 ^ (ulonglong)auStack_108;
+  local_e7 = param_3;
+  local_d0 = param_1;
+  QVector<AuPoint>::clear((QVector<AuPoint> *)param_1);
+  lVar1 = *(longlong *)this;
+  uVar6 = 0;
+  uVar11 = 0x203;
+  local_d4 = 0;
+  local_d8 = 0;
+  iVar10 = 0x203;
+  local_e4 = 0;
+  uVar9 = uVar6;
+  uVar13 = uVar6;
+  do {
+    uVar7 = 0;
+    uVar8 = (uint)uVar9;
+    do {
+      iVar12 = (int)uVar7;
+      if (*(char *)(uVar9 + lVar1) != '\0') {
+        if ((int)uVar13 < iVar12) {
+          uVar13 = uVar7;
+        }
+        local_e4 = (uint)uVar6;
+        if ((int)(uint)uVar6 < (int)uVar8) {
+          local_e4 = uVar8;
+        }
+        if (iVar12 < iVar10) {
+          iVar10 = iVar12;
+        }
+        if ((int)uVar8 < (int)uVar11) {
+          uVar11 = uVar8;
+        }
+        iVar3 = CornerEdgeVertexTest(this,iVar12,uVar8);
+        if (iVar3 == -2) {
+          return false;
+        }
+        uVar6 = (ulonglong)local_e4;
+        if (iVar3 != -1) {
+          local_d8 = local_d8 + 1;
+        }
+      }
+      uVar7 = (ulonglong)(iVar12 + 4U);
+      uVar9 = (ulonglong)((int)uVar9 + 0x810);
+    } while ((int)(iVar12 + 4U) < 0x203);
+    uVar9 = (ulonglong)(uVar8 + 4);
+  } while ((int)(uVar8 + 4) < 0x203);
+  iVar12 = (int)uVar13;
+  if (iVar12 != 0) {
+    iVar3 = 9999;
+    iVar4 = -1;
+    local_e8 = '\0';
+    uVar8 = 9999;
+    local_dc = 9999;
+    local_e0 = 9999;
+    if ((int)uVar11 <= (int)uVar6) {
+      do {
+        if (-1 < iVar4) goto LAB_18016fe05;
+        if (iVar10 <= iVar12) {
+          uVar8 = iVar10 * 0x204 + uVar11;
+          iVar3 = iVar10;
+          do {
+            if (*(char *)((ulonglong)uVar8 + lVar1) != '\0') {
+              iVar4 = CornerEdgeVertexTest(this,iVar3,uVar11);
+              if (iVar4 == -2) {
+                return false;
+              }
+              if (iVar4 != -1) {
+                local_e8 = '\x01';
+                local_e0 = uVar11;
+                local_dc = iVar3;
+                break;
+              }
+              iVar4 = CenterEdgeVertexTest(this,iVar3,uVar11);
+              if (iVar4 == -2) {
+                return false;
+              }
+              if (iVar4 != -1) {
+                local_e8 = '\0';
+                local_e0 = uVar11 + 2;
+                local_dc = iVar3 + 2;
+                break;
+              }
+            }
+            iVar3 = iVar3 + 4;
+            uVar8 = uVar8 + 0x810;
+          } while (iVar3 <= iVar12);
+          uVar6 = (ulonglong)local_e4;
+          uVar8 = local_e0;
+          iVar3 = local_dc;
+        }
+        uVar11 = uVar11 + 4;
+      } while ((int)uVar11 <= (int)uVar6);
+      if (-1 < iVar4) {
+LAB_18016fe05:
+        local_c8 = (double)(iVar3 + -0x100) * 1.41421356225;
+        local_c0 = (double)(int)(uVar8 - 0x100) * 1.41421356225;
+        local_b8 = param_2;
+        QVector<AuPoint>::append((QVector<AuPoint> *)local_d0,(AuPoint *)&local_c8);
+        local_a8[0] = 4;
+        local_a8[1] = 0;
+        local_a8[2] = 2;
+        local_a8[3] = 2;
+        local_a8[4] = 0;
+        local_a8[5] = 4;
+        local_a8[6] = -2;
+        local_a8[7] = 2;
+        iVar12 = 10000;
+        local_a8[8] = -4;
+        local_a8[9] = 0;
+        local_a8[10] = -2;
+        local_a8[0xb] = -2;
+        local_a8[0xc] = 0;
+        local_a8[0xd] = -4;
+        local_a8[0xe] = 2;
+        local_a8[0xf] = -2;
+        cVar14 = local_e8;
+        uVar11 = local_e0;
+        iVar10 = iVar4;
+        while( true ) {
+          iVar3 = iVar3 + local_a8[(longlong)iVar10 * 2];
+          uVar11 = uVar11 + local_a8[(longlong)iVar10 * 2 + 1];
+          if ((local_a8[(longlong)iVar10 * 2] != 0) && (local_a8[(longlong)iVar10 * 2 + 1] != 0)) {
+            cVar14 = cVar14 == '\0';
+            local_e8 = cVar14;
+          }
+          if (cVar14 == '\0') {
+            iVar5 = CenterEdgeVertexTest(this,iVar3,uVar11);
+          }
+          else {
+            local_d4 = local_d4 + 1;
+            iVar5 = CornerEdgeVertexTest(this,iVar3,uVar11,iVar10);
+          }
+          if (iVar5 == -2) {
+            return false;
+          }
+          if (iVar5 == -1) {
+            return false;
+          }
+          local_c8 = (double)(iVar3 + -0x100) * 1.41421356225;
+          local_c0 = (double)(int)(uVar11 - 0x100) * 1.41421356225;
+          local_b8 = param_2;
+          if ((*(int *)(*(longlong *)local_d0 + 4) != 0) &&
+             (((iVar3 != local_dc || (uVar11 != local_e0)) &&
+              (bVar2 = AuPointArray::PointOnSegments_2D(local_d0,(AuPoint *)&local_c8), bVar2))))
+          break;
+          if (iVar5 != iVar10) {
+            QVector<AuPoint>::append((QVector<AuPoint> *)local_d0,(AuPoint *)&local_c8);
+          }
+          this_00 = local_d0;
+          iVar12 = iVar12 + -1;
+          if (((iVar3 == local_dc) && (uVar11 == local_e0)) || (iVar10 = iVar5, iVar12 == 0)) {
+            if ((local_e7 == '\0') || (local_d8 == local_d4)) {
+              if (iVar5 == iVar4) {
+                QVector<AuPoint>::remove((QVector<AuPoint> *)local_d0,0);
+              }
+              if (2 < *(int *)(*(longlong *)this_00 + 4)) {
+                return true;
+              }
+              QVector<AuPoint>::clear((QVector<AuPoint> *)this_00);
+            }
+            return false;
+          }
+        }
+        return false;
+      }
+    }
+  }
+  return true;
+}

@@ -1,0 +1,796 @@
+{
+  "purpose": "Read-only 2016 legacy designer control recovery; raw Ghidra decompiler output and Qt metadata-labelled IDA baseline records, not original source.",
+  "programs": [
+    "/Shores of Hazeron.exe",
+    "/AuAtom13.dll"
+  ],
+  "baseline_source": "Fresh 2016/RE-baseline-20260916T211627Z/Shores of Hazeron.exe.functions.jsonl",
+  "baseline_warning": "Qt method names are metadata-derived. IDA inferred local types and helper labels can be wrong; for example DesignDeleteRoom helper mislabelled Concurrency::ThreadScheduler in IDA is DdDesignRoomDelete in Ghidra RTTI.",
+  "decompilations": [
+    {
+      "address": "14023eb50",
+      "program": "/Shores of Hazeron.exe",
+      "pseudocode": "\r\nvoid FUN_14023eb50(longlong param_1,undefined8 param_2,undefined8 param_3,undefined8 param_4)\r\n\r\n{\r\n  longlong lVar1;\r\n  DaAtom *this;\r\n  longlong local_res10 [3];\r\n  undefined8 uVar2;\r\n  QDataStream local_30 [8];\r\n  longlong *local_28;\r\n  undefined4 local_18;\r\n  \r\n  uVar2 = 0xfffffffffffffffe;\r\n  if ((*(int *)(*(longlong *)self_exref + 0x18) == 5) ||\r\n     (*(int *)(*(longlong *)self_exref + 0x18) == 7)) {\r\n    lVar1 = *(longlong *)gp_AuGlobal_exref;\r\n    QReadWriteLock::lockForRead((QReadWriteLock *)(lVar1 + 0x1d0));\r\n    this = DaAtom::FindIdRecursive(*(DaAtom **)(lVar1 + 0x1b8),(AuId *)(param_1 + 0x14),-1);\r\n    if (this != (DaAtom *)0x0) {\r\n      DaAtom::DesignGrid0(this);\r\n    }\r\n    QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1d0));\r\n  }\r\n  else {\r\n    QByteArray::QByteArray((QByteArray *)local_res10);\r\n    QDataStream::QDataStream(local_30,local_res10,2,param_4,uVar2);\r\n    local_18 = 7;\r\n    QDataStream::operator<<(local_30,0);\r\n    QDataStream::operator<<(local_30,'-');\r\n    (**(code **)(*local_28 + 0x80))(local_28,0);\r\n    QDataStream::operator<<(local_30,(short)*(undefined4 *)(local_res10[0] + 4) + -2);\r\n    FUN_14013a960(*(undefined8 *)self_exref,local_res10);\r\n    QDataStream::~QDataStream(local_30);\r\n    QByteArray::~QByteArray((QByteArray *)local_res10);\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "14023ec80",
+      "program": "/Shores of Hazeron.exe",
+      "pseudocode": "\r\nvoid FUN_14023ec80(longlong param_1,undefined8 param_2,undefined8 param_3,undefined8 param_4)\r\n\r\n{\r\n  longlong lVar1;\r\n  DaAtom *this;\r\n  longlong local_res10 [3];\r\n  undefined8 uVar2;\r\n  QDataStream local_30 [8];\r\n  longlong *local_28;\r\n  undefined4 local_18;\r\n  \r\n  uVar2 = 0xfffffffffffffffe;\r\n  if ((*(int *)(*(longlong *)self_exref + 0x18) == 5) ||\r\n     (*(int *)(*(longlong *)self_exref + 0x18) == 7)) {\r\n    lVar1 = *(longlong *)gp_AuGlobal_exref;\r\n    QReadWriteLock::lockForRead((QReadWriteLock *)(lVar1 + 0x1d0));\r\n    this = DaAtom::FindIdRecursive(*(DaAtom **)(lVar1 + 0x1b8),(AuId *)(param_1 + 0x14),-1);\r\n    if (this != (DaAtom *)0x0) {\r\n      DaAtom::DesignGrid135(this);\r\n    }\r\n    QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1d0));\r\n  }\r\n  else {\r\n    QByteArray::QByteArray((QByteArray *)local_res10);\r\n    QDataStream::QDataStream(local_30,local_res10,2,param_4,uVar2);\r\n    local_18 = 7;\r\n    QDataStream::operator<<(local_30,0);\r\n    QDataStream::operator<<(local_30,'.');\r\n    (**(code **)(*local_28 + 0x80))(local_28,0);\r\n    QDataStream::operator<<(local_30,(short)*(undefined4 *)(local_res10[0] + 4) + -2);\r\n    FUN_14013a960(*(undefined8 *)self_exref,local_res10);\r\n    QDataStream::~QDataStream(local_30);\r\n    QByteArray::~QByteArray((QByteArray *)local_res10);\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "14023edb0",
+      "program": "/Shores of Hazeron.exe",
+      "pseudocode": "\r\nvoid FUN_14023edb0(longlong param_1,undefined8 param_2,undefined8 param_3,undefined8 param_4)\r\n\r\n{\r\n  longlong lVar1;\r\n  DaAtom *this;\r\n  longlong local_res10 [3];\r\n  undefined8 uVar2;\r\n  QDataStream local_30 [8];\r\n  longlong *local_28;\r\n  undefined4 local_18;\r\n  \r\n  uVar2 = 0xfffffffffffffffe;\r\n  if ((*(int *)(*(longlong *)self_exref + 0x18) == 5) ||\r\n     (*(int *)(*(longlong *)self_exref + 0x18) == 7)) {\r\n    lVar1 = *(longlong *)gp_AuGlobal_exref;\r\n    QReadWriteLock::lockForRead((QReadWriteLock *)(lVar1 + 0x1d0));\r\n    this = DaAtom::FindIdRecursive(*(DaAtom **)(lVar1 + 0x1b8),(AuId *)(param_1 + 0x14),-1);\r\n    if (this != (DaAtom *)0x0) {\r\n      DaAtom::DesignGrid45(this);\r\n    }\r\n    QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1d0));\r\n  }\r\n  else {\r\n    QByteArray::QByteArray((QByteArray *)local_res10);\r\n    QDataStream::QDataStream(local_30,local_res10,2,param_4,uVar2);\r\n    local_18 = 7;\r\n    QDataStream::operator<<(local_30,0);\r\n    QDataStream::operator<<(local_30,'/');\r\n    (**(code **)(*local_28 + 0x80))(local_28,0);\r\n    QDataStream::operator<<(local_30,(short)*(undefined4 *)(local_res10[0] + 4) + -2);\r\n    FUN_14013a960(*(undefined8 *)self_exref,local_res10);\r\n    QDataStream::~QDataStream(local_30);\r\n    QByteArray::~QByteArray((QByteArray *)local_res10);\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "14023eee0",
+      "program": "/Shores of Hazeron.exe",
+      "pseudocode": "\r\nvoid FUN_14023eee0(longlong param_1,undefined8 param_2,undefined8 param_3,undefined8 param_4)\r\n\r\n{\r\n  longlong lVar1;\r\n  DaAtom *this;\r\n  longlong local_res10 [3];\r\n  undefined8 uVar2;\r\n  QDataStream local_30 [8];\r\n  longlong *local_28;\r\n  undefined4 local_18;\r\n  \r\n  uVar2 = 0xfffffffffffffffe;\r\n  if ((*(int *)(*(longlong *)self_exref + 0x18) == 5) ||\r\n     (*(int *)(*(longlong *)self_exref + 0x18) == 7)) {\r\n    lVar1 = *(longlong *)gp_AuGlobal_exref;\r\n    QReadWriteLock::lockForRead((QReadWriteLock *)(lVar1 + 0x1d0));\r\n    this = DaAtom::FindIdRecursive(*(DaAtom **)(lVar1 + 0x1b8),(AuId *)(param_1 + 0x14),-1);\r\n    if (this != (DaAtom *)0x0) {\r\n      DaAtom::DesignGrid90(this);\r\n    }\r\n    QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1d0));\r\n  }\r\n  else {\r\n    QByteArray::QByteArray((QByteArray *)local_res10);\r\n    QDataStream::QDataStream(local_30,local_res10,2,param_4,uVar2);\r\n    local_18 = 7;\r\n    QDataStream::operator<<(local_30,0);\r\n    QDataStream::operator<<(local_30,'0');\r\n    (**(code **)(*local_28 + 0x80))(local_28,0);\r\n    QDataStream::operator<<(local_30,(short)*(undefined4 *)(local_res10[0] + 4) + -2);\r\n    FUN_14013a960(*(undefined8 *)self_exref,local_res10);\r\n    QDataStream::~QDataStream(local_30);\r\n    QByteArray::~QByteArray((QByteArray *)local_res10);\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "140314fb0",
+      "program": "/Shores of Hazeron.exe",
+      "pseudocode": "\r\nundefined8 *\r\nFUN_140314fb0(undefined8 *param_1,undefined4 param_2,undefined8 param_3,undefined8 param_4)\r\n\r\n{\r\n  FUN_140310440(param_1,param_3,param_3,param_4,0xfffffffffffffffe);\r\n  *param_1 = DdDesignRoomCell::vftable;\r\n  QCursor::QCursor((QCursor *)(param_1 + 2));\r\n  *(undefined4 *)(param_1 + 3) = param_2;\r\n  return param_1;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "1402412a0",
+      "program": "/Shores of Hazeron.exe",
+      "pseudocode": "\r\nvoid FUN_1402412a0(longlong param_1,undefined8 param_2,undefined8 param_3,undefined8 param_4)\r\n\r\n{\r\n  longlong lVar1;\r\n  DaAtom *this;\r\n  longlong local_res10 [3];\r\n  undefined8 uVar2;\r\n  QDataStream local_30 [8];\r\n  longlong *local_28;\r\n  undefined4 local_18;\r\n  \r\n  uVar2 = 0xfffffffffffffffe;\r\n  if ((*(int *)(*(longlong *)self_exref + 0x18) == 5) ||\r\n     (*(int *)(*(longlong *)self_exref + 0x18) == 7)) {\r\n    lVar1 = *(longlong *)gp_AuGlobal_exref;\r\n    QReadWriteLock::lockForRead((QReadWriteLock *)(lVar1 + 0x1d0));\r\n    this = DaAtom::FindIdRecursive(*(DaAtom **)(lVar1 + 0x1b8),(AuId *)(param_1 + 0x14),-1);\r\n    if (this != (DaAtom *)0x0) {\r\n      DaAtom::DesignRoomModeToggle(this);\r\n    }\r\n    QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1d0));\r\n  }\r\n  else {\r\n    QByteArray::QByteArray((QByteArray *)local_res10);\r\n    QDataStream::QDataStream(local_30,local_res10,2,param_4,uVar2);\r\n    local_18 = 7;\r\n    QDataStream::operator<<(local_30,0);\r\n    QDataStream::operator<<(local_30,'@');\r\n    (**(code **)(*local_28 + 0x80))(local_28,0);\r\n    QDataStream::operator<<(local_30,(short)*(undefined4 *)(local_res10[0] + 4) + -2);\r\n    FUN_14013a960(*(undefined8 *)self_exref,local_res10);\r\n    QDataStream::~QDataStream(local_30);\r\n    QByteArray::~QByteArray((QByteArray *)local_res10);\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "1802073e0",
+      "program": "/AuAtom13.dll",
+      "pseudocode": "\r\n/* public: void __cdecl DaAtom::DesignGrid0(void) __ptr64 */\r\n\r\nvoid __thiscall DaAtom::DesignGrid0(DaAtom *this)\r\n\r\n{\r\n  DaDesignEnvironment *this_00;\r\n  DaDesignPlane *this_01;\r\n  \r\n                    /* 0x2073e0  2584  ?DesignGrid0@DaAtom@@QEAAXXZ */\r\n  this_00 = FindParentDesignEnvironment(this);\r\n  if (this_00 != (DaDesignEnvironment *)0x0) {\r\n    this_01 = FindDesignPlane((DaAtom *)this_00,(AuId *)(this + 0x14));\r\n    if (this_01 != (DaDesignPlane *)0x0) {\r\n      if (((byte)this_01[0x3b1] & 1) != 0) {\r\n        DaDesignPlane::DisableHorizontalLines(this_01);\r\n        return;\r\n      }\r\n      DaDesignPlane::EnableHorizontalLines(this_01);\r\n      return;\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "180207430",
+      "program": "/AuAtom13.dll",
+      "pseudocode": "\r\n/* public: void __cdecl DaAtom::DesignGrid135(void) __ptr64 */\r\n\r\nvoid __thiscall DaAtom::DesignGrid135(DaAtom *this)\r\n\r\n{\r\n  DaDesignEnvironment *this_00;\r\n  DaDesignPlane *this_01;\r\n  \r\n                    /* 0x207430  2585  ?DesignGrid135@DaAtom@@QEAAXXZ */\r\n  this_00 = FindParentDesignEnvironment(this);\r\n  if (this_00 != (DaDesignEnvironment *)0x0) {\r\n    this_01 = FindDesignPlane((DaAtom *)this_00,(AuId *)(this + 0x14));\r\n    if (this_01 != (DaDesignPlane *)0x0) {\r\n      if (((byte)this_01[0x3b1] & 8) != 0) {\r\n        DaDesignPlane::DisableDiagonal135Lines(this_01);\r\n        return;\r\n      }\r\n      DaDesignPlane::EnableDiagonal135Lines(this_01);\r\n      return;\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "180207480",
+      "program": "/AuAtom13.dll",
+      "pseudocode": "\r\n/* public: void __cdecl DaAtom::DesignGrid45(void) __ptr64 */\r\n\r\nvoid __thiscall DaAtom::DesignGrid45(DaAtom *this)\r\n\r\n{\r\n  DaDesignEnvironment *this_00;\r\n  DaDesignPlane *this_01;\r\n  \r\n                    /* 0x207480  2586  ?DesignGrid45@DaAtom@@QEAAXXZ */\r\n  this_00 = FindParentDesignEnvironment(this);\r\n  if (this_00 != (DaDesignEnvironment *)0x0) {\r\n    this_01 = FindDesignPlane((DaAtom *)this_00,(AuId *)(this + 0x14));\r\n    if (this_01 != (DaDesignPlane *)0x0) {\r\n      if (((byte)this_01[0x3b1] & 2) != 0) {\r\n        DaDesignPlane::DisableDiagonal45Lines(this_01);\r\n        return;\r\n      }\r\n      DaDesignPlane::EnableDiagonal45Lines(this_01);\r\n      return;\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "1802074d0",
+      "program": "/AuAtom13.dll",
+      "pseudocode": "\r\n/* public: void __cdecl DaAtom::DesignGrid90(void) __ptr64 */\r\n\r\nvoid __thiscall DaAtom::DesignGrid90(DaAtom *this)\r\n\r\n{\r\n  DaDesignEnvironment *this_00;\r\n  DaDesignPlane *this_01;\r\n  \r\n                    /* 0x2074d0  2587  ?DesignGrid90@DaAtom@@QEAAXXZ */\r\n  this_00 = FindParentDesignEnvironment(this);\r\n  if (this_00 != (DaDesignEnvironment *)0x0) {\r\n    this_01 = FindDesignPlane((DaAtom *)this_00,(AuId *)(this + 0x14));\r\n    if (this_01 != (DaDesignPlane *)0x0) {\r\n      if (((byte)this_01[0x3b1] & 4) != 0) {\r\n        DaDesignPlane::DisableVerticalLines(this_01);\r\n        return;\r\n      }\r\n      DaDesignPlane::EnableVerticalLines(this_01);\r\n      return;\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "140315060",
+      "program": "/Shores of Hazeron.exe",
+      "pseudocode": "\r\nvoid FUN_140315060(longlong param_1,QMouseEvent *param_2)\r\n\r\n{\r\n  QReadWriteLock *pQVar1;\r\n  int iVar2;\r\n  longlong lVar3;\r\n  undefined8 uVar4;\r\n  AuGLAbstractItemModel *pAVar5;\r\n  undefined8 local_res10 [2];\r\n  undefined1 local_28 [32];\r\n  \r\n  if (*(int *)(param_2 + 0x50) == 1) {\r\n    FUN_1402f3330(*(undefined8 *)(param_1 + 8),local_res10);\r\n    uVar4 = QMouseEvent::pos(param_2);\r\n    FUN_1402eff00(*(undefined8 *)(param_1 + 8),local_28,local_res10[0],uVar4,0,0);\r\n    FUN_140309550(*(undefined8 *)(param_1 + 8));\r\n    lVar3 = *(longlong *)(param_1 + 8);\r\n    pQVar1 = (QReadWriteLock *)(lVar3 + 0x1818);\r\n    QReadWriteLock::lockForRead(pQVar1);\r\n    iVar2 = *(int *)(lVar3 + 0x1824);\r\n    QReadWriteLock::unlock(pQVar1);\r\n    if (iVar2 == 1) {\r\n      pAVar5 = AuGLAbstractItemView::model(*(AuGLAbstractItemView **)(param_1 + 8));\r\n      FUN_140240830(pAVar5,local_28,*(undefined4 *)(param_1 + 0x18));\r\n      return;\r\n    }\r\n    lVar3 = *(longlong *)(param_1 + 8);\r\n    pQVar1 = (QReadWriteLock *)(lVar3 + 0x1818);\r\n    QReadWriteLock::lockForRead(pQVar1);\r\n    iVar2 = *(int *)(lVar3 + 0x1824);\r\n    QReadWriteLock::unlock(pQVar1);\r\n    if (iVar2 == 2) {\r\n      pAVar5 = AuGLAbstractItemView::model(*(AuGLAbstractItemView **)(param_1 + 8));\r\n      FUN_140240640(pAVar5,local_28,*(undefined4 *)(param_1 + 0x18));\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "140315170",
+      "program": "/Shores of Hazeron.exe",
+      "pseudocode": "\r\nvoid FUN_140315170(longlong param_1,QMouseEvent *param_2)\r\n\r\n{\r\n  QReadWriteLock *pQVar1;\r\n  int iVar2;\r\n  longlong lVar3;\r\n  undefined8 uVar4;\r\n  AuGLAbstractItemModel *pAVar5;\r\n  undefined8 local_res10 [2];\r\n  undefined1 local_28 [32];\r\n  \r\n  if (((byte)param_2[0x54] & 1) != 0) {\r\n    FUN_1402f3330(*(undefined8 *)(param_1 + 8),local_res10);\r\n    uVar4 = QMouseEvent::pos(param_2);\r\n    FUN_1402eff00(*(undefined8 *)(param_1 + 8),local_28,local_res10[0],uVar4,0,0);\r\n    FUN_140309550(*(undefined8 *)(param_1 + 8));\r\n    lVar3 = *(longlong *)(param_1 + 8);\r\n    pQVar1 = (QReadWriteLock *)(lVar3 + 0x1818);\r\n    QReadWriteLock::lockForRead(pQVar1);\r\n    iVar2 = *(int *)(lVar3 + 0x1824);\r\n    QReadWriteLock::unlock(pQVar1);\r\n    if (iVar2 == 1) {\r\n      pAVar5 = AuGLAbstractItemView::model(*(AuGLAbstractItemView **)(param_1 + 8));\r\n      FUN_140240830(pAVar5,local_28,*(undefined4 *)(param_1 + 0x18));\r\n      return;\r\n    }\r\n    lVar3 = *(longlong *)(param_1 + 8);\r\n    pQVar1 = (QReadWriteLock *)(lVar3 + 0x1818);\r\n    QReadWriteLock::lockForRead(pQVar1);\r\n    iVar2 = *(int *)(lVar3 + 0x1824);\r\n    QReadWriteLock::unlock(pQVar1);\r\n    if (iVar2 == 2) {\r\n      pAVar5 = AuGLAbstractItemView::model(*(AuGLAbstractItemView **)(param_1 + 8));\r\n      FUN_140240640(pAVar5,local_28,*(undefined4 *)(param_1 + 0x18));\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "140315280",
+      "program": "/Shores of Hazeron.exe",
+      "pseudocode": "\r\n/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */\r\n\r\nvoid FUN_140315280(longlong param_1)\r\n\r\n{\r\n  int iVar1;\r\n  bool bVar2;\r\n  QPixmap *pQVar3;\r\n  QCursor *pQVar4;\r\n  undefined1 auStack_168 [32];\r\n  QCursor local_148 [8];\r\n  QPixmap local_140 [32];\r\n  QTypedArrayData<unsigned_short> *local_120;\r\n  undefined8 local_118;\r\n  QTypedArrayData<unsigned_short> *local_108 [4];\r\n  QTypedArrayData<unsigned_short> *local_e8;\r\n  QTypedArrayData<unsigned_short> *local_e0;\r\n  QTypedArrayData<unsigned_short> *local_d8;\r\n  QTypedArrayData<unsigned_short> *local_d0;\r\n  QTypedArrayData<unsigned_short> *local_c8;\r\n  QTypedArrayData<unsigned_short> *local_c0;\r\n  QTypedArrayData<unsigned_short> *local_b8;\r\n  QTypedArrayData<unsigned_short> *local_b0;\r\n  QTypedArrayData<unsigned_short> *local_a8;\r\n  QTypedArrayData<unsigned_short> *local_a0;\r\n  QTypedArrayData<unsigned_short> *local_98;\r\n  QTypedArrayData<unsigned_short> *local_90;\r\n  QTypedArrayData<unsigned_short> *local_88;\r\n  QTypedArrayData<unsigned_short> *local_80;\r\n  QTypedArrayData<unsigned_short> *local_78;\r\n  QTypedArrayData<unsigned_short> *local_70;\r\n  QTypedArrayData<unsigned_short> *local_68;\r\n  QTypedArrayData<unsigned_short> *local_60;\r\n  QTypedArrayData<unsigned_short> *local_58;\r\n  QTypedArrayData<unsigned_short> *local_50;\r\n  QTypedArrayData<unsigned_short> *local_48;\r\n  QTypedArrayData<unsigned_short> *local_40;\r\n  QTypedArrayData<unsigned_short> *local_38;\r\n  QTypedArrayData<unsigned_short> *local_30;\r\n  QTypedArrayData<unsigned_short> *local_28;\r\n  ulonglong local_18;\r\n  \r\n  local_118 = 0xfffffffffffffffe;\r\n  local_18 = DAT_1406f29d0 ^ (ulonglong)auStack_168;\r\n  pQVar3 = (QPixmap *)QCursor::pixmap((QCursor *)(param_1 + 0x10));\r\n  bVar2 = QPixmap::isNull(pQVar3);\r\n  QPixmap::~QPixmap(local_140);\r\n  if (!bVar2) goto LAB_140315667;\r\n  local_108[0] = QString::fromAscii_helper(\"\",0);\r\n  local_108[1] = QString::fromAscii_helper(\":data/dp_Barracks.png\",0x15);\r\n  local_108[2] = QString::fromAscii_helper(\":data/dp_Bridge.png\",0x13);\r\n  local_108[3] = QString::fromAscii_helper(\":data/dp_Brig.png\",0x11);\r\n  local_e8 = QString::fromAscii_helper(\":data/dp_CaptCabin.png\",0x16);\r\n  local_e0 = QString::fromAscii_helper(\":data/dp_Cargo.png\",0x12);\r\n  local_d8 = QString::fromAscii_helper(\":data/dp_Corridor.png\",0x15);\r\n  local_d0 = QString::fromAscii_helper(\":data/dp_CrewCabin.png\",0x16);\r\n  local_c8 = QString::fromAscii_helper(\":data/dp_EngineRoom.png\",0x17);\r\n  local_c0 = QString::fromAscii_helper(\":data/dp_Fuel.png\",0x11);\r\n  local_b8 = QString::fromAscii_helper(\":data/dp_Galley.png\",0x13);\r\n  local_b0 = QString::fromAscii_helper(\":data/dp_GravityWell.png\",0x18);\r\n  local_a8 = QString::fromAscii_helper(\"\",0);\r\n  local_a0 = QString::fromAscii_helper(\":data/dp_LandingBay.png\",0x17);\r\n  local_98 = QString::fromAscii_helper(\":data/dp_Lounge.png\",0x13);\r\n  local_90 = QString::fromAscii_helper(\":data/dp_OpenToBelow.png\",0x18);\r\n  local_88 = QString::fromAscii_helper(\":data/dp_SensorRoom.png\",0x17);\r\n  local_80 = QString::fromAscii_helper(\":data/dp_ShieldRoom.png\",0x17);\r\n  local_78 = QString::fromAscii_helper(\":data/dp_SickBay.png\",0x14);\r\n  local_70 = QString::fromAscii_helper(\":data/dp_Stateroom.png\",0x16);\r\n  local_68 = QString::fromAscii_helper(\":data/dp_TransporterRoom.png\",0x1c);\r\n  local_60 = QString::fromAscii_helper(\":data/dp_WeaponBay.png\",0x16);\r\n  local_58 = QString::fromAscii_helper(\":data/dp_RoofGable.png\",0x16);\r\n  local_50 = QString::fromAscii_helper(\":data/dp_RoofHip.png\",0x14);\r\n  local_48 = QString::fromAscii_helper(\":data/dp_RoofRound.png\",0x16);\r\n  local_40 = QString::fromAscii_helper(\"\",0);\r\n  local_38 = QString::fromAscii_helper(\"\",0);\r\n  local_30 = QString::fromAscii_helper(\"\",0);\r\n  local_28 = QString::fromAscii_helper(\"\",0);\r\n  iVar1 = *(int *)(param_1 + 0x18);\r\n  if (iVar1 < 0) {\r\n    local_120 = QString::fromAscii_helper(\":data/dp_DelRoomCells.png\",0x19);\r\n    QPixmap::QPixmap(local_140,&local_120,0,0);\r\n    QString::~QString((QString *)&local_120);\r\n    bVar2 = QPixmap::isNull(local_140);\r\n    if (!bVar2) {\r\n      pQVar4 = (QCursor *)QCursor::QCursor(local_148,local_140,2,2);\r\n      QCursor::operator=((QCursor *)(param_1 + 0x10),pQVar4);\r\n      QCursor::~QCursor(local_148);\r\n    }\r\nLAB_140315641:\r\n    QPixmap::~QPixmap(local_140);\r\n  }\r\n  else if (iVar1 - 1U < 0x1b) {\r\n    QPixmap::QPixmap(local_140,local_108 + iVar1,0,0);\r\n    bVar2 = QPixmap::isNull(local_140);\r\n    if (!bVar2) {\r\n      pQVar4 = (QCursor *)QCursor::QCursor(local_148,local_140,7,0xf);\r\n      QCursor::operator=((QCursor *)(param_1 + 0x10),pQVar4);\r\n      QCursor::~QCursor(local_148);\r\n    }\r\n    goto LAB_140315641;\r\n  }\r\n  _eh_vector_destructor_iterator_(local_108,8,0x1d,~QString_exref);\r\nLAB_140315667:\r\n  pQVar3 = (QPixmap *)QCursor::pixmap((QCursor *)(param_1 + 0x10));\r\n  bVar2 = QPixmap::isNull(pQVar3);\r\n  QPixmap::~QPixmap(local_140);\r\n  if (bVar2) {\r\n    pQVar4 = (QCursor *)QCursor::QCursor(local_148,2);\r\n    QWidget::setCursor(*(QWidget **)(param_1 + 8),pQVar4);\r\n    QCursor::~QCursor(local_148);\r\n  }\r\n  else {\r\n    QWidget::setCursor(*(QWidget **)(param_1 + 8),(QCursor *)(param_1 + 0x10));\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "1403157a0",
+      "program": "/Shores of Hazeron.exe",
+      "pseudocode": "\r\nundefined1 FUN_1403157a0(void)\r\n\r\n{\r\n  return 1;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "140315700",
+      "program": "/Shores of Hazeron.exe",
+      "pseudocode": "\r\nundefined8 * FUN_140315700(undefined8 *param_1)\r\n\r\n{\r\n  FUN_140310440();\r\n  *param_1 = DdDesignRoomDelete::vftable;\r\n  QCursor::QCursor((QCursor *)(param_1 + 2));\r\n  return param_1;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "180207a60",
+      "program": "/AuAtom13.dll",
+      "pseudocode": "\r\n/* public: void __cdecl DaAtom::DesignRoomModeToggle(void) __ptr64 */\r\n\r\nvoid __thiscall DaAtom::DesignRoomModeToggle(DaAtom *this)\r\n\r\n{\r\n  DaDesignEnvironment *this_00;\r\n  \r\n                    /* 0x207a60  2623  ?DesignRoomModeToggle@DaAtom@@QEAAXXZ */\r\n  this_00 = FindParentDesignEnvironment(this);\r\n  if (this_00 != (DaDesignEnvironment *)0x0) {\r\n    DaDesignEnvironment::ToggleRoomMode(this_00,(AuId *)(this + 0x14));\r\n    return;\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "140240830",
+      "program": "/Shores of Hazeron.exe",
+      "pseudocode": "\r\nvoid FUN_140240830(longlong param_1,AuPoint *param_2,int param_3)\r\n\r\n{\r\n  longlong lVar1;\r\n  uint uVar2;\r\n  DaAtom *pDVar3;\r\n  DaDesignEnvironment *this;\r\n  longlong local_res20;\r\n  QDataStream local_40 [8];\r\n  longlong *local_38;\r\n  undefined4 local_28;\r\n  \r\n  if (*(int *)(*(longlong *)self_exref + 0x18) == 5) {\r\n    lVar1 = *(longlong *)gp_AuGlobal_exref;\r\n    QReadWriteLock::lockForRead((QReadWriteLock *)(lVar1 + 0x1d0));\r\n    pDVar3 = DaAtom::FindIdRecursive(*(DaAtom **)(lVar1 + 0x1b8),(AuId *)(param_1 + 0x14),-1);\r\n    if (pDVar3 != (DaAtom *)0x0) {\r\n      DaAtom::DesignRoomCell(pDVar3,param_2,param_3);\r\n      if (((*(int *)(param_1 + 0x14) == 0) ||\r\n          (pDVar3 = DaRoot::FindNormalAtom((DaRoot *)(param_1 + 0x20),(AuId *)(param_1 + 0x14)),\r\n          pDVar3 == (DaAtom *)0x0)) ||\r\n         (this = DaAtom::FindParentDesignEnvironment(pDVar3), this == (DaDesignEnvironment *)0x0)) {\r\n        uVar2 = 0;\r\n      }\r\n      else {\r\n        uVar2 = DaDesignEnvironment::WorkingDesignId(this);\r\n      }\r\n      (**(code **)(**(longlong **)gp_AuGlobal_exref + 0x240))\r\n                (*(longlong **)gp_AuGlobal_exref,uVar2,1);\r\n    }\r\n    QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1d0));\r\n    return;\r\n  }\r\n  QByteArray::QByteArray((QByteArray *)&local_res20);\r\n  QDataStream::QDataStream(local_40,&local_res20,2);\r\n  local_28 = 7;\r\n  QDataStream::operator<<(local_40,0);\r\n  QDataStream::operator<<(local_40,'A');\r\n  QDataStream::operator<<(local_40,(float)*(double *)param_2);\r\n  QDataStream::operator<<(local_40,(float)*(double *)(param_2 + 8));\r\n  QDataStream::operator<<(local_40,(float)*(double *)(param_2 + 0x10));\r\n  QDataStream::operator<<(local_40,(char)param_3);\r\n  (**(code **)(*local_38 + 0x80))(local_38,0);\r\n  QDataStream::operator<<(local_40,(short)*(undefined4 *)(local_res20 + 4) + -2);\r\n  FUN_14013a960(*(undefined8 *)self_exref,&local_res20);\r\n  QDataStream::~QDataStream(local_40);\r\n  QByteArray::~QByteArray((QByteArray *)&local_res20);\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "140240640",
+      "program": "/Shores of Hazeron.exe",
+      "pseudocode": "\r\nvoid FUN_140240640(longlong param_1,AuPoint *param_2,int param_3)\r\n\r\n{\r\n  longlong lVar1;\r\n  uint uVar2;\r\n  DaAtom *pDVar3;\r\n  DaDesignEnvironment *this;\r\n  longlong local_res20;\r\n  QDataStream local_40 [8];\r\n  longlong *local_38;\r\n  undefined4 local_28;\r\n  \r\n  if (*(int *)(*(longlong *)self_exref + 0x18) == 7) {\r\n    lVar1 = *(longlong *)gp_AuGlobal_exref;\r\n    QReadWriteLock::lockForRead((QReadWriteLock *)(lVar1 + 0x1d0));\r\n    pDVar3 = DaAtom::FindIdRecursive(*(DaAtom **)(lVar1 + 0x1b8),(AuId *)(param_1 + 0x14),-1);\r\n    if (pDVar3 != (DaAtom *)0x0) {\r\n      DaAtom::DesignRoomCell(pDVar3,param_2,param_3);\r\n      if (((*(int *)(param_1 + 0x14) == 0) ||\r\n          (pDVar3 = DaRoot::FindNormalAtom((DaRoot *)(param_1 + 0x20),(AuId *)(param_1 + 0x14)),\r\n          pDVar3 == (DaAtom *)0x0)) ||\r\n         (this = DaAtom::FindParentDesignEnvironment(pDVar3), this == (DaDesignEnvironment *)0x0)) {\r\n        uVar2 = 0;\r\n      }\r\n      else {\r\n        uVar2 = DaDesignEnvironment::WorkingDesignId(this);\r\n      }\r\n      (**(code **)(**(longlong **)gp_AuGlobal_exref + 0x1d0))(*(longlong **)gp_AuGlobal_exref,uVar2)\r\n      ;\r\n    }\r\n    QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1d0));\r\n    return;\r\n  }\r\n  QByteArray::QByteArray((QByteArray *)&local_res20);\r\n  QDataStream::QDataStream(local_40,&local_res20,2);\r\n  local_28 = 7;\r\n  QDataStream::operator<<(local_40,0);\r\n  QDataStream::operator<<(local_40,'9');\r\n  QDataStream::operator<<(local_40,(float)*(double *)param_2);\r\n  QDataStream::operator<<(local_40,(float)*(double *)(param_2 + 8));\r\n  QDataStream::operator<<(local_40,(float)*(double *)(param_2 + 0x10));\r\n  QDataStream::operator<<(local_40,(char)param_3);\r\n  (**(code **)(*local_38 + 0x80))(local_38,0);\r\n  QDataStream::operator<<(local_40,(short)*(undefined4 *)(local_res20 + 4) + -2);\r\n  FUN_14013a960(*(undefined8 *)self_exref,&local_res20);\r\n  QDataStream::~QDataStream(local_40);\r\n  QByteArray::~QByteArray((QByteArray *)&local_res20);\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "1403157b0",
+      "program": "/Shores of Hazeron.exe",
+      "pseudocode": "\r\nvoid FUN_1403157b0(longlong param_1,QMouseEvent *param_2)\r\n\r\n{\r\n  QReadWriteLock *pQVar1;\r\n  int iVar2;\r\n  longlong lVar3;\r\n  undefined8 uVar4;\r\n  AuGLAbstractItemModel *pAVar5;\r\n  undefined8 local_res10 [2];\r\n  undefined1 local_28 [32];\r\n  \r\n  if (*(int *)(param_2 + 0x50) == 1) {\r\n    FUN_1402f3330(*(undefined8 *)(param_1 + 8),local_res10);\r\n    uVar4 = QMouseEvent::pos(param_2);\r\n    FUN_1402eff00(*(undefined8 *)(param_1 + 8),local_28,local_res10[0],uVar4,0,0);\r\n    FUN_140309550(*(undefined8 *)(param_1 + 8));\r\n    lVar3 = *(longlong *)(param_1 + 8);\r\n    pQVar1 = (QReadWriteLock *)(lVar3 + 0x1818);\r\n    QReadWriteLock::lockForRead(pQVar1);\r\n    iVar2 = *(int *)(lVar3 + 0x1824);\r\n    QReadWriteLock::unlock(pQVar1);\r\n    if (iVar2 == 1) {\r\n      pAVar5 = AuGLAbstractItemView::model(*(AuGLAbstractItemView **)(param_1 + 8));\r\n      FUN_140240bf0(pAVar5,local_28);\r\n      return;\r\n    }\r\n    lVar3 = *(longlong *)(param_1 + 8);\r\n    pQVar1 = (QReadWriteLock *)(lVar3 + 0x1818);\r\n    QReadWriteLock::lockForRead(pQVar1);\r\n    iVar2 = *(int *)(lVar3 + 0x1824);\r\n    QReadWriteLock::unlock(pQVar1);\r\n    if (iVar2 == 2) {\r\n      pAVar5 = AuGLAbstractItemView::model(*(AuGLAbstractItemView **)(param_1 + 8));\r\n      FUN_140240a20(pAVar5,local_28);\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "1403158c0",
+      "program": "/Shores of Hazeron.exe",
+      "pseudocode": "\r\nvoid FUN_1403158c0(longlong param_1,QMouseEvent *param_2)\r\n\r\n{\r\n  QReadWriteLock *pQVar1;\r\n  int iVar2;\r\n  longlong lVar3;\r\n  undefined8 uVar4;\r\n  AuGLAbstractItemModel *pAVar5;\r\n  undefined8 local_res10 [2];\r\n  undefined1 local_28 [32];\r\n  \r\n  if (((byte)param_2[0x54] & 1) != 0) {\r\n    FUN_1402f3330(*(undefined8 *)(param_1 + 8),local_res10);\r\n    uVar4 = QMouseEvent::pos(param_2);\r\n    FUN_1402eff00(*(undefined8 *)(param_1 + 8),local_28,local_res10[0],uVar4,0,0);\r\n    FUN_140309550(*(undefined8 *)(param_1 + 8));\r\n    lVar3 = *(longlong *)(param_1 + 8);\r\n    pQVar1 = (QReadWriteLock *)(lVar3 + 0x1818);\r\n    QReadWriteLock::lockForRead(pQVar1);\r\n    iVar2 = *(int *)(lVar3 + 0x1824);\r\n    QReadWriteLock::unlock(pQVar1);\r\n    if (iVar2 == 1) {\r\n      pAVar5 = AuGLAbstractItemView::model(*(AuGLAbstractItemView **)(param_1 + 8));\r\n      FUN_140240bf0(pAVar5,local_28);\r\n      return;\r\n    }\r\n    lVar3 = *(longlong *)(param_1 + 8);\r\n    pQVar1 = (QReadWriteLock *)(lVar3 + 0x1818);\r\n    QReadWriteLock::lockForRead(pQVar1);\r\n    iVar2 = *(int *)(lVar3 + 0x1824);\r\n    QReadWriteLock::unlock(pQVar1);\r\n    if (iVar2 == 2) {\r\n      pAVar5 = AuGLAbstractItemView::model(*(AuGLAbstractItemView **)(param_1 + 8));\r\n      FUN_140240a20(pAVar5,local_28);\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "1802fc470",
+      "program": "/AuAtom13.dll",
+      "pseudocode": "\r\n/* public: void __cdecl DaDesignEnvironment::ToggleRoomMode(class AuId const & __ptr64) __ptr64 */\r\n\r\nvoid __thiscall DaDesignEnvironment::ToggleRoomMode(DaDesignEnvironment *this,AuId *param_1)\r\n\r\n{\r\n  DaDesignPlane *pDVar1;\r\n  \r\n                    /* 0x2fc470  7344  ?ToggleRoomMode@DaDesignEnvironment@@QEAAXAEBVAuId@@@Z */\r\n  pDVar1 = DaAtom::FindDesignPlane((DaAtom *)this,param_1);\r\n  if (pDVar1 != (DaDesignPlane *)0x0) {\r\n    pDVar1[0x3b9] = (DaDesignPlane)(pDVar1[0x3b9] == (DaDesignPlane)0x0);\r\n                    /* WARNING: Could not recover jumptable at 0x0001802fc49a. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n    (**(code **)(*(longlong *)pDVar1 + 0x1a0))(pDVar1,1);\r\n    return;\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "180219ef0",
+      "program": "/AuAtom13.dll",
+      "pseudocode": "\r\n/* public: void __cdecl DaDesignPlane::ToggleRoomMode(void) __ptr64 */\r\n\r\nvoid __thiscall DaDesignPlane::ToggleRoomMode(DaDesignPlane *this)\r\n\r\n{\r\n                    /* 0x219ef0  7345  ?ToggleRoomMode@DaDesignPlane@@QEAAXXZ */\r\n  this[0x3b9] = (DaDesignPlane)(this[0x3b9] == (DaDesignPlane)0x0);\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "140240ff0",
+      "program": "/Shores of Hazeron.exe",
+      "pseudocode": "\r\nvoid FUN_140240ff0(longlong param_1,undefined8 param_2,undefined8 param_3,undefined8 param_4)\r\n\r\n{\r\n  longlong lVar1;\r\n  DaAtom *this;\r\n  longlong local_res10 [3];\r\n  undefined8 uVar2;\r\n  QDataStream local_30 [8];\r\n  longlong *local_28;\r\n  undefined4 local_18;\r\n  \r\n  uVar2 = 0xfffffffffffffffe;\r\n  if ((*(int *)(*(longlong *)self_exref + 0x18) == 5) ||\r\n     (*(int *)(*(longlong *)self_exref + 0x18) == 7)) {\r\n    lVar1 = *(longlong *)gp_AuGlobal_exref;\r\n    QReadWriteLock::lockForRead((QReadWriteLock *)(lVar1 + 0x1d0));\r\n    this = DaAtom::FindIdRecursive(*(DaAtom **)(lVar1 + 0x1b8),(AuId *)(param_1 + 0x14),-1);\r\n    if (this != (DaAtom *)0x0) {\r\n      DaAtom::DesignRoomIdDown(this);\r\n    }\r\n    QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1d0));\r\n  }\r\n  else {\r\n    QByteArray::QByteArray((QByteArray *)local_res10);\r\n    QDataStream::QDataStream(local_30,local_res10,2,param_4,uVar2);\r\n    local_18 = 7;\r\n    QDataStream::operator<<(local_30,0);\r\n    QDataStream::operator<<(local_30,'=');\r\n    (**(code **)(*local_28 + 0x80))(local_28,0);\r\n    QDataStream::operator<<(local_30,(short)*(undefined4 *)(local_res10[0] + 4) + -2);\r\n    FUN_14013a960(*(undefined8 *)self_exref,local_res10);\r\n    QDataStream::~QDataStream(local_30);\r\n    QByteArray::~QByteArray((QByteArray *)local_res10);\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "140241120",
+      "program": "/Shores of Hazeron.exe",
+      "pseudocode": "\r\nvoid FUN_140241120(longlong param_1,undefined8 param_2,undefined8 param_3,undefined8 param_4)\r\n\r\n{\r\n  longlong lVar1;\r\n  DaAtom *this;\r\n  longlong local_res10 [3];\r\n  undefined8 uVar2;\r\n  QDataStream local_30 [8];\r\n  longlong *local_28;\r\n  undefined4 local_18;\r\n  \r\n  uVar2 = 0xfffffffffffffffe;\r\n  if ((*(int *)(*(longlong *)self_exref + 0x18) == 5) ||\r\n     (*(int *)(*(longlong *)self_exref + 0x18) == 7)) {\r\n    lVar1 = *(longlong *)gp_AuGlobal_exref;\r\n    QReadWriteLock::lockForRead((QReadWriteLock *)(lVar1 + 0x1d0));\r\n    this = DaAtom::FindIdRecursive(*(DaAtom **)(lVar1 + 0x1b8),(AuId *)(param_1 + 0x14),-1);\r\n    if (this != (DaAtom *)0x0) {\r\n      DaAtom::DesignRoomIdUp(this);\r\n    }\r\n    QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1d0));\r\n  }\r\n  else {\r\n    QByteArray::QByteArray((QByteArray *)local_res10);\r\n    QDataStream::QDataStream(local_30,local_res10,2,param_4,uVar2);\r\n    local_18 = 7;\r\n    QDataStream::operator<<(local_30,0);\r\n    QDataStream::operator<<(local_30,'>');\r\n    (**(code **)(*local_28 + 0x80))(local_28,0);\r\n    QDataStream::operator<<(local_30,(short)*(undefined4 *)(local_res10[0] + 4) + -2);\r\n    FUN_14013a960(*(undefined8 *)self_exref,local_res10);\r\n    QDataStream::~QDataStream(local_30);\r\n    QByteArray::~QByteArray((QByteArray *)local_res10);\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "140240bf0",
+      "program": "/Shores of Hazeron.exe",
+      "pseudocode": "\r\nvoid FUN_140240bf0(longlong param_1,AuPoint *param_2,undefined8 param_3,undefined8 param_4)\r\n\r\n{\r\n  longlong lVar1;\r\n  uint uVar2;\r\n  DaAtom *pDVar3;\r\n  DaDesignEnvironment *this;\r\n  longlong local_res18;\r\n  undefined8 uVar4;\r\n  QDataStream local_30 [8];\r\n  longlong *local_28;\r\n  undefined4 local_18;\r\n  \r\n  uVar4 = 0xfffffffffffffffe;\r\n  if (*(int *)(*(longlong *)self_exref + 0x18) == 5) {\r\n    lVar1 = *(longlong *)gp_AuGlobal_exref;\r\n    QReadWriteLock::lockForRead((QReadWriteLock *)(lVar1 + 0x1d0));\r\n    pDVar3 = DaAtom::FindIdRecursive(*(DaAtom **)(lVar1 + 0x1b8),(AuId *)(param_1 + 0x14),-1);\r\n    if (pDVar3 != (DaAtom *)0x0) {\r\n      DaAtom::DesignRoomDelete(pDVar3,param_2);\r\n      if (((*(int *)(param_1 + 0x14) == 0) ||\r\n          (pDVar3 = DaRoot::FindNormalAtom((DaRoot *)(param_1 + 0x20),(AuId *)(param_1 + 0x14)),\r\n          pDVar3 == (DaAtom *)0x0)) ||\r\n         (this = DaAtom::FindParentDesignEnvironment(pDVar3), this == (DaDesignEnvironment *)0x0)) {\r\n        uVar2 = 0;\r\n      }\r\n      else {\r\n        uVar2 = DaDesignEnvironment::WorkingDesignId(this);\r\n      }\r\n      (**(code **)(**(longlong **)gp_AuGlobal_exref + 0x240))\r\n                (*(longlong **)gp_AuGlobal_exref,uVar2,1);\r\n    }\r\n    QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1d0));\r\n    return;\r\n  }\r\n  QByteArray::QByteArray((QByteArray *)&local_res18);\r\n  QDataStream::QDataStream(local_30,&local_res18,2,param_4,uVar4);\r\n  local_18 = 7;\r\n  QDataStream::operator<<(local_30,0);\r\n  QDataStream::operator<<(local_30,';');\r\n  QDataStream::operator<<(local_30,(float)*(double *)param_2);\r\n  QDataStream::operator<<(local_30,(float)*(double *)(param_2 + 8));\r\n  QDataStream::operator<<(local_30,(float)*(double *)(param_2 + 0x10));\r\n  (**(code **)(*local_28 + 0x80))(local_28,0);\r\n  QDataStream::operator<<(local_30,(short)*(undefined4 *)(local_res18 + 4) + -2);\r\n  FUN_14013a960(*(undefined8 *)self_exref,&local_res18);\r\n  QDataStream::~QDataStream(local_30);\r\n  QByteArray::~QByteArray((QByteArray *)&local_res18);\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "1802fd070",
+      "program": "/AuAtom13.dll",
+      "pseudocode": "\r\n/* public: void __cdecl DaDesignPlane::DecrementRoomId(void) __ptr64 */\r\n\r\nvoid __thiscall DaDesignPlane::DecrementRoomId(DaDesignPlane *this)\r\n\r\n{\r\n                    /* 0x2fd070  2420  ?DecrementRoomId@DaDesignPlane@@QEAAXXZ */\r\n  this[0x3ba] = (DaDesignPlane)((char)this[0x3ba] + -1);\r\n                    /* WARNING: Could not recover jumptable at 0x0001802fd07b. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n  (**(code **)(*(longlong *)this + 0x1a0))(this,1);\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "1802fdfb0",
+      "program": "/AuAtom13.dll",
+      "pseudocode": "\r\n/* public: void __cdecl DaDesignPlane::IncrementRoomId(void) __ptr64 */\r\n\r\nvoid __thiscall DaDesignPlane::IncrementRoomId(DaDesignPlane *this)\r\n\r\n{\r\n                    /* 0x2fdfb0  3787  ?IncrementRoomId@DaDesignPlane@@QEAAXXZ */\r\n  this[0x3ba] = (DaDesignPlane)((char)this[0x3ba] + '\\x01');\r\n                    /* WARNING: Could not recover jumptable at 0x0001802fdfbb. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n  (**(code **)(*(longlong *)this + 0x1a0))(this,1);\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "1802f8200",
+      "program": "/AuAtom13.dll",
+      "pseudocode": "\r\n/* public: void __cdecl DaDesignEnvironment::DecrementRoomId(class AuId const & __ptr64) __ptr64 */\r\n\r\nvoid __thiscall DaDesignEnvironment::DecrementRoomId(DaDesignEnvironment *this,AuId *param_1)\r\n\r\n{\r\n  DaDesignPlane *this_00;\r\n  \r\n                    /* 0x2f8200  2419  ?DecrementRoomId@DaDesignEnvironment@@QEAAXAEBVAuId@@@Z */\r\n  this_00 = DaAtom::FindDesignPlane((DaAtom *)this,param_1);\r\n  if (this_00 != (DaDesignPlane *)0x0) {\r\n    DaDesignPlane::DecrementRoomId(this_00);\r\n    return;\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "1802f9220",
+      "program": "/AuAtom13.dll",
+      "pseudocode": "\r\n/* public: void __cdecl DaDesignEnvironment::IncrementRoomId(class AuId const & __ptr64) __ptr64 */\r\n\r\nvoid __thiscall DaDesignEnvironment::IncrementRoomId(DaDesignEnvironment *this,AuId *param_1)\r\n\r\n{\r\n  DaDesignPlane *this_00;\r\n  \r\n                    /* 0x2f9220  3786  ?IncrementRoomId@DaDesignEnvironment@@QEAAXAEBVAuId@@@Z */\r\n  this_00 = DaAtom::FindDesignPlane((DaAtom *)this,param_1);\r\n  if (this_00 != (DaDesignPlane *)0x0) {\r\n    DaDesignPlane::IncrementRoomId(this_00);\r\n    return;\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "1802f8350",
+      "program": "/AuAtom13.dll",
+      "pseudocode": "\r\n/* public: void __cdecl DaDesignEnvironment::DeleteRoom(class AuPoint const & __ptr64) __ptr64 */\r\n\r\nvoid __thiscall DaDesignEnvironment::DeleteRoom(DaDesignEnvironment *this,AuPoint *param_1)\r\n\r\n{\r\n  bool bVar1;\r\n  DaSpaceShip *this_00;\r\n  \r\n                    /* 0x2f8350  2491  ?DeleteRoom@DaDesignEnvironment@@QEAAXAEBVAuPoint@@@Z */\r\n  if (this[0x3b0] == (DaDesignEnvironment)0x1) {\r\n    this_00 = DaAtom::FindSpaceShip((DaAtom *)this);\r\n    if (this_00 != (DaSpaceShip *)0x0) {\r\n      bVar1 = DaSpaceShip::DesignDeleteRoom(this_00,param_1);\r\n      if ((bVar1) && (this[0x3b1] == (DaDesignEnvironment)0x0)) {\r\n        this[0x3b1] = (DaDesignEnvironment)0x1;\r\n                    /* WARNING: Could not recover jumptable at 0x0001802f83b2. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n        (**(code **)(*(longlong *)this + 0x1a0))(this,1);\r\n        return;\r\n      }\r\n    }\r\n  }\r\n  else if (this[0x3b0] == (DaDesignEnvironment)0x2) {\r\n    QReadWriteLock::lockForWrite((QReadWriteLock *)(this + 0x3b8));\r\n    if (*(DpBuilding **)(this + 0x3c8) != (DpBuilding *)0x0) {\r\n      bVar1 = DpBuilding::DesignDeleteRoom(*(DpBuilding **)(this + 0x3c8),param_1);\r\n      if (bVar1) {\r\n        if (this[0x3b1] == (DaDesignEnvironment)0x0) {\r\n          this[0x3b1] = (DaDesignEnvironment)0x1;\r\n          (**(code **)(*(longlong *)this + 0x1a0))(this,1);\r\n        }\r\n        (**(code **)(*(longlong *)this + 0x1a0))(this,1);\r\n      }\r\n    }\r\n    QReadWriteLock::unlock((QReadWriteLock *)(this + 0x3b8));\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "1803e3d80",
+      "program": "/AuAtom13.dll",
+      "pseudocode": "\r\n/* public: bool __cdecl DaSpaceShip::DesignDeleteRoom(class AuPoint const & __ptr64) __ptr64 */\r\n\r\nbool __thiscall DaSpaceShip::DesignDeleteRoom(DaSpaceShip *this,AuPoint *param_1)\r\n\r\n{\r\n  uint uVar1;\r\n  longlong lVar2;\r\n  DgData *this_00;\r\n  bool bVar3;\r\n  ushort local_res18 [8];\r\n  \r\n                    /* 0x3e3d80  2571  ?DesignDeleteRoom@DaSpaceShip@@QEAA_NAEBVAuPoint@@@Z */\r\n  bVar3 = CanDesignBeModified(this);\r\n  if ((bVar3) && (InsideRoom(this,param_1,local_res18), local_res18[0] != 0)) {\r\n    lVar2 = *(longlong *)gp_AuGlobal_exref;\r\n    QReadWriteLock::lockForWrite((QReadWriteLock *)(lVar2 + 0x1e0));\r\n    this_00 = *(DgData **)(lVar2 + 0x68);\r\n    QReadWriteLock::lockForRead((QReadWriteLock *)(this + 0x4c0));\r\n    uVar1 = *(uint *)(this + 0x514);\r\n    QReadWriteLock::unlock((QReadWriteLock *)(this + 0x4c0));\r\n    bVar3 = DgData::SpaceShipDesignDeleteRoom(this_00,uVar1,local_res18[0]);\r\n    QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1e0));\r\n    if (bVar3) {\r\n      InvalidateDesignAnalysis(this);\r\n      InvalidatePathCache(this);\r\n    }\r\n    return bVar3;\r\n  }\r\n  return false;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "1802078a0",
+      "program": "/AuAtom13.dll",
+      "pseudocode": "\r\n/* public: void __cdecl DaAtom::DesignRoomDelete(class AuPoint const & __ptr64) __ptr64 */\r\n\r\nvoid __thiscall DaAtom::DesignRoomDelete(DaAtom *this,AuPoint *param_1)\r\n\r\n{\r\n  DaDesignEnvironment *this_00;\r\n  \r\n                    /* 0x2078a0  2618  ?DesignRoomDelete@DaAtom@@QEAAXAEBVAuPoint@@@Z */\r\n  this_00 = FindParentDesignEnvironment(this);\r\n  if (this_00 != (DaDesignEnvironment *)0x0) {\r\n    DaDesignEnvironment::DeleteRoom(this_00,param_1);\r\n    return;\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    },
+    {
+      "address": "1402e9710",
+      "program": "/Shores of Hazeron.exe",
+      "pseudocode": "\r\nvoid FUN_1402e9710(QWidget *param_1,undefined8 param_2,undefined8 param_3,undefined8 param_4)\r\n\r\n{\r\n  void *pvVar1;\r\n  longlong *plVar2;\r\n  undefined8 uVar3;\r\n  \r\n  uVar3 = 0xfffffffffffffffe;\r\n  pvVar1 = operator_new(0x18);\r\n  if (pvVar1 == (void *)0x0) {\r\n    plVar2 = (longlong *)0x0;\r\n  }\r\n  else {\r\n    plVar2 = (longlong *)FUN_140315700(pvVar1,param_1,param_3,param_4,uVar3);\r\n  }\r\n  if (*(int *)(param_1 + 0x17c) == 0) {\r\n    FUN_1402ef0b0(param_1);\r\n    *(longlong **)(param_1 + 0x6b0) = plVar2;\r\n    if (plVar2 != (longlong *)0x0) {\r\n      (**(code **)(*plVar2 + 0x18))(plVar2);\r\n    }\r\n    QWidget::activateWindow(param_1);\r\n    QWidget::raise(param_1);\r\n    QWidget::setFocus(param_1,7);\r\n  }\r\n  return;\r\n}\r\n\r\n"
+    }
+  ],
+  "strings": [
+    {
+      "matches": [
+        {
+          "address": "140477410",
+          "value": "<b>Lateral Grid Lines</b><br>Enable grid lines to the left and right.",
+          "encoding": "ascii"
+        },
+        {
+          "address": "140477480",
+          "value": "<b>Diagonal Grid Lines</b><br>Enable diagonal grid lines to the left back and right front.",
+          "encoding": "ascii"
+        },
+        {
+          "address": "140477510",
+          "value": "<b>Longitudinal Grid Lines</b><br>Enable grid lines to the front and back.",
+          "encoding": "ascii"
+        },
+        {
+          "address": "140477590",
+          "value": "<b>Diagonal Grid Lines</b><br>Enable diagonal grid lines to the right back and left front.",
+          "encoding": "ascii"
+        },
+        {
+          "address": "140477a70",
+          "value": "<b>Erase Room Cells</b><br>Erases room cells from the current story of the design.",
+          "encoding": "ascii"
+        },
+        {
+          "address": "1404788e0",
+          "value": "<html><b>Room Mode - Draw</b><br>Current mode draws rooms into the cells of the grid. Existing room cells are replaced when drawn upon.<br>Press this button to change drawing modes for the room buttons.<br>%1 <b>Draw</b> mode draws new room cells and replaces existing room cells.<br>%1 <b>Change Room Type</b> mode changes the type of existing rooms.<br></html>",
+          "encoding": "ascii"
+        },
+        {
+          "address": "140478a70",
+          "value": "<html><b>Room Mode - Change Room Type</b><br>Current mode changes the type of rooms that are clicked. The room type cannot change if this would create two rooms of the same type with the same room number on the same story.<br>Press this button to change drawing modes for the room buttons.<br>%1 <b>Draw</b> mode draws new room cells and replaces existing room cells.<br>%1 <b>Change Room Type</b> mode changes the type of existing rooms.<br></html>",
+          "encoding": "ascii"
+        },
+        {
+          "address": "140478c40",
+          "value": "<html><b>Room Mode - Unknown</b><br>Current mode is an unknown mode.<br>Press this button to change drawing modes for the room buttons.<br>%1 <b>Draw</b> mode draws new room cells and replaces existing room cells.<br>%1 <b>Change Room Type</b> mode changes the type of existing rooms.<br></html>",
+          "encoding": "ascii"
+        },
+        {
+          "address": "1404dfc70",
+          "value": "<b>Lateral Grid Lines</b><br>Enable grid lines on the beam.",
+          "encoding": "ascii"
+        },
+        {
+          "address": "1404dfcb0",
+          "value": "<b>Diagonal Grid Lines</b><br>Enable diagonal grid lines to the port quarter.",
+          "encoding": "ascii"
+        },
+        {
+          "address": "1404dfd00",
+          "value": "<b>Longitudinal Grid Lines</b><br>Enable grid lines fore and aft.",
+          "encoding": "ascii"
+        },
+        {
+          "address": "1404dfd50",
+          "value": "<b>Diagonal Grid Lines</b><br>Enable diagonal grid lines to the starboard quarter.",
+          "encoding": "ascii"
+        },
+        {
+          "address": "1404e0040",
+          "value": "<b>Erase Room Cells</b><br>Erases room cells from the current deck of the design.",
+          "encoding": "ascii"
+        },
+        {
+          "address": "1404e0b10",
+          "value": "<html><b>Room Mode - Change Room Type</b><br>Current mode changes the type of rooms that are clicked. The room type cannot change if this would create two rooms of the same type with the same room number on the same deck.<br>Press this button to change drawing modes for the room buttons.<br>%1 <b>Draw</b> mode draws new room cells and replaces existing room cells.<br>%1 <b>Change Room Type</b> mode changes the type of existing rooms.<br></html>",
+          "encoding": "ascii"
+        },
+        {
+          "address": "1404eb5b0",
+          "value": "- Room identifier distinguishes between different rooms of the same type on the same story. To make two bedrooms on the same story, change the room id before painting the second bedroom. Room id can be the same on different stories. e.g. Story 1 can have bedroom 4 and story 2 can also have bedroom 4.<br>",
+          "encoding": "ascii"
+        },
+        {
+          "address": "1404ebad0",
+          "value": "- Room identifier distinguishes between different rooms of the same type on the same deck. To make two staterooms on the same deck, change the room id before painting the second stateroom. Room id can be the same on different decks. e.g. Deck 1 can have stateroom 4 and deck 2 can also have stateroom 4.<br>",
+          "encoding": "ascii"
+        }
+      ],
+      "total": 16,
+      "offset": 0,
+      "limit": 100
+    },
+    {
+      "matches": [
+        {
+          "address": "140477730",
+          "value": "<html><b>Increase Room Number</b><br>Increases the room number. Room number is used to distinguish between rooms of the same type on the same story.</html>",
+          "encoding": "ascii"
+        },
+        {
+          "address": "140477810",
+          "value": "<html><b>Decrease Room Number</b><br>Decreases the room number. Room number is used to distinguish between rooms of the same type on the same story.</html>",
+          "encoding": "ascii"
+        },
+        {
+          "address": "1404778b0",
+          "value": "<html><b>Room Number</b><br>Room number is used to distinguish between rooms of the same type on the same story.<br><br>Push this button to change the room number of an existing room to the number shown. The room number cannot change if this would create two rooms of the same type with the same room number on the same story.</html>",
+          "encoding": "ascii"
+        },
+        {
+          "address": "1404dfdb0",
+          "value": "<html><b>Increase Room Number</b><br>Increases the room number. Room number is used to distinguish between rooms of the same type on the same deck.</html>",
+          "encoding": "ascii"
+        },
+        {
+          "address": "1404dfe50",
+          "value": "<html><b>Decrease Room Number</b><br>Decreases the room number. Room number is used to distinguish between rooms of the same type on the same deck.</html>",
+          "encoding": "ascii"
+        },
+        {
+          "address": "1404dfef0",
+          "value": "<html><b>Room Number</b><br>Room number is used to distinguish between rooms of the same type on the same deck.<br><br>Push this button to change the room number of an existing room to the number shown. The room number cannot change if this would create two rooms of the same type with the same room number on the same deck.</html>",
+          "encoding": "ascii"
+        }
+      ],
+      "total": 6,
+      "offset": 0,
+      "limit": 25
+    }
+  ],
+  "vtables": [
+    {
+      "address": "1404ee568",
+      "length": 136,
+      "data": [
+        0,
+        80,
+        49,
+        64,
+        1,
+        0,
+        0,
+        0,
+        176,
+        4,
+        49,
+        64,
+        1,
+        0,
+        0,
+        0,
+        192,
+        4,
+        49,
+        64,
+        1,
+        0,
+        0,
+        0,
+        48,
+        227,
+        19,
+        64,
+        1,
+        0,
+        0,
+        0,
+        48,
+        227,
+        19,
+        64,
+        1,
+        0,
+        0,
+        0,
+        160,
+        87,
+        49,
+        64,
+        1,
+        0,
+        0,
+        0,
+        128,
+        82,
+        49,
+        64,
+        1,
+        0,
+        0,
+        0,
+        224,
+        4,
+        49,
+        64,
+        1,
+        0,
+        0,
+        0,
+        224,
+        4,
+        49,
+        64,
+        1,
+        0,
+        0,
+        0,
+        48,
+        227,
+        19,
+        64,
+        1,
+        0,
+        0,
+        0,
+        96,
+        80,
+        49,
+        64,
+        1,
+        0,
+        0,
+        0,
+        48,
+        227,
+        19,
+        64,
+        1,
+        0,
+        0,
+        0,
+        112,
+        81,
+        49,
+        64,
+        1,
+        0,
+        0,
+        0,
+        48,
+        227,
+        19,
+        64,
+        1,
+        0,
+        0,
+        0,
+        48,
+        227,
+        19,
+        64,
+        1,
+        0,
+        0,
+        0,
+        48,
+        227,
+        19,
+        64,
+        1,
+        0,
+        0,
+        0,
+        48,
+        227,
+        19,
+        64,
+        1,
+        0,
+        0,
+        0
+      ],
+      "hex": "0050314001000000b004314001000000c00431400100000030e313400100000030e3134001000000a0573140010000008052314001000000e004314001000000e00431400100000030e3134001000000605031400100000030e3134001000000705131400100000030e313400100000030e313400100000030e313400100000030e3134001000000"
+    },
+    {
+      "address": "1404ee670",
+      "length": 160,
+      "data": [
+        64,
+        87,
+        49,
+        64,
+        1,
+        0,
+        0,
+        0,
+        176,
+        4,
+        49,
+        64,
+        1,
+        0,
+        0,
+        0,
+        192,
+        4,
+        49,
+        64,
+        1,
+        0,
+        0,
+        0,
+        48,
+        227,
+        19,
+        64,
+        1,
+        0,
+        0,
+        0,
+        48,
+        227,
+        19,
+        64,
+        1,
+        0,
+        0,
+        0,
+        160,
+        87,
+        49,
+        64,
+        1,
+        0,
+        0,
+        0,
+        208,
+        89,
+        49,
+        64,
+        1,
+        0,
+        0,
+        0,
+        224,
+        4,
+        49,
+        64,
+        1,
+        0,
+        0,
+        0,
+        224,
+        4,
+        49,
+        64,
+        1,
+        0,
+        0,
+        0,
+        48,
+        227,
+        19,
+        64,
+        1,
+        0,
+        0,
+        0,
+        176,
+        87,
+        49,
+        64,
+        1,
+        0,
+        0,
+        0,
+        48,
+        227,
+        19,
+        64,
+        1,
+        0,
+        0,
+        0,
+        192,
+        88,
+        49,
+        64,
+        1,
+        0,
+        0,
+        0,
+        48,
+        227,
+        19,
+        64,
+        1,
+        0,
+        0,
+        0,
+        48,
+        227,
+        19,
+        64,
+        1,
+        0,
+        0,
+        0,
+        48,
+        227,
+        19,
+        64,
+        1,
+        0,
+        0,
+        0,
+        48,
+        227,
+        19,
+        64,
+        1,
+        0,
+        0,
+        0,
+        34,
+        5,
+        147,
+        25,
+        1,
+        0,
+        0,
+        0,
+        28,
+        197,
+        103,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        3,
+        0,
+        0,
+        0
+      ],
+      "hex": "4057314001000000b004314001000000c00431400100000030e313400100000030e3134001000000a057314001000000d059314001000000e004314001000000e00431400100000030e3134001000000b05731400100000030e3134001000000c05831400100000030e313400100000030e313400100000030e313400100000030e313400100000022059319010000001cc56700000000000000000003000000"
+    }
+  ],
+  "baseline_qt_actions": [
+    {
+      "ea": 5371762448,
+      "name": "AuView__DesignDeleteRoom",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignDeleteRoom (method 85; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignDeleteRoom (method 85; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nConcurrency::details::ThreadScheduler *__fastcall AuView__DesignDeleteRoom(struct Concurrency::SchedulerPolicy *self)\n{\n  Concurrency::details::ThreadScheduler *result; // rax\n  Concurrency::details::ThreadScheduler *v3; // rdi\n\n  result = (Concurrency::details::ThreadScheduler *)operator new(0x18u);\n  if ( result )\n  {\n    result = (Concurrency::details::ThreadScheduler *)Concurrency::details::ThreadScheduler::ThreadScheduler(\n                                                        result,\n                                                        self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*((_DWORD *)self + 95) )\n  {\n    AuView__EndCommand((__int64)self);\n    *((_QWORD *)self + 214) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(Concurrency::details::ThreadScheduler *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow(self);\n    QWidget::raise(self);\n    return (Concurrency::details::ThreadScheduler *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    },
+    {
+      "ea": 5371762592,
+      "name": "AuView__DesignDeleteRoomCells",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignDeleteRoomCells (method 86; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignDeleteRoomCells (method 86; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nvoid *__fastcall AuView__DesignDeleteRoomCells(__int64 self)\n{\n  void *result; // rax\n  void *v3; // rdi\n\n  result = operator new(0x20u);\n  if ( result )\n  {\n    result = (void *)sub_140314FB0(result, 0xFFFFFFFFLL, self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*(_DWORD *)(self + 380) )\n  {\n    AuView__EndCommand(self);\n    *(_QWORD *)(self + 1712) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow((QWidget *)self);\n    QWidget::raise((QWidget *)self);\n    return (void *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    },
+    {
+      "ea": 5371770560,
+      "name": "AuView__DesignGrid0",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignGrid0 (method 137; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignGrid0 (method 137; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n__int64 __fastcall AuView__DesignGrid0(AuGLAbstractItemView *self)\n{\n  struct AuGLAbstractItemModel *v1; // rax\n\n  v1 = AuGLAbstractItemView::model(self);\n  return sub_14023EB50(v1);\n}"
+    },
+    {
+      "ea": 5371770592,
+      "name": "AuView__DesignGrid135",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignGrid135 (method 140; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignGrid135 (method 140; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n__int64 __fastcall AuView__DesignGrid135(AuGLAbstractItemView *self)\n{\n  struct AuGLAbstractItemModel *v1; // rax\n\n  v1 = AuGLAbstractItemView::model(self);\n  return sub_14023EC80(v1);\n}"
+    },
+    {
+      "ea": 5371770624,
+      "name": "AuView__DesignGrid45",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignGrid45 (method 138; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignGrid45 (method 138; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n__int64 __fastcall AuView__DesignGrid45(AuGLAbstractItemView *self)\n{\n  struct AuGLAbstractItemModel *v1; // rax\n\n  v1 = AuGLAbstractItemView::model(self);\n  return sub_14023EDB0(v1);\n}"
+    },
+    {
+      "ea": 5371770656,
+      "name": "AuView__DesignGrid90",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignGrid90 (method 139; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignGrid90 (method 139; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n__int64 __fastcall AuView__DesignGrid90(AuGLAbstractItemView *self)\n{\n  struct AuGLAbstractItemModel *v1; // rax\n\n  v1 = AuGLAbstractItemView::model(self);\n  return sub_14023EEE0(v1);\n}"
+    },
+    {
+      "ea": 5371778304,
+      "name": "AuView__DesignRoomBarracks",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomBarracks (method 148; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomBarracks (method 148; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nvoid *__fastcall AuView__DesignRoomBarracks(__int64 self)\n{\n  void *result; // rax\n  void *v3; // rdi\n\n  result = operator new(0x20u);\n  if ( result )\n  {\n    result = (void *)sub_140314FB0(result, 1, self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*(_DWORD *)(self + 380) )\n  {\n    AuView__EndCommand(self);\n    *(_QWORD *)(self + 1712) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow((QWidget *)self);\n    QWidget::raise((QWidget *)self);\n    return (void *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    },
+    {
+      "ea": 5371778464,
+      "name": "AuView__DesignRoomBridge",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomBridge (method 149; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomBridge (method 149; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nvoid *__fastcall AuView__DesignRoomBridge(__int64 self)\n{\n  void *result; // rax\n  void *v3; // rdi\n\n  result = operator new(0x20u);\n  if ( result )\n  {\n    result = (void *)sub_140314FB0(result, 2, self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*(_DWORD *)(self + 380) )\n  {\n    AuView__EndCommand(self);\n    *(_QWORD *)(self + 1712) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow((QWidget *)self);\n    QWidget::raise((QWidget *)self);\n    return (void *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    },
+    {
+      "ea": 5371778624,
+      "name": "AuView__DesignRoomBrig",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomBrig (method 150; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomBrig (method 150; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nvoid *__fastcall AuView__DesignRoomBrig(__int64 self)\n{\n  void *result; // rax\n  void *v3; // rdi\n\n  result = operator new(0x20u);\n  if ( result )\n  {\n    result = (void *)sub_140314FB0(result, 3, self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*(_DWORD *)(self + 380) )\n  {\n    AuView__EndCommand(self);\n    *(_QWORD *)(self + 1712) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow((QWidget *)self);\n    QWidget::raise((QWidget *)self);\n    return (void *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    },
+    {
+      "ea": 5371778784,
+      "name": "AuView__DesignRoomCaptainsCabin",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomCaptainsCabin (method 151; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomCaptainsCabin (method 151; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nvoid *__fastcall AuView__DesignRoomCaptainsCabin(__int64 self)\n{\n  void *result; // rax\n  void *v3; // rdi\n\n  result = operator new(0x20u);\n  if ( result )\n  {\n    result = (void *)sub_140314FB0(result, 4, self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*(_DWORD *)(self + 380) )\n  {\n    AuView__EndCommand(self);\n    *(_QWORD *)(self + 1712) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow((QWidget *)self);\n    QWidget::raise((QWidget *)self);\n    return (void *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    },
+    {
+      "ea": 5371778944,
+      "name": "AuView__DesignRoomCorridor",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomCorridor (method 152; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomCorridor (method 152; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nvoid *__fastcall AuView__DesignRoomCorridor(__int64 self)\n{\n  void *result; // rax\n  void *v3; // rdi\n\n  result = operator new(0x20u);\n  if ( result )\n  {\n    result = (void *)sub_140314FB0(result, 6, self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*(_DWORD *)(self + 380) )\n  {\n    AuView__EndCommand(self);\n    *(_QWORD *)(self + 1712) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow((QWidget *)self);\n    QWidget::raise((QWidget *)self);\n    return (void *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    },
+    {
+      "ea": 5371779104,
+      "name": "AuView__DesignRoomCrewCabin",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomCrewCabin (method 153; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomCrewCabin (method 153; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nvoid *__fastcall AuView__DesignRoomCrewCabin(__int64 self)\n{\n  void *result; // rax\n  void *v3; // rdi\n\n  result = operator new(0x20u);\n  if ( result )\n  {\n    result = (void *)sub_140314FB0(result, 7, self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*(_DWORD *)(self + 380) )\n  {\n    AuView__EndCommand(self);\n    *(_QWORD *)(self + 1712) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow((QWidget *)self);\n    QWidget::raise((QWidget *)self);\n    return (void *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    },
+    {
+      "ea": 5371779264,
+      "name": "AuView__DesignRoomEngineRoom",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomEngineRoom (method 154; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomEngineRoom (method 154; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nvoid *__fastcall AuView__DesignRoomEngineRoom(__int64 self)\n{\n  void *result; // rax\n  void *v3; // rdi\n\n  result = operator new(0x20u);\n  if ( result )\n  {\n    result = (void *)sub_140314FB0(result, 8, self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*(_DWORD *)(self + 380) )\n  {\n    AuView__EndCommand(self);\n    *(_QWORD *)(self + 1712) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow((QWidget *)self);\n    QWidget::raise((QWidget *)self);\n    return (void *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    },
+    {
+      "ea": 5371779424,
+      "name": "AuView__DesignRoomFlightDeck",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomFlightDeck (method 155; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomFlightDeck (method 155; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nvoid *__fastcall AuView__DesignRoomFlightDeck(__int64 self)\n{\n  void *result; // rax\n  void *v3; // rdi\n\n  result = operator new(0x20u);\n  if ( result )\n  {\n    result = (void *)sub_140314FB0(result, 13, self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*(_DWORD *)(self + 380) )\n  {\n    AuView__EndCommand(self);\n    *(_QWORD *)(self + 1712) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow((QWidget *)self);\n    QWidget::raise((QWidget *)self);\n    return (void *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    },
+    {
+      "ea": 5371779584,
+      "name": "AuView__DesignRoomFuel",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomFuel (method 156; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomFuel (method 156; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nvoid *__fastcall AuView__DesignRoomFuel(__int64 self)\n{\n  void *result; // rax\n  void *v3; // rdi\n\n  result = operator new(0x20u);\n  if ( result )\n  {\n    result = (void *)sub_140314FB0(result, 9, self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*(_DWORD *)(self + 380) )\n  {\n    AuView__EndCommand(self);\n    *(_QWORD *)(self + 1712) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow((QWidget *)self);\n    QWidget::raise((QWidget *)self);\n    return (void *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    },
+    {
+      "ea": 5371779744,
+      "name": "AuView__DesignRoomGalley",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomGalley (method 157; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomGalley (method 157; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nvoid *__fastcall AuView__DesignRoomGalley(__int64 self)\n{\n  void *result; // rax\n  void *v3; // rdi\n\n  result = operator new(0x20u);\n  if ( result )\n  {\n    result = (void *)sub_140314FB0(result, 10, self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*(_DWORD *)(self + 380) )\n  {\n    AuView__EndCommand(self);\n    *(_QWORD *)(self + 1712) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow((QWidget *)self);\n    QWidget::raise((QWidget *)self);\n    return (void *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    },
+    {
+      "ea": 5371779904,
+      "name": "AuView__DesignRoomGravityWell",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomGravityWell (method 158; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomGravityWell (method 158; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nvoid *__fastcall AuView__DesignRoomGravityWell(__int64 self)\n{\n  void *result; // rax\n  void *v3; // rdi\n\n  result = operator new(0x20u);\n  if ( result )\n  {\n    result = (void *)sub_140314FB0(result, 11, self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*(_DWORD *)(self + 380) )\n  {\n    AuView__EndCommand(self);\n    *(_QWORD *)(self + 1712) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow((QWidget *)self);\n    QWidget::raise((QWidget *)self);\n    return (void *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    },
+    {
+      "ea": 5371780064,
+      "name": "AuView__DesignRoomHold",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomHold (method 159; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomHold (method 159; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nvoid *__fastcall AuView__DesignRoomHold(__int64 self)\n{\n  void *result; // rax\n  void *v3; // rdi\n\n  result = operator new(0x20u);\n  if ( result )\n  {\n    result = (void *)sub_140314FB0(result, 5, self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*(_DWORD *)(self + 380) )\n  {\n    AuView__EndCommand(self);\n    *(_QWORD *)(self + 1712) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow((QWidget *)self);\n    QWidget::raise((QWidget *)self);\n    return (void *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    },
+    {
+      "ea": 5371780256,
+      "name": "AuView__DesignRoomIdChange",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomIdChange (method 160; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomIdChange (method 160; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nConcurrency::details::ThreadScheduler *__fastcall AuView__DesignRoomIdChange(struct Concurrency::SchedulerPolicy *self)\n{\n  Concurrency::details::ThreadScheduler *result; // rax\n  Concurrency::details::ThreadScheduler *v3; // rdi\n\n  result = (Concurrency::details::ThreadScheduler *)operator new(0x18u);\n  if ( result )\n  {\n    result = (Concurrency::details::ThreadScheduler *)Concurrency::details::ThreadScheduler::ThreadScheduler(\n                                                        result,\n                                                        self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*((_DWORD *)self + 95) )\n  {\n    AuView__EndCommand((__int64)self);\n    *((_QWORD *)self + 214) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(Concurrency::details::ThreadScheduler *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow(self);\n    QWidget::raise(self);\n    return (Concurrency::details::ThreadScheduler *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    },
+    {
+      "ea": 5371780400,
+      "name": "AuView__DesignRoomIdDown",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomIdDown (method 161; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomIdDown (method 161; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n__int64 __fastcall AuView__DesignRoomIdDown(AuGLAbstractItemView *self)\n{\n  struct AuGLAbstractItemModel *v1; // rax\n\n  v1 = AuGLAbstractItemView::model(self);\n  return sub_140240FF0(v1);\n}"
+    },
+    {
+      "ea": 5371780432,
+      "name": "AuView__DesignRoomIdUp",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomIdUp (method 162; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomIdUp (method 162; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n__int64 __fastcall AuView__DesignRoomIdUp(AuGLAbstractItemView *self)\n{\n  struct AuGLAbstractItemModel *v1; // rax\n\n  v1 = AuGLAbstractItemView::model(self);\n  return sub_140241120(v1);\n}"
+    },
+    {
+      "ea": 5371780464,
+      "name": "AuView__DesignRoomLounge",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomLounge (method 163; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomLounge (method 163; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nvoid *__fastcall AuView__DesignRoomLounge(__int64 self)\n{\n  void *result; // rax\n  void *v3; // rdi\n\n  result = operator new(0x20u);\n  if ( result )\n  {\n    result = (void *)sub_140314FB0(result, 14, self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*(_DWORD *)(self + 380) )\n  {\n    AuView__EndCommand(self);\n    *(_QWORD *)(self + 1712) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow((QWidget *)self);\n    QWidget::raise((QWidget *)self);\n    return (void *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    },
+    {
+      "ea": 5371780656,
+      "name": "AuView__DesignRoomModeToggle",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomModeToggle (method 164; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomModeToggle (method 164; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n__int64 __fastcall AuView__DesignRoomModeToggle(AuGLAbstractItemView *self)\n{\n  struct AuGLAbstractItemModel *v1; // rax\n\n  v1 = AuGLAbstractItemView::model(self);\n  return sub_1402412A0(v1);\n}"
+    },
+    {
+      "ea": 5371780688,
+      "name": "AuView__DesignRoomOpenToBelow",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomOpenToBelow (method 165; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomOpenToBelow (method 165; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nvoid *__fastcall AuView__DesignRoomOpenToBelow(__int64 self)\n{\n  void *result; // rax\n  void *v3; // rdi\n\n  result = operator new(0x20u);\n  if ( result )\n  {\n    result = (void *)sub_140314FB0(result, 15, self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*(_DWORD *)(self + 380) )\n  {\n    AuView__EndCommand(self);\n    *(_QWORD *)(self + 1712) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow((QWidget *)self);\n    QWidget::raise((QWidget *)self);\n    return (void *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    },
+    {
+      "ea": 5371780848,
+      "name": "AuView__DesignRoomSensor",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomSensor (method 166; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomSensor (method 166; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nvoid *__fastcall AuView__DesignRoomSensor(__int64 self)\n{\n  void *result; // rax\n  void *v3; // rdi\n\n  result = operator new(0x20u);\n  if ( result )\n  {\n    result = (void *)sub_140314FB0(result, 16, self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*(_DWORD *)(self + 380) )\n  {\n    AuView__EndCommand(self);\n    *(_QWORD *)(self + 1712) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow((QWidget *)self);\n    QWidget::raise((QWidget *)self);\n    return (void *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    },
+    {
+      "ea": 5371781008,
+      "name": "AuView__DesignRoomShield",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomShield (method 167; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomShield (method 167; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nvoid *__fastcall AuView__DesignRoomShield(__int64 self)\n{\n  void *result; // rax\n  void *v3; // rdi\n\n  result = operator new(0x20u);\n  if ( result )\n  {\n    result = (void *)sub_140314FB0(result, 17, self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*(_DWORD *)(self + 380) )\n  {\n    AuView__EndCommand(self);\n    *(_QWORD *)(self + 1712) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow((QWidget *)self);\n    QWidget::raise((QWidget *)self);\n    return (void *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    },
+    {
+      "ea": 5371781168,
+      "name": "AuView__DesignRoomSickBay",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomSickBay (method 168; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomSickBay (method 168; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nvoid *__fastcall AuView__DesignRoomSickBay(__int64 self)\n{\n  void *result; // rax\n  void *v3; // rdi\n\n  result = operator new(0x20u);\n  if ( result )\n  {\n    result = (void *)sub_140314FB0(result, 18, self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*(_DWORD *)(self + 380) )\n  {\n    AuView__EndCommand(self);\n    *(_QWORD *)(self + 1712) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow((QWidget *)self);\n    QWidget::raise((QWidget *)self);\n    return (void *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    },
+    {
+      "ea": 5371781328,
+      "name": "AuView__DesignRoomStateroom",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomStateroom (method 169; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomStateroom (method 169; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nvoid *__fastcall AuView__DesignRoomStateroom(__int64 self)\n{\n  void *result; // rax\n  void *v3; // rdi\n\n  result = operator new(0x20u);\n  if ( result )\n  {\n    result = (void *)sub_140314FB0(result, 19, self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*(_DWORD *)(self + 380) )\n  {\n    AuView__EndCommand(self);\n    *(_QWORD *)(self + 1712) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow((QWidget *)self);\n    QWidget::raise((QWidget *)self);\n    return (void *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    },
+    {
+      "ea": 5371781488,
+      "name": "AuView__DesignRoomTransporter",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomTransporter (method 170; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomTransporter (method 170; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nvoid *__fastcall AuView__DesignRoomTransporter(__int64 self)\n{\n  void *result; // rax\n  void *v3; // rdi\n\n  result = operator new(0x20u);\n  if ( result )\n  {\n    result = (void *)sub_140314FB0(result, 20, self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*(_DWORD *)(self + 380) )\n  {\n    AuView__EndCommand(self);\n    *(_QWORD *)(self + 1712) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow((QWidget *)self);\n    QWidget::raise((QWidget *)self);\n    return (void *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    },
+    {
+      "ea": 5371781648,
+      "name": "AuView__DesignRoomWeaponBay",
+      "comments": "RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\nAuView::DesignRoomWeaponBay (method 171; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830",
+      "pseudocode": "// RE2016 PROVENANCE: Original method and parameter spelling below is recovered from this executable's Qt metadata; the C++ declaration, local names and generated pseudocode are reconstructions. A dispatcher call identifies an implementation target, which can be an out-of-line helper after inlining; it does not by itself prove source-function boundaries.\n// AuView::DesignRoomWeaponBay (method 171; types QtMetaTypeId(43); argument names <none>); Qt invoke dispatcher case; dispatcher 0x140349be0; metadata 0x1406f2830\n// Hidden C++ exception states: #wind=1\nvoid *__fastcall AuView__DesignRoomWeaponBay(__int64 self)\n{\n  void *result; // rax\n  void *v3; // rdi\n\n  result = operator new(0x20u);\n  if ( result )\n  {\n    result = (void *)sub_140314FB0(result, 21, self);\n    v3 = result;\n  }\n  else\n  {\n    v3 = nullptr;\n  }\n  if ( !*(_DWORD *)(self + 380) )\n  {\n    AuView__EndCommand(self);\n    *(_QWORD *)(self + 1712) = v3;\n    if ( v3 )\n      (*(void (__fastcall **)(void *))(*(_QWORD *)v3 + 24LL))(v3);\n    QWidget::activateWindow((QWidget *)self);\n    QWidget::raise((QWidget *)self);\n    return (void *)QWidget::setFocus(self, 7);\n  }\n  return result;\n}"
+    }
+  ]
+}

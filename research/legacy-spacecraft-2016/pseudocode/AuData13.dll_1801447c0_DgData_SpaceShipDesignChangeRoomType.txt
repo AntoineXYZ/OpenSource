@@ -1,0 +1,109 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x1801447c0
+Name provenance: PE export
+Captured: 2026-10-04
+
+/* public: bool __cdecl DgData::SpaceShipDesignChangeRoomType(unsigned int,unsigned short,enum
+   DnRoomType::ROOMTYPE) __ptr64 */
+
+bool __thiscall
+DgData::SpaceShipDesignChangeRoomType(DgData *this,uint param_1,ushort param_2,ROOMTYPE param_3)
+
+{
+  longlong lVar1;
+  DnRoom *pDVar2;
+  longlong *plVar3;
+  bool bVar4;
+  __uint64 _Var5;
+  longlong *plVar6;
+  longlong *plVar7;
+  longlong *plVar8;
+  longlong *plVar9;
+  ulonglong uVar10;
+  uint local_res10 [2];
+  AuDesignIdHash local_68 [8];
+  longlong *local_60;
+  undefined8 local_58;
+  undefined1 local_50 [8];
+  undefined4 local_48;
+  ushort local_44;
+  undefined1 local_41;
+  
+                    /* 0x1447c0  5611
+                       ?SpaceShipDesignChangeRoomType@DgData@@QEAA_NIGW4ROOMTYPE@DnRoomType@@@Z */
+  local_58 = 0xfffffffffffffffe;
+  local_res10[0] = param_1;
+  bVar4 = SpaceShipDesignIsReadOnly(this,param_1);
+  if (!bVar4) {
+    _Var5 = AuDesignIdHash::operator()(local_68,local_res10);
+    uVar10 = _Var5 & *(ulonglong *)(this + 0x1a0);
+    if (*(ulonglong *)(this + 0x1a8) <= uVar10) {
+      uVar10 = uVar10 + (-1 - (*(ulonglong *)(this + 0x1a0) >> 1));
+    }
+    lVar1 = *(longlong *)(this + 0x188);
+    plVar6 = *(longlong **)(lVar1 + uVar10 * 0x10);
+    plVar8 = *(longlong **)(this + 0x178);
+    while( true ) {
+      plVar7 = plVar8;
+      if (*(longlong **)(lVar1 + uVar10 * 0x10) != plVar8) {
+        plVar7 = (longlong *)**(undefined8 **)(lVar1 + 8 + uVar10 * 0x10);
+      }
+      plVar9 = plVar8;
+      plVar3 = local_60;
+      if ((plVar6 == plVar7) ||
+         (plVar9 = plVar6, plVar3 = plVar6, local_res10[0] == *(uint *)(plVar6 + 2))) break;
+      plVar6 = (longlong *)*plVar6;
+    }
+    local_60 = plVar3;
+    if (plVar9 != *(longlong **)(this + 0x178)) {
+      if (1 < *(uint *)plVar9[3]) {
+        QList<DnRoom>::detach_helper((QList<DnRoom> *)(plVar9 + 3),((uint *)plVar9[3])[1]);
+      }
+      plVar6 = (longlong *)(plVar9[3] + ((longlong)*(int *)(plVar9[3] + 8) + 2) * 8);
+      while( true ) {
+        if (1 < *(uint *)plVar9[3]) {
+          QList<DnRoom>::detach_helper((QList<DnRoom> *)(plVar9 + 3),((uint *)plVar9[3])[1]);
+        }
+        if ((plVar6 == (longlong *)(plVar9[3] + ((longlong)*(int *)(plVar9[3] + 0xc) + 2) * 8)) ||
+           (*(ushort *)(*plVar6 + 4) == param_2)) break;
+        plVar6 = plVar6 + 1;
+      }
+      if (1 < *(uint *)plVar9[3]) {
+        QList<DnRoom>::detach_helper((QList<DnRoom> *)(plVar9 + 3),((uint *)plVar9[3])[1]);
+      }
+      lVar1 = plVar9[3];
+      if (((plVar6 != (longlong *)(lVar1 + ((longlong)*(int *)(lVar1 + 0xc) + 2) * 8)) &&
+          (pDVar2 = (DnRoom *)*plVar6, 2 < (byte)pDVar2[7] - 0x16)) && ((byte)pDVar2[7] != param_3))
+      {
+        plVar8 = (longlong *)(lVar1 + (longlong)*(int *)(lVar1 + 8) * 8 + 0x10);
+        if (plVar8 != (longlong *)(plVar9[3] + ((longlong)*(int *)(plVar9[3] + 0xc) + 2) * 8)) {
+          do {
+            lVar1 = *plVar8;
+            if (((*(DnRoom *)(lVar1 + 6) == pDVar2[6]) && (*(byte *)(lVar1 + 7) == param_3)) &&
+               (*(DnRoom *)(lVar1 + 8) == pDVar2[8])) {
+              return false;
+            }
+            plVar8 = plVar8 + 1;
+          } while (plVar8 != (longlong *)(plVar9[3] + ((longlong)*(int *)(plVar9[3] + 0xc) + 2) * 8)
+                  );
+        }
+        DnRoom::DnRoom((DnRoom *)&local_48,pDVar2);
+        (**(code **)(**(longlong **)gp_AuGlobal_exref + 0x298))
+                  (*(longlong **)gp_AuGlobal_exref,*(undefined4 *)*plVar6,
+                   *(undefined2 *)((undefined4 *)*plVar6 + 1));
+        local_60 = plVar6;
+        QList<DnRoom>::erase((QList<DnRoom> *)(plVar9 + 3),local_50,&local_60);
+        local_44 = SpaceShipDesignNextRoomId(this,local_res10[0]);
+        local_41 = (undefined1)param_3;
+        DnRoomArray::Add((DnRoomArray *)(plVar9 + 3),(DnRoom *)&local_48);
+        (**(code **)(**(longlong **)gp_AuGlobal_exref + 0x288))
+                  (*(longlong **)gp_AuGlobal_exref,local_48,local_44);
+        SpaceShipDesignVerifyDetails(this,local_res10[0]);
+        DnRoom::~DnRoom((DnRoom *)&local_48);
+        return true;
+      }
+    }
+  }
+  return false;
+}

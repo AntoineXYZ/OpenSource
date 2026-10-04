@@ -7,6 +7,13 @@ room subtype, detail type, hidden flag, room ID, and commodity ID fields, and
 records the original float-based ellipse expansion. The report below preserves
 the state of the initial reconnaissance.
 
+Cell/painting recovery: CELL-SHAPES.txt and cell_shapes.py recover the original
+grid masks, ordered polygons, cursor selection and snapping. cell-shapes.svg
+shows every active mask and cursor wedge. PAINTING-RULES.txt documents raster
+merge/subtraction, room identity, validation and remaining equipment rules;
+CONTROL-MAPPING.txt records the original actions, gestures and Room Number.
+These are research/reference artifacts; native painting remains future work.
+
 Result
 ------
 The offline designer launch path, local .ship file handling, core room-editing

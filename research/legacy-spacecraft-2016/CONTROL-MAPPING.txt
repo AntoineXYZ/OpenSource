@@ -1,0 +1,143 @@
+2016 spacecraft designer: grid and room-paint controls
+====================================================
+
+Scope and provenance
+--------------------
+Read-only recovery from the fully analyzed x64 Shores of Hazeron.exe and
+AuAtom13.dll. Raw decompilation, embedded UI strings, vtable bytes, and the
+previous IDA baseline's Qt metadata-labelled action handlers are preserved in
+ghidra-control-evidence.json. No old executable, Ghidra database, game database,
+or design file was modified. These findings do not enable editing in the viewer.
+
+Addresses below are virtual addresses in the indicated original binary. Qt slot
+names come from the old executable's QMetaObject data and its dispatcher. The
+DdDesignRoomCell / DdDesignRoomDelete class names come from RTTI/vtables.
+Names assigned to their unnamed event handlers describe recovered behavior;
+they are not debug-symbol names.
+
+Grid directions are toggles, not independent shape buttons
+--------------------------------------------------------
+Each grid action finds the current design plane, inspects a bit of the byte at
+plane+0x3b1, and calls the corresponding exported Enable/Disable*Lines method.
+The resulting combined mask selects the fill geometry documented separately.
+
+Mask bit  Qt action       DaAtom entry   Exported line family
+0x01      DesignGrid0     1802073e0      HorizontalLines
+0x02      DesignGrid45    180207480      Diagonal45Lines
+0x04      DesignGrid90    1802074d0      VerticalLines
+0x08      DesignGrid135   180207430      Diagonal135Lines
+
+The original spacecraft tooltips in Shores of Hazeron.exe label these as:
+0x01: "Lateral Grid Lines"; lines "on the beam" (1404dfc70).
+0x02: "Diagonal Grid Lines"; lines "to the port quarter" (1404dfcb0).
+0x04: "Longitudinal Grid Lines"; lines "fore and aft" (1404dfd00).
+0x08: "Diagonal Grid Lines"; lines "to the starboard quarter" (1404dfd50).
+
+The EXE's Qt actions at 1402eb6c0/700/720/6e0 forward via
+14023eb50/edb0/eee0/ec80 to these exported DaAtom methods in offline mode.
+These numeric masks are established by code, independently of the tooltip text.
+Whether individual Enable/Disable methods constrain the set of combinations is
+not asserted by these wrappers alone; see the cell-shape recovery for that layer.
+
+Room type selection and cell erasure
+-----------------------------------
+The Qt actions create DdDesignRoomCell at 140314fb0 with a signed integer room
+type stored at command+0x18. DesignDeleteRoomCells (1402e97a0) passes -1.
+Ordinary room actions pass the following constants, recovered from the same
+constructor call in the saved Qt-labelled EXE pseudocode:
+
+1 Barracks; 2 Bridge; 3 Brig; 4 CaptainsCabin; 5 Hold; 6 Corridor;
+7 CrewCabin; 8 EngineRoom; 9 Fuel; 10 Galley; 11 GravityWell;
+13 FlightDeck; 14 Lounge; 15 OpenToBelow; 16 Sensor; 17 Shield;
+18 SickBay; 19 Stateroom; 20 Transporter; 21 WeaponBay.
+
+Those spellings are the original Qt action suffixes, not a newly inferred enum
+declaration. This list does not establish a room-paint action for value 12.
+
+The command's cursor function (140315280) uses dp_DelRoomCells.png for a negative
+type and the matching room cursor for a positive type. The original spacecraft
+tooltip calls the operation "Erase Room Cells" and says it erases cells from the
+current deck (1404e0040). This is explicit erase-tool selection; these functions
+do not implement a temporary right-button or modifier-key eraser.
+
+Mouse input and dispatch
+------------------------
+DdDesignRoomCell vtable at 1404ee568 contains:
+  +0x50 -> 140315060: checks QMouseEvent button field (+0x50) == 1;
+  +0x60 -> 140315170: checks held-buttons field (+0x54) & 1.
+
+These are the button-down and mouse-move behaviors: the Qt left-button value is
+1, so painting occurs on a left click and continues while moving with left held.
+Both compute a world/design coordinate from the current view and event position,
+then pass the stored signed room type to 140240830 in spacecraft context (view
+state value 1); building context value 2 uses 140240640.
+
+For offline spacecraft app state 5, 140240830 calls
+DaAtom::DesignRoomCell(point, signedRoomType), then notifies the client of the
+working design change. Its network branch serializes the same operation as an
+opcode 0x41, three float coordinates, and a signed byte type. The offline design
+work does not require executing that network branch.
+
+There is no modifier test, right-button paint action, interpolation between
+event coordinates, or repeated-cell suppression in these two command handlers.
+This is a statement about these handlers only: outer view/camera event dispatch
+and all keyboard shortcuts have not been comprehensively recovered here. Do not
+assume that a future implementation may ignore outer input routing or that every
+cell between two widely separated mouse events was automatically painted.
+
+Whole-room erasure is a separate input command
+----------------------------------------------
+DesignDeleteRoom (1402e9710) constructs DdDesignRoomDelete at 140315700, with its
+own vtable 1404ee670. Its corresponding event handlers are 1403157b0 and
+1403158c0. They use the same left-button / held-left-button tests and call
+140240bf0 in spacecraft context. That helper calls DaAtom::DesignRoomDelete
+(1802078a0), then DaDesignEnvironment::DeleteRoom (1802f8350), then
+DaSpaceShip::DesignDeleteRoom (1803e3d80).
+
+The last function checks CanDesignBeModified, finds the room containing the
+point with InsideRoom, and passes its 16-bit persistent record ID to
+DgData::SpaceShipDesignDeleteRoom. On success it invalidates design analysis and
+path caches. This UI route is distinct from the -2 branch elsewhere in
+DaSpaceShip::DesignRoom; do not infer that the old Delete Room button merely
+created a DdDesignRoomCell with -2.
+
+Room Mode and the user-facing "Room Number"
+--------------------------------------------
+DesignRoomModeToggle (1402ede30) forwards via 1402412a0 and
+DaAtom::DesignRoomModeToggle (180207a60) to
+DaDesignEnvironment::ToggleRoomMode (1802fc470). That method toggles the byte at
+plane+0x3b9 between 0 and 1 and requests an update. The exported plane-only
+ToggleRoomMode implementation (180219ef0) confirms the same byte toggle.
+
+Embedded UI strings describe the two modes as "Room Mode - Draw" (1404788e0)
+and "Room Mode - Change Room Type" (spacecraft version 1404e0b10). Draw fills
+new room cells and replaces existing ones. Change Room Type acts on an existing
+room and is prohibited if the result would duplicate the room type and room
+number on the same deck. Use backend FillRoomCell recovery to associate the
+numeric mode values with these labels; the toggle alone does not prove that.
+
+The user-facing number is NOT the 16-bit persistent room record ID:
+
+* EXE tooltip 1404ebad0 explicitly says it distinguishes rooms of the same type
+  on the same deck, and permits reuse on other decks. Its example is two
+  staterooms on one deck: change the room id before painting the second.
+* Tooltips at 1404dfdb0 and 1404dfe50 say "Increase Room Number" and
+  "Decrease Room Number". The "Room Number" tooltip at 1404dfef0 says clicking
+  that button allows changing an existing room to the shown number, unless that
+  would duplicate the room type/number on the same deck.
+* The Qt up/down actions forward via 140241120 / 140240ff0 to
+  DaAtom::DesignRoomIdUp/Down, then environment Increment/DecrementRoomId.
+* DaDesignPlane::IncrementRoomId (1802fdfb0) and DecrementRoomId (1802fd070)
+  increment/decrement the byte at plane+0x3ba with no range clamp, then request
+  an update. The storage therefore wraps modulo 256. This establishes the
+  underlying byte range; a distinct formatted display offset is not assumed.
+* The recovered data layer identifies the value carried into room painting as
+  the 8-bit subtype (rsub). In explanatory UI it can be called room number,
+  while the file/model must preserve subtype and persistent room ID separately.
+
+Validation boundary
+-------------------
+This is static evidence. It has not been checked against new controlled mouse
+gestures and before/after .ship saves in the running 2016 designer. Exact input
+sampling, global shortcut/camera precedence, pixel-edge hit tests, and undo
+grouping require that later comparison. No builds were run.

@@ -1,0 +1,181 @@
+2016 spacecraft designer: recovered grid-cell geometry
+Captured 2026-10-04; all legacy addresses refer to /AuAtom13.dll.
+
+Result and scope
+----------------
+The original grid toggles combine four families of lines. Eleven combinations
+form bounded paint cells: squares, parallelograms, diamonds and triangles. A
+cell is not always confined to the square containing the cursor. The shape
+and original clockwise vertex order are recovered for every combination.
+
+cell_shapes.py is an executable, standard-library-only reference.
+cell-shapes.json contains the table in integer half-grid coordinates.
+cell-shapes.svg shows all eleven masks and the four cursor sectors.
+These artifacts describe GetFillShapeAt, before room painting, room merging,
+erasing, detail reconciliation or any deck constraints in its callers. No
+native editor behavior is implemented by this recovery artifact.
+
+Evidence
+--------
+  0x1802fd190 DaDesignPlane::GetFillShapeAt (PE export).
+      Full decompilation was retained during the initial reconnaissance.
+      Newly captured disassembly verifies the truncation, negative decrement,
+      exact floating comparisons, jump table and appended constant vertices.
+  0x1802fd110 EnableDiagonal135Lines: byte at this+0x3b1 |= 0x08.
+  0x1802fd130 EnableDiagonal45Lines:  byte at this+0x3b1 |= 0x02.
+  0x1802fd150 EnableHorizontalLines: byte at this+0x3b1 |= 0x01.
+  0x1802fd170 EnableVerticalLines:   byte at this+0x3b1 |= 0x04.
+  0x1802fd090/0b0/0d0/0f0 corresponding disablers clear only their bit.
+      No requirement to retain enough enabled families occurs in these setters.
+  0x180208070 DoesGridFormBoundaries rejects 0,1,2,4,8 and accepts other bytes.
+  0x1802fced0 and 0x1802fcf30 constructors initialize the grid mask to 0x05,
+      by storing little-endian 0x0500 at this+0x3b0.
+  0x18020edd0 GetGridSpacing returns the fixed constant G = 5.656854249 feet.
+
+Full helpers are stored in pseudocode/AuAtom13.dll_cell_shape_helpers.txt and
+pseudocode/AuAtom13.dll_cell_shape_defaults_and_disablers.txt. Assembly is in
+pseudocode/AuAtom13.dll_1802fd190_GetFillShapeAt_assembly.txt. Raw constant reads
+are retained in cell-shape-constants.json; the source binary is unchanged.
+
+The surviving modern src/lib/atom/entities/design/dadesignplane.h independently
+confirms the bit names and values. The old exported setters are the evidence
+for their meaning in the 2016 binary. Shape labels such as "east" and "diamond"
+below are explanatory geometric labels, not recovered UI names or enum labels.
+
+Coordinates and precision
+-------------------------
+G = 5.656854249 feet is the full grid spacing; H = G/2 = 2.8284271245 feet.
+A full square has approximately 32 square feet. Keep the stored constant;
+replacing it with a fresh calculation of sqrt(32) changes the binary64 value.
+
+Referenced literal bit patterns (hexadecimal binary64, before little-endian
+storage) are:
+  H       0x4006a09e6676c64a = 2.8284271245
+  G       0x4016a09e6676c64a = 5.656854249
+  1.5 G   0x4020f876ccd914b8 = 8.485281373500001
+  2 G     0x4026a09e6676c64a = 11.313708498
+Negatives of H and G also occur. Examples of read addresses: G at
+0x18073b618, scalar threshold 0.5 at 0x180740c90, H/H at 0x1807972d0,
+1.5G/H at 0x1807972e0, and -H/H at 0x18073b770.
+
+Each output vertex is a local XY constant plus (ix*G, iy*G). Its Z is exactly
+the input point's Z; this function neither rounds to an 8-foot deck nor checks
+deck or ship bounds. Output is an array of three or four vertices without a
+duplicate closing vertex. Arrays are clockwise in world XY with Y upward.
+
+Snapping, including the negative-grid seam
+-----------------------------------------
+First clear the output. Read the grid mask byte at this+0x3b1. Masks 0,1,2,4,8
+return immediately. Compute the following independently for X and Y:
+
+    scaled = coordinate / G
+    index = trunc_toward_zero(scaled)
+    if scaled < 0.0:
+        index -= 1
+    fraction = scaled - index
+
+This is NOT floor at exact negative integers. The assembly uses CVTTSD2SI
+followed by a negative-value test and DEC (0x1802fd222 through 0x1802fd247).
+Thus X=-G yields ix=-2 and fx=1, while X=+G yields ix=1 and fx=0. Negative
+zero takes ix=0. At ordinary negative nonintegral positions this matches floor.
+Keep this quirk for compatibility; do not silently replace it with floor.
+
+The legacy routine converts into signed 32-bit indices. Nonfinite inputs and
+out-of-range conversion are outside the reference's supported domain; actual
+paint coordinates are bounded by the design environment. The reference raises
+ValueError for unsupported active-mask inputs rather than pretending to model
+processor-specific invalid-conversion behavior.
+
+Cursor-sector selection and ties
+-------------------------------
+Let fx=X/G-ix and fy=Y/G-iy. The four sector labels are E=0,N=1,W=2,S=3.
+Preserve the exact binary64 operations and comparison order:
+
+    if fx < 0.5:
+        if fy <= 0.5:
+            sector = 2 + int(0.5 - fx <= 0.5 - fy)
+        else:
+            sector = 1 + int(fy - 0.5 <= 0.5 - fx)
+    elif fy <= 0.5:
+        sector = 0 if 0.5 - fy < fx - 0.5 else 3
+    else:
+        sector = int(fx < fy)
+
+Cardinal interior examples: (.875,.5)->E, (.5,.875)->N,
+(.125,.5)->W, (.5,.125)->S. Exact diagonal examples: (.25,.25)->S,
+(.25,.75)->W, (.75,.75)->E, (.75,.25)->S. Exact center (.5,.5)->S.
+Square corners (0,0),(0,1),(1,1),(1,0) select S,W,E,S respectively.
+
+Do not simplify the lower-left comparison to fx>=fy: rounded subtraction can
+change one-ULP cases. For example, moving .25 one representable value toward
+zero while holding fy=.25 still selects S because .5-fx rounds to .25. A
+second step toward zero selects W. These are preserved by the reference.
+
+Complete shape table
+--------------------
+Bits: H(horizontal)=1, D45=2, V(vertical)=4, D135=8. Coordinates below are
+integer multiples of H relative to (ix*G,iy*G). C=(1,1) is the square center.
+Every list gives the original first vertex and append order.
+
+Mask  Families       Sector(s)   Vertices
+----  -------------  ----------  --------------------------------------
+0x03  H+D45          E,S         (0,0) (2,2) (4,2) (2,0)
+                     N,W         (0,0) (-2,0) (0,2) (2,2)
+0x05  H+V            all         (0,0) (0,2) (2,2) (2,0)
+0x06  D45+V          E,S         (0,0) (2,2) (2,0) (0,-2)
+                     N,W         (0,0) (0,2) (2,4) (2,2)
+0x07  H+D45+V        E,S         (0,0) (2,2) (2,0)
+                     N,W         (0,0) (0,2) (2,2)
+0x09  H+D135         E,N         (0,2) (2,2) (4,0) (2,0)
+                     W,S         (0,2) (2,0) (0,0) (-2,2)
+0x0A  D45+D135       E           C (2,2) (3,1) (2,0)
+                     N           C (0,2) (1,3) (2,2)
+                     W           C (0,0) (-1,1) (0,2)
+                     S           C (2,0) (1,-1) (0,0)
+0x0B  H+D45+D135     E           C (2,2) (3,1) (2,0)
+                     N           C (0,2) (2,2)
+                     W           C (0,0) (-1,1) (0,2)
+                     S           C (2,0) (0,0)
+0x0C  V+D135         E,N         (0,2) (0,4) (2,2) (2,0)
+                     W,S         (0,2) (2,0) (2,-2) (0,0)
+0x0D  H+V+D135       E,N         (2,0) (0,2) (2,2)
+                     W,S         (2,0) (0,0) (0,2)
+0x0E  D45+V+D135     E           C (2,2) (2,0)
+                     N           C (0,2) (1,3) (2,2)
+                     W           C (0,0) (0,2)
+                     S           C (2,0) (1,-1) (0,0)
+0x0F  H+D45+V+D135   E           C (2,2) (2,0)
+                     N           C (0,2) (2,2)
+                     W           C (0,0) (0,2)
+                     S           C (2,0) (0,0)
+
+Masks 0,1,2,4,8 have no bounded cell and yield no vertices. Every remaining
+byte value outside 0..15 also yields no vertices through the switch default,
+although DoesGridFormBoundaries returns true for those values. Normal toggles
+preserve the four-bit range; the helper does not mask corrupt input to 0x0F.
+
+Validation and limits
+---------------------
+Run from the repository root, without building the client:
+
+    python3 -B research/legacy-spacecraft-2016/cell_shapes.py --self-test
+
+The reference passed 2,156 interior geometry checks against an independent
+half-plane clipping oracle, 8,624 translated positive/negative-coordinate
+checks, all 256 mask bytes, clockwise vertex checks, literal-bit checks,
+explicit sector ties and one-ULP neighbors, and negative-grid seam fixtures.
+The oracle constructs the polygon enclosed by enabled horizontal, vertical,
+y-x=integer and x+y=integer line families instead of copying the shape table.
+The geometry oracle excludes line ties; those are checked against explicit
+assembly-derived fixtures. Z passthrough is checked with fractional values.
+
+Useful read-only commands:
+    python3 -B research/legacy-spacecraft-2016/cell_shapes.py --table
+    python3 -B research/legacy-spacecraft-2016/cell_shapes.py --point 0xF 1 2 24
+    python3 -B research/legacy-spacecraft-2016/cell_shapes.py --atlas
+
+This is static reconstruction plus independent geometric validation. The 2016
+binary was not executed by a test harness, and no controlled painting session
+has yet verified the selected polygons against original UI interaction. The
+geometry reference does not claim room identity, raster fill, clipping or
+equipment semantics; those must be recovered and tested in the editing chain.

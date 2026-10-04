@@ -44,6 +44,13 @@ beginning only if it had been playing before entry and the client is still at
 the launch screen. The legacy menu bar, popup menus, and toolbar controls use a
 local dark theme in both embedded and direct-launch modes.
 
+Opening a .ship file remembers its directory across sessions. Embedded and
+direct launches share the LegacySpacecraft/LastOpenDirectory preference in
+the native Hazeron Freehold / Shores of Hazeron settings store. A successful
+command-line load also updates it; cancelling or failing to load does not.
+The current file's directory takes precedence within a session. If the saved
+directory no longer exists, the picker falls back to Documents, then home.
+
 The standalone path creates a plain QApplication before any game application,
 game data, resource initialization, login, or OpenGL context. The original 2016
 -spacecraft flag remains evidence of the old editor's launch path; the new
@@ -133,6 +140,11 @@ Verify music stops on entry and restarts on exit if previously playing; if it
 was already stopped, it must stay stopped. Check menu and toolbar text, hover,
 checked/disabled states, and the deck dropdown against the dark backgrounds.
 
+For the directory preference, open a valid .ship from a different folder, exit
+Legacy, and reopen it: Ctrl+O should start in that folder. Repeat after closing
+the client and with the direct launch path. Cancel and invalid-file attempts
+must not change the remembered folder. A removed folder should use the fallback.
+
 Verification limits
 -------------------
 Completed: independent static review of the reader and integration, whitespace
@@ -146,6 +158,9 @@ equipment positions displaying as expected. The later entry-choice/embedded
 interface change has passed static ownership/input review but awaits the user's
 build and runtime check.
 
+The directory preference change has been reviewed statically; its native UI
+checks above remain for the user's next manual build.
+
 No build, compiler, or native runtime test was initiated during implementation.
 Source review and Python inspection of the original files support the recovered
 layout; they do not establish native compilation, visual parity, or full editor
@@ -158,3 +173,6 @@ After comparing the deck views, reproduce one complete legacy cell-add/delete
 operation against a design saved by the 2016 editor. That requires the recovered
 fill shapes, polygon merging/subtraction, room identity, and detail validation.
 The native record model now provides a place to implement and test that behavior.
+CELL-SHAPES.txt, PAINTING-RULES.txt, and CONTROL-MAPPING.txt record the subsequent
+recovery of these operations. cell_shapes.py is an executable geometry reference;
+painting and saving are still not exposed in the native viewer.

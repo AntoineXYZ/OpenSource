@@ -1,0 +1,70 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x18014a730
+Name provenance: PE export
+Captured: 2026-10-04
+
+/* protected: bool __cdecl DgData::SpaceShipDesignTestDetail(class DnDetail & __ptr64)const __ptr64
+    */
+
+bool __thiscall DgData::SpaceShipDesignTestDetail(DgData *this,DnDetail *param_1)
+
+{
+  Data *pDVar1;
+  int iVar2;
+  Data *pDVar3;
+  bool bVar4;
+  Data *pDVar5;
+  ushort local_res8 [4];
+  DnDetail local_res10 [8];
+  Data *local_res18;
+  longlong local_res20;
+  longlong local_38;
+  undefined8 local_30;
+  
+                    /* 0x14a730  5669  ?SpaceShipDesignTestDetail@DgData@@IEBA_NAEAVDnDetail@@@Z */
+  local_30 = 0xfffffffffffffffe;
+  std::
+  _Hash<std::_Umap_traits<unsigned_int,DnBuilding,std::_Uhash_compare<unsigned_int,AuDesignIdHash,std::equal_to<unsigned_int>_>,std::allocator<std::pair<unsigned_int_const_,DnBuilding>_>,0>_>
+  ::lower_bound((_Hash<std::_Umap_traits<unsigned_int,DnBuilding,std::_Uhash_compare<unsigned_int,AuDesignIdHash,std::equal_to<unsigned_int>_>,std::allocator<std::pair<unsigned_int_const_,DnBuilding>_>,0>_>
+                 *)(this + 0x178),(uint *)&local_res20);
+  if (local_res20 == *(longlong *)(this + 0x178)) {
+    return false;
+  }
+  std::
+  _Hash<std::_Umap_traits<unsigned_int,DnBuilding,std::_Uhash_compare<unsigned_int,AuDesignIdHash,std::equal_to<unsigned_int>_>,std::allocator<std::pair<unsigned_int_const_,DnBuilding>_>,0>_>
+  ::lower_bound((_Hash<std::_Umap_traits<unsigned_int,DnBuilding,std::_Uhash_compare<unsigned_int,AuDesignIdHash,std::equal_to<unsigned_int>_>,std::allocator<std::pair<unsigned_int_const_,DnBuilding>_>,0>_>
+                 *)(this + 0x138),(uint *)&local_38);
+  if (local_38 != *(longlong *)(this + 0x138)) {
+    bVar4 = DnDetail::IsValid(param_1,(DnRoomArray *)(local_res20 + 0x18),
+                              (DnDetailArray *)(local_38 + 0x18),(DnDetailTypeMap *)(this + 0x68),
+                              (DETAILTYPE *)local_res10,local_res8,true);
+    goto LAB_18014a88a;
+  }
+  local_res18 = (Data *)shared_null_exref;
+  bVar4 = DnDetail::IsValid(param_1,(DnRoomArray *)(local_res20 + 0x18),
+                            (DnDetailArray *)&local_res18,(DnDetailTypeMap *)(this + 0x68),
+                            (DETAILTYPE *)local_res10,local_res8,true);
+  pDVar3 = local_res18;
+  if (*(int *)local_res18 != 0) {
+    if (*(int *)local_res18 == -1) goto LAB_18014a88a;
+    LOCK();
+    iVar2 = *(int *)local_res18;
+    *(int *)local_res18 = *(int *)local_res18 + -1;
+    UNLOCK();
+    if (iVar2 != 1) goto LAB_18014a88a;
+  }
+  pDVar5 = local_res18 + ((longlong)*(int *)(local_res18 + 0xc) + 2) * 8;
+  pDVar1 = local_res18 + ((longlong)*(int *)(local_res18 + 8) + 2) * 8;
+  while (pDVar1 != pDVar5) {
+    pDVar5 = pDVar5 + -8;
+    operator_delete(*(void **)pDVar5);
+  }
+  QListData::dispose(pDVar3);
+LAB_18014a88a:
+  if (bVar4 != false) {
+    param_1[1] = local_res10[0];
+    *(ushort *)(param_1 + 0x28) = local_res8[0];
+  }
+  return bVar4;
+}

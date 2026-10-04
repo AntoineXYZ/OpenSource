@@ -1,0 +1,375 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="950" height="1665" viewBox="0 0 950 1665">
+<rect width="100%" height="100%" fill="#131820"/>
+<style>text{font-family:monospace;fill:#e7edf5;font-size:12px}.title{font-size:20px}.small{font-size:10px;fill:#b0bdcd}</style>
+<text x="20" y="27" class="title">2016 spacecraft grid cells — original polygon order</text>
+<text x="20" y="49" class="small">H=1 · D45=2 · V=4 · D135=8 · blue polygon, pink cursor, numbered vertices · Y increases upward</text>
+<text x="18" y="123">0x3</text>
+<text x="18" y="140" class="small">H+45</text>
+<text x="140" y="83">east</text>
+<path d="M 155 170 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="155.0,170.0 197.0,128.0 239.0,128.0 197.0,170.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="159.0" y="166.0" class="small">0</text>
+<text x="201.0" y="124.0" class="small">1</text>
+<text x="243.0" y="124.0" class="small">2</text>
+<text x="201.0" y="166.0" class="small">3</text>
+<circle cx="191.75" cy="149.0" r="3" fill="#ff92b5"/>
+<text x="350" y="83">north</text>
+<path d="M 365 170 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="365.0,170.0 323.0,170.0 365.0,128.0 407.0,128.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="369.0" y="166.0" class="small">0</text>
+<text x="327.0" y="166.0" class="small">1</text>
+<text x="369.0" y="124.0" class="small">2</text>
+<text x="411.0" y="124.0" class="small">3</text>
+<circle cx="386.0" cy="133.25" r="3" fill="#ff92b5"/>
+<text x="560" y="83">west</text>
+<path d="M 575 170 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="575.0,170.0 533.0,170.0 575.0,128.0 617.0,128.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="579.0" y="166.0" class="small">0</text>
+<text x="537.0" y="166.0" class="small">1</text>
+<text x="579.0" y="124.0" class="small">2</text>
+<text x="621.0" y="124.0" class="small">3</text>
+<circle cx="580.25" cy="149.0" r="3" fill="#ff92b5"/>
+<text x="770" y="83">south</text>
+<path d="M 785 170 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="785.0,170.0 827.0,128.0 869.0,128.0 827.0,170.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="789.0" y="166.0" class="small">0</text>
+<text x="831.0" y="124.0" class="small">1</text>
+<text x="873.0" y="124.0" class="small">2</text>
+<text x="831.0" y="166.0" class="small">3</text>
+<circle cx="806.0" cy="164.75" r="3" fill="#ff92b5"/>
+<path d="M 15 207 H 935" stroke="#2c3544"/>
+<text x="18" y="268">0x5</text>
+<text x="18" y="285" class="small">H+V</text>
+<text x="140" y="228">east</text>
+<path d="M 155 315 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="155.0,315.0 155.0,273.0 197.0,273.0 197.0,315.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="159.0" y="311.0" class="small">0</text>
+<text x="159.0" y="269.0" class="small">1</text>
+<text x="201.0" y="269.0" class="small">2</text>
+<text x="201.0" y="311.0" class="small">3</text>
+<circle cx="191.75" cy="294.0" r="3" fill="#ff92b5"/>
+<text x="350" y="228">north</text>
+<path d="M 365 315 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="365.0,315.0 365.0,273.0 407.0,273.0 407.0,315.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="369.0" y="311.0" class="small">0</text>
+<text x="369.0" y="269.0" class="small">1</text>
+<text x="411.0" y="269.0" class="small">2</text>
+<text x="411.0" y="311.0" class="small">3</text>
+<circle cx="386.0" cy="278.25" r="3" fill="#ff92b5"/>
+<text x="560" y="228">west</text>
+<path d="M 575 315 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="575.0,315.0 575.0,273.0 617.0,273.0 617.0,315.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="579.0" y="311.0" class="small">0</text>
+<text x="579.0" y="269.0" class="small">1</text>
+<text x="621.0" y="269.0" class="small">2</text>
+<text x="621.0" y="311.0" class="small">3</text>
+<circle cx="580.25" cy="294.0" r="3" fill="#ff92b5"/>
+<text x="770" y="228">south</text>
+<path d="M 785 315 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="785.0,315.0 785.0,273.0 827.0,273.0 827.0,315.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="789.0" y="311.0" class="small">0</text>
+<text x="789.0" y="269.0" class="small">1</text>
+<text x="831.0" y="269.0" class="small">2</text>
+<text x="831.0" y="311.0" class="small">3</text>
+<circle cx="806.0" cy="309.75" r="3" fill="#ff92b5"/>
+<path d="M 15 352 H 935" stroke="#2c3544"/>
+<text x="18" y="413">0x6</text>
+<text x="18" y="430" class="small">45+V</text>
+<text x="140" y="373">east</text>
+<path d="M 155 460 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="155.0,460.0 197.0,418.0 197.0,460.0 155.0,502.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="159.0" y="456.0" class="small">0</text>
+<text x="201.0" y="414.0" class="small">1</text>
+<text x="201.0" y="456.0" class="small">2</text>
+<text x="159.0" y="498.0" class="small">3</text>
+<circle cx="191.75" cy="439.0" r="3" fill="#ff92b5"/>
+<text x="350" y="373">north</text>
+<path d="M 365 460 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="365.0,460.0 365.0,418.0 407.0,376.0 407.0,418.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="369.0" y="456.0" class="small">0</text>
+<text x="369.0" y="414.0" class="small">1</text>
+<text x="411.0" y="372.0" class="small">2</text>
+<text x="411.0" y="414.0" class="small">3</text>
+<circle cx="386.0" cy="423.25" r="3" fill="#ff92b5"/>
+<text x="560" y="373">west</text>
+<path d="M 575 460 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="575.0,460.0 575.0,418.0 617.0,376.0 617.0,418.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="579.0" y="456.0" class="small">0</text>
+<text x="579.0" y="414.0" class="small">1</text>
+<text x="621.0" y="372.0" class="small">2</text>
+<text x="621.0" y="414.0" class="small">3</text>
+<circle cx="580.25" cy="439.0" r="3" fill="#ff92b5"/>
+<text x="770" y="373">south</text>
+<path d="M 785 460 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="785.0,460.0 827.0,418.0 827.0,460.0 785.0,502.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="789.0" y="456.0" class="small">0</text>
+<text x="831.0" y="414.0" class="small">1</text>
+<text x="831.0" y="456.0" class="small">2</text>
+<text x="789.0" y="498.0" class="small">3</text>
+<circle cx="806.0" cy="454.75" r="3" fill="#ff92b5"/>
+<path d="M 15 497 H 935" stroke="#2c3544"/>
+<text x="18" y="558">0x7</text>
+<text x="18" y="575" class="small">H+45+V</text>
+<text x="140" y="518">east</text>
+<path d="M 155 605 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="155.0,605.0 197.0,563.0 197.0,605.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="159.0" y="601.0" class="small">0</text>
+<text x="201.0" y="559.0" class="small">1</text>
+<text x="201.0" y="601.0" class="small">2</text>
+<circle cx="191.75" cy="584.0" r="3" fill="#ff92b5"/>
+<text x="350" y="518">north</text>
+<path d="M 365 605 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="365.0,605.0 365.0,563.0 407.0,563.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="369.0" y="601.0" class="small">0</text>
+<text x="369.0" y="559.0" class="small">1</text>
+<text x="411.0" y="559.0" class="small">2</text>
+<circle cx="386.0" cy="568.25" r="3" fill="#ff92b5"/>
+<text x="560" y="518">west</text>
+<path d="M 575 605 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="575.0,605.0 575.0,563.0 617.0,563.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="579.0" y="601.0" class="small">0</text>
+<text x="579.0" y="559.0" class="small">1</text>
+<text x="621.0" y="559.0" class="small">2</text>
+<circle cx="580.25" cy="584.0" r="3" fill="#ff92b5"/>
+<text x="770" y="518">south</text>
+<path d="M 785 605 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="785.0,605.0 827.0,563.0 827.0,605.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="789.0" y="601.0" class="small">0</text>
+<text x="831.0" y="559.0" class="small">1</text>
+<text x="831.0" y="601.0" class="small">2</text>
+<circle cx="806.0" cy="599.75" r="3" fill="#ff92b5"/>
+<path d="M 15 642 H 935" stroke="#2c3544"/>
+<text x="18" y="703">0x9</text>
+<text x="18" y="720" class="small">H+135</text>
+<text x="140" y="663">east</text>
+<path d="M 155 750 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="155.0,708.0 197.0,708.0 239.0,750.0 197.0,750.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="159.0" y="704.0" class="small">0</text>
+<text x="201.0" y="704.0" class="small">1</text>
+<text x="243.0" y="746.0" class="small">2</text>
+<text x="201.0" y="746.0" class="small">3</text>
+<circle cx="191.75" cy="729.0" r="3" fill="#ff92b5"/>
+<text x="350" y="663">north</text>
+<path d="M 365 750 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="365.0,708.0 407.0,708.0 449.0,750.0 407.0,750.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="369.0" y="704.0" class="small">0</text>
+<text x="411.0" y="704.0" class="small">1</text>
+<text x="453.0" y="746.0" class="small">2</text>
+<text x="411.0" y="746.0" class="small">3</text>
+<circle cx="386.0" cy="713.25" r="3" fill="#ff92b5"/>
+<text x="560" y="663">west</text>
+<path d="M 575 750 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="575.0,708.0 617.0,750.0 575.0,750.0 533.0,708.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="579.0" y="704.0" class="small">0</text>
+<text x="621.0" y="746.0" class="small">1</text>
+<text x="579.0" y="746.0" class="small">2</text>
+<text x="537.0" y="704.0" class="small">3</text>
+<circle cx="580.25" cy="729.0" r="3" fill="#ff92b5"/>
+<text x="770" y="663">south</text>
+<path d="M 785 750 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="785.0,708.0 827.0,750.0 785.0,750.0 743.0,708.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="789.0" y="704.0" class="small">0</text>
+<text x="831.0" y="746.0" class="small">1</text>
+<text x="789.0" y="746.0" class="small">2</text>
+<text x="747.0" y="704.0" class="small">3</text>
+<circle cx="806.0" cy="744.75" r="3" fill="#ff92b5"/>
+<path d="M 15 787 H 935" stroke="#2c3544"/>
+<text x="18" y="848">0xA</text>
+<text x="18" y="865" class="small">45+135</text>
+<text x="140" y="808">east</text>
+<path d="M 155 895 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="176.0,874.0 197.0,853.0 218.0,874.0 197.0,895.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="180.0" y="870.0" class="small">0</text>
+<text x="201.0" y="849.0" class="small">1</text>
+<text x="222.0" y="870.0" class="small">2</text>
+<text x="201.0" y="891.0" class="small">3</text>
+<circle cx="191.75" cy="874.0" r="3" fill="#ff92b5"/>
+<text x="350" y="808">north</text>
+<path d="M 365 895 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="386.0,874.0 365.0,853.0 386.0,832.0 407.0,853.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="390.0" y="870.0" class="small">0</text>
+<text x="369.0" y="849.0" class="small">1</text>
+<text x="390.0" y="828.0" class="small">2</text>
+<text x="411.0" y="849.0" class="small">3</text>
+<circle cx="386.0" cy="858.25" r="3" fill="#ff92b5"/>
+<text x="560" y="808">west</text>
+<path d="M 575 895 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="596.0,874.0 575.0,895.0 554.0,874.0 575.0,853.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="600.0" y="870.0" class="small">0</text>
+<text x="579.0" y="891.0" class="small">1</text>
+<text x="558.0" y="870.0" class="small">2</text>
+<text x="579.0" y="849.0" class="small">3</text>
+<circle cx="580.25" cy="874.0" r="3" fill="#ff92b5"/>
+<text x="770" y="808">south</text>
+<path d="M 785 895 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="806.0,874.0 827.0,895.0 806.0,916.0 785.0,895.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="810.0" y="870.0" class="small">0</text>
+<text x="831.0" y="891.0" class="small">1</text>
+<text x="810.0" y="912.0" class="small">2</text>
+<text x="789.0" y="891.0" class="small">3</text>
+<circle cx="806.0" cy="889.75" r="3" fill="#ff92b5"/>
+<path d="M 15 932 H 935" stroke="#2c3544"/>
+<text x="18" y="993">0xB</text>
+<text x="18" y="1010" class="small">H+45+135</text>
+<text x="140" y="953">east</text>
+<path d="M 155 1040 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="176.0,1019.0 197.0,998.0 218.0,1019.0 197.0,1040.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="180.0" y="1015.0" class="small">0</text>
+<text x="201.0" y="994.0" class="small">1</text>
+<text x="222.0" y="1015.0" class="small">2</text>
+<text x="201.0" y="1036.0" class="small">3</text>
+<circle cx="191.75" cy="1019.0" r="3" fill="#ff92b5"/>
+<text x="350" y="953">north</text>
+<path d="M 365 1040 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="386.0,1019.0 365.0,998.0 407.0,998.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="390.0" y="1015.0" class="small">0</text>
+<text x="369.0" y="994.0" class="small">1</text>
+<text x="411.0" y="994.0" class="small">2</text>
+<circle cx="386.0" cy="1003.25" r="3" fill="#ff92b5"/>
+<text x="560" y="953">west</text>
+<path d="M 575 1040 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="596.0,1019.0 575.0,1040.0 554.0,1019.0 575.0,998.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="600.0" y="1015.0" class="small">0</text>
+<text x="579.0" y="1036.0" class="small">1</text>
+<text x="558.0" y="1015.0" class="small">2</text>
+<text x="579.0" y="994.0" class="small">3</text>
+<circle cx="580.25" cy="1019.0" r="3" fill="#ff92b5"/>
+<text x="770" y="953">south</text>
+<path d="M 785 1040 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="806.0,1019.0 827.0,1040.0 785.0,1040.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="810.0" y="1015.0" class="small">0</text>
+<text x="831.0" y="1036.0" class="small">1</text>
+<text x="789.0" y="1036.0" class="small">2</text>
+<circle cx="806.0" cy="1034.75" r="3" fill="#ff92b5"/>
+<path d="M 15 1077 H 935" stroke="#2c3544"/>
+<text x="18" y="1138">0xC</text>
+<text x="18" y="1155" class="small">V+135</text>
+<text x="140" y="1098">east</text>
+<path d="M 155 1185 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="155.0,1143.0 155.0,1101.0 197.0,1143.0 197.0,1185.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="159.0" y="1139.0" class="small">0</text>
+<text x="159.0" y="1097.0" class="small">1</text>
+<text x="201.0" y="1139.0" class="small">2</text>
+<text x="201.0" y="1181.0" class="small">3</text>
+<circle cx="191.75" cy="1164.0" r="3" fill="#ff92b5"/>
+<text x="350" y="1098">north</text>
+<path d="M 365 1185 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="365.0,1143.0 365.0,1101.0 407.0,1143.0 407.0,1185.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="369.0" y="1139.0" class="small">0</text>
+<text x="369.0" y="1097.0" class="small">1</text>
+<text x="411.0" y="1139.0" class="small">2</text>
+<text x="411.0" y="1181.0" class="small">3</text>
+<circle cx="386.0" cy="1148.25" r="3" fill="#ff92b5"/>
+<text x="560" y="1098">west</text>
+<path d="M 575 1185 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="575.0,1143.0 617.0,1185.0 617.0,1227.0 575.0,1185.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="579.0" y="1139.0" class="small">0</text>
+<text x="621.0" y="1181.0" class="small">1</text>
+<text x="621.0" y="1223.0" class="small">2</text>
+<text x="579.0" y="1181.0" class="small">3</text>
+<circle cx="580.25" cy="1164.0" r="3" fill="#ff92b5"/>
+<text x="770" y="1098">south</text>
+<path d="M 785 1185 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="785.0,1143.0 827.0,1185.0 827.0,1227.0 785.0,1185.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="789.0" y="1139.0" class="small">0</text>
+<text x="831.0" y="1181.0" class="small">1</text>
+<text x="831.0" y="1223.0" class="small">2</text>
+<text x="789.0" y="1181.0" class="small">3</text>
+<circle cx="806.0" cy="1179.75" r="3" fill="#ff92b5"/>
+<path d="M 15 1222 H 935" stroke="#2c3544"/>
+<text x="18" y="1283">0xD</text>
+<text x="18" y="1300" class="small">H+V+135</text>
+<text x="140" y="1243">east</text>
+<path d="M 155 1330 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="197.0,1330.0 155.0,1288.0 197.0,1288.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="201.0" y="1326.0" class="small">0</text>
+<text x="159.0" y="1284.0" class="small">1</text>
+<text x="201.0" y="1284.0" class="small">2</text>
+<circle cx="191.75" cy="1309.0" r="3" fill="#ff92b5"/>
+<text x="350" y="1243">north</text>
+<path d="M 365 1330 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="407.0,1330.0 365.0,1288.0 407.0,1288.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="411.0" y="1326.0" class="small">0</text>
+<text x="369.0" y="1284.0" class="small">1</text>
+<text x="411.0" y="1284.0" class="small">2</text>
+<circle cx="386.0" cy="1293.25" r="3" fill="#ff92b5"/>
+<text x="560" y="1243">west</text>
+<path d="M 575 1330 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="617.0,1330.0 575.0,1330.0 575.0,1288.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="621.0" y="1326.0" class="small">0</text>
+<text x="579.0" y="1326.0" class="small">1</text>
+<text x="579.0" y="1284.0" class="small">2</text>
+<circle cx="580.25" cy="1309.0" r="3" fill="#ff92b5"/>
+<text x="770" y="1243">south</text>
+<path d="M 785 1330 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="827.0,1330.0 785.0,1330.0 785.0,1288.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="831.0" y="1326.0" class="small">0</text>
+<text x="789.0" y="1326.0" class="small">1</text>
+<text x="789.0" y="1284.0" class="small">2</text>
+<circle cx="806.0" cy="1324.75" r="3" fill="#ff92b5"/>
+<path d="M 15 1367 H 935" stroke="#2c3544"/>
+<text x="18" y="1428">0xE</text>
+<text x="18" y="1445" class="small">45+V+135</text>
+<text x="140" y="1388">east</text>
+<path d="M 155 1475 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="176.0,1454.0 197.0,1433.0 197.0,1475.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="180.0" y="1450.0" class="small">0</text>
+<text x="201.0" y="1429.0" class="small">1</text>
+<text x="201.0" y="1471.0" class="small">2</text>
+<circle cx="191.75" cy="1454.0" r="3" fill="#ff92b5"/>
+<text x="350" y="1388">north</text>
+<path d="M 365 1475 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="386.0,1454.0 365.0,1433.0 386.0,1412.0 407.0,1433.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="390.0" y="1450.0" class="small">0</text>
+<text x="369.0" y="1429.0" class="small">1</text>
+<text x="390.0" y="1408.0" class="small">2</text>
+<text x="411.0" y="1429.0" class="small">3</text>
+<circle cx="386.0" cy="1438.25" r="3" fill="#ff92b5"/>
+<text x="560" y="1388">west</text>
+<path d="M 575 1475 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="596.0,1454.0 575.0,1475.0 575.0,1433.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="600.0" y="1450.0" class="small">0</text>
+<text x="579.0" y="1471.0" class="small">1</text>
+<text x="579.0" y="1429.0" class="small">2</text>
+<circle cx="580.25" cy="1454.0" r="3" fill="#ff92b5"/>
+<text x="770" y="1388">south</text>
+<path d="M 785 1475 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="806.0,1454.0 827.0,1475.0 806.0,1496.0 785.0,1475.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="810.0" y="1450.0" class="small">0</text>
+<text x="831.0" y="1471.0" class="small">1</text>
+<text x="810.0" y="1492.0" class="small">2</text>
+<text x="789.0" y="1471.0" class="small">3</text>
+<circle cx="806.0" cy="1469.75" r="3" fill="#ff92b5"/>
+<path d="M 15 1512 H 935" stroke="#2c3544"/>
+<text x="18" y="1573">0xF</text>
+<text x="18" y="1590" class="small">H+45+V+135</text>
+<text x="140" y="1533">east</text>
+<path d="M 155 1620 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="176.0,1599.0 197.0,1578.0 197.0,1620.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="180.0" y="1595.0" class="small">0</text>
+<text x="201.0" y="1574.0" class="small">1</text>
+<text x="201.0" y="1616.0" class="small">2</text>
+<circle cx="191.75" cy="1599.0" r="3" fill="#ff92b5"/>
+<text x="350" y="1533">north</text>
+<path d="M 365 1620 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="386.0,1599.0 365.0,1578.0 407.0,1578.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="390.0" y="1595.0" class="small">0</text>
+<text x="369.0" y="1574.0" class="small">1</text>
+<text x="411.0" y="1574.0" class="small">2</text>
+<circle cx="386.0" cy="1583.25" r="3" fill="#ff92b5"/>
+<text x="560" y="1533">west</text>
+<path d="M 575 1620 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="596.0,1599.0 575.0,1620.0 575.0,1578.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="600.0" y="1595.0" class="small">0</text>
+<text x="579.0" y="1616.0" class="small">1</text>
+<text x="579.0" y="1574.0" class="small">2</text>
+<circle cx="580.25" cy="1599.0" r="3" fill="#ff92b5"/>
+<text x="770" y="1533">south</text>
+<path d="M 785 1620 h 42 v -42 h -42 Z" fill="none" stroke="#566278" stroke-dasharray="3 3"/>
+<polygon points="806.0,1599.0 827.0,1620.0 785.0,1620.0" fill="#286b89" fill-opacity="0.7" stroke="#6bd5ed" stroke-width="2"/>
+<text x="810.0" y="1595.0" class="small">0</text>
+<text x="831.0" y="1616.0" class="small">1</text>
+<text x="789.0" y="1616.0" class="small">2</text>
+<circle cx="806.0" cy="1614.75" r="3" fill="#ff92b5"/>
+<path d="M 15 1657 H 935" stroke="#2c3544"/>
+</svg>

@@ -1,0 +1,216 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x1801681f0
+Name provenance: PE export
+Captured: 2026-10-04
+
+/* public: bool __cdecl DnFloorBuffer8::AddBoundary(class AuPointArray const & __ptr64,int) __ptr64
+    */
+
+bool __thiscall DnFloorBuffer8::AddBoundary(DnFloorBuffer8 *this,AuPointArray *param_1,int param_2)
+
+{
+  byte bVar1;
+  char cVar2;
+  char cVar3;
+  bool bVar4;
+  AuPoint *pAVar5;
+  int iVar6;
+  int iVar7;
+  uint uVar8;
+  int iVar10;
+  int iVar11;
+  uint uVar12;
+  int iVar13;
+  int iVar14;
+  longlong lVar15;
+  ulonglong uVar16;
+  int iVar17;
+  int iVar18;
+  int iVar19;
+  double dVar20;
+  int local_res20;
+  int local_68;
+  int local_64;
+  int local_60;
+  AuPoint *local_58;
+  ulonglong uVar9;
+  
+                    /* 0x1681f0  2553  ?AddBoundary@DnFloorBuffer8@@QEAA_NAEBVAuPointArray@@H@Z */
+  pAVar5 = QVector<AuPoint>::last((QVector<AuPoint> *)param_1);
+  dVar20 = (double)round(*(double *)pAVar5 / 1.41421356225);
+  iVar19 = (int)dVar20 + 0x100;
+  dVar20 = (double)round(*(double *)(pAVar5 + 8) / 1.41421356225);
+  iVar13 = 0;
+  iVar10 = 0;
+  iVar11 = (int)dVar20 + 0x100;
+  local_58 = QVector<AuPoint>::constBegin((QVector<AuPoint> *)param_1);
+  pAVar5 = QVector<AuPoint>::constEnd((QVector<AuPoint> *)param_1);
+  local_res20 = iVar11;
+  local_68 = iVar19;
+  local_64 = iVar19;
+  local_60 = iVar11;
+  if (local_58 != pAVar5) {
+    do {
+      dVar20 = (double)round(*(double *)local_58 / 1.41421356225);
+      iVar18 = (int)dVar20 + 0x100;
+      dVar20 = (double)round(*(double *)(local_58 + 8) / 1.41421356225);
+      iVar17 = (int)dVar20 + 0x100;
+      if (iVar18 < local_64) {
+        local_64 = iVar18;
+      }
+      if (local_68 < iVar18) {
+        local_68 = iVar18;
+      }
+      if (iVar17 < local_60) {
+        local_60 = iVar17;
+      }
+      if (local_res20 < iVar17) {
+        local_res20 = iVar17;
+      }
+      if (iVar18 < iVar19) {
+        iVar6 = -1;
+      }
+      else {
+        iVar6 = 0;
+        if (iVar19 < iVar18) {
+          iVar6 = 1;
+        }
+      }
+      if (iVar17 < iVar11) {
+        iVar7 = -1;
+      }
+      else {
+        iVar7 = 0;
+        if (iVar11 < iVar17) {
+          iVar7 = 1;
+        }
+      }
+      iVar14 = iVar19 * 0x204;
+      while ((iVar19 != iVar18 || (iVar11 != iVar17))) {
+        uVar12 = iVar14 + iVar11;
+        bVar1 = *(byte *)((ulonglong)uVar12 + *(longlong *)this);
+        if ((int)(uint)bVar1 < param_2) {
+          *(byte *)((ulonglong)uVar12 + *(longlong *)this) = bVar1 + (char)param_2;
+        }
+        cVar2 = *(char *)((ulonglong)uVar12 + *(longlong *)this);
+        if (cVar2 == '\x02') {
+          iVar13 = iVar13 + 1;
+          iVar19 = iVar19 + iVar6;
+          iVar14 = iVar14 + iVar6 * 0x204;
+          iVar11 = iVar11 + iVar7;
+        }
+        else {
+          if (cVar2 == '\x03') {
+            iVar10 = iVar10 + 1;
+          }
+          iVar19 = iVar19 + iVar6;
+          iVar14 = iVar14 + iVar6 * 0x204;
+          iVar11 = iVar11 + iVar7;
+        }
+      }
+      local_58 = local_58 + 0x18;
+      pAVar5 = QVector<AuPoint>::constEnd((QVector<AuPoint> *)param_1);
+    } while (local_58 != pAVar5);
+  }
+  do {
+    if (local_res20 < local_60) {
+      if ((iVar13 == 0) || (iVar10 < 2)) {
+        bVar4 = false;
+      }
+      else {
+        bVar4 = true;
+      }
+      return bVar4;
+    }
+    bVar4 = false;
+    iVar11 = 9999;
+    if (local_64 <= local_68) {
+      uVar12 = local_60 + 1 + local_64 * 0x204;
+      iVar19 = local_64;
+      do {
+        lVar15 = *(longlong *)this;
+        iVar17 = iVar11;
+        if ((int)(uint)*(byte *)((ulonglong)(uVar12 - 1) + lVar15) < param_2) {
+          if (bVar4) {
+            if ((iVar19 == iVar11 + 2) ||
+               (iVar17 = iVar19 + -1,
+               (int)(uint)*(byte *)((ulonglong)(uVar12 + 0x202) + lVar15) < param_2)) {
+              iVar17 = 9999;
+            }
+            bVar4 = false;
+          }
+          goto LAB_1801685b5;
+        }
+        iVar6 = iVar19 + -0x100;
+        iVar18 = local_60 + -0x100;
+        iVar14 = iVar19 - (((int)(iVar6 + (iVar6 >> 0x1f & 3U)) >> 2) * 4 + 0x100);
+        iVar7 = local_60 - (((int)(iVar18 + (iVar18 >> 0x1f & 3U)) >> 2) * 4 + 0x100);
+        if ((iVar6 < 0) && (iVar14 != 0)) {
+          iVar14 = iVar14 + 4;
+        }
+        if ((iVar18 < 0) && (iVar7 != 0)) {
+          iVar7 = iVar7 + 4;
+        }
+        if (iVar14 == 0) {
+          if (iVar7 != 0) goto LAB_180168508;
+LAB_180168493:
+          cVar2 = *(char *)((ulonglong)uVar12 + lVar15);
+          iVar18 = (int)*(char *)((ulonglong)(uVar12 - 0x204) + lVar15);
+          cVar3 = *(char *)((ulonglong)(uVar12 + 0x204) + lVar15);
+          if (((iVar18 < param_2) || (cVar2 < param_2)) && ((cVar2 < param_2 || (cVar3 < param_2))))
+          {
+            if (param_2 <= iVar18) {
+              if (param_2 <= cVar3) goto LAB_1801685b5;
+              if (param_2 <= iVar18) goto LAB_180168508;
+            }
+            if (((param_2 <= cVar2) || (param_2 <= cVar3)) ||
+               (param_2 <= *(char *)((ulonglong)(uVar12 + 0x203) + lVar15))) goto LAB_180168508;
+          }
+        }
+        else {
+          if ((iVar14 == 2) && (iVar7 == 2)) goto LAB_180168493;
+LAB_180168508:
+          iVar17 = iVar19;
+          if (iVar11 != 9999) {
+            iVar18 = iVar11 + 1;
+            if (iVar19 == iVar18) {
+              bVar4 = true;
+              iVar17 = iVar11;
+            }
+            else {
+              iVar17 = iVar11;
+              if (!bVar4) {
+                if (iVar18 < iVar19) {
+                  uVar8 = iVar18 * 0x204 + local_60;
+                  uVar16 = (ulonglong)(uint)(iVar19 - iVar18);
+                  do {
+                    uVar9 = (ulonglong)uVar8;
+                    if ((int)(uint)*(byte *)(uVar9 + lVar15) < param_2) {
+                      *(byte *)(uVar9 + lVar15) = *(byte *)(uVar9 + lVar15) + (char)param_2;
+                    }
+                    lVar15 = *(longlong *)this;
+                    if (*(char *)(uVar9 + lVar15) == '\x02') {
+                      iVar13 = iVar13 + 1;
+                    }
+                    else if (*(char *)(uVar9 + lVar15) == '\x03') {
+                      iVar10 = iVar10 + 1;
+                    }
+                    uVar8 = uVar8 + 0x204;
+                    uVar16 = uVar16 - 1;
+                  } while (uVar16 != 0);
+                }
+                iVar17 = 9999;
+              }
+            }
+          }
+        }
+LAB_1801685b5:
+        iVar11 = iVar17;
+        iVar19 = iVar19 + 1;
+        uVar12 = uVar12 + 0x204;
+      } while (iVar19 <= local_68);
+    }
+    local_60 = local_60 + 1;
+  } while( true );
+}

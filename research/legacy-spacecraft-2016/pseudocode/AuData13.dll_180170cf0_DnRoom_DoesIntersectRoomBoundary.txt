@@ -1,0 +1,31 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x180170cf0
+Name provenance: PE export
+Captured: 2026-10-04
+
+/* public: static bool __cdecl DnRoom::DoesIntersectRoomBoundary(class AuPointArray const &
+   __ptr64,class AuPointArray const & __ptr64) */
+
+bool __cdecl DnRoom::DoesIntersectRoomBoundary(AuPointArray *param_1,AuPointArray *param_2)
+
+{
+  bool bVar1;
+  void *_Dst;
+  void *local_res8;
+  
+                    /* 0x170cf0  3707  ?DoesIntersectRoomBoundary@DnRoom@@SA_NAEBVAuPointArray@@0@Z
+                        */
+  if (*(int *)(*(longlong *)param_1 + 4) < 3) {
+    bVar1 = false;
+  }
+  else {
+    _Dst = operator_new(0x41010);
+    local_res8 = _Dst;
+    memset(_Dst,0,0x41010);
+    DnFloorBuffer8::AddBoundary((DnFloorBuffer8 *)&local_res8,param_1,1);
+    bVar1 = DnFloorBuffer8::ZeroBoundary((DnFloorBuffer8 *)&local_res8,param_2);
+    operator_delete__(_Dst);
+  }
+  return bVar1;
+}

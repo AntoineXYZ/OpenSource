@@ -1,0 +1,30 @@
+{
+  "program": "/AuAtom13.dll",
+  "captured": "2026-10-04",
+  "reads": [
+    {
+      "address": "180797280",
+      "length": 304,
+      "hex": "4ac676669ea0164000000000000000004ac676669ea026400000000000000000dc771400c6486c4000000000000000004ac676669ea016c00000000000000000dc771400c6486cc000000000000000004ac676669ea006404ac676669ea00640b814d9cc76f820404ac676669ea0064000000000000000004ac676669ea016404ac676669ea016404ac676669ea016404ac676669ea026404ac676669ea016404ac676669ea016c04ac676669ea016404ac676669ea00640b814d9cc76f820404ac676669ea016404ac676669ea026400000000000000000dc771400c6486c40dc771400c6486c40dc771400c6486c40dc771400c6486cc0dc771400c6486c404ac676669ea006404ac676669ea006c000000000000000004ac676669ea016c04ac676669ea016404ac676669ea016c0"
+    },
+    {
+      "address": "18073b618",
+      "length": 8,
+      "hex": "4ac676669ea01640"
+    },
+    {
+      "address": "180740c90",
+      "length": 8,
+      "hex": "000000000000e03f"
+    },
+    {
+      "address": "18073b770",
+      "length": 48,
+      "hex": "4ac676669ea006c04ac676669ea006404ac676669ea026c04ac676669ea0064000000000000000004ac676669ea02640"
+    }
+  ],
+  "notes": [
+    "Little-endian binary64 bytes, read directly using Ghidra MCP read_memory.",
+    "Only constants referenced by the captured GetFillShapeAt assembly are interpreted; neighboring unused values are not shape constants."
+  ]
+}

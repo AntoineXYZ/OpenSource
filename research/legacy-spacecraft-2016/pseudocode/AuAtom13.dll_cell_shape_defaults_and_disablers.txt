@@ -1,0 +1,94 @@
+Read-only Ghidra decompiler output; not recovered compilable source.
+Module: /AuAtom13.dll; names from PE exports; captured 2026-10-04.
+
+Address: 1802fd090
+/* public: void __cdecl DaDesignPlane::DisableDiagonal135Lines(void) __ptr64 */
+
+void __thiscall DaDesignPlane::DisableDiagonal135Lines(DaDesignPlane *this)
+
+{
+                    /* 0x2fd090  2668  ?DisableDiagonal135Lines@DaDesignPlane@@QEAAXXZ */
+  this[0x3b1] = (DaDesignPlane)((byte)this[0x3b1] & 0xf7);
+                    /* WARNING: Could not recover jumptable at 0x0001802fd09c. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (**(code **)(*(longlong *)this + 0x1a0))(this,1);
+  return;
+}
+
+Address: 1802fd0b0
+/* public: void __cdecl DaDesignPlane::DisableDiagonal45Lines(void) __ptr64 */
+
+void __thiscall DaDesignPlane::DisableDiagonal45Lines(DaDesignPlane *this)
+
+{
+                    /* 0x2fd0b0  2669  ?DisableDiagonal45Lines@DaDesignPlane@@QEAAXXZ */
+  this[0x3b1] = (DaDesignPlane)((byte)this[0x3b1] & 0xfd);
+                    /* WARNING: Could not recover jumptable at 0x0001802fd0bc. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (**(code **)(*(longlong *)this + 0x1a0))(this,1);
+  return;
+}
+
+Address: 1802fd0d0
+/* public: void __cdecl DaDesignPlane::DisableHorizontalLines(void) __ptr64 */
+
+void __thiscall DaDesignPlane::DisableHorizontalLines(DaDesignPlane *this)
+
+{
+                    /* 0x2fd0d0  2670  ?DisableHorizontalLines@DaDesignPlane@@QEAAXXZ */
+  this[0x3b1] = (DaDesignPlane)((byte)this[0x3b1] & 0xfe);
+                    /* WARNING: Could not recover jumptable at 0x0001802fd0dc. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (**(code **)(*(longlong *)this + 0x1a0))(this,1);
+  return;
+}
+
+Address: 1802fd0f0
+/* public: void __cdecl DaDesignPlane::DisableVerticalLines(void) __ptr64 */
+
+void __thiscall DaDesignPlane::DisableVerticalLines(DaDesignPlane *this)
+
+{
+                    /* 0x2fd0f0  2671  ?DisableVerticalLines@DaDesignPlane@@QEAAXXZ */
+  this[0x3b1] = (DaDesignPlane)((byte)this[0x3b1] & 0xfb);
+                    /* WARNING: Could not recover jumptable at 0x0001802fd0fc. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (**(code **)(*(longlong *)this + 0x1a0))(this,1);
+  return;
+}
+
+Address: 1802fced0
+/* public: __cdecl DaDesignPlane::DaDesignPlane(class AuId const & __ptr64) __ptr64 */
+
+DaDesignPlane * __thiscall DaDesignPlane::DaDesignPlane(DaDesignPlane *this,AuId *param_1)
+
+{
+  undefined4 uVar1;
+  
+                    /* 0x2fced0  264  ??0DaDesignPlane@@QEAA@AEBVAuId@@@Z */
+  DaAtom::DaAtom((DaAtom *)this);
+  *(undefined ***)this = vftable;
+  *(undefined4 *)(this + 0x3b4) = 0;
+  *(undefined2 *)(this + 0x3b0) = 0x500;
+  uVar1 = *(undefined4 *)param_1;
+  *(undefined2 *)(this + 0x3b8) = 0;
+  *(undefined4 *)(this + 0x3b4) = uVar1;
+  this[0x3ba] = (DaDesignPlane)0x0;
+  return this;
+}
+
+Address: 1802fcf30
+/* public: __cdecl DaDesignPlane::DaDesignPlane(void) __ptr64 */
+
+DaDesignPlane * __thiscall DaDesignPlane::DaDesignPlane(DaDesignPlane *this)
+
+{
+                    /* 0x2fcf30  265  ??0DaDesignPlane@@QEAA@XZ */
+  DaAtom::DaAtom((DaAtom *)this);
+  *(undefined ***)this = vftable;
+  *(undefined4 *)(this + 0x3b4) = 0;
+  *(undefined2 *)(this + 0x3b0) = 0x500;
+  *(undefined2 *)(this + 0x3b8) = 0;
+  this[0x3ba] = (DaDesignPlane)0x0;
+  return this;
+}

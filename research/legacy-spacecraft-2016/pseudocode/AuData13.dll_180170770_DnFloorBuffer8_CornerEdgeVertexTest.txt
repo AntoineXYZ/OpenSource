@@ -1,0 +1,102 @@
+Ghidra decompiler output; not recovered compilable source.
+Module: AuData13.dll
+Address: 0x180170770
+Name provenance: PE export
+Captured: 2026-10-04
+
+/* public: int __cdecl DnFloorBuffer8::CornerEdgeVertexTest(int,int)const __ptr64 */
+
+int __thiscall DnFloorBuffer8::CornerEdgeVertexTest(DnFloorBuffer8 *this,int param_1,int param_2)
+
+{
+  longlong lVar1;
+  int iVar2;
+  int iVar3;
+  uint uVar4;
+  uint uVar5;
+  
+                    /* 0x170770  3470  ?CornerEdgeVertexTest@DnFloorBuffer8@@QEBAHHH@Z */
+  lVar1 = *(longlong *)this;
+  uVar4 = param_1 * 0x204 + param_2;
+  if (*(char *)((ulonglong)uVar4 + lVar1) == '\0') {
+    return -1;
+  }
+  iVar2 = -1;
+  if ((*(char *)((ulonglong)(uint)((param_1 + 2) * 0x204 + param_2) + lVar1) != '\0') &&
+     (iVar2 = -1, *(char *)((ulonglong)(uVar4 + 0x409) + lVar1) == '\0')) {
+    if (*(char *)((ulonglong)(uVar4 + 0x407) + lVar1) == '\0') {
+      return -2;
+    }
+    iVar2 = 0;
+  }
+  if ((*(char *)((ulonglong)(uVar4 + 0x205) + lVar1) != '\0') &&
+     (*(char *)((ulonglong)(uVar4 + 0x206) + lVar1) == '\0')) {
+    if (*(char *)((ulonglong)(uVar4 + 0x409) + lVar1) == '\0') {
+      return -2;
+    }
+    if (iVar2 != -1) {
+      return -2;
+    }
+    iVar2 = 1;
+  }
+  if ((*(char *)((ulonglong)(uVar4 + 2) + lVar1) != '\0') &&
+     (*(char *)((ulonglong)(uint)(param_2 + 2 + (param_1 + -1) * 0x204) + lVar1) == '\0')) {
+    if (*(char *)((ulonglong)(uVar4 + 0x206) + lVar1) == '\0') {
+      return -2;
+    }
+    if (iVar2 != -1) {
+      return -2;
+    }
+    iVar2 = 2;
+  }
+  iVar3 = (param_1 + -1) * 0x204 + param_2;
+  if ((*(char *)((ulonglong)(iVar3 + 1) + lVar1) != '\0') &&
+     (*(char *)((ulonglong)(uint)(param_2 + 1 + (param_1 + -2) * 0x204) + lVar1) == '\0')) {
+    if (*(char *)((ulonglong)(iVar3 + 2) + lVar1) == '\0') {
+      return -2;
+    }
+    if (iVar2 != -1) {
+      return -2;
+    }
+    iVar2 = 3;
+  }
+  uVar5 = param_2 + (param_1 + -2) * 0x204;
+  if ((*(char *)((ulonglong)uVar5 + lVar1) != '\0') &&
+     (*(char *)((ulonglong)(uVar5 - 1) + lVar1) == '\0')) {
+    if (*(char *)((ulonglong)(uVar5 + 1) + lVar1) == '\0') {
+      return -2;
+    }
+    if (iVar2 != -1) {
+      return -2;
+    }
+    iVar2 = 4;
+  }
+  if ((*(char *)((ulonglong)(iVar3 - 1) + lVar1) != '\0') &&
+     (*(char *)((ulonglong)(iVar3 - 2) + lVar1) == '\0')) {
+    if (*(char *)((ulonglong)(uVar5 - 1) + lVar1) == '\0') {
+      return -2;
+    }
+    if (iVar2 != -1) {
+      return -2;
+    }
+    iVar2 = 5;
+  }
+  if ((*(char *)((ulonglong)(uVar4 - 2) + lVar1) != '\0') &&
+     (*(char *)((ulonglong)(uVar4 + 0x202) + lVar1) == '\0')) {
+    if (*(char *)((ulonglong)(iVar3 - 2) + lVar1) == '\0') {
+      return -2;
+    }
+    if (iVar2 != -1) {
+      return -2;
+    }
+    iVar2 = 6;
+  }
+  if ((*(char *)((ulonglong)(uVar4 + 0x203) + lVar1) != '\0') &&
+     (*(char *)((ulonglong)(uVar4 + 0x407) + lVar1) == '\0')) {
+    if ((*(char *)((ulonglong)(uVar4 + 0x202) + lVar1) == '\0') || (iVar2 != -1)) {
+      return -2;
+    }
+    iVar2 = 7;
+  }
+  return iVar2;
+}
