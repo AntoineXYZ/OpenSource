@@ -214,7 +214,8 @@ public:
 	QVector<Box> obstacles;
 	QVector<Ladder> ladders;
 	QVector<RoomVolume> rooms;
-	QHash<quint64, QVector<int>> cells;
+	QHash<quint64, QVector<int>> movementCells;
+	QHash<quint64, QVector<int>> sightCells;
 	QHash<quint64, QVector<int>> roomCells;
 	QSet<quint32> openDoors;
 	quint32 consoleId = 0;
@@ -236,7 +237,13 @@ public:
 		for(int x = Cell(box.minimum.x()); x <= Cell(box.maximum.x()); ++x)
 			for(int y = Cell(box.minimum.y()); y <= Cell(box.maximum.y()); ++y)
 				for(int z = Cell(box.minimum.z()); z <= Cell(box.maximum.z()); ++z)
-					cells[CellKey(x, y, z)].append(index);
+				{
+					const quint64 key = CellKey(x, y, z);
+					// Detailed equipment meshes remain targets, but never enter
+					// character contact or floor-query candidate lists.
+					if(triangle.blocksMovement) movementCells[key].append(index);
+					if(triangle.obstacle < 0) sightCells[key].append(index);
+				}
 	}
 
 	void AddObstacle(const QPointF& center, int deck)
@@ -293,12 +300,76 @@ public:
 			for(int y = Cell(box.minimum.y()); y <= Cell(box.maximum.y()); ++y)
 				for(int z = Cell(box.minimum.z()); z <= Cell(box.maximum.z()); ++z)
 				{
-					const auto bucket = cells.constFind(CellKey(x, y, z));
-					if(bucket == cells.constEnd()) continue;
+					const auto bucket = movementCells.constFind(CellKey(x, y, z));
+					if(bucket == movementCells.constEnd()) continue;
 					for(int index : bucket.value())
 						if(!seen.contains(index) && triangles.at(index).bounds.Intersects(box))
 						{ seen.insert(index); result.append(index); }
 				}
+		return result;
+	}
+
+	QVector<int> RayCandidates(const QVector3D& origin, const QVector3D& direction, float distance) const
+	{
+		QVector<int> result;
+		Box bounds(origin, origin);
+		bounds.Include(origin + direction * distance);
+		if(!Finite(bounds.minimum) || !Finite(bounds.maximum)) return result;
+		int cell[3], minimum[3], maximum[3], step[3];
+		double next[3], interval[3];
+		for(int axis = 0; axis < 3; ++axis)
+		{
+			if(std::abs(bounds.minimum[axis]) > 1000000 || std::abs(bounds.maximum[axis]) > 1000000) return result;
+			cell[axis] = Cell(origin[axis]);
+			minimum[axis] = Cell(bounds.minimum[axis]);
+			maximum[axis] = Cell(bounds.maximum[axis]);
+			step[axis] = direction[axis] > 0 ? 1 : direction[axis] < 0 ? -1 : 0;
+			if(step[axis])
+			{
+				const double boundary = (cell[axis] + (step[axis] > 0 ? 1 : 0)) * double(CellSize);
+				next[axis] = (boundary - origin[axis]) / direction[axis];
+				interval[axis] = double(CellSize) / std::abs(double(direction[axis]));
+			}
+			else
+				next[axis] = interval[axis] = std::numeric_limits<double>::infinity();
+		}
+		QSet<int> seen;
+		const auto visit = [&](const int* coordinates) {
+			for(int axis = 0; axis < 3; ++axis)
+				if(coordinates[axis] < minimum[axis] || coordinates[axis] > maximum[axis]) return;
+			const auto bucket = sightCells.constFind(CellKey(coordinates[0], coordinates[1], coordinates[2]));
+			if(bucket == sightCells.constEnd()) return;
+			for(int index : bucket.value())
+				if(!seen.contains(index) && triangles.at(index).bounds.Intersects(bounds))
+				{ seen.insert(index); result.append(index); }
+		};
+		visit(cell);
+		// Traverse the ray's cells rather than every cell in its enclosing
+		// volume. Visit all neighbours at ties so edges and mixed-sign corner
+		// crossings still find triangles lying exactly on a grid boundary.
+		while(true)
+		{
+			const double crossing = std::min(next[0], std::min(next[1], next[2]));
+			if(crossing > distance) break;
+			const double tolerance = 1e-9 * std::max(1.0, std::abs(crossing));
+			int axes = 0;
+			for(int axis = 0; axis < 3; ++axis)
+				if(next[axis] <= crossing + tolerance) axes |= 1 << axis;
+			for(int subset = 1; subset < 8; ++subset)
+			{
+				if(subset & ~axes) continue;
+				int neighbour[] = {cell[0], cell[1], cell[2]};
+				for(int axis = 0; axis < 3; ++axis)
+					if(subset & (1 << axis)) neighbour[axis] += step[axis];
+				visit(neighbour);
+			}
+			for(int axis = 0; axis < 3; ++axis)
+				if(axes & (1 << axis))
+				{
+					cell[axis] += step[axis];
+					next[axis] += interval[axis];
+				}
+		}
 		return result;
 	}
 
@@ -460,7 +531,8 @@ void WalkWorld::SetDesignPlane(float height) { if(std::isfinite(height)) m_Impl-
 void WalkWorld::SetMesh(const Mesh& mesh, const Design& design)
 {
 	Impl& world = *m_Impl;
-	world.triangles.clear(); world.obstacles.clear(); world.cells.clear(); world.openDoors.clear();
+	world.triangles.clear(); world.obstacles.clear(); world.openDoors.clear();
+	world.movementCells.clear(); world.sightCells.clear();
 	world.rooms.clear(); world.ladders.clear(); world.roomCells.clear();
 	world.consoleId = 0;
 	int lowestDeck = MaximumDeck + 1;
@@ -807,8 +879,7 @@ bool WalkWorld::Raycast(const QVector3D& origin, const QVector3D& direction,
 	if(!Finite(origin) || !Finite(direction) || direction.lengthSquared() < 1e-10f
 		|| !std::isfinite(maximumDistance) || maximumDistance <= 0) return false;
 	maximumDistance = std::min(maximumDistance, 256.f);
-	const QVector3D ray = direction.normalized(), end = origin + ray * maximumDistance;
-	Box bounds(origin, origin); bounds.Include(end);
+	const QVector3D ray = direction.normalized();
 	bool found = false;
 	float nearest = maximumDistance;
 	const auto intersect = [&](const Triangle& triangle, const QVector3D& from, const QVector3D& rayDirection, bool swivel)
@@ -832,7 +903,7 @@ bool WalkWorld::Raycast(const QVector3D& origin, const QVector3D& direction,
 		hit.distance = distance; hit.doorId = triangle.doorId;
 		hit.detailId = triangle.detailId;
 	};
-	for(int index : m_Impl->Candidates(bounds))
+	for(int index : m_Impl->RayCandidates(origin, ray, maximumDistance))
 	{
 		const Triangle& triangle = m_Impl->triangles.at(index);
 		if(!m_Impl->consoleId || triangle.consoleId != m_Impl->consoleId)
@@ -844,8 +915,7 @@ bool WalkWorld::Raycast(const QVector3D& origin, const QVector3D& direction,
 		// and sight targeting see the same swivelling geometry as rendering.
 		const QMatrix4x4 inverse = m_Impl->consoleTransform.inverted();
 		const QVector3D from = inverse.map(origin), localRay = inverse.mapVector(ray);
-		Box localBounds(from, from); localBounds.Include(from + localRay * maximumDistance);
-		for(int index : m_Impl->Candidates(localBounds))
+		for(int index : m_Impl->RayCandidates(from, localRay, maximumDistance))
 		{
 			const Triangle& triangle = m_Impl->triangles.at(index);
 			if(triangle.consoleId == m_Impl->consoleId)

@@ -127,6 +127,21 @@ E first tries ordinary console seating, then explicitly attaches to a nearby
 ladder or detaches from it. Proximity alone
 does not disable gravity; moving out of the climb region clears attachment.
 
+Performance follow-up: contact and floor probes now use a separate grid that
+contains only movement-blocking triangles. Detailed passable equipment remains
+in the sight grid; invisible obstacle-cell proxies remain only in the movement
+grid. This avoids collecting and deduplicating equipment mesh triangles before
+discarding them during each physics query. Collision classification, capsule
+resolution and door-open checks are unchanged.
+Sight and hand rays traverse crossed grid cells instead of scanning the entire
+three-dimensional ray bounding box. Edge/corner crossings visit all tied
+neighbours, including mixed-sign crossings at negative coordinates. The 256-foot
+limit, original triangle intersections, sight/door filters and inverse-transformed
+occupied-console queries are retained. A representative diagonal 256-foot ray
+needs 55 cell lookups instead of 6,859. This is a query-work comparison, not a
+measured frame-rate improvement; equal-distance overlapping surfaces can be
+visited in a different order.
+
 Outside ship membership, enabled studio gravity uses SetDesignPlane's height.
 A character below that plane is moved up to it, even when already far below.
 This matches TickMovement180219280, assembly1802198d8..18021996f: with gravity
@@ -178,3 +193,9 @@ No build, compiler invocation, or new test harness is part of this work. The
 deleted research/tests files are not recreated. Source checks cover C++11/Qt5
 value types, API integration, finite inputs, collision step limits, copied-data
 lifetime, door identity, and winding-independent triangle collision.
+For the performance follow-up, read-only Python checks compared grid traversal
+against exhaustive cell/segment slab intersections for 2,125 axis, boundary,
+negative-coordinate, edge, corner and random rays. Another 1,109 rays against
+609 generated triangles matched an independent exhaustive Moller-Trumbore
+nearest-hit oracle. These validate the traversal algorithm without compiling or
+running the C++ client; manual collision/targeting checks remain necessary.

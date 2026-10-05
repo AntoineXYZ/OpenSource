@@ -38,6 +38,7 @@
 #include <QByteArray>
 #include <QApplication>
 #include <QCursor>
+#include <QDebug>
 #include <QImage>
 #include <QElapsedTimer>
 #include <QFocusEvent>
@@ -64,12 +65,14 @@
 #include <QVector3D>
 #include <QWheelEvent>
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cmath>
 #include <cstddef>
 #include <functional>
 #include <limits>
 #include <memory>
+#include <map>
 #include <mutex>
 #include <vector>
 
@@ -81,10 +84,11 @@ const qint64 DoorTickMilliseconds = qint64(DoorAnimationTickSeconds * 1000);
 
 enum SystemAction { PowerToggle, DriveToggle, DriveCycle, DriveHold };
 
-bool IsStudioWindow(const Batch& batch)
+bool IsStudioSurface(const Batch& batch)
 {
-	return batch.textureFile.isEmpty() && (batch.material == Material::HullTopBottomWindow
-		|| batch.material == Material::HullWallWindow || batch.material == Material::Turret);
+	// The original Spacecraft shader renders every procedural atlas surface
+	// with alpha testing and depth writes, including equipment and doors.
+	return batch.textureFile.isEmpty() && int(batch.material) >= 0;
 }
 
 struct SystemBindings
@@ -346,8 +350,23 @@ struct TransparentTriangle
 {
 	int source;
 	int first;
-	int deck;
+	int chunk;
 	QVector3D center;
+};
+
+struct DrawChunk
+{
+	DrawBatch draw;
+	QVector3D center;
+	float radius;
+};
+
+struct BatchTexture
+{
+	QOpenGLTexture* texture = nullptr;
+	int material = -1;
+	int variant = -1;
+	bool translucent = false;
 };
 
 QVector3D Vector3(const AuPoint& point)
@@ -463,8 +482,22 @@ public:
 	DiControlInput handControl, toggleControl;
 	Qt::MouseButtons mouseButtons = Qt::NoButton;
 	Qt::MouseButtons pendingMouseButtons = Qt::NoButton;
-	QVector<DrawBatch> batches;
+	QVector<DrawChunk> chunks;
+	QVector<quint8> visibleChunks;
+	QVector<DrawBatch> visibleBatches;
 	QVector<TransparentTriangle> transparentTriangles;
+	QVector<DrawBatch> transparentBatches;
+	QVector<BatchTexture> batchTextures;
+	QVector<QMatrix4x4> transforms;
+	QMatrix4x4 cachedViewProjection;
+	quint32 cachedConsoleId = 0;
+	bool visibilityValid = false;
+	bool transparentOrderDirty = true;
+	bool hasAnimatedGeometry = false;
+	bool transparentBufferReady = false;
+	const bool profileRender = qEnvironmentVariableIsSet("HAZERON_LEGACY_RENDER_STATS");
+	qint64 profileLastReport = 0, profileNanoseconds = 0;
+	quint64 profileFrames = 0, profileDraws = 0, profileVertices = 0, profileSorts = 0;
 	QOpenGLBuffer buffer;
 	QOpenGLBuffer transparentBuffer{QOpenGLBuffer::IndexBuffer};
 	QOpenGLVertexArrayObject vao;
@@ -860,8 +893,16 @@ public:
 
 	bool Upload()
 	{
-		batches.clear();
+		chunks.clear();
 		transparentTriangles.clear();
+		transparentBatches.clear();
+		batchTextures.clear();
+		batchTextures.resize(mesh.batches.size());
+		transforms = QVector<QMatrix4x4>(mesh.batches.size());
+		visibilityValid = false;
+		transparentOrderDirty = true;
+		transparentBufferReady = false;
+		hasAnimatedGeometry = false;
 		qint64 vertexCount = 0;
 		for (const auto& batch : mesh.batches)
 			vertexCount += batch.vertices.size();
@@ -877,27 +918,49 @@ public:
 			const auto& batch = mesh.batches[source];
 			if (batch.vertices.isEmpty())
 				continue;
-			DrawBatch draw = { source, vertices.size(), batch.vertices.size(), batch.deck };
-			batches.append(draw);
 			Texture(source);
-			if (!IsStudioWindow(batch)
-				&& (batch.doorId || batch.tint.w() < 0.999f || transparentTextures.contains(TextureKey(source))))
+			hasAnimatedGeometry |= batch.degreesPerSecond != 0;
+			const bool transparent = !IsStudioSurface(batch)
+				&& (batch.doorId || batchTextures[source].translucent);
+			// Material batches span entire decks. Group their triangles into
+			// small spatial chunks once, retaining the original CPU mesh for
+			// collision/targeting. Bounds enclose whole triangles, not just the
+			// cell, so long walls and triangles crossing cells cannot disappear.
+			std::map<std::array<int, 3>, QVector<int>> cells;
+			for(int i = 0; i + 2 < batch.vertices.size(); i += 3)
 			{
-				for (int i = 0; i + 2 < batch.vertices.size(); i += 3)
-				{
-					TransparentTriangle triangle = { source, draw.first + i, draw.deck,
-						(batch.vertices[i].position + batch.vertices[i + 1].position + batch.vertices[i + 2].position) / 3.0f };
-					transparentTriangles.append(triangle);
-				}
+				const QVector3D center = (batch.vertices[i].position
+					+ batch.vertices[i + 1].position + batch.vertices[i + 2].position) / 3.f;
+				cells[{{int(std::floor(center.x() / 32.f)), int(std::floor(center.y() / 32.f)),
+					int(std::floor(center.z() / 32.f))}}].append(i);
 			}
-			for (const auto& vertex : batch.vertices)
+			for(const auto& cell : cells)
 			{
-				RenderVertex value = {
-					{ vertex.position.x(), vertex.position.y(), vertex.position.z() },
-					{ vertex.normal.x(), vertex.normal.y(), vertex.normal.z() },
-					{ vertex.uv.x(), vertex.uv.y() }
-				};
-				vertices.append(value);
+				DrawChunk chunk;
+				chunk.draw = {source, vertices.size(), cell.second.size() * 3, batch.deck};
+				QVector3D minimum = batch.vertices[cell.second.first()].position, maximum = minimum;
+				for(int first : cell.second)
+				{
+					if(transparent)
+						transparentTriangles.append(TransparentTriangle{source, vertices.size(), chunks.size(),
+							(batch.vertices[first].position + batch.vertices[first + 1].position
+								+ batch.vertices[first + 2].position) / 3.f});
+					for(int i = first; i < first + 3; ++i)
+					{
+						const Vertex& vertex = batch.vertices[i];
+						for(int axis = 0; axis < 3; ++axis)
+						{
+							minimum[axis] = std::min(minimum[axis], vertex.position[axis]);
+							maximum[axis] = std::max(maximum[axis], vertex.position[axis]);
+						}
+						vertices.append(RenderVertex{{vertex.position.x(), vertex.position.y(), vertex.position.z()},
+							{vertex.normal.x(), vertex.normal.y(), vertex.normal.z()},
+							{vertex.uv.x(), vertex.uv.y()}});
+					}
+				}
+				chunk.center = (minimum + maximum) * .5f;
+				chunk.radius = (maximum - minimum).length() * .5f + .01f;
+				chunks.append(chunk);
 			}
 		}
 		if (!buffer.bind())
@@ -918,6 +981,96 @@ public:
 		return true;
 	}
 
+	void UpdateVisibility(const QMatrix4x4& viewProjection, float seconds)
+	{
+		if(visibilityValid && cachedViewProjection == viewProjection
+			&& cachedConsoleId == character.consoleId && !hasAnimatedGeometry) return;
+		cachedViewProjection = viewProjection;
+		cachedConsoleId = character.consoleId;
+		visibilityValid = true;
+		transparentOrderDirty = true;
+		if(hasAnimatedGeometry)
+			for(int i = 0; i < transforms.size(); ++i)
+			{
+				const Batch& batch = mesh.batches[i];
+				if(batch.degreesPerSecond == 0) continue;
+				QMatrix4x4& transform = transforms[i];
+				transform.setToIdentity();
+				transform.translate(batch.rotationPivot);
+				transform.rotate(std::fmod(seconds * batch.degreesPerSecond, 360.f), batch.rotationAxis);
+				transform.translate(-batch.rotationPivot);
+			}
+		QVector4D planes[6];
+		for(int axis = 0; axis < 3; ++axis)
+			for(int side = 0; side < 2; ++side)
+			{
+				QVector4D& plane = planes[axis * 2 + side];
+				plane = viewProjection.row(3) + viewProjection.row(axis) * (side ? -1.f : 1.f);
+				const float length = plane.toVector3D().length();
+				if(length > 0) plane /= length;
+			}
+		visibleChunks.fill(0, chunks.size());
+		visibleBatches.clear();
+		for(int i = 0; i < chunks.size(); ++i)
+		{
+			const DrawChunk& chunk = chunks[i];
+			const int source = chunk.draw.source;
+			if(character.consoleId && mesh.batches[source].consoleId == character.consoleId) continue;
+			const QVector3D center = transforms[source].map(chunk.center);
+			bool visible = true;
+			for(const QVector4D& plane : planes)
+				if(QVector3D::dotProduct(plane.toVector3D(), center) + plane.w() < -chunk.radius)
+				{ visible = false; break; }
+			if(!visible) continue;
+			visibleChunks[i] = 1;
+			// A fully visible material still uses one draw call. Only skipped
+			// chunks break a contiguous range into additional draws.
+			if(!visibleBatches.isEmpty() && visibleBatches.last().source == source
+				&& visibleBatches.last().first + visibleBatches.last().count == chunk.draw.first)
+				visibleBatches.last().count += chunk.draw.count;
+			else visibleBatches.append(chunk.draw);
+		}
+	}
+
+	void UpdateTransparentOrder(const QVector3D& direction)
+	{
+		if(!transparentOrderDirty) return;
+		struct SortedTriangle { const TransparentTriangle* triangle; float depth; };
+		QVector<SortedTriangle> sorted;
+		sorted.reserve(transparentTriangles.size());
+		for(const TransparentTriangle& triangle : transparentTriangles)
+			if(visibleChunks[triangle.chunk] && batchTextures[triangle.source].translucent)
+				sorted.append(SortedTriangle{&triangle, QVector3D::dotProduct(
+					transforms[triangle.source].map(triangle.center), direction)});
+		// Compute each transformed depth once, instead of twice per comparator.
+		std::sort(sorted.begin(), sorted.end(), [](const SortedTriangle& a, const SortedTriangle& b) {
+			return a.depth > b.depth;
+		});
+		QVector<quint32> indices;
+		indices.reserve(sorted.size() * 3);
+		transparentBatches.clear();
+		for(const SortedTriangle& entry : sorted)
+		{
+			const TransparentTriangle& triangle = *entry.triangle;
+			if(transparentBatches.isEmpty() || transparentBatches.last().source != triangle.source)
+				transparentBatches.append(DrawBatch{triangle.source, indices.size(), 0, mesh.batches[triangle.source].deck});
+			transparentBatches.last().count += 3;
+			for(int i = 0; i < 3; ++i) indices.append(quint32(triangle.first + i));
+		}
+		transparentBufferReady = indices.isEmpty();
+		if(!indices.isEmpty() && transparentBuffer.bind())
+		{
+			const int bytes = indices.size() * int(sizeof(quint32));
+			transparentBuffer.allocate(indices.constData(), bytes);
+			transparentBufferReady = transparentBuffer.size() == bytes;
+			transparentBuffer.release();
+		}
+		transparentOrderDirty = !transparentBufferReady;
+		if(!transparentBufferReady)
+			glError = QStringLiteral("Unable to upload spacecraft translucent geometry to the graphics device.");
+		if(profileRender && !sorted.isEmpty()) ++profileSorts;
+	}
+
 	QString TextureKey(int source) const
 	{
 		const auto& batch = mesh.batches[source];
@@ -931,9 +1084,25 @@ public:
 	{
 		const auto& batch = mesh.batches[source];
 		const int material = FrameMaterial(source);
+		if(batchTextures.size() != mesh.batches.size()) batchTextures.resize(mesh.batches.size());
+		BatchTexture& cached = batchTextures[source];
+		const bool consoleTexture = batch.textureFile == QStringLiteral("legacy:pc_Console.bmp")
+			|| batch.textureFile == QStringLiteral(":/data/ec_Console.bmp");
+		const int variant = consoleTexture ? int(powerPlantOn) * 3 + driveState : 0;
+		if(cached.texture && cached.material == material && cached.variant == variant) return cached.texture;
 		const QString key = TextureKey(source);
+		const auto remember = [&](QOpenGLTexture* texture) {
+			const bool translucent = !IsStudioSurface(batch)
+				&& (batch.tint.w() < .999f || transparentTextures.contains(key));
+			if(cached.translucent != translucent) transparentOrderDirty = true;
+			cached.texture = texture;
+			cached.material = material;
+			cached.variant = variant;
+			cached.translucent = translucent;
+			return texture;
+		};
 		if (textures.contains(key))
-			return textures.value(key);
+			return remember(textures.value(key));
 		QImage tile;
 		if (batch.textureFile == QStringLiteral("legacy:pc_Console.bmp"))
 			tile = QImage::fromData(qUncompress(QByteArray::fromBase64(LegacyShipHelmBmp)), "BMP").mirrored();
@@ -1021,7 +1190,7 @@ public:
 		texture->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
 		texture->setMagnificationFilter(QOpenGLTexture::Linear);
 		textures.insert(key, texture);
-		return texture;
+		return remember(texture);
 	}
 
 	void BindEffect(const AuLegacyShip::Rendering::Batch& batch, qint64 elapsed)
@@ -1176,6 +1345,9 @@ void AuLegacyShipRender::SetInterfaceVisible(bool visible)
 
 void AuLegacyShipRender::SetWalkthrough(bool enabled)
 {
+	m_Impl->profileLastReport = m_Impl->animationClock.elapsed();
+	m_Impl->profileFrames = m_Impl->profileNanoseconds = m_Impl->profileDraws
+		= m_Impl->profileVertices = m_Impl->profileSorts = 0;
 	if(m_Impl->floorPlan) m_Impl->floorPlan->setVisible(!enabled);
 	if(!enabled)
 		for(const auto& trail : m_Impl->contrails) trail->RestartParticleSystem();
@@ -1514,7 +1686,7 @@ void AuLegacyShipRender::Tick()
 					break;
 				}
 	}
-	m_Impl->SyncCharacter();
+	else m_Impl->SyncCharacter();
 	UpdateTarget(now);
 	if (isActiveWindow())
 	{
@@ -1760,6 +1932,7 @@ struct StudioSun
 };
 uniform StudioSun u_suns[3];
 uniform vec3 u_ambient;
+uniform bool u_twoSided;
 OUT vec3 v_light;
 OUT vec3 v_backLight;
 OUT vec2 v_uv;
@@ -1773,9 +1946,12 @@ vec3 lighting(vec3 position, vec3 normal)
 		float distanceSquared = max(dot(toSun, toSun), 0.0001);
 		float distanceToSun = sqrt(distanceSquared);
 		float cosine = clamp(dot(normal, toSun / distanceToSun), -1.0, 1.0);
-		float angle = acos(cosine);
-		float diskAngle = atan(u_suns[i].radius, distanceToSun);
-		float diffuse = max(0.0, max(cosine, max(cos(angle + diskAngle), cos(angle - diskAngle))));
+		// cos(acos(c) +/- atan(r/d)), without inverse trig for every vertex.
+		float radius = u_suns[i].radius;
+		float diskCosine = distanceToSun / sqrt(distanceSquared + radius * radius);
+		float diskSine = radius / sqrt(distanceSquared + radius * radius);
+		float diffuse = max(0.0, max(cosine,
+			cosine * diskCosine + sqrt(max(0.0, 1.0 - cosine * cosine)) * diskSine));
 		color += u_suns[i].color * diffuse / max(u_suns[i].attenuation * distanceSquared, 0.0001);
 	}
 	return clamp(color, 0.0, 1.0);
@@ -1785,7 +1961,7 @@ void main()
 	vec3 position = (u_model * vec4(a_position, 1.0)).xyz;
 	vec3 normal = normalize(mat3(u_model) * a_normal);
 	v_light = lighting(position, normal);
-	v_backLight = lighting(position, -normal);
+	v_backLight = u_twoSided ? lighting(position, -normal) : v_light;
 	v_uv = a_uv + u_uvOffset;
 	gl_Position = u_mvp * vec4(position, 1.0);
 }
@@ -1806,16 +1982,16 @@ uniform bool u_atlas;
 uniform bool u_twoSided;
 uniform vec2 u_inset;
 uniform bool u_translucentPass;
-uniform int u_windowSide;
+uniform int u_studioSide;
 void main()
 {
 	vec2 uv = u_atlas ? mix(u_inset, vec2(1.0) - u_inset, fract(v_uv)) : v_uv;
 	vec4 texel = SAMPLE(u_texture, uv) * u_tint;
-	if (u_windowSide != 0)
+	if (u_studioSide != 0)
 	{
-		// Unpowered 2016 windows: exterior cutoff 0, interior cutoff 0.1.
-		// Surviving pixels write opaque color and depth, including the beams.
-		if (texel.a <= (u_windowSide == 2 ? 0.1 : 0.0))
+		// Original procedural surfaces use alpha testing, not blending:
+		// exterior cutoff 0, interior cutoff 0.1, with opaque depth writes.
+		if (texel.a <= (u_studioSide == 2 ? 0.1 : 0.0))
 			discard;
 		texel.a = 1.0;
 	}
@@ -1897,6 +2073,7 @@ void AuLegacyShipRender::CleanupGL()
 	}
 	qDeleteAll(m_Impl->textures);
 	m_Impl->textures.clear();
+	m_Impl->batchTextures.clear();
 	m_Impl->transparentTextures.clear();
 	delete m_Impl->effectTexture;
 	m_Impl->effectTexture = nullptr;
@@ -2055,6 +2232,9 @@ bool AuLegacyShipRender::event(QEvent* event)
 
 void AuLegacyShipRender::paintGL()
 {
+	QElapsedTimer frameClock;
+	if(m_Impl->profileRender) frameClock.start();
+	quint64 frameDraws = 0, frameVertices = 0;
 	QOpenGLFunctions* gl = context()->functions();
 	gl->glClearColor(0, 0, 0, 1);
 	gl->glDepthMask(GL_TRUE);
@@ -2110,48 +2290,41 @@ void AuLegacyShipRender::paintGL()
 		m_Impl->program->setUniformValue("u_translucentPass", false);
 		const qint64 elapsed = m_Impl->animationClock.elapsed();
 		const float seconds = float(elapsed) / 1000;
-		QVector<QMatrix4x4> transforms(m_Impl->mesh.batches.size());
-		for (int i = 0; i < transforms.size(); ++i)
+		m_Impl->UpdateVisibility(projection * view, seconds);
+		int boundSource = -1;
+		const auto bindBatch = [this, gl, elapsed, seconds, &boundSource](int source)
 		{
-			const auto& batch = m_Impl->mesh.batches[i];
-			if (batch.degreesPerSecond != 0)
-			{
-				transforms[i].translate(batch.rotationPivot);
-				transforms[i].rotate(std::fmod(seconds * batch.degreesPerSecond, 360.0f), batch.rotationAxis);
-				transforms[i].translate(-batch.rotationPivot);
-			}
-		}
-		const auto bindBatch = [this, gl, elapsed, seconds, &transforms](int source)
-		{
+			if(source == boundSource) return;
+			boundSource = source;
 			const auto& batch = m_Impl->mesh.batches[source];
-			const int material = m_Impl->FrameMaterial(source);
 			m_Impl->Texture(source)->bind(0);
+			const int material = m_Impl->batchTextures[source].material;
 			const bool atlas = batch.textureFile.isEmpty() && material >= 0
 				&& material < int(sizeof(ShipTextures) / sizeof(ShipTextures[0]));
 			m_Impl->program->setUniformValue("u_atlas", atlas);
 			m_Impl->program->setUniformValue("u_inset", atlas
 				? QVector2D(0.5f / ShipTextures[material].width, 0.5f / ShipTextures[material].height)
 				: QVector2D());
-			m_Impl->program->setUniformValue("u_model", transforms[source]);
+			m_Impl->program->setUniformValue("u_model", m_Impl->transforms[source]);
 			m_Impl->program->setUniformValue("u_uvOffset", batch.uvVelocity * seconds);
 			m_Impl->program->setUniformValue("u_tint", batch.tint);
 			m_Impl->program->setUniformValue("u_ambient", batch.interior
 				? QVector3D(0.014352942f, 0.015f, 0.014705883f) : QVector3D(0.125f, 0.125f, 0.125f));
 			m_Impl->program->setUniformValue("u_selfIllumination", batch.selfIllumination);
 			m_Impl->program->setUniformValue("u_twoSided", batch.twoSided);
-			m_Impl->program->setUniformValue("u_windowSide", IsStudioWindow(batch) ? (batch.interior ? 2 : 1) : 0);
+			m_Impl->program->setUniformValue("u_studioSide", IsStudioSurface(batch) ? (batch.interior ? 2 : 1) : 0);
 			if (batch.twoSided)
 				gl->glDisable(GL_CULL_FACE);
 			else
 				gl->glEnable(GL_CULL_FACE);
 			m_Impl->BindEffect(batch, elapsed);
 		};
-		for (const DrawBatch& batch : m_Impl->batches)
+		for (const DrawBatch& batch : m_Impl->visibleBatches)
 		{
-			if(m_Impl->character.consoleId && m_Impl->mesh.batches[batch.source].consoleId == m_Impl->character.consoleId)
-				continue;
 			bindBatch(batch.source);
 			gl->glDrawArrays(GL_TRIANGLES, batch.first, batch.count);
+			++frameDraws;
+			frameVertices += batch.count;
 		}
 		m_Impl->vao.release();
 		m_Impl->program->release();
@@ -2159,47 +2332,24 @@ void AuLegacyShipRender::paintGL()
 		m_Impl->RenderContrails(*SceneRenderInfo().re, projection, view);
 		m_Impl->program->bind();
 		m_Impl->vao.bind();
-		QVector<const TransparentTriangle*> transparent;
-		transparent.reserve(m_Impl->transparentTriangles.size());
-		for (const TransparentTriangle& triangle : m_Impl->transparentTriangles)
-			if(!m_Impl->character.consoleId || m_Impl->mesh.batches[triangle.source].consoleId != m_Impl->character.consoleId)
-				transparent.append(&triangle);
-		std::sort(transparent.begin(), transparent.end(), [&direction, &transforms](const TransparentTriangle* a, const TransparentTriangle* b)
+		boundSource = -1; // Native console/particle renderers changed GL state.
+		m_Impl->UpdateTransparentOrder(direction);
+		if(m_Impl->transparentBufferReady && !m_Impl->transparentBatches.isEmpty())
 		{
-			return QVector3D::dotProduct(transforms[a->source].map(a->center), direction)
-				> QVector3D::dotProduct(transforms[b->source].map(b->center), direction);
-		});
-		QVector<quint32> indices;
-		QVector<DrawBatch> transparentBatches;
-		indices.reserve(transparent.size() * 3);
-		for (const TransparentTriangle* triangle : transparent)
-		{
-			if (transparentBatches.isEmpty() || transparentBatches.last().source != triangle->source)
-			{
-				DrawBatch batch = { triangle->source, indices.size(), 0, triangle->deck };
-				transparentBatches.append(batch);
-			}
-			transparentBatches.last().count += 3;
-			for (int i = 0; i < 3; ++i)
-				indices.append(quint32(triangle->first + i));
-		}
-		if (!indices.isEmpty())
-		{
-			const int bytes = indices.size() * int(sizeof(quint32));
 			const bool bound = m_Impl->transparentBuffer.bind();
-			if (bound)
-				m_Impl->transparentBuffer.allocate(indices.constData(), bytes);
-			if (bound && m_Impl->transparentBuffer.size() == bytes)
+			if(bound)
 			{
 				gl->glEnable(GL_BLEND);
 				gl->glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 				gl->glDepthMask(GL_FALSE);
 				m_Impl->program->setUniformValue("u_translucentPass", true);
-				for (const DrawBatch& batch : transparentBatches)
+				for (const DrawBatch& batch : m_Impl->transparentBatches)
 				{
 					bindBatch(batch.source);
 					gl->glDrawElements(GL_TRIANGLES, batch.count, GL_UNSIGNED_INT,
 						reinterpret_cast<const void*>(quintptr(batch.first) * sizeof(quint32)));
+					++frameDraws;
+					frameVertices += batch.count;
 				}
 			}
 			else
@@ -2240,6 +2390,29 @@ void AuLegacyShipRender::paintGL()
 	RenderSceneInterface(m_Impl->mouseCaptured);
 	RenderSceneCommunications();
 	painter.endNativePainting();
+	if(m_Impl->profileRender)
+	{
+		++m_Impl->profileFrames;
+		m_Impl->profileNanoseconds += frameClock.nsecsElapsed();
+		m_Impl->profileDraws += frameDraws;
+		m_Impl->profileVertices += frameVertices;
+		const qint64 now = m_Impl->animationClock.elapsed();
+		const qint64 interval = now - m_Impl->profileLastReport;
+		if(interval >= 1000)
+		{
+			const double frames = double(m_Impl->profileFrames);
+			qInfo().nospace() << "Legacy render: " << frames * 1000.0 / interval
+				<< " fps, CPU paint " << m_Impl->profileNanoseconds / frames / 1000000.0
+				<< " ms, draws " << m_Impl->profileDraws / frames
+				<< ", triangles " << m_Impl->profileVertices / frames / 3.0
+				<< ", visible ranges " << m_Impl->visibleBatches.size()
+				<< ", chunks " << m_Impl->chunks.size()
+				<< ", transparency rebuilds " << m_Impl->profileSorts;
+			m_Impl->profileLastReport = now;
+			m_Impl->profileFrames = m_Impl->profileNanoseconds = m_Impl->profileDraws
+				= m_Impl->profileVertices = m_Impl->profileSorts = 0;
+		}
+	}
 }
 
 void AuLegacyShipRender::CenterMouse()

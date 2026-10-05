@@ -204,6 +204,11 @@ Ship statistics and the single F6 information pane:
   TL/cost, absorption and ammunition damage must remain explicitly unavailable.
 
 Rendering, walkthrough and audio:
+- Performance: compare a previously slow design after loading, stationary and
+  moving, inside and outside. Turn away from the ship, cross screen/near-plane
+  edges, enter/exit consoles, operate doors, edit/reload and reopen render mode.
+  Check for missing geometry, changed lighting or transparency. Optional Windows
+  diagnostics and recovered caching evidence: RENDERING-PERFORMANCE.txt.
 - Render Mode keeps its original palette icon/position. Repeated toggles retain
   floor-plan camera/tool and avatar position/facing. F does not fit the 3D view;
   Home finds clear standing space or reports failure. New/Open reset avatar and
