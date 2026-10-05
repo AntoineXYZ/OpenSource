@@ -70,6 +70,8 @@ struct Performance
 // Unlike modern quality, the original technology level gives a linear 5% boost.
 double LegacyTechBoost(int techLevel);
 
+QString LegacyStructureName(int structure);
+
 // 2016 SYSTEM numbering (0..14); 15 denotes an unrecognized detail.
 // Hit counts use internal system hits, not the report's tenfold HP units.
 struct TargetHealth

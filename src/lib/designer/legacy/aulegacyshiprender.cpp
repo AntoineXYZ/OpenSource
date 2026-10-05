@@ -30,6 +30,8 @@
 #include "dasc.h"
 #include "aucommpacket.h"
 #include "auquad.h"
+#include "audice.h"
+#include "auid.h"
 
 #include <QByteArray>
 #include <QApplication>
@@ -75,6 +77,12 @@ using namespace AuLegacyShip::Rendering;
 const qint64 DoorTickMilliseconds = qint64(DoorAnimationTickSeconds * 1000);
 
 enum SystemAction { PowerToggle, DriveToggle, DriveCycle, DriveHold };
+
+bool IsHullWindow(const Batch& batch)
+{
+	return batch.textureFile.isEmpty() && (batch.material == Material::HullTopBottomWindow
+		|| batch.material == Material::HullWallWindow);
+}
 
 struct SystemBindings
 {
@@ -395,6 +403,9 @@ public:
 	DiControlInputArray controls, pendingControls, sceneControls, pendingSceneControls;
 	SystemBindings systemBindings[3]; // No station, helm, engineering.
 	bool shipNew = true;
+	AuId shipId;
+	QString shipName;
+	QString targetName;
 	bool powerPlantOn = false;
 	int driveState = 0; // 2016 GD_Off, GD_On, GD_Hold.
 	DiControlInput handControl, toggleControl;
@@ -735,7 +746,8 @@ public:
 			DrawBatch draw = { source, vertices.size(), batch.vertices.size(), batch.deck };
 			batches.append(draw);
 			Texture(source);
-			if (batch.doorId || batch.tint.w() < 0.999f || transparentTextures.contains(TextureKey(source)))
+			if (!IsHullWindow(batch)
+				&& (batch.doorId || batch.tint.w() < 0.999f || transparentTextures.contains(TextureKey(source))))
 			{
 				for (int i = 0; i + 2 < batch.vertices.size(); i += 3)
 				{
@@ -1039,10 +1051,17 @@ void AuLegacyShipRender::SetDesign(const AuLegacyShip::Design& design)
 	m_Impl->performance = AuLegacyShip::CalculatePerformance(design, m_Impl->designStats, design.header.minimumTechLevel);
 	if(reset)
 	{
+		// The preview has its own registration, independent of the saved design.
+		// Reuse the native ID spelling used by the original unnamed spacecraft.
+		do { m_Impl->shipId = AuId(g_Au.Dice().Random()); }
+		while(m_Impl->shipId < AuId::FirstUnreserved());
+		m_Impl->shipName = m_Impl->shipId.StringId();
 		m_Impl->shipNew = true;
 		m_Impl->powerPlantOn = false;
 		m_Impl->driveState = 0;
 	}
+	m_Impl->targetName = QStringLiteral("%1 %2")
+		.arg(AuLegacyShip::LegacyStructureName(m_Impl->performance.structure), m_Impl->shipName);
 	if(!m_Impl->designStats.powerPlantUnits) m_Impl->powerPlantOn = false;
 	if(!m_Impl->designStats.maneuverUnits) m_Impl->driveState = 0;
 	m_Impl->sound.SetDesign(design);
@@ -1435,10 +1454,8 @@ void AuLegacyShipRender::OperateSystem(int action)
 		if(m_Impl->shipNew)
 		{
 			m_Impl->shipNew = false;
-			const AuId shipId(m_Impl->design.header.designId);
-			const QString name = m_Impl->design.header.name.isEmpty() ? shipId.StringId() : m_Impl->design.header.name;
 			AuCommChat message(DaSc::SystemInitializationMessage(), AuCommStdChannel::IntercomChannelName(),
-				shipId, name, AuId(0), ShoresOfHazeron, AuCommStdChannel::Close, AuCommStdChannel::Intercom);
+				m_Impl->shipId, m_Impl->shipName, AuId(0), ShoresOfHazeron, AuCommStdChannel::Close, AuCommStdChannel::Intercom);
 			ChatReceived(&message);
 		}
 		m_Impl->interaction = !state ? tr("Maneuver drive off.")
@@ -1613,10 +1630,19 @@ uniform bool u_twoSided;
 uniform vec2 u_inset;
 uniform vec3 u_light;
 uniform bool u_translucentPass;
+uniform int u_windowSide;
 void main()
 {
 	vec2 uv = u_atlas ? mix(u_inset, vec2(1.0) - u_inset, fract(v_uv)) : v_uv;
 	vec4 texel = SAMPLE(u_texture, uv) * u_tint;
+	if (u_windowSide != 0)
+	{
+		// Unpowered 2016 windows: exterior cutoff 0, interior cutoff 0.1.
+		// Surviving pixels write opaque color and depth, including the beams.
+		if (texel.a <= (u_windowSide == 2 ? 0.1 : 0.0))
+			discard;
+		texel.a = 1.0;
+	}
 	if (texel.a < 0.01 || u_translucentPass != (texel.a < 0.999))
 		discard;
 	vec3 normal = normalize(v_normal);
@@ -1912,6 +1938,7 @@ void AuLegacyShipRender::paintGL()
 			m_Impl->program->setUniformValue("u_tint", batch.tint);
 			m_Impl->program->setUniformValue("u_selfIllumination", batch.selfIllumination);
 			m_Impl->program->setUniformValue("u_twoSided", batch.twoSided);
+			m_Impl->program->setUniformValue("u_windowSide", IsHullWindow(batch) ? (batch.interior ? 2 : 1) : 0);
 			if (batch.twoSided)
 				gl->glDisable(GL_CULL_FACE);
 			else
@@ -1996,7 +2023,7 @@ void AuLegacyShipRender::paintGL()
 	if(!SceneRenderInfo().IsViewTopDown()) PaintCrosshair(painter, size(), m_Impl->targetLevel);
 	if (!SceneRenderInfo().IsViewTopDown() && m_Impl->hasTarget && m_Impl->targetLevel > 0
 		&& (m_Impl->targetPoint - m_Impl->Eye()).length() <= m_Impl->targetLevel * 10)
-		PaintShipTarget(painter, size(), m_Impl->design.header.name, m_Impl->targetHealth);
+		PaintShipTarget(painter, size(), m_Impl->targetName, m_Impl->targetHealth);
 	QString tips = m_Impl->glError;
 	if(tips.isEmpty() && m_Impl->mesh.batches.isEmpty())
 		tips = QStringLiteral("Paint cells in the floor plan to create a spacecraft.");

@@ -60,6 +60,31 @@ Procedural batches retain per-triangle detail IDs without splitting draw calls;
 imported models retain per-batch IDs. Swivel queries preserve console ownership.
 Invisible movement obstacle boxes remain excluded from both ray types.
 
+Target name (follow-up recovery):
+AuAtom13.dll RenderBodyStats 0x1804122a0 draws NameWithEmpire beneath the bar.
+Name 0x180409000 falls back to the spacecraft atom's AuId::StringId when no
+name was assigned; this is not the design title or AuDice::RandomShipName.
+DaDesignPlane::Create 0x1802fd060 allocates that atom ID independently of the
+design ID. NameWithEmpire 0x180409080 joins empire, structure name and ship
+name with spaces. The offline ship has no empire, leaving class + registration.
+AuData13.dll DescStructure 0x1800726d0 calls Structure 0x1801d59c0, then
+DnSpaceShip::StructureName 0x180046950: Hull, Starship, Spaceship, Starbase,
+Spaceport for 0..4. The existing CalculatePerformance reproduces those rules:
+fuel capacity, helm, drive, plant, sufficient life support and an opening or
+transporter must exist; otherwise Hull. Multiple maneuver units and >=100ft/s2
+TL0 acceleration make a mobile ship. Installed FTL units choose Starship or
+Starbase, otherwise Spaceship or Spaceport. This does not use canEngageFTL,
+current fuel, capacitor charge or subsystem switches. Modern structure labels
+cannot be substituted directly because their station entries have changed.
+
+The preview reuses native AuId::StringId for its registration and shares the
+legacy structure-name helper with F6 (which retains Invalid Design for Hull).
+The original global ID allocator's seed/sequence was not recovered; a local
+random nonreserved ID supplies the preview registration. It is used only for
+the HUD/local welcome, never installed as a world atom or saved into the design.
+New/Open regenerates it; edits, saves and render toggles preserve it. The HUD
+recomputes the class on edits and the welcome uses the unprefixed registration.
+
 Validation:
 Source mapping comparison and diff whitespace checks passed. The optional
 native_ship_stats.cpp harness adds console/surgery/turret ordinals, negative-deck

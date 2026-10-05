@@ -210,6 +210,9 @@ Rendering, walkthrough and audio:
   and equipment. Console/vehicle textures need no legacy DLLs; effects advance
   every 100ms without moving geometry. Parked vehicles remain static; logical
   markers have plan icons without invented preview models.
+- Windows, including glass tops/bottoms: outside glass is opaque near-black
+  with the original beams; inside glass is clear and beams remain visible.
+  Check opposite windows, oblique angles, New/Open and render toggles.
 - WASD/mouse, Shift run, Q forward, Space jump, C/Z flight/wells, E ladder entry/
   exit. Nearby ladders alone must not suspend gravity; include deck-29 hatches.
   On ladders W follows head pitch (up/down), S reverses it; level W adds no
@@ -224,6 +227,11 @@ Rendering, walkthrough and audio:
   Aim at consoles, machinery, pads and turrets: subsystem icons/HP must switch;
   sensor/shield consoles show command/control. Test shared batches, occlusion,
   console swivel and deletion refresh. See WALKTHROUGH-SUBSYSTEM-TARGETS.txt.
+- Under the target HP bar, check class plus generated registration, independent
+  of the design title. Edits/saves/render toggles retain the registration;
+  New/Open generates another. Installed FTL switches valid mobile designs
+  between Starship/Spaceship; station classes are Starbase/Spaceport. Incomplete
+  designs show Hull. Empty fuel/charge must not change the class.
 - Automatic doors/hatches animate closed/half/open; idle floor support must not
   open a hatch. Ctrl+P/C within six feet works on current/above-deck doors; hand
   clicks toggle nearby panels. Hull/large doors stay manual; open doors persist.
@@ -233,8 +241,8 @@ Rendering, walkthrough and audio:
   and hard-floor/outside footsteps, run pitch and loop stops. Respect sound
   settings, reuse game OpenAL services, and avoid leaks on exit/reopen/app close.
 - At helm/engineering, G before P must not initialize a fresh design. P then G
-  shows one blue Intercom welcome with the design name. Holding P/G must not
-  repeat toggles; later power cycles, seat changes, edits and render toggles
+  shows one blue Intercom welcome with the same registration as the HUD.
+  Holding P/G must not repeat toggles; later power cycles, seat changes, edits and render toggles
   must not repeat the welcome. New/Open permits it again. Check configured
   bindings and H full/hold (stations cannot hold), absent plant/drive units,
   message fading and channel/HUD filters. Controls must not operate on foot.

@@ -30,8 +30,8 @@ shared through DaSc::SystemInitializationMessage, preserving translation
 context. The legacy view constructs AuCommChat and feeds ChatReceived locally;
 it does not require a fabricated sector, network delivery or an Intercom input
 tab. AuDesignerView renders it using native channel/scope color, font, filters,
-intensity, sound and lifetime. The local preview uses the design name as sender
-(working design ID in string form when unnamed), not the sample's RIPPYJ ID.
+intensity, sound and lifetime. The local preview uses its generated spacecraft
+registration as sender, matching the name beneath the target HP bar.
 
 Equipment working state
 -----------------------

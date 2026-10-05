@@ -33,6 +33,29 @@ wall and opaque hull rectangles are opaque. Cargo has a few translucent
 edge pixels. The bitmap already contains full surface color, not only an
 emission overlay.
 
+Default window opacity (follow-up recovery)
+------------------------------------------
+RenderEnvironmentObject 0x180423a60 sets the unpowered exterior alpha cutoff
+to 0 and the interior cutoff to 0.1 (both fog and non-fog paths). The original
+Spacecraft.f.glsl discards alpha <= cutoff. Interior-light/charged-capacitor
+branches can use 0.2; the offline preview has no fuel or capacitor charge.
+This is directional alpha testing, not ordinary translucent glass blending.
+The preview renders surviving window pixels with opaque color/depth, using
+the existing outward/inward faces: dark outside, clear inside, beams retained.
+It excludes windows from its sorted translucent pass. Other materials keep
+their existing alpha handling.
+
+The original 256x8192 txSpacecraft0.png and txSpacecraft0Lit.png resources were
+decoded read-only from AuAtomRes13.dll (Qt registration RVA 0x11b0). Window
+tiles 26 and 28 are byte-identical in the two atlases, so the embedded original
+lit atlas already contains the required exterior pixels. Their dominant glass
+RGBA is (6,6,6,25), below the interior 0.1 cutoff. No replacement black image
+or removal of the original support-beam artwork is needed. Runtime visual
+comparison still requires the user's build.
+Read-only pixel checks passed for both atlases: each window tile retains all
+65,536 exterior pixels; the interior cutoff retains 8,046 pixels of tile 26
+and 4,032 of tile 28. The shader applies the cutoff after texture filtering.
+
 Interior walls
 --------------
 RenderInterior 0x18042f410 traverses each room boundary except fuel 9 and

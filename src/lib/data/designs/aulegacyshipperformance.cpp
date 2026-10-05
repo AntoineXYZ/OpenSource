@@ -2,6 +2,7 @@
 
 #include "aulegacyshipsave.h"
 #include "auscdesign.h"
+#include <QObject>
 #include <QSet>
 #include <algorithm>
 #include <cmath>
@@ -88,6 +89,19 @@ void ModuleTechLevel(const Design& design, const Stats& stats, Performance& resu
 double AuLegacyShip::LegacyTechBoost(int techLevel)
 {
 	return float(std::max(0, std::min(255, techLevel))) * .05f + 1.f;
+}
+
+QString AuLegacyShip::LegacyStructureName(int structure)
+{
+	switch(structure)
+	{
+	case 0: return QObject::tr("Hull");
+	case 1: return QObject::tr("Starship");
+	case 2: return QObject::tr("Spaceship");
+	case 3: return QObject::tr("Starbase");
+	case 4: return QObject::tr("Spaceport");
+	default: return QObject::tr("Invalid Structure");
+	}
 }
 
 AuLegacyShip::TargetHealth AuLegacyShip::DesignTargetHealth(const Design& design,

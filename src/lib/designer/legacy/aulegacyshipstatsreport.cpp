@@ -40,18 +40,6 @@ QString Endurance(double fuel, double fuelPerSecond, const QString& condition)
 			Number(fuelPerSecond * 86400.0 / CubicFeetPerCubicMeter(), 2), condition);
 }
 
-QString StructureName(int structure)
-{
-	switch (structure)
-	{
-	case 1: return QStringLiteral("Starship");
-	case 2: return QStringLiteral("Spaceship");
-	case 3: return QStringLiteral("Starbase");
-	case 4: return QStringLiteral("Spaceport");
-	default: return QStringLiteral("Invalid Design");
-	}
-}
-
 QString ModuleName(quint16 module)
 {
 	return g_Au.CommodityName(COMMODITYID(module));
@@ -116,7 +104,8 @@ QString AuLegacyShipStatsReport(const AuLegacyShip::Design& design)
 	if (!stats.hasHull)
 		return QString();
 	const int tl = performance.techLevelUsed;
-	QString classification = StructureName(performance.structure).toUpper();
+	QString classification = (performance.structure ? AuLegacyShip::LegacyStructureName(performance.structure)
+		: QStringLiteral("Invalid Design")).toUpper();
 	if (design.header.streamline)
 		classification.prepend(QStringLiteral("STREAMLINED "));
 	if (!stats.hullContiguous)
