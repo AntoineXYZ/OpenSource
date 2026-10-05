@@ -74,6 +74,39 @@ tile pixels with alpha 25. The glass half is predominantly RGBA (6,6,6,25);
 the opposite half, away from the diagonal boundary, is entirely alpha 255.
 No build was run; visual verification requires the user's Windows client.
 
+Designer contrails
+------------------
+AuAtom13.dll RenderLast 0x180441350 has a dedicated design-environment branch:
+emit when Structure != 0 and IsRenderSolid, regardless of GravityDriveWorking,
+drive switches, fuel or capacitor charge. Gameplay has different gating.
+The preview now reuses modern PsEngineTrail for particle simulation, tapered
+camera-facing ribbons and emitter glow, with additive blending and depth test
+but no depth writes. Draw order is after opaque geometry and before translucency.
+
+ContrailEmitterLoc 0x1803dc790 enumerates detail type 98 in record order, with
+no hiddenRaw check. CreateDeviceObjects 0x1803dcb50 takes at most ten emitters.
+Mobile ship markers shift Z by +4ft and Y by -width/10; station markers shift
+Z by -4ft. Coordinates use the raw design frame in this adapter, like its mesh.
+If there are no explicit markers, mobile ships get three aft emitters at
+center X and X +/- width/3, Y = centerY - length/2 - width/10, Z = centerZ.
+Stations have no automatic fallback. CenterOffset (AuData13:0x180072450) derives
+the center from hull extents and pivot; raw design coordinates omit the pivot
+subtraction needed for a pivot-relative ship model. Shared stats now retain
+the XY hull center, excluding building-only rooms as the existing extents do.
+
+Recovered settings: maximum 35 particles, 1-second life, zero release interval,
+one particle per update. Mobile size = width*100, artificial studio velocity
+(0,-500,0) ft/s; station size = 5000 and velocity (0,0,-25). PsEngineTrail's
+1/900 segment scale survives unchanged (AuGlobal13 constructor 0x18007f490).
+Original Render is AuGlobal13:0x18007f760. Both versions use EngineStreak.png
+and particle.bmp, which are already packaged. The native no-empire color is
+HSV (240/360,.5,1), confirmed at AuData13:0x1801390f0 and reused via DgData.
+
+Design edits/New/Open rebuild emitters; leaving render mode clears particles.
+GL context cleanup releases the two private texture-cache entries and clears
+particle history. Far clipping includes the full one-second trail reach.
+Source/API/resource checks only: no build or runtime visual check was run.
+
 Studio lighting (follow-up recovery)
 ------------------------------------
 AuAtom13.dll 0x1801fb2b0 is shared by DaArena::SetupLights and

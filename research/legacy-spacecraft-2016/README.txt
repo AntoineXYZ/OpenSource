@@ -135,7 +135,9 @@ range, deck rule and large-door stack behavior. Doors stay open until closed
 in the designer. Character positions and door states are temporary and never
 alter saved .ship bytes. Parked vehicles remain stationary. Logical markers
 have no physical mesh in the original stationary renderer. Live console
-readouts, firing, vehicle driving and contrails need world state.
+readouts, firing and vehicle driving need world state. Contrails use the native
+PsEngineTrail renderer with recovered studio gating, placement and artificial
+velocity, including three fallback aft emitters and explicit station emitters.
 
 The yellow crosshair reuses the modern client's HudItems artwork and drawing
 layout. Looking at the ship acquires its name and selected subsystem's icon/HP

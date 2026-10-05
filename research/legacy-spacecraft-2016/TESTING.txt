@@ -220,6 +220,11 @@ Rendering, walkthrough and audio:
 - Turret domes: check top, bottom and all side orientations. Domes use dark
   glass outside and clear glass inside with beams retained; the surrounding
   side-wall corners keep their hull texture. Gun textures remain unchanged.
+- Contrails: a classified mobile ship without markers gets three blue aft
+  trails, even with drives off/empty fuel. Placed emitters replace defaults
+  (maximum ten); station emitters point down and stations have no defaults.
+  Check incomplete hull suppression, hull occlusion, distant trail tips,
+  floor-plan/render toggles, marker edits, New/Open and context recreation.
 - Compare fixed studio lighting from opposite sides; turning the camera must
   not rotate the lights. Check hull slopes, interior beams, rotating equipment,
   occupied consoles, self-lit screens and transparent surfaces.
@@ -276,6 +281,7 @@ EQUIPMENT-EDITING-EVIDENCE.txt, RESOURCE-EQUIPMENT-EVIDENCE.txt,
 STAIR-RENDERING-EVIDENCE.txt, WALKTHROUGH-RECOVERY.txt,
 WALKTHROUGH-COLLISION.txt, WALKTHROUGH-LADDER-INPUT.txt and DOOR-INTERACTION.txt. Asset identities are in
 equipment-assets.json. Whole-room hit tests/type reassignment need further
-original-client comparison. Live systems, firing/transport, vehicle driving and
-contrails need world state. Stats are not a complete manufacturing/path gate;
+original-client comparison. Live systems, firing/transport and vehicle driving
+need world state. Designer contrails use the recovered stationary preview path.
+Stats are not a complete manufacturing/path gate;
 restoring the removed city manufacturing infrastructure is a separate project.
