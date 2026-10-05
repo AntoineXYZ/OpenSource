@@ -90,6 +90,98 @@ double AuLegacyShip::LegacyTechBoost(int techLevel)
 	return float(std::max(0, std::min(255, techLevel))) * .05f + 1.f;
 }
 
+AuLegacyShip::TargetHealth AuLegacyShip::DesignTargetHealth(const Design& design,
+	const Stats& stats, const Performance& performance, quint32 detailId)
+{
+	TargetHealth target;
+	if(detailId)
+	{
+		target.system = 15;
+		quint16 console = 0, surgery = 0, turret = 0;
+		// DetailSystem counts consoles, surgery units and turrets separately in
+		// the design's stored order, not by numeric detail ID or console role.
+		for(const Detail& detail : design.details)
+		{
+			int system = 15;
+			quint16 which = 0;
+			const int type = detail.detailType;
+			switch(type)
+			{
+			case 1: case 4: case 6: case 7: case 12: case 13: case 15: case 17: case 19: case 73:
+				system = 0; which = console++; break;
+			case 10: system = 2; break;
+			case 11: system = 10; which = surgery++; break;
+			case 14: system = 7; break;
+			case 16: system = 8; break;
+			case 18: system = 9; break;
+			case 20: case 23:
+				for(const Room& room : design.rooms)
+					if(room.roomId == detail.roomId)
+					{
+						system = type == 20 ? 11 : 13;
+						which = type == 20 ? quint16(quint16(quint8(room.deck)) << 8) | room.roomSubtype
+							: room.roomSubtype;
+						break;
+					}
+				break;
+			case 21: case 22: case 33: case 34: case 35: case 36: case 37: case 38: case 39: case 40:
+				system = 12; which = turret++; break;
+			case 24: system = 14; break;
+			case 32: system = 6; break;
+			default:
+				if(type == 3 || type == 5 || type == 8 || type == 9 || (type >= 49 && type <= 64)
+					|| (type >= 77 && type <= 97) || (type >= 101 && type <= 140)) system = 4;
+				break;
+			}
+			if(detail.detailId == detailId)
+			{
+				target.system = system;
+				target.which = which;
+				break;
+			}
+		}
+	}
+	// AuAtom13:1801b85a0, SystemHits. HullHits subtracts separately rounded
+	// fuel/hold/vehicle structure hits from the total (AuData13:1800733a0).
+	float factor = float(design.header.armor + 1);
+	if(design.header.streamline) factor *= 1.1f;
+	factor *= float(LegacyTechBoost(performance.techLevelUsed));
+	const quint16 hull = ScalarModule(design, 2);
+	if(hull == 0x119) factor *= 1.5f;
+	else if(hull == 0x118) factor *= 1.25f;
+	const auto structureHits = [factor](quint64 volume) -> quint64 {
+		return volume ? std::max<quint64>(1, quint64(factor * float(volume) * .00390625f)) : 0;
+	};
+	switch(target.system)
+	{
+	case 0: case 10: case 12: target.hits = 1; break;
+	case 1: target.hits = structureHits(stats.roomVolumes[9]); break;
+	case 2: target.hits = stats.maneuverUnits; break;
+	case 3: target.hits = structureHits(stats.roomVolumes[5]); break;
+	case 4:
+	{
+		const quint64 total = structureHits(stats.hullVolume);
+		const quint64 storage = structureHits(stats.roomVolumes[9]) + structureHits(stats.roomVolumes[5])
+			+ structureHits(stats.roomVolumes[13]);
+		target.hits = total > storage ? total - storage : 0;
+		break;
+	}
+	case 5: target.hits = structureHits(stats.roomVolumes[13]); break;
+	case 6: target.hits = stats.lifeSupportUnits; break;
+	case 7: target.hits = stats.powerPlantUnits; break;
+	case 8: target.hits = stats.sensorUnits; break;
+	case 9: target.hits = stats.shieldUnits; break;
+	case 11: target.hits = stats.transporterRooms.value(target.which); break;
+	case 13: target.hits = stats.weaponBays.value(quint8(target.which)).units; break;
+	case 14: target.hits = stats.ftlUnits; break;
+	default: break;
+	}
+	// Authoring designs have no damage state. Keep actual subsystem capacity
+	// rather than inventing damage or displaying total ship HP for every target.
+	target.remaining = target.hits;
+	return target;
+}
+
 AuLegacyShip::Performance AuLegacyShip::CalculatePerformance(const Design& design, const Stats& stats, int techLevel)
 {
 	Performance result;

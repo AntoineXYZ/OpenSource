@@ -60,8 +60,10 @@ struct Triangle
 	Box bounds;
 	quint32 doorId;
 	quint32 consoleId = 0;
+	quint32 detailId = 0;
 	int obstacle;
 	bool blocksMovement;
+	bool sightVisible = true;
 	Triangle() : doorId(0), obstacle(-1), blocksMovement(true) {}
 	Triangle(const QVector3D& p, const QVector3D& q, const QVector3D& r, quint32 door, int cell = -1)
 		: a(p), b(q), c(r), normal(QVector3D::crossProduct(q - p, r - p).normalized()),
@@ -482,6 +484,22 @@ void WalkWorld::SetMesh(const Mesh& mesh, const Design& design)
 				for(int z = Cell(volume.bottom - 3.25f); z <= Cell(volume.top + 20); ++z)
 					world.roomCells[CellKey(x, y, z)].append(index);
 	}
+	QSet<quint32> sightDetails;
+	for(const Detail& detail : design.details)
+	{
+		// DnDetail::SightType, AuData13:180161a00. Furnishings/parking markers
+		// with no sight type must not mask the subsystem behind them.
+		switch(detail.detailType)
+		{
+		case 1: case 4: case 6: case 7: case 10: case 11: case 12: case 13:
+		case 14: case 15: case 16: case 17: case 18: case 19: case 20: case 21:
+		case 22: case 23: case 24: case 32: case 33: case 34: case 35: case 36:
+		case 37: case 38: case 39: case 40: case 73: case 74: case 75: case 143:
+			sightDetails.insert(detail.detailId);
+			break;
+		default: break;
+		}
+	}
 	for(const Batch& batch : mesh.batches)
 	{
 		const bool ladder = batch.material == Material::Ladder;
@@ -497,6 +515,9 @@ void WalkWorld::SetMesh(const Mesh& mesh, const Design& design)
 			if(!Finite(triangle.normal) || triangle.normal.isNull()) continue;
 			triangle.blocksMovement = solid;
 			triangle.consoleId = batch.consoleId;
+			triangle.detailId = i / 3 < batch.triangleDetails.size()
+				? batch.triangleDetails.at(i / 3) : (batch.detailId ? batch.detailId : batch.doorId);
+			triangle.sightVisible = !batch.equipment || batch.doorId || sightDetails.contains(triangle.detailId);
 			world.AddTriangle(triangle);
 		}
 	}
@@ -793,6 +814,7 @@ bool WalkWorld::Raycast(const QVector3D& origin, const QVector3D& direction,
 	const auto intersect = [&](const Triangle& triangle, const QVector3D& from, const QVector3D& rayDirection, bool swivel)
 	{
 		if(triangle.obstacle >= 0) return;
+		if(!includeOpenDoors && !triangle.sightVisible) return;
 		if(!includeOpenDoors && triangle.doorId && m_Impl->openDoors.contains(triangle.doorId)) return;
 		const float denominator = QVector3D::dotProduct(triangle.normal, rayDirection);
 		if(std::abs(denominator) < 1e-8f) return;
@@ -808,6 +830,7 @@ bool WalkWorld::Raycast(const QVector3D& origin, const QVector3D& direction,
 			hit.normal = m_Impl->consoleTransform.mapVector(hit.normal);
 		}
 		hit.distance = distance; hit.doorId = triangle.doorId;
+		hit.detailId = triangle.detailId;
 	};
 	for(int index : m_Impl->Candidates(bounds))
 	{

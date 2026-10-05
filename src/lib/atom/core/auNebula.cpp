@@ -144,16 +144,25 @@ int auNebula::AppendGalacticStarFieldSlice(const DaGalaxy& galaxy, const AuPoint
 
 void auNebula::CreateSkyBox(AuAtomRenderInfo& ari, const AuPoint& pos, unsigned int paneSize, bool mipMap)
 {
-	BuildSkyBox(ari, pos, paneSize, mipMap, -1);
+	BuildSkyBox(*ari.re, pos, paneSize, mipMap, -1);
+	ari.ResetViewport();
 }
 
 bool auNebula::CreateSkyBoxFace(AuAtomRenderInfo& ari, const AuPoint& pos, unsigned int paneSize, bool mipMap, int face)
 {
 	if(face < 0 || face > 5 || (face > 0 && !m_img)) return false;
-	return BuildSkyBox(ari, pos, paneSize, mipMap, face);
+	const bool success = BuildSkyBox(*ari.re, pos, paneSize, mipMap, face);
+	ari.ResetViewport();
+	return success;
 }
 
-bool auNebula::BuildSkyBox(AuAtomRenderInfo& ari, const AuPoint& pos, unsigned int paneSize, bool mipMap, int face)
+bool auNebula::CreateSkyBoxFace(AuGLEffects& re, const AuPoint& pos, unsigned int paneSize, bool mipMap, int face)
+{
+	if(face < 0 || face > 5 || (face > 0 && !m_img)) return false;
+	return BuildSkyBox(re, pos, paneSize, mipMap, face);
+}
+
+bool auNebula::BuildSkyBox(AuGLEffects& re, const AuPoint& pos, unsigned int paneSize, bool mipMap, int face)
 {
 	//qDebug() << "auNebula::CreateSkyBox pos" << pos << "size" << paneSize << "mip" << mipMap;
 	if(face == 0)
@@ -168,59 +177,59 @@ bool auNebula::BuildSkyBox(AuAtomRenderInfo& ari, const AuPoint& pos, unsigned i
 	if(face <= 0) CreateNebula();
 	//qDebug() << "auNebula::CreateSkyBox nebula created";
 
-	GLuint glowTexture = ari.re->CreateTextureFromBitmap(STATIC_TEXTURE_ID, "StarGlow", ":data/smoketransparent.png",
+	GLuint glowTexture = re.CreateTextureFromBitmap(STATIC_TEXTURE_ID, "StarGlow", ":data/smoketransparent.png",
 			GL_LINEAR, GL_LINEAR, false, 2);
-	GLuint sunGlowTexture = ari.re->CreateTextureFromBitmap(STATIC_TEXTURE_ID, "StarSpriteDot", ":data/StarSpriteDot.png",
+	GLuint sunGlowTexture = re.CreateTextureFromBitmap(STATIC_TEXTURE_ID, "StarSpriteDot", ":data/StarSpriteDot.png",
 			GL_LINEAR, GL_LINEAR, false, 2);
 
 	// Get current fbo binding. If it is not restored properly, things in the scene blink.
 	GLint oldfbo;
-	ari.re->glGetIntegerv(GL_FRAMEBUFFER_BINDING, &oldfbo);
+	re.glGetIntegerv(GL_FRAMEBUFFER_BINDING, &oldfbo);
 
 	// Setup our FBO
 	GLuint fbo;
-	ari.re->glGenFramebuffers(1, &fbo);
+	re.glGenFramebuffers(1, &fbo);
 	if(!fbo)
 		return false;
-	ari.re->glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+	re.glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
 
 	// Now setup the environment map texture
 	if(face <= 0)
 	{
-		if(m_img) ari.re->glDeleteTextures(1, &m_img);
-		ari.re->glGenTextures(1, &m_img);
-		ari.re->glBindTexture(GL_TEXTURE_CUBE_MAP, m_img);
-		ari.re->glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		ari.re->glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		ari.re->glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-		ari.re->glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		if(m_img) re.glDeleteTextures(1, &m_img);
+		re.glGenTextures(1, &m_img);
+		re.glBindTexture(GL_TEXTURE_CUBE_MAP, m_img);
+		re.glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		re.glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		re.glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+		re.glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		if(mipMap)
-			ari.re->glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+			re.glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 		else
-			ari.re->glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		ari.re->glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
-		ari.re->glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
-		ari.re->glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
-		ari.re->glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
-		ari.re->glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
-		ari.re->glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
+			re.glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		re.glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
+		re.glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
+		re.glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
+		re.glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
+		re.glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
+		re.glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
 	}
 	else
-		ari.re->glBindTexture(GL_TEXTURE_CUBE_MAP, m_img);
+		re.glBindTexture(GL_TEXTURE_CUBE_MAP, m_img);
 
 	// Attach it to the FBO so we can render to it
-	ari.re->glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X+0, m_img, 0);
-	ari.re->glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_CUBE_MAP_POSITIVE_X+1, m_img, 0);
-	ari.re->glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_CUBE_MAP_POSITIVE_X+2, m_img, 0);
-	ari.re->glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_CUBE_MAP_POSITIVE_X+3, m_img, 0);
-	ari.re->glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_CUBE_MAP_POSITIVE_X+4, m_img, 0);
-	ari.re->glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT5, GL_TEXTURE_CUBE_MAP_POSITIVE_X+5, m_img, 0);
+	re.glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X+0, m_img, 0);
+	re.glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_CUBE_MAP_POSITIVE_X+1, m_img, 0);
+	re.glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_CUBE_MAP_POSITIVE_X+2, m_img, 0);
+	re.glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_CUBE_MAP_POSITIVE_X+3, m_img, 0);
+	re.glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_CUBE_MAP_POSITIVE_X+4, m_img, 0);
+	re.glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT5, GL_TEXTURE_CUBE_MAP_POSITIVE_X+5, m_img, 0);
 
-	GLenum status = ari.re->glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER);
+	GLenum status = re.glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER);
 	if(status != GL_FRAMEBUFFER_COMPLETE)
 	{
-		ari.re->glBindFramebuffer(GL_DRAW_FRAMEBUFFER, oldfbo);
-		ari.re->glDeleteFramebuffers(1, &fbo);
+		re.glBindFramebuffer(GL_DRAW_FRAMEBUFFER, oldfbo);
+		re.glDeleteFramebuffers(1, &fbo);
 		return false;
 	}
 
@@ -251,9 +260,9 @@ bool auNebula::BuildSkyBox(AuAtomRenderInfo& ari, const AuPoint& pos, unsigned i
 	}
 
 	// Enable some blending and other attributes before drawing
-	ari.re->glDepthMask(GL_FALSE);
-	ari.re->glEnable(GL_BLEND);
-	ari.re->glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+	re.glDepthMask(GL_FALSE);
+	re.glEnable(GL_BLEND);
+	re.glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 
 	// Calculate position to translate nebula based on its center and player's position
 	// Nebula is in Sector coordinates and player's position is Sector Coordinates
@@ -274,13 +283,13 @@ bool auNebula::BuildSkyBox(AuAtomRenderInfo& ari, const AuPoint& pos, unsigned i
 	AuMatrix4x4 projection;
 	projection.Perspective(90*DEG2RAD, 1, .1, 100000);
 
-	ari.re->glViewport(0,0, paneSize,paneSize);
+	re.glViewport(0,0, paneSize,paneSize);
 	for(int i = face < 0 ? 0 : face; i < (face < 0 ? 6 : face + 1); ++i)
 	{
 		// Then render as normal
-		ari.re->glDrawBuffer(colorAttachments[i]);
-		ari.re->glClearColor(0,0,0,1);
-		ari.re->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	// Clear Screen And Depth Buffer
+		re.glDrawBuffer(colorAttachments[i]);
+		re.glClearColor(0,0,0,1);
+		re.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	// Clear Screen And Depth Buffer
 
 		// Set up the mapping of 3-space to screen space.
 		AuMatrix4x4 model;
@@ -318,16 +327,16 @@ bool auNebula::BuildSkyBox(AuAtomRenderInfo& ari, const AuPoint& pos, unsigned i
 		// taken into account before clipping.  So that means our larger point sprites
 		// must be drawn as quads to support ATI cards.
 		float starDotSize = paneSize / 2048.f;	// This is used more as a scaling factor than a size.
-		RenderStars(starDotSize, *ari.re, projection, model, sunGlowTexture, pos);
+		RenderStars(starDotSize, re, projection, model, sunGlowTexture, pos);
 
 		// Now draw galaxy cloud as quads
 		if(!m_vStars.isEmpty())
 		{
-			ari.re->GLSL().GalaxyCloudShader().Select();
-			ari.re->GLSL().GalaxyCloudShader().SetProjection(projection);
-			ari.re->GLSL().GalaxyCloudShader().SetModelView(model);
-			ari.re->GLSL().GalaxyCloudShader().SetTexture(glowTexture);
-			ari.re->GLSL().GalaxyCloudShader().SetColor(m_GalaxyColor);
+			re.GLSL().GalaxyCloudShader().Select();
+			re.GLSL().GalaxyCloudShader().SetProjection(projection);
+			re.GLSL().GalaxyCloudShader().SetModelView(model);
+			re.GLSL().GalaxyCloudShader().SetTexture(glowTexture);
+			re.GLSL().GalaxyCloudShader().SetColor(m_GalaxyColor);
 
 			AuPoint vRight(model[0], model[4], model[8]);
 			AuPoint vUp(model[1], model[5], model[9]);
@@ -413,21 +422,21 @@ bool auNebula::BuildSkyBox(AuAtomRenderInfo& ari, const AuPoint& pos, unsigned i
 			}
 
 			AuGLVAO vao;
-			vao.CreateGL(*ari.re, vertices, 2);
+			vao.CreateGL(re, vertices, 2);
 
 			vao.SelectGL();
 
 			// bind buffer for vertices and copy data into buffer.
-			ari.re->glBindBuffer(GL_ARRAY_BUFFER, vao.Buffer(0));
-			ari.re->glBufferData(GL_ARRAY_BUFFER, vertices*3*sizeof(GLfloat), starPos, GL_STREAM_DRAW);
-			ari.re->glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);	// Describe the data in the buffer.
+			re.glBindBuffer(GL_ARRAY_BUFFER, vao.Buffer(0));
+			re.glBufferData(GL_ARRAY_BUFFER, vertices*3*sizeof(GLfloat), starPos, GL_STREAM_DRAW);
+			re.glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);	// Describe the data in the buffer.
 
 			// bind buffer for tex coords and copy data into buffer.
-			ari.re->glBindBuffer(GL_ARRAY_BUFFER, vao.Buffer(1));
-			ari.re->glBufferData(GL_ARRAY_BUFFER, vertices*2*sizeof(GLfloat), texCoord, GL_STREAM_DRAW);
-			ari.re->glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0);	// Describe the data in the buffer.
+			re.glBindBuffer(GL_ARRAY_BUFFER, vao.Buffer(1));
+			re.glBufferData(GL_ARRAY_BUFFER, vertices*2*sizeof(GLfloat), texCoord, GL_STREAM_DRAW);
+			re.glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0);	// Describe the data in the buffer.
 
-			ari.re->glBindBuffer(GL_ARRAY_BUFFER, 0);
+			re.glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 			vao.DrawGL(GL_TRIANGLES);
 			vao.DeselectGL();
@@ -438,43 +447,41 @@ bool auNebula::BuildSkyBox(AuAtomRenderInfo& ari, const AuPoint& pos, unsigned i
 			delete [] starPos;
 			delete [] texCoord;
 
-			ari.re->GLSL().GalaxyCloudShader().Deselect();
+			re.GLSL().GalaxyCloudShader().Deselect();
 		}
 
 		// Draw the nebula.
 		if(m_iParticles > 0)
 		{
-			GLuint nebTex = ari.re->CreateTextureFromBitmap(STATIC_TEXTURE_ID, "Ring", ":data/txAsteroids.png");
+			GLuint nebTex = re.CreateTextureFromBitmap(STATIC_TEXTURE_ID, "Ring", ":data/txAsteroids.png");
 
 			model.Translate(trans);
-			RenderNebula(distance, *ari.re, projection, model, nebTex);
+			RenderNebula(distance, re, projection, model, nebTex);
 		}
 	}
 
-	ari.ResetViewport();
-
 	// Disable blending and other attributes now that drawing is done
-	ari.re->glDisable(GL_BLEND);
-	ari.re->glDepthMask(GL_TRUE);
+	re.glDisable(GL_BLEND);
+	re.glDepthMask(GL_TRUE);
 
 	if(mipMap && (face < 0 || face == 5))
 	{
-		ari.re->glActiveTexture(GL_TEXTURE0);
-		ari.re->glBindTexture(GL_TEXTURE_CUBE_MAP, m_img);
-		ari.re->glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+		re.glActiveTexture(GL_TEXTURE0);
+		re.glBindTexture(GL_TEXTURE_CUBE_MAP, m_img);
+		re.glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 	}
 
 	// Cleanup frame buffer.
-	ari.re->glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X+0, 0, 0);
-	ari.re->glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_CUBE_MAP_POSITIVE_X+1, 0, 0);
-	ari.re->glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_CUBE_MAP_POSITIVE_X+2, 0, 0);
-	ari.re->glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_CUBE_MAP_POSITIVE_X+3, 0, 0);
-	ari.re->glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_CUBE_MAP_POSITIVE_X+4, 0, 0);
-	ari.re->glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT5, GL_TEXTURE_CUBE_MAP_POSITIVE_X+5, 0, 0);
+	re.glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X+0, 0, 0);
+	re.glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_CUBE_MAP_POSITIVE_X+1, 0, 0);
+	re.glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_CUBE_MAP_POSITIVE_X+2, 0, 0);
+	re.glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_CUBE_MAP_POSITIVE_X+3, 0, 0);
+	re.glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_CUBE_MAP_POSITIVE_X+4, 0, 0);
+	re.glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT5, GL_TEXTURE_CUBE_MAP_POSITIVE_X+5, 0, 0);
 
-	ari.re->glBindFramebuffer(GL_DRAW_FRAMEBUFFER, oldfbo);	// Unbind frame buffer
+	re.glBindFramebuffer(GL_DRAW_FRAMEBUFFER, oldfbo);	// Unbind frame buffer
 
-	ari.re->glDeleteFramebuffers(1, &fbo);
+	re.glDeleteFramebuffers(1, &fbo);
 	//qDebug() << "auNebula::CreateSkyBox done";
 	return true;
 }

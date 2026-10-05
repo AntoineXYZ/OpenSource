@@ -385,6 +385,7 @@ void AppendResourceEquipment(const Design& design, Mesh& mesh)
 			continue;
 		const QPointF point = DecodePoint(detail.packedXY);
 		const QVector3D location(float(point.x()), float(point.y()), float(detail.deck * DeckHeight));
+		const int firstDetailBatch = mesh.batches.size();
 		if (detail.detailType >= 57 && detail.detailType <= 64)
 		{
 			const int commodity = detail.commodityIdNormalized ? detail.commodityIdNormalized : detail.commodityIdRaw;
@@ -424,6 +425,8 @@ void AppendResourceEquipment(const Design& design, Mesh& mesh)
 				mesh.batches[i].rotationPivot = location;
 			}
 		}
+		for(int i = firstDetailBatch; i < mesh.batches.size(); ++i)
+			mesh.batches[i].detailId = detail.detailId;
 	}
 }
 }

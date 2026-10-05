@@ -116,6 +116,34 @@ int main(int argc, char** argv)
 	const Performance warpAtMinimum = CalculatePerformance(warp, ftlStats, 0);
 	assert(warpAtMinimum.techLevelUsed == 23 && warpAtMinimum.maxWarpFactor == 1);
 
+	Design targets;
+	targets.header.scalarSlots = DefaultModuleSlots();
+	targets.rooms << Rectangle(1, 2) << Rectangle(2, 20, -1, 6)
+		<< Rectangle(3, 20, 0, 6) << Rectangle(4, 21, 0, 4) << Rectangle(5, 21, 1, 4);
+	targets.details << Equipment(15, 1) << Equipment(17, 1) << Equipment(16, 1)
+		<< Equipment(20, 2) << Equipment(20, 3) << Equipment(20, 3)
+		<< Equipment(23, 4) << Equipment(23, 5) << Equipment(11, 1)
+		<< Equipment(11, 1) << Equipment(21, 1) << Equipment(40, 1) << Equipment(3, 1);
+	for(int i = 0; i < targets.details.size(); ++i) targets.details[i].detailId = 100 - i;
+	const Stats targetStats = CalculateStats(targets);
+	const Performance targetPerformance = CalculatePerformance(targets, targetStats, 0);
+	const auto target = [&](quint32 id) { return DesignTargetHealth(targets, targetStats, targetPerformance, id); };
+	assert(target(100).system == 0 && target(100).which == 0 && target(100).hits == 1);
+	assert(target(99).system == 0 && target(99).which == 1);
+	assert(target(98).system == 8 && target(98).hits == 2);
+	assert(target(97).system == 11 && target(97).which == 0xff06 && target(97).hits == 1);
+	assert(target(96).which == 6 && target(96).hits == 2 && target(95).remaining == 2);
+	assert(target(94).system == 13 && target(94).which == 4 && target(94).hits == 2);
+	assert(target(93).system == 13 && target(93).which == 4 && target(93).remaining == 2);
+	assert(target(92).system == 10 && target(92).which == 0 && target(92).hits == 1);
+	assert(target(91).which == 1 && target(91).hits == 1);
+	assert(target(90).system == 12 && target(90).which == 0);
+	assert(target(89).system == 12 && target(89).which == 1);
+	assert(target(88).system == 4 && target(0).system == 4);
+	assert(target(999).system == 15 && target(999).hits == 0);
+	assert(DesignTargetHealth(cargo, cargoStats, tl1, 0).hits == 0);
+	assert(targets.details.first().detailId == 100 && targets.header.hullVolume == 0);
+
 	// The selected TL changes performance but not the underlying design records.
 	assert(cargo.header.minimumTechLevel == 0 && cargo.header.hullVolume == 0);
 	assert(cargo.rooms.size() == 2 && cargo.details.isEmpty());

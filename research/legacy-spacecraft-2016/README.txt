@@ -67,7 +67,9 @@ momentum; Shift increases acceleration, releasing input coasts with drag,
 and Space brakes. E sits at a nearby ordinary console/captain chair or leaves
 the occupied console; otherwise it engages/releases a nearby ladder.
 Attachment centers the avatar and faces the rungs once; free look
-continues while W/S or C/Z climbs vertically along the ladder. E or Space releases
+continues while W/S climbs according to head pitch (S reverses W), or C/Z climbs
+directly. Shift does not boost ladder speed; see WALKTHROUGH-LADDER-INPUT.txt.
+E or Space releases
 the ladder. Home finds a clear standing position on the selected deck unless rebound.
 The configured avatar/hand input toggle (default Return/right-click) and
 temporary hand mode (default Ctrl)
@@ -136,11 +138,14 @@ have no physical mesh in the original stationary renderer. Live console
 readouts, firing, vehicle driving and contrails need world state.
 
 The yellow crosshair reuses the modern client's HudItems artwork and drawing
-layout. Looking at the ship acquires the original top hull-health bar and ship
-name on a 200-ms lock cycle, with its original distance gate. The authoring
-ship is undamaged; no invented numeric HP total is displayed. Visual sight
-rays are separate from movement obstacles, so passable equipment is visible
-to targeting while invisible obstacle-cell boxes are not.
+layout. Looking at the ship acquires its name and selected subsystem's icon/HP
+bar on a 200-ms lock cycle, with the original detail-change rule and distance
+gate. Consoles use command/control health; machinery, pads and turrets use
+their recovered system/group. The authoring ship is undamaged; the bar shows
+remaining/maximum hits without numeric HP text. Sight eligibility follows the
+original detail types; hand interaction and movement obstacles remain separate.
+Intersections still use local mesh geometry rather than original sight proxies.
+See WALKTHROUGH-SUBSYSTEM-TARGETS.txt for evidence and manual checks.
 
 Door/hatch sound families and metal/studio-floor footstep loops use the game's
 shared OpenAL context, sound archive loader and user sound settings. Machinery ambience follows

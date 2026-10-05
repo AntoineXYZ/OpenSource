@@ -195,6 +195,9 @@ from movement path cells. They intersect per-deck room boundaries, skip
 open doors/openings, and inspect equipment using SightType/SightRadius
 approximations before returning the detail ID. A mesh ray is a local
 approximation; invisible movement obstacle boxes must not become HUD targets.
+Detail IDs now reach the HUD with the original system/which mapping and
+subsystem HP capacities. See WALKTHROUGH-SUBSYSTEM-TARGETS.txt for exact mappings,
+sight eligibility, regression coverage and remaining intersection differences.
 
 The shared game resource :/data/HudItems.png supplies the local HUD helper.
 Original AuAtomRes13.dll resource registration RVA 0x1030 contains a 1024x64

@@ -50,6 +50,7 @@ public:
 
 	void DetailTransform(const Detail& detail)
 	{
+		detailId = detail.detailId;
 		const QPointF xy = DecodePoint(detail.packedXY);
 		origin = QVector3D(float(xy.x()), float(xy.y()), detail.deck * float(DeckHeight));
 		const float angle = float(DetailRotationStep(detail.detailType) * Pi / 4);
@@ -98,6 +99,7 @@ public:
 		const QVector3D normal = Rotate(outward).normalized();
 		if(normal.isNull()) return;
 		const Vertex vertices[] = {{a, normal, ua}, {b, normal, ub}, {c, normal, uc}};
+		mesh.batches[batch].triangleDetails.append(detailId);
 		for(const Vertex& v : vertices)
 		{
 			mesh.batches[batch].vertices.append(v);
@@ -200,6 +202,7 @@ public:
 	Mesh& mesh;
 	QHash<quint64, int> batches;
 	QVector3D origin;
+	quint32 detailId = 0;
 	float cosine = 1, sine = 0;
 	int deck = 0, vertexCount = 0;
 	bool bounded = false, truncated = false;

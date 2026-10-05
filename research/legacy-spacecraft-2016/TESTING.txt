@@ -212,6 +212,8 @@ Rendering, walkthrough and audio:
   markers have plan icons without invented preview models.
 - WASD/mouse, Shift run, Q forward, Space jump, C/Z flight/wells, E ladder entry/
   exit. Nearby ladders alone must not suspend gravity; include deck-29 hatches.
+  On ladders W follows head pitch (up/down), S reverses it; level W adds no
+  climbing force. C/Z remain pitch-independent. Shift does not boost climbing.
   Ship interiors restore gravity; studio gravity lands feet on the selected
   plane. Check walls/slopes/corners/stairs and open hatches for tunnelling.
   Consoles/berths/chairs/vehicles/turret guns are passable; machinery/tables block.
@@ -219,6 +221,9 @@ Rendering, walkthrough and audio:
   dialogs, floating panels and application switches clear held input and avoid
   trapped cursors/stale mouse deltas. Ctrl+S/F6 still work. Crosshair appears on
   empty designs; hull targeting adds name/icon/health bar and decays on look-away.
+  Aim at consoles, machinery, pads and turrets: subsystem icons/HP must switch;
+  sensor/shield consoles show command/control. Test shared batches, occlusion,
+  console swivel and deletion refresh. See WALKTHROUGH-SUBSYSTEM-TARGETS.txt.
 - Automatic doors/hatches animate closed/half/open; idle floor support must not
   open a hatch. Ctrl+P/C within six feet works on current/above-deck doors; hand
   clicks toggle nearby panels. Hull/large doors stay manual; open doors persist.
@@ -235,7 +240,7 @@ PANEL-RECOVERY.txt, SHIP-STATS-EVIDENCE.txt, ship-stats-report-evidence.txt,
 SURFACE-RECOVERY-NOTES.txt, RENDERING-MATERIAL-EVIDENCE.txt,
 EQUIPMENT-EDITING-EVIDENCE.txt, RESOURCE-EQUIPMENT-EVIDENCE.txt,
 STAIR-RENDERING-EVIDENCE.txt, WALKTHROUGH-RECOVERY.txt,
-WALKTHROUGH-COLLISION.txt and DOOR-INTERACTION.txt. Asset identities are in
+WALKTHROUGH-COLLISION.txt, WALKTHROUGH-LADDER-INPUT.txt and DOOR-INTERACTION.txt. Asset identities are in
 equipment-assets.json. Whole-room hit tests/type reassignment need further
 original-client comparison. Live systems, firing/transport, vehicle driving and
 contrails need world state. Stats are not a complete manufacturing/path gate;

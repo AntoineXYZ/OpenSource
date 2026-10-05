@@ -4,6 +4,7 @@
 #include "aulegacyshipequipment.h"
 #include "aulegacyshipwalk.h"
 #include "aulegacyshiphud.h"
+#include "aulegacyshipperformance.h"
 #include "aulegacyshipsound.h"
 #include "aulegacyshipatlas.h"
 #include "aulegacyshipeffects.h"
@@ -34,12 +35,14 @@
 #include <QHideEvent>
 #include <QShowEvent>
 #include <QTimer>
+#include <QThread>
 #include <QKeyEvent>
 #include <QMap>
 #include <QMatrix4x4>
 #include <QMouseEvent>
 #include <QOpenGLBuffer>
 #include <QOpenGLContext>
+#include <QOffscreenSurface>
 #include <QOpenGLFunctions>
 #include <QOpenGLShaderProgram>
 #include <QOpenGLTexture>
@@ -52,17 +55,130 @@
 #include <QVector3D>
 #include <QWheelEvent>
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <cstddef>
 #include <functional>
 #include <limits>
 #include <memory>
+#include <mutex>
 
 namespace
 {
 const float Pi = 3.14159265358979323846f;
 using namespace AuLegacyShip::Rendering;
 const qint64 DoorTickMilliseconds = qint64(DoorAnimationTickSeconds * 1000);
+
+struct SkyJob
+{
+	std::atomic<bool> cancelled{false};
+	std::mutex mutex;
+	GLuint texture = 0;
+	bool done = false;
+	QString error;
+
+	void Cancel(AuGLEffects& re)
+	{
+		std::lock_guard<std::mutex> lock(mutex);
+		cancelled = true;
+		if(texture) re.glDeleteTextures(1, &texture);
+		texture = 0;
+	}
+};
+
+// Only the completed texture crosses contexts. VAOs, shader uniforms and
+// galaxy data remain exclusively on the worker, which never accesses a widget.
+class SkyThread : public QThread
+{
+public:
+	std::shared_ptr<SkyJob> job;
+	QOpenGLContext* glContext;
+	QOffscreenSurface* surface;
+	unsigned int paneSize;
+	bool mipMap;
+
+	SkyThread(const std::shared_ptr<SkyJob>& work, QOpenGLContext* context,
+		QOffscreenSurface* target, unsigned int size, bool mip)
+		: job(work), glContext(context), surface(target), paneSize(size), mipMap(mip)
+	{
+		glContext->moveToThread(this);
+		connect(this, &QThread::finished, surface, &QObject::deleteLater);
+		connect(this, &QThread::finished, this, &QObject::deleteLater);
+	}
+
+	void run() override
+	{
+		QString error;
+		if(!job->cancelled && glContext->makeCurrent(surface))
+		{
+			{
+				AuGLEffects re;
+				if(re.initializeOpenGLFunctions())
+				{
+					if(re.GLSL().InitializeSkyBox(re)) Generate(re, error);
+					else error = QStringLiteral("Unable to initialize preview skybox shaders.");
+					re.GLSL().DeleteSkyBox();
+				}
+				else error = QStringLiteral("Unable to initialize preview skybox OpenGL functions.");
+			}
+			glContext->doneCurrent();
+		}
+		else if(!job->cancelled) error = QStringLiteral("Unable to activate the preview skybox context.");
+		delete glContext;
+		std::lock_guard<std::mutex> lock(job->mutex);
+		job->error = error;
+		job->done = true;
+	}
+
+	void Generate(AuGLEffects& re, QString& error)
+	{
+		DaGalaxy galaxy(ShoresOfHazeron);
+		AuDice dice;
+		dice.Seed(2016);
+		AuPoint sector;
+		for(int attempt = 0; attempt < 128; ++attempt)
+		{
+			const int radius = dice.Roll(1, int(galaxy.Radius() / 10));
+			sector = AuPoint(radius, 0).RotateZ(dice.RandomMinMax(0, 2 * Pi));
+			sector.Round(1);
+			if(galaxy.StarDensity(sector * 10) >= .2) break;
+		}
+		auNebula sky(0, 0, -2.9924924f, .38151205f, -1.8401746f, -1.8524430f,
+			30, 0, false, AuPoint(), 2016, 0, galaxy.Color());
+		const int radius = int(galaxy.Radius() / 10);
+		for(int x = -radius; x <= radius && !job->cancelled;)
+			x = sky.AppendGalacticStarFieldSlice(galaxy, sector, dice, x);
+		re.glDisable(GL_DEPTH_TEST);
+		re.glDisable(GL_CULL_FACE);
+		re.glDisable(GL_SCISSOR_TEST);
+		re.glActiveTexture(GL_TEXTURE0);
+		int face = 0;
+		for(; face < 6 && !job->cancelled; ++face)
+		{
+			if(!sky.CreateSkyBoxFace(re, sector, paneSize, mipMap, face))
+			{
+				error = QStringLiteral("Unable to create the spacecraft preview skybox.");
+				break;
+			}
+		}
+		if(face == 6 && !job->cancelled)
+		{
+			// Finish here before publishing; painting never waits for the worker.
+			re.glFinish();
+			std::lock_guard<std::mutex> lock(job->mutex);
+			if(!job->cancelled)
+			{
+				job->texture = sky.m_img;
+				sky.m_img = 0;
+			}
+		}
+		sky.DeleteDeviceObjects(re);
+		// AuGLTexture's destructor intentionally does not delete GL names.
+		// These caches belong only to this worker, even in the shared group.
+		if(auto* texture = re.FindTexture(QStringLiteral("StarGlow"))) texture->Delete(re);
+		if(auto* texture = re.FindTexture(QStringLiteral("StarSpriteDot"))) texture->Delete(re);
+	}
+};
 
 struct TextureRegion
 {
@@ -232,14 +348,10 @@ public:
 	QHash<quint32, int> consoleScreens;
 	SoundSession sound;
 	std::unique_ptr<auNebula> sky;
-	std::unique_ptr<DaGalaxy> skyGalaxy;
-	AuDice skyDice;
-	int skyNextX = 0;
-	int skyFace = 0;
+	std::shared_ptr<SkyJob> skyJob;
 	QString skyError;
 	unsigned int skyPaneSize = 0;
 	bool skyMipMap = false;
-	AuPoint skyPosition;
 	QVector<DoorDefinition> doors;
 	QHash<quint32, DoorAnimation> doorStates;
 	std::unordered_map<Qt::Key, AuElapsedTimer, AuKey_Hash> keys;
@@ -283,6 +395,10 @@ public:
 	qint64 lastTargetTick = 0;
 	bool hasTarget = false;
 	int targetLevel = 0;
+	quint32 targetDetail = 0;
+	AuLegacyShip::Stats designStats;
+	AuLegacyShip::Performance performance;
+	AuLegacyShip::TargetHealth targetHealth;
 	QVector3D targetPoint;
 	QString interaction;
 	QString reportedTips;
@@ -809,6 +925,8 @@ void AuLegacyShipRender::SetDesign(const AuLegacyShip::Design& design)
 	const QVector<DoorDefinition> previousDoors = m_Impl->doors;
 	const QHash<quint32, DoorAnimation> previousStates = m_Impl->doorStates;
 	m_Impl->design = design;
+	m_Impl->designStats = AuLegacyShip::CalculateStats(design);
+	m_Impl->performance = AuLegacyShip::CalculatePerformance(design, m_Impl->designStats, design.header.minimumTechLevel);
 	m_Impl->sound.SetDesign(design);
 	m_Impl->haveDesign = true;
 	m_Impl->mesh = AuLegacyShip::Rendering::BuildMesh(design);
@@ -827,6 +945,8 @@ void AuLegacyShipRender::SetDesign(const AuLegacyShip::Design& design)
 	m_Impl->world.SetMesh(m_Impl->mesh, design);
 	m_Impl->hasTarget = false;
 	m_Impl->targetLevel = 0;
+	m_Impl->targetDetail = 0;
+	m_Impl->targetHealth = AuLegacyShip::TargetHealth();
 	m_Impl->world.SetDesignPlane(float(m_Impl->deck * AuLegacyShip::DeckHeight));
 	m_Impl->doors = DoorDefinitions(design, m_Impl->mesh);
 	m_Impl->doorStates.clear();
@@ -1051,13 +1171,9 @@ void AuLegacyShipRender::Tick()
 					&& id != DaPerson::CI_TurnLeft && id != DaPerson::CI_TurnRight) continue;
 				if(m_Impl->character.ladderEngaged && (id == DaPerson::CI_Crouch || id == DaPerson::CI_ProneStandToggle
 					|| id == DaPerson::CI_Stand)) continue;
-				if(m_Impl->character.ladderEngaged && (id == DaPerson::CI_MoveForward || id == DaPerson::CI_MoveBackward
-					|| id == DaPerson::CI_MoveForwardContinuously))
-				{
-					nativeControls.append(DiControlInput(-1, id == DaPerson::CI_MoveBackward
-						? DaPerson::CI_MoveDown : DaPerson::CI_MoveUp));
-					continue;
-				}
+				// Keep forward/backward input intact: native Acceleration tilts it
+				// with the head, then FilterFinalMoveVector keeps only Z on ladders.
+				// The 2016 controller used this same path (AuAtom13:18031be50).
 				nativeControls.append(control);
 			}
 		// The native Scene input loop requests standing when held crouch ends.
@@ -1121,18 +1237,27 @@ void AuLegacyShipRender::UpdateTarget(qint64 now)
 	WalkHit hit;
 	if (m_Impl->world.Raycast(m_Impl->Eye(), m_Impl->CameraDirection(), 256, hit, false))
 	{
-		// The preview has one target atom, the ship. The original sight worker
-		// doubles a steady target's lock every 200 ms, starting at level one.
+		// EXE:14032f800 distinguishes changing detail from retaining the same
+		// detail, even when both belong to the same ship or subsystem.
 		m_Impl->targetLevel = m_Impl->hasTarget
-			? (m_Impl->targetLevel ? std::min(15, m_Impl->targetLevel * 2) : 1)
+			? (m_Impl->targetDetail != hit.detailId ? std::min(15, m_Impl->targetLevel + 1)
+				: m_Impl->targetLevel ? std::min(15, m_Impl->targetLevel * 2) : 1)
 			: m_Impl->targetLevel / 3;
 		m_Impl->hasTarget = true;
+		m_Impl->targetDetail = hit.detailId;
+		m_Impl->targetHealth = AuLegacyShip::DesignTargetHealth(m_Impl->design, m_Impl->designStats,
+			m_Impl->performance, hit.detailId);
 		m_Impl->targetPoint = hit.point;
 	}
 	else
 	{
 		m_Impl->targetLevel /= 2;
-		if (!m_Impl->targetLevel) m_Impl->hasTarget = false;
+		if (!m_Impl->targetLevel)
+		{
+			m_Impl->hasTarget = false;
+			m_Impl->targetDetail = 0;
+			m_Impl->targetHealth = AuLegacyShip::TargetHealth();
+		}
 	}
 }
 
@@ -1300,10 +1425,15 @@ void AuLegacyShipRender::CleanupGL()
 		makeCurrent();
 	m_Impl->console.DeleteGL();
 	if(m_Impl->ready) DpConsole::ReleaseSharedDeviceObjects(SceneRenderInfo());
+	if(m_Impl->skyJob)
+	{
+		m_Impl->skyJob->Cancel(*SceneRenderInfo().re);
+		m_Impl->skyJob.reset();
+	}
 	if(m_Impl->sky)
 	{
 		m_Impl->sky->DeleteDeviceObjects(*SceneRenderInfo().re);
-		m_Impl->skyFace = 0;
+		m_Impl->sky.reset();
 		m_Impl->skyError.clear();
 	}
 	qDeleteAll(m_Impl->textures);
@@ -1330,80 +1460,85 @@ float AuLegacyShipRender::FieldOfView() const
 void AuLegacyShipRender::PrepareSky()
 {
 	if(!g_Au.DrawSkyBox() || !g_AuClient.DesignerShowSkyBox()) return;
-	AuAtomRenderInfo& ari = SceneRenderInfo();
-	AuGLEffects& re = *ari.re;
+	AuGLEffects& re = *SceneRenderInfo().re;
 	const unsigned int paneSize = g_Au.SkyBoxPaneSize();
 	const bool mipMap = g_Au.SkyBoxMipMap();
 	if(m_Impl->sky && (m_Impl->skyPaneSize != paneSize || m_Impl->skyMipMap != mipMap))
 	{
+		if(m_Impl->skyJob) m_Impl->skyJob->Cancel(re);
+		m_Impl->skyJob.reset();
 		m_Impl->sky->DeleteDeviceObjects(re);
-		m_Impl->skyFace = 0;
+		m_Impl->sky.reset();
 		m_Impl->skyError.clear();
 	}
 	m_Impl->skyPaneSize = paneSize;
 	m_Impl->skyMipMap = mipMap;
 	if(!m_Impl->sky)
 	{
-		// The 2016 studio generated a temporary Shores of Hazeron sector.
-		// Use a repeatable preview sector; no environment is stored in .ship.
-		m_Impl->skyGalaxy.reset(new DaGalaxy(ShoresOfHazeron));
-		DaGalaxy& galaxy = *m_Impl->skyGalaxy;
-		AuDice& dice = m_Impl->skyDice;
-		dice.Seed(2016);
-		AuPoint sector;
-		for(int attempt = 0; attempt < 128; ++attempt)
-		{
-			const int radius = dice.Roll(1, int(galaxy.Radius() / 10));
-			sector = AuPoint(radius, 0).RotateZ(dice.RandomMinMax(0, 2 * Pi));
-			sector.Round(1);
-			if(galaxy.StarDensity(sector * 10) >= .2) break;
-		}
-		m_Impl->skyPosition = sector;
-		// Deep space uses the game's non-nebula sky. A nearby nebula must not
-		// be invented merely because the editor has no surrounding world.
 		m_Impl->sky.reset(new auNebula(0, 0, -2.9924924f, .38151205f, -1.8401746f, -1.8524430f,
-			30, 0, false, AuPoint(), 2016, 0, galaxy.Color()));
-		m_Impl->skyNextX = -int(galaxy.Radius() / 10);
-	}
-	if(m_Impl->skyGalaxy)
-	{
-		// Yield to input/painting between small batches of the native sampler.
-		// Preserve its dice and traversal order so the completed sky is unchanged.
-		QElapsedTimer budget;
-		budget.start();
-		const int radius = m_Impl->skyGalaxy->Radius() / 10;
-		do
-		{
-			m_Impl->skyNextX = m_Impl->sky->AppendGalacticStarFieldSlice(*m_Impl->skyGalaxy,
-				m_Impl->skyPosition, m_Impl->skyDice, m_Impl->skyNextX);
-		} while(m_Impl->skyNextX <= radius && budget.elapsed() < 4);
-		if(m_Impl->skyNextX > radius) m_Impl->skyGalaxy.reset();
-		return;
-	}
-	if(m_Impl->skyFace < 6 && m_Impl->skyError.isEmpty())
-	{
-		GLint drawFramebuffer, readFramebuffer, viewport[4];
-		re.glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFramebuffer);
-		re.glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFramebuffer);
-		re.glGetIntegerv(GL_VIEWPORT, viewport);
-		re.glDisable(GL_DEPTH_TEST);
-		re.glDisable(GL_CULL_FACE);
-		re.glDisable(GL_SCISSOR_TEST);
+			30, 0, false, AuPoint(), 2016, 0, QColor()));
+		// A complete, tiny navy cube is immediately usable by the normal sky shader.
+		const GLubyte navy[] = {0, 0, 128, 255};
 		re.glActiveTexture(GL_TEXTURE0);
-		const bool success = m_Impl->sky->CreateSkyBoxFace(ari, m_Impl->skyPosition, paneSize, mipMap, m_Impl->skyFace);
-		// QOpenGLWidget renders into its own FBO, with a physical-pixel viewport.
-		re.glBindFramebuffer(GL_DRAW_FRAMEBUFFER, drawFramebuffer);
-		re.glBindFramebuffer(GL_READ_FRAMEBUFFER, readFramebuffer);
-		re.glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
-		if(success) ++m_Impl->skyFace;
-		else m_Impl->skyError = QStringLiteral("Unable to create the spacecraft preview skybox.");
+		re.glGenTextures(1, &m_Impl->sky->m_img);
+		re.glBindTexture(GL_TEXTURE_CUBE_MAP, m_Impl->sky->m_img);
+		for(int face = 0; face < 6; ++face)
+			re.glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGBA8,
+				1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, navy);
+		re.glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		re.glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		re.glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		re.glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		re.glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+		// Qt requires offscreen surface creation/destruction on the GUI thread.
+		// Establish sharing before the widget's context can be destroyed, then
+		// transfer the worker context; all generation runs on SkyThread.
+		auto* workerContext = new QOpenGLContext;
+		workerContext->setFormat(context()->format());
+		workerContext->setShareContext(context());
+		if(!QOpenGLContext::supportsThreadedOpenGL() || !workerContext->create()
+			|| !QOpenGLContext::areSharing(context(), workerContext))
+		{
+			delete workerContext;
+			m_Impl->skyError = QStringLiteral("Unable to create a shared preview skybox context.");
+			return;
+		}
+		auto* surface = new QOffscreenSurface;
+		surface->setFormat(workerContext->format());
+		surface->create();
+		if(!surface->isValid())
+		{
+			delete surface;
+			delete workerContext;
+			m_Impl->skyError = QStringLiteral("Unable to create the preview skybox surface.");
+			return;
+		}
+		m_Impl->skyJob = std::make_shared<SkyJob>();
+		auto* worker = new SkyThread(m_Impl->skyJob, workerContext, surface, paneSize, mipMap);
+		worker->start(QThread::LowPriority);
+	}
+	if(m_Impl->skyJob)
+	{
+		// Never wait for publication, even briefly, in a paint callback.
+		std::unique_lock<std::mutex> lock(m_Impl->skyJob->mutex, std::try_to_lock);
+		if(!lock.owns_lock() || !m_Impl->skyJob->done) return;
+		if(m_Impl->skyJob->texture)
+		{
+			re.glDeleteTextures(1, &m_Impl->sky->m_img);
+			m_Impl->sky->m_img = m_Impl->skyJob->texture;
+			m_Impl->skyJob->texture = 0;
+		}
+		m_Impl->skyError = m_Impl->skyJob->error;
+		lock.unlock();
+		m_Impl->skyJob.reset();
 	}
 }
 
 void AuLegacyShipRender::RenderSky()
 {
 	if(!g_Au.DrawSkyBox() || !g_AuClient.DesignerShowSkyBox()
-		|| !m_Impl->sky || m_Impl->skyFace != 6 || !m_Impl->sky->m_img) return;
+		|| !m_Impl->sky || !m_Impl->sky->m_img) return;
 	AuGLEffects& re = *SceneRenderInfo().re;
 	QMatrix4x4 rotation;
 	const auto camera = m_Impl->Camera(SceneRenderInfo());
@@ -1613,7 +1748,7 @@ void AuLegacyShipRender::paintGL()
 	if(!SceneRenderInfo().IsViewTopDown()) PaintCrosshair(painter, size(), m_Impl->targetLevel);
 	if (!SceneRenderInfo().IsViewTopDown() && m_Impl->hasTarget && m_Impl->targetLevel > 0
 		&& (m_Impl->targetPoint - m_Impl->Eye()).length() <= m_Impl->targetLevel * 10)
-		PaintShipTarget(painter, size(), m_Impl->design.header.name);
+		PaintShipTarget(painter, size(), m_Impl->design.header.name, m_Impl->targetHealth);
 	QString tips = m_Impl->glError;
 	if(tips.isEmpty() && m_Impl->mesh.batches.isEmpty())
 		tips = QStringLiteral("Paint cells in the floor plan to create a spacecraft.");

@@ -15,7 +15,7 @@
 const bool s_DebugGLSL = false;									// Set true to see debug messages generated in this file.
 
 // Compressed source loaded from glsl.har. Only contains data during Initialize.
-QHash<QString, QByteArray>	s_GLSLProgramSrc;
+thread_local QHash<QString, QByteArray>	s_GLSLProgramSrc;
 
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
@@ -1055,6 +1055,28 @@ AuGLSL::~AuGLSL()
 	delete m_WaterRingworldNoHole;
 }
 
+bool AuGLSL::InitializeSkyBox(AuOpenGLFunctions& GLf)
+{
+	m_GLf = &GLf;
+	m_MaxLights = 0;
+	Hashpack::ReadFiles(":glsl.har", s_GLSLProgramSrc);
+	const AuGLSLProgramOpt opt(0);
+	m_FarStar->Build(GLf, opt);
+	m_GalaxyStar->Build(GLf, opt);
+	m_GalaxyCloud->Build(GLf, opt);
+	s_GLSLProgramSrc.clear();
+	DeselectProgram();
+	return m_FarStar->IsLinked() && m_GalaxyStar->IsLinked() && m_GalaxyCloud->IsLinked();
+}
+
+void AuGLSL::DeleteSkyBox()
+{
+	DeselectProgram();
+	m_FarStar->DeleteGL();
+	m_GalaxyStar->DeleteGL();
+	m_GalaxyCloud->DeleteGL();
+}
+
 void AuGLSL::Initialize(AuOpenGLFunctions& GLf, unsigned int maxLights)
 {
 	m_GLf = &GLf;
@@ -1631,6 +1653,19 @@ AuGLSLProgram::~AuGLSLProgram()
 void AuGLSLProgram::Select()
 {
 	m_GLf->glUseProgram(m_Program);	// Select this shader program.
+}
+
+bool AuGLSLProgram::IsLinked() const
+{
+	GLint linked = GL_FALSE;
+	if(m_GLf && m_Program) m_GLf->glGetProgramiv(m_Program, GL_LINK_STATUS, &linked);
+	return linked == GL_TRUE;
+}
+
+void AuGLSLProgram::DeleteGL()
+{
+	if(m_GLf && m_Program) m_GLf->glDeleteProgram(m_Program);
+	m_Program = 0;
 }
 
 void AuGLSLProgram::Deselect()

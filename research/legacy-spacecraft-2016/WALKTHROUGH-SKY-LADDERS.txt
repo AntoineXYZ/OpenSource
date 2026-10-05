@@ -53,8 +53,8 @@ distribution with it was inappropriate. Pixel-exact 2016 parity is not claimed.
 The sky is rendered before geometry with rotation-only view transformation,
 the configured FOV, and no depth writes. DrawSkyBox, DesignerShowSkyBox,
 SkyBoxPaneSize and SkyBoxMipMap are respected. Resolution/mipmap changes
-recreate the cube texture. The QOpenGLWidget framebuffer and physical viewport
-are restored after generation. Resources are discarded on context destruction.
+recreate the cube texture in a worker context; generation never changes the
+QOpenGLWidget framebuffer or viewport. Context destruction cancels pending work.
 Floor-plan mode does not render the sky. No world data or seed enters .ship.
 The previous forced nearby nebula and 15% brightness multiplier were removed
 following visual feedback. The game's non-nebula background renders at its
@@ -69,26 +69,34 @@ inside the first walkthrough paint. For this galaxy the native sample grid
 is 501*501*51 (12,801,051 samples), before star vertices and texture uploads.
 That synchronous path blocks Qt event processing while it runs.
 
-PrepareSky now runs during floor-plan paints as well as walkthrough paints.
-It advances the shared sampler in X slices, yielding after a four-millisecond
-budget checked between slices. The random state and next X persist between
-frames. After sampling, CreateSkyBoxFace draws one face per paint using the
-same native face-rendering code. The existing CreateSkyBox entry point still
-builds all faces for in-game callers. No drawing algorithm or sample density
-was reduced. GL work remains on the widget's context/thread.
+PrepareSky starts a low-priority QThread during floor-plan or walkthrough
+painting. The worker owns its galaxy, dice, auNebula, shader programs, VAOs
+and shared OpenGL context. All galaxy sampling, shader compilation, cube-face
+allocation/drawing, mipmap generation and GPU completion run there. Sampling
+checks cancellation between X slices and rendering checks between faces.
+The seed, sample order, density and native face renderer are unchanged.
 
-The walkthrough can render before the sky is ready, against a black backdrop.
-The cube becomes visible only after all six faces succeed, including mipmap
-generation on the final face. Switching modes reuses the finished cube.
-Changing cube resolution/mipmaps or recreating the GL context reuses the
-galactic samples and rebuilds only the texture. Universe-star generation is
-reset before face zero so repeated rebuilds cannot accumulate extra stars.
-A framebuffer failure stops preparation and records a warning instead of
-retrying allocation every frame. Closing the view requires no worker join.
+The main thread creates a six-face 1x1 navy-blue (#000080) placeholder cube.
+It also creates Qt's offscreen surface and establishes context sharing before
+transferring the context to the worker. Those small setup operations remain
+on the GUI thread. Painting only polls completion with a nonblocking lock;
+the finished shared texture replaces the placeholder without readback/upload,
+a GPU fence wait or a thread join. Driver-level GPU contention is still possible.
 
-This is incremental preparation, not a hard frame-time guarantee: a sample
-slice, individual cube-face draw or texture allocation can exceed the CPU
-budget on slower hardware. Runtime timing has not been measured here.
+Only texture ownership crosses threads; VAOs remain context-local. The worker
+initializes only its three required shaders, with thread-local shader-source
+scratch storage, and explicitly releases its shader programs and sprite
+textures while its context is current. It finishes GPU rendering before
+publishing the cube. Existing AuAtomRenderInfo skybox callers retain their
+viewport restoration; the worker uses a widget-independent overload.
+
+Changing resolution/mipmaps or destroying the widget context cancels the old
+job and releases any unclaimed result. A new job deterministically resamples
+the galaxy. Late results cannot replace a newer cube. Closing never joins a
+worker; each worker disposes its context, then schedules its surface and
+thread object for GUI-thread deletion. Unsupported threaded/shared GL or a
+generation failure leaves the navy cube and a warning, without retrying each
+paint. Completed cubes survive floor-plan/walkthrough mode switches.
 
 Ladder evidence
 ---------------
@@ -113,9 +121,13 @@ Implementation obtains axes from authored hatch records, not mesh triangle
 proximity. It selects the nearest reachable center within six feet, sweeps
 the standing capsule to it, snaps XY and camera facing once, zeros velocity,
 and clears continuous forward movement. Subsequent look input is unrestricted.
-Attached movement maps configured MoveForward/MoveBackward (W/S by default)
-to ascent/descent, alongside MoveUp/MoveDown (C/Z). Combined input is clamped
-to normal climbing speed; looking around and strafing cannot move off-axis.
+Attached movement passes configured MoveForward/MoveBackward (W/S by default)
+unchanged to DaPerson: head pitch determines the vertical component. W climbs
+up looking up and down looking down; S reverses it. Level forward input adds
+no climbing force. MoveUp/MoveDown (C/Z) remain independent of head pitch.
+The native controller combines and normalizes inputs before constraining XY;
+it does not remap W/S into C/Z. Shift does not boost ladder speed in 2016.
+See WALKTHROUGH-LADDER-INPUT.txt for the recovered control/pose/speed chain.
 Structural collisions stop climbing; automatic hatch contacts still request
 opening. Aligned adjacent hatches form a continuous vertical path.
 
@@ -135,11 +147,16 @@ and git diff --check. Compilation and runtime checks remain for the user.
 Source comparison also verified that the sliced sampling body and cube-face
 drawing body match the previous implementations, with commented-out code
 preserved.
+The worker refactor additionally passed a normalized comparison of the native
+cube-face body, a check that paint preparation contains no sampling, face draw,
+GPU completion or thread wait, and preservation of existing generator/shader
+line comments. Threaded GL runtime behavior remains untested pending a build.
 
 After the user's build:
   - Open the editor and immediately enter render mode, then repeat after
     spending time in the floor plan. Input should remain usable during sky
-    preparation; only the background waits for completion. Repeated mode
+    preparation; a solid navy cube should change directly to the finished sky.
+    No black or partially rendered faces should appear. Repeated mode
     switches should reuse the finished sky without regenerating it.
   - Change skybox size/mipmaps midway through preparation, disable/re-enable
     it, and close the editor while preparation is incomplete. Check that
@@ -152,8 +169,10 @@ After the user's build:
   - Try each hatch orientation from above and below, at positive/negative
     decks. E should center the avatar and face the rungs once.
   - While attached, hold forward/strafe and look around: XY must stay fixed.
-    W/S and C/Z must climb straight up/down regardless of camera direction.
-    W+C must not double climbing speed; opposing inputs cancel.
+    W must climb up looking up and down looking down; S reverses direction.
+    Level W adds no climbing force; C/Z work independently of camera pitch.
+    Check combined controls and continuous forward through the native controller;
+    Shift must not change climbing speed. Releasing controls stops movement.
   - Test stacked hatches, a closed automatic hatch, a closed manual hatch,
     and a nearby ladder behind a wall. No sideways push or wall teleport.
   - Press E and Space separately while partway up. Both must release; E

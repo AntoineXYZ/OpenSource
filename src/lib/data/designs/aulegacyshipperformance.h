@@ -69,6 +69,19 @@ struct Performance
 
 // Unlike modern quality, the original technology level gives a linear 5% boost.
 double LegacyTechBoost(int techLevel);
+
+// 2016 SYSTEM numbering (0..14); 15 denotes an unrecognized detail.
+// Hit counts use internal system hits, not the report's tenfold HP units.
+struct TargetHealth
+{
+	int system = 4;
+	quint16 which = 0;
+	quint64 hits = 0;
+	quint64 remaining = 0;
+};
+
+TargetHealth DesignTargetHealth(const Design& design, const Stats& stats,
+	const Performance& performance, quint32 detailId);
 // Pure calculation from current records; techLevel is an internal zero-based TL.
 Performance CalculatePerformance(const Design& design, const Stats& stats, int techLevel);
 }

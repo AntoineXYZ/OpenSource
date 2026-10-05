@@ -42,6 +42,7 @@ struct WalkHit
 	QVector3D normal;
 	float distance = 0;
 	quint32 doorId = 0;
+	quint32 detailId = 0;
 };
 
 struct WalkEnvironment
@@ -75,9 +76,9 @@ public:
 	WalkEnvironment Environment(const QVector3D& feet, bool studioGravity, float bodyOriginHeight) const;
 	// Geometry adapter only: native DaPerson integrates forces and velocities.
 	void MoveDisplacement(WalkState& state, const QVector3D& displacement, bool studioGravity) const;
-	// Visible static surfaces, including passable equipment, occlude the ray;
-	// invisible obstacle-cell volumes do not. Open panels remain hand targets;
-	// sight targeting can exclude them.
+	// Hand rays include visible passable equipment and open panels. Passing
+	// includeOpenDoors=false applies legacy sight eligibility and skips open
+	// panels. Invisible obstacle-cell volumes never occlude either ray type.
 	bool Raycast(const QVector3D& origin, const QVector3D& direction,
 		float maximumDistance, WalkHit& hit, bool includeOpenDoors = true) const;
 

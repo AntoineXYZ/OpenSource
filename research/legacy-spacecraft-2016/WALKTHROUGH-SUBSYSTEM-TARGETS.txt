@@ -1,0 +1,71 @@
+2016 crosshair subsystem health
+==============================
+
+Recovered with Ghidra MCP; no build or native execution was initiated.
+
+DaSpaceShip::DetailSystem, AuAtom13.dll 0x1803e7a30:
+  Detail ID 0: hull (system 4), which=0.
+  Types 1,4,6,7,12,13,15,17,19,73: command/control (0), console ordinal.
+  10: maneuver (2); 14: power (7); 16: sensor (8); 18: shield (9).
+  11: surgery (10), surgery ordinal.
+  20: transporter (11), owning room's (unsigned deck byte << 8) | subtype.
+  21,22,33..40: turret (12), turret ordinal.
+  23: weapon (13), owning room subtype, shared across decks.
+  24: FTL (14); 32: life support (6).
+  3,5,8,9,49..64,77..97,101..140: hull (4).
+  Others, missing IDs or unresolved pad/bay rooms: Count/invalid (15).
+Each ordinal counts its own preceding category in stored order, not detail IDs.
+Sensor/shield consoles select command/control, despite adding sensor/shield units.
+All 256 type mappings were compared against the recovered switch: no mismatches.
+
+SystemHits helper, AuAtom13.dll 0x1801b85a0:
+Command/control, surgery and individual turrets each have one internal hit.
+Maneuver, life support, reactor, sensor, shield and FTL use installed unit counts.
+Transporters use pad count for the room key; weapons use units in that bay.
+Fuel/hold/vehicle structure hits are floor(hull factor * volume / 256), minimum
+one for a nonempty volume. HullHits (AuData13.dll 0x1800733a0) subtracts those
+three separately rounded values from total structure hits. Authoring remaining
+hits equal maximum hits: no damage state is invented or serialized. Defensive
+handling clamps a negative hull remainder and zero-capacity bar to zero.
+
+RenderBodyStats, AuAtom13.dll 0x1804122a0:
+Uses DetailSystem's system/which for SystemHitsRemaining/SystemHits. Draws that
+ratio, system icon and ship name, without numeric HP or a subsystem-name label.
+Filled colors: >=.5 green (.2,1,.2), >.1 amber (1,.7,.2), <=.1 red (1,.2,.2).
+Unused color: (.5,.35,.1), or (.5,.1,.1) at critical health. Visible actor
+conditions can also force red; the authoring preview has no such conditions.
+RenderSystemIcon (AuGL13.dll 0x1800242d0) uses item effect system+0x35. Legacy
+system 15 selects the door tile, not modern capacitor. Reuse HudItems.png.
+
+Acquisition, EXE 0x14032f800:
+Same detail acquires 0,1,2,4,8,15; changing detail on the same ship adds one
+(cap 15), even for the same subsystem. Lost sight halves the level, retaining
+detail/health/location until zero. Existing top-down and distance <= 10*level
+gates remain. New/rebuilt designs clear the target.
+
+SightType/SightRadius, AuData13.dll 0x180161a00/0x180161900:
+Type 1 (plan-column test): 10,11,14,16,18,21,23,24,32,34..40.
+Type 3 (3D point test): 1,4,6,7,12,13,15,17,19,20,22,33,73,74,75,143.
+All others are not equipment sight targets; no detail currently returns type 2.
+Radii: consoles/143=1.5; 10,11,14,16,18,20,23,24,32,74,75=1.91421356225;
+21,34..40=.5; 22,33=1. AuAtom13.dll SightTargetDetails (0x180467140) clips
+per-deck room boundaries/openings, then tests these proxies.
+
+Local adaptation and limits:
+SightType eligibility is reproduced, but intersections still use the preview
+mesh, not the original proxy/room-boundary geometry. Selection boundaries may
+differ near equipment edges. Non-targetable furnishings/parked previews do not
+mask systems. Hand rays retain visible-mesh behavior, including open panels.
+Procedural batches retain per-triangle detail IDs without splitting draw calls;
+imported models retain per-batch IDs. Swivel queries preserve console ownership.
+Invisible movement obstacle boxes remain excluded from both ray types.
+
+Validation:
+Source mapping comparison and diff whitespace checks passed. The optional
+native_ship_stats.cpp harness adds console/surgery/turret ordinals, negative-deck
+transporters, cross-deck bays, unknown details, cargo-only hull health and
+nonmutation fixtures. These have not been built/run by the assistant.
+After a manual build, aim across hull, consoles, machinery, pads and turret guns
+(including objects sharing a batch). Check icons, full healthy bars, acquisition,
+decay, delete/replace refresh, occlusion, open/closed doors, console swivel,
+both launch paths and top-down suppression.

@@ -869,6 +869,7 @@ public:
 			"- Return or right-click switches between avatar input and the free hand cursor. Hold Ctrl to use the hand temporarily.<br>"
 			"- C/Z move up/down when flying, in a gravity well, or on a ladder. Space jumps or brakes in zero gravity.<br>"
 			"- E enters/exits a console or engages/releases a nearby ladder.<br>"
+			"- On ladders, W climbs toward your look direction (up/down); S reverses it. C/Z climb directly. Shift does not increase climb speed.<br>"
 			"- Hold Caps Lock to crouch; X toggles prone/standing. These use your Avatar bindings.<br>"
 			"- Escape toggles top-down; Shift+Escape switches first/third person. Scene camera bindings also work.<br>"
 			"- Use the hand to click a nearby door or hatch. Ctrl+P opens the nearest closed door; Ctrl+C closes the nearest open door.<br>"

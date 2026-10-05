@@ -113,6 +113,9 @@ public:
 	// Incremental equivalent: call faces 0 through 5 in order, in the same GL context.
 	// Do not render the cube until all six calls succeed.
 	bool CreateSkyBoxFace(AuAtomRenderInfo& ari, const AuPoint& pos, unsigned int paneSize, bool mipMap, int face);
+	// Offscreen equivalent: uses only the current context, with no widget access.
+	// The caller owns viewport restoration and shader initialization.
+	bool CreateSkyBoxFace(AuGLEffects& re, const AuPoint& pos, unsigned int paneSize, bool mipMap, int face);
 	void RenderSkyBox(AuGLEffects& re, const AuMatrix4x4& projection, const AuMatrix4x4& model, float opacity);
 	void ChooseOrder();
 	void Swap(float num1, float num2);
@@ -129,7 +132,7 @@ public:
 	}
 
 private:
-	bool BuildSkyBox(AuAtomRenderInfo& ari, const AuPoint& pos, unsigned int paneSize, bool mipMap, int face);
+	bool BuildSkyBox(AuGLEffects& re, const AuPoint& pos, unsigned int paneSize, bool mipMap, int face);
 	void RenderNebula(double distance, AuGLEffects& re, const AuMatrix4x4& projection, const AuMatrix4x4& model, GLuint texture);
 	void RenderStars(float starDotSize, AuGLEffects& re, const AuMatrix4x4& projection, const AuMatrix4x4& model, GLuint texture,
 			const AuPoint& pos);

@@ -1,4 +1,5 @@
 #include "aulegacyshiphud.h"
+#include "aulegacyshipperformance.h"
 
 #include <QColor>
 #include <QFontMetricsF>
@@ -29,18 +30,24 @@ QImage Tint(const QImage& source, const QColor& color)
 
 struct HudImages
 {
-	QImage health, hair, dot;
-	QImage systems[15];
+	QImage health[3], unused[2], hair, dot;
+	QImage systems[16];
 
 	HudImages()
 	{
 		// Reuse the game's shared HUD atlas. The bar and hull icon pixels are
 		// unchanged from 2016; the crosshair is also used by the current game.
 		const QImage atlas(QStringLiteral(":/data/HudItems.png"));
-		health = Tint(atlas.copy(271, 34, 129, 10), QColor(51, 255, 51));
+		const QImage bar = atlas.copy(271, 34, 129, 10);
+		health[0] = Tint(bar, QColor(51, 255, 51));
+		health[1] = Tint(bar, QColor(255, 179, 51));
+		health[2] = Tint(bar, QColor(255, 51, 51));
+		unused[0] = Tint(bar, QColor(128, 89, 26));
+		unused[1] = Tint(bar, QColor(128, 26, 26));
 		hair = Tint(atlas.copy(0, 58, 48, 5), QColor(255, 230, 26));
 		dot = Tint(atlas.copy(97, 58, 5, 5), QColor(255, 230, 26));
-		for(int i = 0; i < 15; ++i)
+		// Legacy SYS_Count=15 maps to the door tile, not modern capacitor.
+		for(int i = 0; i < 16; ++i)
 			systems[i] = atlas.copy(768 + (i % 8) * 16, 32 + (i / 8) * 16, 16, 16);
 	}
 };
@@ -52,7 +59,7 @@ const HudImages& Images()
 }
 }
 
-void PaintShipTarget(QPainter& painter, const QSize& size, const QString& name, int systemIcon)
+void PaintShipTarget(QPainter& painter, const QSize& size, const QString& name, const TargetHealth& health)
 {
 	if(size.width() <= 0 || size.height() <= 0) return;
 	const HudImages& images = Images();
@@ -66,9 +73,15 @@ void PaintShipTarget(QPainter& painter, const QSize& size, const QString& name, 
 	const qreal iconLeft = left - height * 1.5;
 	painter.save();
 	painter.setRenderHint(QPainter::SmoothPixmapTransform);
-	painter.drawImage(QRectF(left, top, width, height), images.health, QRectF(.5, .5, 128, 9));
-	const int icon = systemIcon >= 0 && systemIcon < 15 ? systemIcon : 4;
-	painter.drawImage(QRectF(iconLeft, top, height, height), images.systems[icon], QRectF(.5, .5, 15, 15));
+	const qreal fraction = health.hits ? qBound(qreal(0), qreal(health.remaining) / qreal(health.hits), qreal(1)) : 0;
+	const int color = fraction <= .1 ? 2 : fraction < .5 ? 1 : 0;
+	if(fraction < 1)
+		painter.drawImage(QRectF(left + width * fraction, top, width * (1 - fraction), height),
+			images.unused[color == 2 ? 1 : 0], QRectF(.5 + 128 * fraction, .5, 128 * (1 - fraction), 9));
+	if(fraction > 0)
+		painter.drawImage(QRectF(left, top, width * fraction, height), images.health[color], QRectF(.5, .5, 128 * fraction, 9));
+	if(health.system >= 0 && health.system < 16)
+		painter.drawImage(QRectF(iconLeft, top, height, height), images.systems[health.system], QRectF(.5, .5, 15, 15));
 	// The local designer's ship has no empire, so the target name is neutral.
 	painter.setPen(QColor(192, 192, 192));
 	const qreal textTop = top + height + .005 * unit;

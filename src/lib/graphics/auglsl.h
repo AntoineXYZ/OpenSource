@@ -521,6 +521,10 @@ public:
 	// Initializes projection, suns and lights, if they are not valid.
 	void Select();
 
+	// These require the program's context to be current.
+	bool IsLinked() const;
+	void DeleteGL();
+
 protected:
 	void DumpProgramInfoLog() const;
 
@@ -22717,6 +22721,9 @@ public:
 	// Builds all known GLSL shader programs.
 	// OpenGL context must be current when this function is called.
 	void Initialize(AuOpenGLFunctions& GLf, unsigned int maxLights);
+	// Worker-local subset for cubemap generation; release before its context dies.
+	bool InitializeSkyBox(AuOpenGLFunctions& GLf);
+	void DeleteSkyBox();
 
 	// Calls InvalidateLights on all shaders with object space lights.
 	void InvalidateLights();
