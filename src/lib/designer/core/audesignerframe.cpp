@@ -5589,7 +5589,7 @@ void AuDesignerFrame::LaunchDesigner()
 
 	QMessageBox choice(QMessageBox::Question, tr("Choose Designer"),
 		tr("Choose a designer.\n\n"
-			"Legacy Spacecraft is the old designer."),
+			"Old is a work in progress."),
 		QMessageBox::NoButton, this);
 	QPushButton* modern = choice.addButton(tr("Modern Designer"), QMessageBox::AcceptRole);
 	QPushButton* legacy = choice.addButton(tr("Old Designer"), QMessageBox::ActionRole);
