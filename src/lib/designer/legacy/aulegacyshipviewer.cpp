@@ -7,6 +7,7 @@
 #include "aulegacyshipicons.h"
 #include "aulegacyshiprender.h"
 #include "aulegacyshipsave.h"
+#include "aulegacyshipstatsreport.h"
 #include "aulegacyshipvehicles.h"
 #include "auapp.h"
 #include "audesignerframe.h"
@@ -48,7 +49,7 @@
 #include <QStringList>
 #include <QStyle>
 #include <QStyleOptionGraphicsItem>
-#include <QTabWidget>
+#include <QTextDocument>
 #include <QTextBrowser>
 #include <QToolButton>
 #include <QTimer>
@@ -826,10 +827,7 @@ public:
 			"QSpinBox, QComboBox { background: #102442; color: #d5e3fa; border: 1px solid #40618d; padding: 2px; }"
 			"QComboBox QAbstractItemView { background: #0a1c3b; color: #d5e3fa; selection-background-color: #294c7b; }"
 			"QLabel, QCheckBox { color: #d5e3fa; background: transparent; }"
-			"QTabWidget::pane { border: 1px solid #55709a; }"
-			"QTabBar::tab { color: #b7cff3; background: #081834; padding: 3px 9px; }"
-			"QTabBar::tab:selected { background: #16305c; }"
-			"QTextBrowser { background: #081a40; color: #b8cef5; border: 0; padding: 3px; }"));
+			"QTextBrowser { background: #081a40; color: #b8cef5; border: 0; padding: 0; font-size: 11px; }"));
 		QWidget* panel = new QWidget(toolDock);
 		panel->setObjectName(QStringLiteral("LegacyPalette"));
 		QVBoxLayout* panelLayout = new QVBoxLayout(panel);
@@ -839,23 +837,22 @@ public:
 		editPanel->setObjectName(QStringLiteral("LegacyPalette"));
 		BuildPalette(editPanel, newAction, openAction, saveAction);
 		panelLayout->addWidget(editPanel);
-		informationTabs = new QTabWidget(panel);
-		QWidget* tipsPanel = new QWidget(informationTabs);
-		tipsPanel->setStyleSheet(QStringLiteral("background: #081a40; color: #b8cef5;"));
-		QVBoxLayout* tipsLayout = new QVBoxLayout(tipsPanel);
-		tipsLayout->setContentsMargins(4, 4, 4, 4);
-		toolLabel = new QLabel(tipsPanel);
-		toolLabel->setWordWrap(true);
-		toolLabel->setTextFormat(Qt::PlainText);
-		tipsLayout->addWidget(toolLabel);
+		statsBrowser = new QTextBrowser(panel);
+		statsBrowser->document()->setDocumentMargin(4);
+		statsBrowser->setObjectName(QStringLiteral("LegacyShipStats"));
+		statsBrowser->setAccessibleName(QStringLiteral("Spacecraft design statistics"));
+		statsBrowser->setOpenLinks(false);
+		statsBrowser->setOpenExternalLinks(false);
+		statsTimer = new QTimer(window);
+		statsTimer->setSingleShot(true);
+		statsTimer->setInterval(100);
+		QObject::connect(statsTimer, &QTimer::timeout, window, [this]() { RefreshStats(); });
 		renderView->tipsChanged = [this](const QString& text) {
 			if(!renderAction->isChecked()) return;
 			if(text.isEmpty()) ShowRenderHelp();
-			else toolLabel->setText(text);
+			else SetFeedback(text);
 		};
-		QTextBrowser* tips = new QTextBrowser(tipsPanel);
-		tips->setOpenExternalLinks(false);
-		tips->setHtml(QStringLiteral(
+		designTips = QStringLiteral(
 			"<b>NEW SPACECRAFT DESIGN TIPS</b><br>"
 			"- All the buttons on this window have tooltips.<br>"
 			"- Start by painting the floor of a room, such as the Bridge.<br>"
@@ -884,11 +881,9 @@ public:
 			"Use Exit Designer or Ctrl+W to exit. Escape exits from the floor plan.<br>"
 			"Use Save or Ctrl+S to save a .ship file. New, Open and Exit offer to save changes.<br>"
 			"The sidebar designer button or your Design Parts window binding hides or shows this panel. "
-			"Drag its title to dock it elsewhere or float it beside the deck view."));
-		tipsLayout->addWidget(tips, 1);
-		informationTabs->addTab(tipsPanel, QStringLiteral("Tips"));
-		informationTabs->setMinimumHeight(130);
-		panelLayout->addWidget(informationTabs, 1);
+			"Drag its title to dock it elsewhere or float it beside the deck view.");
+		statsBrowser->setMinimumHeight(130);
+		panelLayout->addWidget(statsBrowser, 1);
 		QScrollArea* panelScroll = new QScrollArea(toolDock);
 		panelScroll->setFrameShape(QFrame::NoFrame);
 		panelScroll->setWidgetResizable(true);
@@ -915,6 +910,8 @@ public:
 
 	~Impl()
 	{
+		statsTimer->stop();
+		QObject::disconnect(statsTimer, nullptr, window, nullptr);
 		renderView->tipsChanged = {};
 		QObject::disconnect(scene, nullptr, window, nullptr);
 		view->cellEntered = std::function<void(const QPointF&)>();
@@ -1133,8 +1130,48 @@ public:
 		if (geometryChanged && renderAction->isChecked())
 			RefreshRendering();
 		RefreshHeaderControls();
+		ScheduleStatsRefresh();
 		UpdateTitle();
-		toolLabel->setText(QStringLiteral("Design settings updated. Press Ctrl+S to save."));
+		SetFeedback(QStringLiteral("Design settings updated. Press Ctrl+S to save."));
+	}
+
+	void SetFeedback(const QString& text)
+	{
+		feedback = text;
+		statsBrowser->setToolTip(text);
+		if (!statsTimer->isActive())
+			statsTimer->start();
+	}
+
+	void ScheduleStatsRefresh()
+	{
+		statsDirty = true;
+		if (!statsTimer->isActive())
+			statsTimer->start();
+	}
+
+	void RefreshStats()
+	{
+		statsTimer->stop();
+		if (statsDirty)
+		{
+			designReport = AuLegacyShipStatsReport(design);
+			statsDirty = false;
+		}
+		QString report = QStringLiteral("<html><body>");
+		if (modified)
+			report += QStringLiteral("<p style=\"margin: 0; color: #ffff00;\">Modified</p>");
+		report += designReport.isEmpty() ? designTips : designReport;
+		if (!feedback.isEmpty())
+			report += QStringLiteral("<hr><p style=\"margin: 0;\">%1</p>")
+				.arg(feedback.toHtmlEscaped().replace(QLatin1Char('\n'), QStringLiteral("<br>")));
+		report += QStringLiteral("</body></html>");
+		if (report == statsHtml)
+			return;
+		statsHtml = report;
+		const int scroll = statsBrowser->verticalScrollBar()->value();
+		statsBrowser->setHtml(report);
+		statsBrowser->verticalScrollBar()->setValue(scroll);
 	}
 
 	void FitDeck()
@@ -1170,7 +1207,7 @@ public:
 	{
 		if (!renderAction->isChecked())
 			return;
-		toolLabel->setText(QStringLiteral("Walkthrough uses your Avatar and Scene control bindings. Use hand input for the sidebar and door clicks.\n"
+		SetFeedback(QStringLiteral("Walkthrough uses your Avatar and Scene control bindings. Use hand input for the sidebar and door clicks.\n"
 			"Escape toggles top-down view; Shift+Escape switches first/third person. Configured Scene camera bindings also work. Ctrl+W exits.\n"
 			"Settings changes apply here immediately. Legacy Ctrl+P/C opens/closes nearby doors unless rebound; Home returns to the selected deck unless rebound.\n"
 			"Studio gravity is %1; ship interiors retain their own gravity. Render Mode returns to the floor plan.")
@@ -1234,11 +1271,11 @@ public:
 				text = mode == DeleteEquipmentAreaMode
 					? QStringLiteral("Erase Equipment Area: click equipment to remove that type within the brush.")
 					: QStringLiteral("Erase Equipment: left click or drag over equipment.");
-			toolLabel->setText(text);
+			SetFeedback(text);
 			view->setFocus();
 			return;
 		}
-		toolLabel->setText(mode == EraseMode ? QStringLiteral("Erase Room Cells: left click or drag.")
+		SetFeedback(mode == EraseMode ? QStringLiteral("Erase Room Cells: left click or drag.")
 				: QStringLiteral("Paint %1: left click or drag.").arg(RoomName(selectedRoomType)));
 	}
 
@@ -1261,9 +1298,9 @@ public:
 		view->gridMask = mask;
 		view->viewport()->update();
 		if (mask == 0 || mask == 1 || mask == 2 || mask == 4 || mask == 8)
-			toolLabel->setText(QStringLiteral("These grid lines do not form closed cells. Enable another direction to paint or erase."));
+			SetFeedback(QStringLiteral("These grid lines do not form closed cells. Enable another direction to paint or erase."));
 		else
-			toolLabel->setText(QStringLiteral("Grid directions updated. The highlighted cell follows the original 2016 shape rules."));
+			SetFeedback(QStringLiteral("Grid directions updated. The highlighted cell follows the original 2016 shape rules."));
 	}
 
 	void EditAt(const QPointF& cursor)
@@ -1280,7 +1317,7 @@ public:
 				: AuLegacyShip::DeleteDetails(design, deck, cursor, view->equipmentBrushRadius);
 			if (!result.accepted)
 			{
-				toolLabel->setText(result.error.isEmpty()
+				SetFeedback(result.error.isEmpty()
 					? QStringLiteral("Equipment cannot be placed here.") : result.error);
 				return;
 			}
@@ -1292,7 +1329,7 @@ public:
 				UpdateTitle();
 				ShowDeck(deck, false);
 			}
-			toolLabel->setText(result.error.isEmpty()
+			SetFeedback(result.error.isEmpty()
 				? (result.changed ? QStringLiteral("Equipment updated (%1 added, %2 removed). Press Ctrl+S to save.")
 					.arg(result.added).arg(result.removed) : QStringLiteral("No equipment change at this point.")) : result.error);
 			return;
@@ -1302,7 +1339,7 @@ public:
 			view->gridMask, type, quint8(roomNumber->value() - 1));
 		if (!result.accepted)
 		{
-			toolLabel->setText(result.error.isEmpty()
+			SetFeedback(result.error.isEmpty()
 				? QStringLiteral("This cell edit could not be applied.") : result.error);
 			return;
 		}
@@ -1314,7 +1351,7 @@ public:
 			UpdateTitle();
 			ShowDeck(deck, false);
 		}
-		toolLabel->setText(result.error.isEmpty()
+		SetFeedback(result.error.isEmpty()
 			? (result.changed ? QStringLiteral("Cell updated. Press Ctrl+S to save.")
 				: QStringLiteral("No change at this cell.")) : result.error);
 	}
@@ -1451,7 +1488,7 @@ public:
 		if (warningCount)
 			message += QStringLiteral("; %1 geometry warnings").arg(warningCount);
 		if (!geometryWarnings.isEmpty()) message += QLatin1Char('\n') + geometryWarnings.join(QLatin1Char('\n'));
-		toolLabel->setText(message);
+		SetFeedback(message);
 		if (fit && !renderAction->isChecked())
 			FitDeck();
 		else
@@ -1466,6 +1503,7 @@ public:
 
 	void IndexDecks()
 	{
+		ScheduleStatsRefresh();
 		roomDecks.clear();
 		detailDecks.clear();
 		QSet<int> occupied;
@@ -1537,8 +1575,9 @@ public:
 		design.header.versionStateRaw = quint8(0x20 | design.header.state);
 		fileName = path;
 		modified = false;
+		ScheduleStatsRefresh();
 		UpdateTitle();
-		toolLabel->setText(QStringLiteral("Saved %1").arg(QFileInfo(path).fileName()));
+		SetFeedback(QStringLiteral("Saved %1").arg(QFileInfo(path).fileName()));
 		settings.setValue(QStringLiteral("LegacySpacecraft/LastOpenDirectory"), QFileInfo(path).absolutePath());
 		settings.sync();
 		return true;
@@ -1570,6 +1609,8 @@ public:
 		RefreshHeaderControls();
 		SetToolMode(toolMode);
 		ShowDeck(0);
+		RefreshStats();
+		statsBrowser->verticalScrollBar()->setValue(0);
 	}
 
 	AuLegacyShipViewer* window;
@@ -1582,10 +1623,10 @@ public:
 	QSpinBox* roomNumber;
 	QWidget* editPanel;
 	QDockWidget* toolDock;
-	QTabWidget* informationTabs;
+	QTextBrowser* statsBrowser;
+	QTimer* statsTimer;
 	QCheckBox* streamline;
 	QComboBox* minimumTech;
-	QLabel* toolLabel;
 	QLabel* brushSize;
 	QAction* roomsAction;
 	QAction* detailsAction;
@@ -1609,6 +1650,11 @@ public:
 	std::function<void()> exitHandler;
 	AuLegacyShip::Design design;
 	QString fileName;
+	QString statsHtml;
+	QString designReport;
+	QString designTips;
+	QString feedback;
+	bool statsDirty = true;
 	QStringList geometryWarnings;
 	QMap<int, QVector<int> > roomDecks;
 	QMap<int, QVector<int> > detailDecks;

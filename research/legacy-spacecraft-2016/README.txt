@@ -16,6 +16,24 @@ Launch-screen music stops during Legacy and resumes only if previously playing.
 The 2D editor supports fresh/New designs, loading, inspection, cell painting
 and erasing, equipment placement/rotation/brushes, equipment reconciliation
 after room edits, and header controls.
+The single blue information pane recalculates after room/equipment edits, armor,
+streamline and minimum-TL changes, and New/Open. It reports hull/system volumes, equipment and
+vehicle mass, berths/crew roles, passenger class, propulsion, power, capacitor,
+fuel/cargo capacity and endurance, sensors, grouped bays/transporters, FTL
+requirements, hit points and design warnings. TL is displayed one-based.
+Calculations reuse compatible modern geometry/physics helpers while retaining
+the original per-detail mass rounding, cubic-foot units and technology boost.
+Weapon bays share room numbers across decks; transporters include deck in
+their key. See SHIP-STATS-EVIDENCE.txt and ship-stats-report-evidence.txt.
+Manufacturing-material TL, costs, armor/shield absorption and ammunition damage
+remain unavailable; the panel explicitly distinguishes calculated systems TL
+from complete manufacturing requirements. Reports never rewrite saved header
+metadata or alter the design's dirty state. Native validation remains manual.
+The pane follows the original report section order, uppercase headings, thin
+rules, and 10-pixel indentation. Modified appears in yellow above classification.
+New-design tips share this pane until there is a hull to report. Edit feedback
+is appended below the report and is also available as the pane's tooltip.
+Report updates preserve scrolling; New/Open return to the top. There are no tabs.
 Rooms have fixed-size name/number labels at their first boundary vertex, using
 the original label colors and black shadow; see PANEL-RECOVERY.txt.
 The grid is the original finite 80x80-cell square with eight direction labels
@@ -88,7 +106,7 @@ See WALKTHROUGH-FLIGHT-CONSOLES-BODY.txt for the recovered rules and checks.
 Crouch (held) and prone/stand (toggle) use configured Avatar controls and
 native pose camera heights/speeds. Taller stance changes require clearance.
 Vehicle driving remains unimplemented. Help and transient messages are inside
-the blue Tips tab; the added inspection tool and Selection tab were removed.
+the single blue information pane; the added inspection tool and Selection tab were removed.
 
 The mesh uses the original quarter-grid occupancy rules, room/armor wall
 profiles, interior wall materials, adjacent-deck floors/ceilings and transparent
@@ -156,6 +174,8 @@ WALKTHROUGH-AUDIO.txt          Original sound families, footsteps and system sta
 WALKTHROUGH-FLIGHT-CONSOLES-BODY.txt Momentum, console seating and native Gen3 body.
 DOOR-INTERACTION.txt           Animation, manual/automatic operation and stacks.
 TESTING.txt                   Reference checks and manual native harnesses.
+SHIP-STATS-EVIDENCE.txt       Room/equipment aggregation, crew and topology.
+ship-stats-report-evidence.txt Original report sections, physics and limits.
 
 Evidence and tools
 ------------------

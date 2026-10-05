@@ -1,0 +1,186 @@
+Ghidra decompiler evidence, AuData13.dll, 2026-10-05.
+
+1801d59c0
+
+/* public: enum DnSpaceShip::STRUCTURE __cdecl DqDesignAnalysis::Structure(unsigned char,unsigned
+   int)const __ptr64 */
+
+STRUCTURE __thiscall DqDesignAnalysis::Structure(DqDesignAnalysis *this,uchar param_1,uint param_2)
+
+{
+  bool bVar1;
+  uint uVar2;
+  float fVar3;
+  
+                    /* 0x1d59c0  5746
+                       ?Structure@DqDesignAnalysis@@QEBA?AW4STRUCTURE@DnSpaceShip@@EI@Z */
+  if ((((*(int *)(this + 0x54) != 0) && (this[0x66] != (DqDesignAnalysis)0x0)) &&
+      (*(int *)(this + 0x60) != 0)) && (*(int *)(this + 0x1a0) != 0)) {
+    uVar2 = (uint)((*(int *)(this + 0x214) + *(int *)(this + 0x17c) + *(int *)(this + 0x178) +
+                   *(int *)(this + 0x20)) * 100) / ((param_1 + 0x14) * 5);
+    if ((int)uVar2 < 1) {
+      uVar2 = 1;
+    }
+    if (uVar2 <= *(uint *)(this + 0xcc)) {
+      if ((*(int *)(this + 0x210) == 0) && (bVar1 = HasHullOpening(this), !bVar1)) {
+        return 0;
+      }
+      if ((*(int *)(this + 0x60) != 1) && (fVar3 = ManeuverAcceleration(this,'\0'), 100.0 <= fVar3))
+      {
+        return 2 - (*(int *)(this + 0x23c) != 0);
+      }
+      return 4 - (*(int *)(this + 0x23c) != 0);
+    }
+  }
+  return 0;
+}
+
+
+1800726d0
+
+/* public: class QString __cdecl DqDesignAnalysis::DescStructure(unsigned char,unsigned int)const
+   __ptr64 */
+
+undefined8 __thiscall
+DqDesignAnalysis::DescStructure(DqDesignAnalysis *this,uchar param_1,uint param_2)
+
+{
+  undefined7 in_register_00000011;
+  uint in_R9D;
+  
+                    /* 0x726d0  3635  ?DescStructure@DqDesignAnalysis@@QEBA?AVQString@@EI@Z */
+  Structure(this,(uchar)param_2,in_R9D);
+  DnSpaceShip::StructureName((STRUCTURE)CONCAT71(in_register_00000011,param_1));
+  return CONCAT71(in_register_00000011,param_1);
+}
+
+
+180071e20
+
+/* public: static unsigned int __cdecl DqDesignAnalysis::BayWeaponCannons(unsigned int) */
+
+uint __cdecl DqDesignAnalysis::BayWeaponCannons(uint param_1)
+
+{
+  float fVar1;
+  
+                    /* 0x71e20  2633  ?BayWeaponCannons@DqDesignAnalysis@@SAII@Z */
+  if (param_1 == 0) {
+    return 0;
+  }
+  fVar1 = (float)roundf((float)param_1 / 10.0);
+  return (int)(longlong)fVar1 + 1;
+}
+
+
+180071e60
+
+/* public: static unsigned int __cdecl DqDesignAnalysis::BayWeaponEjectorRacks(unsigned int) */
+
+uint __cdecl DqDesignAnalysis::BayWeaponEjectorRacks(uint param_1)
+
+{
+  float fVar1;
+  
+                    /* 0x71e60  2634  ?BayWeaponEjectorRacks@DqDesignAnalysis@@SAII@Z */
+  if (param_1 == 0) {
+    return 0;
+  }
+  fVar1 = (float)roundf((float)param_1 / 100.0);
+  return (int)(longlong)fVar1 + 1;
+}
+
+
+180071ea0
+
+/* public: static unsigned int __cdecl DqDesignAnalysis::BayWeaponLaunchers(unsigned int) */
+
+uint __cdecl DqDesignAnalysis::BayWeaponLaunchers(uint param_1)
+
+{
+  float fVar1;
+  
+                    /* 0x71ea0  2635  ?BayWeaponLaunchers@DqDesignAnalysis@@SAII@Z */
+  if (param_1 == 0) {
+    return 0;
+  }
+  fVar1 = (float)roundf((float)param_1 / 90.0);
+  return (int)(longlong)fVar1 + 1;
+}
+
+
+180071ee0
+
+/* public: static float __cdecl DqDesignAnalysis::BayWeaponPower(unsigned int,unsigned char) */
+
+float __cdecl DqDesignAnalysis::BayWeaponPower(uint param_1,uchar param_2)
+
+{
+                    /* 0x71ee0  2636  ?BayWeaponPower@DqDesignAnalysis@@SAMIE@Z */
+  return ((float)param_2 * 0.05 + 1.0) * (float)(param_1 * 10);
+}
+
+
+180071f10
+
+/* public: static unsigned int __cdecl DqDesignAnalysis::BayWeaponProjectors(unsigned int) */
+
+uint __cdecl DqDesignAnalysis::BayWeaponProjectors(uint param_1)
+
+{
+  float fVar1;
+  
+                    /* 0x71f10  2637  ?BayWeaponProjectors@DqDesignAnalysis@@SAII@Z */
+  if (param_1 == 0) {
+    return 0;
+  }
+  fVar1 = (float)roundf((float)param_1 / 25.0);
+  return (int)(longlong)fVar1 + 1;
+}
+
+
+180071f50
+
+/* public: static float __cdecl DqDesignAnalysis::BayWeaponRange(unsigned char) */
+
+float __cdecl DqDesignAnalysis::BayWeaponRange(uchar param_1)
+
+{
+                    /* 0x71f50  2638  ?BayWeaponRange@DqDesignAnalysis@@SAME@Z */
+  return ((float)param_1 * 0.05 + 1.0) * 85000.0;
+}
+
+
+1800748e0
+
+/* public: float __cdecl DqDesignAnalysis::MaxBayWeaponRange(class QMap<unsigned short,unsigned
+   char> const & __ptr64)const __ptr64 */
+
+float __thiscall
+DqDesignAnalysis::MaxBayWeaponRange
+          (DqDesignAnalysis *this,QMap<unsigned_short,unsigned_char> *param_1)
+
+{
+  longlong lVar1;
+  QMapNodeBase *this_00;
+  QMapNodeBase QVar2;
+  
+                    /* 0x748e0  4899  ?MaxBayWeaponRange@DqDesignAnalysis@@QEBAMAEBV?$QMap@GE@@@Z */
+  lVar1 = *(longlong *)param_1;
+  QVar2 = (QMapNodeBase)0x0;
+  if (*(longlong *)(lVar1 + 0x10) == 0) {
+    this_00 = (QMapNodeBase *)(lVar1 + 8);
+  }
+  else {
+    this_00 = *(QMapNodeBase **)(lVar1 + 0x20);
+  }
+  if (this_00 != (QMapNodeBase *)(lVar1 + 8)) {
+    do {
+      if ((byte)QVar2 < (byte)this_00[0x1a]) {
+        QVar2 = this_00[0x1a];
+      }
+      this_00 = QMapNodeBase::nextNode(this_00);
+    } while (this_00 != (QMapNodeBase *)(*(longlong *)param_1 + 8));
+  }
+  return ((float)(byte)QVar2 * 0.05 + 1.0) * 85000.0;
+}

@@ -1,0 +1,509 @@
+// 1800722b0
+
+/* public: float __cdecl DqDesignAnalysis::CapacitorMax(unsigned char)const __ptr64 */
+
+float __thiscall DqDesignAnalysis::CapacitorMax(DqDesignAnalysis *this,uchar param_1)
+
+{
+                    /* 0x722b0  2868  ?CapacitorMax@DqDesignAnalysis@@QEBAME@Z */
+  return ((float)param_1 * 0.05 + 1.0) * (float)*(uint *)(this + 0x1a0);
+}
+
+
+// 180072c60
+
+/* public: unsigned int __cdecl DqDesignAnalysis::FTLDriveUnitsToEngage(void)const __ptr64 */
+
+uint __thiscall DqDesignAnalysis::FTLDriveUnitsToEngage(DqDesignAnalysis *this)
+
+{
+  float fVar1;
+  
+                    /* 0x72c60  3859  ?FTLDriveUnitsToEngage@DqDesignAnalysis@@QEBAIXZ */
+  powf((float)*(uint *)(this + 0x228) * 0.75 * 3.1415927,0.33333334);
+  fVar1 = (float)roundf();
+  return (uint)(longlong)fVar1;
+}
+
+
+// 180074970
+
+/* public: int __cdecl DqDesignAnalysis::MaxCapacitorFTLSetting(enum COMMODITYID,unsigned
+   char,unsigned char)const __ptr64 */
+
+int __thiscall
+DqDesignAnalysis::MaxCapacitorFTLSetting
+          (DqDesignAnalysis *this,COMMODITYID param_1,uchar param_2,uchar param_3)
+
+{
+  int iVar1;
+  float fVar2;
+  float fVar3;
+  float fVar4;
+  
+                    /* 0x74970  4900
+                       ?MaxCapacitorFTLSetting@DqDesignAnalysis@@QEBAHW4COMMODITYID@@EE@Z */
+  fVar2 = (float)*(uint *)(this + 0x228) * 0.75 * 3.1415927;
+  fVar4 = (float)param_2 * 0.05 + 1.0;
+  if (param_1 == 0x103) {
+    powf(fVar2,0.33333334);
+    fVar2 = (float)roundf();
+    iVar1 = 1;
+    if (((float)param_3 * 0.05 + 1.0) * (float)*(uint *)(this + 0x1a0) <=
+        ((float)((longlong)fVar2 & 0xffffffff) - 0.5) / fVar4) {
+      iVar1 = -1;
+    }
+  }
+  else if (param_1 == 0x104) {
+    powf(fVar2,0.33333334);
+    fVar2 = (float)roundf();
+    fVar3 = ((float)param_3 * 0.05 + 1.0) * (float)*(uint *)(this + 0x1a0);
+    fVar4 = ((float)((longlong)fVar2 & 0xffffffff) - 0.5) / fVar4;
+    if (fVar4 < fVar3) {
+      iVar1 = (int)((fVar3 / fVar4 - 1.0) * 0.5);
+      if ((int)(param_2 - 0x17) < iVar1) {
+        iVar1 = param_2 - 0x17;
+      }
+    }
+    else {
+      iVar1 = -1;
+    }
+  }
+  else {
+    powf(fVar2,0.33333334);
+    fVar2 = (float)roundf();
+    iVar1 = (((float)((longlong)fVar2 & 0xffffffff) - 0.5) / fVar4 <
+            ((float)param_3 * 0.05 + 1.0) * (float)*(uint *)(this + 0x1a0)) - 1;
+  }
+  return iVar1;
+}
+
+
+// 180075040
+
+/* public: float __cdecl DqDesignAnalysis::PowerNeededToEngageFTLDrive(void)const __ptr64 */
+
+float __thiscall DqDesignAnalysis::PowerNeededToEngageFTLDrive(DqDesignAnalysis *this)
+
+{
+  float fVar1;
+  
+                    /* 0x75040  5141  ?PowerNeededToEngageFTLDrive@DqDesignAnalysis@@QEBAMXZ */
+  powf((float)*(uint *)(this + 0x228) * 0.75 * 3.1415927,0.33333334);
+  fVar1 = (float)roundf();
+  return (float)((longlong)fVar1 & 0xffffffff) - 0.5;
+}
+
+
+// 180075350
+
+/* public: static float __cdecl DqDesignAnalysis::ShieldDissipatePerDamagePoint(unsigned char) */
+
+float __cdecl DqDesignAnalysis::ShieldDissipatePerDamagePoint(uchar param_1)
+
+{
+                    /* 0x75350  5554  ?ShieldDissipatePerDamagePoint@DqDesignAnalysis@@SAME@Z */
+  if (param_1 == '\0') {
+    return 0.1;
+  }
+  return 1.0 / (((float)param_1 * 0.05 + 1.0) * 10.0);
+}
+
+
+// 1801c3680
+
+/* public: float __cdecl DqDesignAnalysis::FTLDrivePowerRate(void)const __ptr64 */
+
+float __thiscall DqDesignAnalysis::FTLDrivePowerRate(DqDesignAnalysis *this)
+
+{
+                    /* 0x1c3680  3858  ?FTLDrivePowerRate@DqDesignAnalysis@@QEBAMXZ */
+  return (float)*(uint *)(this + 0x23c) * 0.00032407406;
+}
+
+
+// 1801c36a0
+
+/* public: float __cdecl DqDesignAnalysis::FuelBurnRate(void)const __ptr64 */
+
+float __thiscall DqDesignAnalysis::FuelBurnRate(DqDesignAnalysis *this)
+
+{
+                    /* 0x1c36a0  3949  ?FuelBurnRate@DqDesignAnalysis@@QEBAMXZ */
+  return (float)*(uint *)(this + 0x1a0) * 0.007777778;
+}
+
+
+// 1801c3890
+
+/* public: float __cdecl DqDesignAnalysis::LifeSupportPowerRate(void)const __ptr64 */
+
+float __thiscall DqDesignAnalysis::LifeSupportPowerRate(DqDesignAnalysis *this)
+
+{
+                    /* 0x1c3890  4788  ?LifeSupportPowerRate@DqDesignAnalysis@@QEBAMXZ */
+  return (float)*(uint *)(this + 0xcc) * 0.00032407406;
+}
+
+
+// 1801c38b0
+
+/* public: float __cdecl DqDesignAnalysis::ManeuverAcceleration(unsigned char)const __ptr64 */
+
+float __thiscall DqDesignAnalysis::ManeuverAcceleration(DqDesignAnalysis *this,uchar param_1)
+
+{
+  uint uVar1;
+  float fVar2;
+  
+                    /* 0x1c38b0  4884  ?ManeuverAcceleration@DqDesignAnalysis@@QEBAME@Z */
+  if (*(int *)(this + 0x228) == 0) {
+    return 0.0;
+  }
+  uVar1 = *(uint *)(this + 0x60);
+  fVar2 = Mass(this);
+  return (((float)uVar1 * 8.13714e+06) / fVar2) * ((float)param_1 * 0.05 + 1.0);
+}
+
+
+// 1801c3920
+
+/* public: float __cdecl DqDesignAnalysis::ManeuverFuelRate(enum COMMODITYID)const __ptr64 */
+
+float __thiscall DqDesignAnalysis::ManeuverFuelRate(DqDesignAnalysis *this,COMMODITYID param_1)
+
+{
+  float fVar1;
+  
+                    /* 0x1c3920  4887  ?ManeuverFuelRate@DqDesignAnalysis@@QEBAMW4COMMODITYID@@@Z */
+  fVar1 = 0.0;
+  if (param_1 == 0xec) {
+    fVar1 = ((float)*(uint *)(this + 0x60) * 0.00032407406) / 10.0;
+  }
+  return fVar1;
+}
+
+
+// 1801c3950
+
+/* public: float __cdecl DqDesignAnalysis::ManeuverPowerRate(enum COMMODITYID)const __ptr64 */
+
+float __thiscall DqDesignAnalysis::ManeuverPowerRate(DqDesignAnalysis *this,COMMODITYID param_1)
+
+{
+  float fVar1;
+  
+                    /* 0x1c3950  4888  ?ManeuverPowerRate@DqDesignAnalysis@@QEBAMW4COMMODITYID@@@Z
+                        */
+  fVar1 = 0.0;
+  if (param_1 != 0xec) {
+    fVar1 = (float)*(uint *)(this + 0x60) * 0.00032407406;
+  }
+  return fVar1;
+}
+
+
+// 180074850
+
+/* public: float __cdecl DqDesignAnalysis::ManeuverPowerRateHolding(enum COMMODITYID)const __ptr64
+    */
+
+float __thiscall
+DqDesignAnalysis::ManeuverPowerRateHolding(DqDesignAnalysis *this,COMMODITYID param_1)
+
+{
+  float fVar1;
+  
+                    /* 0x74850  4889
+                       ?ManeuverPowerRateHolding@DqDesignAnalysis@@QEBAMW4COMMODITYID@@@Z */
+  fVar1 = ManeuverPowerRate(this,param_1);
+  return fVar1 / 10.0;
+}
+
+
+// 1801c3ad0
+
+/* public: float __cdecl DqDesignAnalysis::PowerUsageHolding(bool,enum COMMODITYID)const __ptr64 */
+
+float __thiscall
+DqDesignAnalysis::PowerUsageHolding(DqDesignAnalysis *this,bool param_1,COMMODITYID param_2)
+
+{
+  float fVar1;
+  float fVar2;
+  
+                    /* 0x1c3ad0  5145  ?PowerUsageHolding@DqDesignAnalysis@@QEBAM_NW4COMMODITYID@@@Z
+                        */
+  fVar2 = 0.0;
+  if (param_2 == 0xec) {
+    fVar1 = 0.0;
+  }
+  else {
+    fVar1 = (float)*(uint *)(this + 0x60) * 0.00032407406;
+  }
+  if (param_1) {
+    fVar2 = (float)*(uint *)(this + 0x1b0) * 0.00032407406;
+  }
+  return fVar1 / 10.0 + (float)*(uint *)(this + 0xcc) * 0.00032407406 +
+         (float)*(uint *)(this + 0x1a8) * 0.00032407406 + fVar2;
+}
+
+
+// 1801c3b50
+
+/* public: float __cdecl DqDesignAnalysis::PowerUsageIdling(bool,enum COMMODITYID)const __ptr64 */
+
+float __thiscall
+DqDesignAnalysis::PowerUsageIdling(DqDesignAnalysis *this,bool param_1,COMMODITYID param_2)
+
+{
+  float fVar1;
+  float fVar2;
+  
+                    /* 0x1c3b50  5146  ?PowerUsageIdling@DqDesignAnalysis@@QEBAM_NW4COMMODITYID@@@Z
+                        */
+  fVar2 = 0.0;
+  if (param_2 == 0xec) {
+    fVar1 = 0.0;
+  }
+  else {
+    fVar1 = (float)*(uint *)(this + 0x60) * 0.00032407406;
+  }
+  if (param_1) {
+    fVar2 = (float)*(uint *)(this + 0x1b0) * 0.00032407406;
+  }
+  return fVar1 + (float)*(uint *)(this + 0xcc) * 0.00032407406 +
+         (float)*(uint *)(this + 0x1a8) * 0.00032407406 + fVar2;
+}
+
+
+// 1801d58b0
+
+/* public: float __cdecl DqDesignAnalysis::SensorPowerRate(void)const __ptr64 */
+
+float __thiscall DqDesignAnalysis::SensorPowerRate(DqDesignAnalysis *this)
+
+{
+                    /* 0x1d58b0  5384  ?SensorPowerRate@DqDesignAnalysis@@QEBAMXZ */
+  return (float)*(uint *)(this + 0x1a8) * 0.00032407406;
+}
+
+
+// 1801d58d0
+
+/* public: float __cdecl DqDesignAnalysis::SensorRange(unsigned char)const __ptr64 */
+
+float __thiscall DqDesignAnalysis::SensorRange(DqDesignAnalysis *this,uchar param_1)
+
+{
+                    /* 0x1d58d0  5385  ?SensorRange@DqDesignAnalysis@@QEBAME@Z */
+  if (*(uint *)(this + 0x1a8) == 0) {
+    return 0.0;
+  }
+  return ((float)param_1 * 0.05 + 1.0) * (float)*(uint *)(this + 0x1a8) * 42500.0 * 0.5;
+}
+
+
+// 1801d5930
+
+/* public: float __cdecl DqDesignAnalysis::ShieldPowerRate(void)const __ptr64 */
+
+float __thiscall DqDesignAnalysis::ShieldPowerRate(DqDesignAnalysis *this)
+
+{
+                    /* 0x1d5930  5557  ?ShieldPowerRate@DqDesignAnalysis@@QEBAMXZ */
+  return (float)*(uint *)(this + 0x1b0) * 0.00032407406;
+}
+
+
+// 1801d6110
+
+/* public: float __cdecl DqDesignAnalysis::TurnRate(unsigned char)const __ptr64 */
+
+float __thiscall DqDesignAnalysis::TurnRate(DqDesignAnalysis *this,uchar param_1)
+
+{
+  uint uVar1;
+  float fVar2;
+  
+                    /* 0x1d6110  6037  ?TurnRate@DqDesignAnalysis@@QEBAME@Z */
+  fVar2 = 0.0;
+  if (*(int *)(this + 0x228) != 0) {
+    uVar1 = *(uint *)(this + 0x60);
+    fVar2 = Mass(this);
+    fVar2 = (((float)uVar1 * 8.13714e+06) / fVar2) * ((float)param_1 * 0.05 + 1.0);
+  }
+  return (fVar2 / 25.0) * 0.017453292;
+}
+
+
+// 180071e20
+
+/* public: static unsigned int __cdecl DqDesignAnalysis::BayWeaponCannons(unsigned int) */
+
+uint __cdecl DqDesignAnalysis::BayWeaponCannons(uint param_1)
+
+{
+  float fVar1;
+  
+                    /* 0x71e20  2633  ?BayWeaponCannons@DqDesignAnalysis@@SAII@Z */
+  if (param_1 == 0) {
+    return 0;
+  }
+  fVar1 = (float)roundf((float)param_1 / 10.0);
+  return (int)(longlong)fVar1 + 1;
+}
+
+
+// 180071e60
+
+/* public: static unsigned int __cdecl DqDesignAnalysis::BayWeaponEjectorRacks(unsigned int) */
+
+uint __cdecl DqDesignAnalysis::BayWeaponEjectorRacks(uint param_1)
+
+{
+  float fVar1;
+  
+                    /* 0x71e60  2634  ?BayWeaponEjectorRacks@DqDesignAnalysis@@SAII@Z */
+  if (param_1 == 0) {
+    return 0;
+  }
+  fVar1 = (float)roundf((float)param_1 / 100.0);
+  return (int)(longlong)fVar1 + 1;
+}
+
+
+// 180071ea0
+
+/* public: static unsigned int __cdecl DqDesignAnalysis::BayWeaponLaunchers(unsigned int) */
+
+uint __cdecl DqDesignAnalysis::BayWeaponLaunchers(uint param_1)
+
+{
+  float fVar1;
+  
+                    /* 0x71ea0  2635  ?BayWeaponLaunchers@DqDesignAnalysis@@SAII@Z */
+  if (param_1 == 0) {
+    return 0;
+  }
+  fVar1 = (float)roundf((float)param_1 / 90.0);
+  return (int)(longlong)fVar1 + 1;
+}
+
+
+// 180071ee0
+
+/* public: static float __cdecl DqDesignAnalysis::BayWeaponPower(unsigned int,unsigned char) */
+
+float __cdecl DqDesignAnalysis::BayWeaponPower(uint param_1,uchar param_2)
+
+{
+                    /* 0x71ee0  2636  ?BayWeaponPower@DqDesignAnalysis@@SAMIE@Z */
+  return ((float)param_2 * 0.05 + 1.0) * (float)(param_1 * 10);
+}
+
+
+// 180071f10
+
+/* public: static unsigned int __cdecl DqDesignAnalysis::BayWeaponProjectors(unsigned int) */
+
+uint __cdecl DqDesignAnalysis::BayWeaponProjectors(uint param_1)
+
+{
+  float fVar1;
+  
+                    /* 0x71f10  2637  ?BayWeaponProjectors@DqDesignAnalysis@@SAII@Z */
+  if (param_1 == 0) {
+    return 0;
+  }
+  fVar1 = (float)roundf((float)param_1 / 25.0);
+  return (int)(longlong)fVar1 + 1;
+}
+
+
+// 180071f50
+
+/* public: static float __cdecl DqDesignAnalysis::BayWeaponRange(unsigned char) */
+
+float __cdecl DqDesignAnalysis::BayWeaponRange(uchar param_1)
+
+{
+                    /* 0x71f50  2638  ?BayWeaponRange@DqDesignAnalysis@@SAME@Z */
+  return ((float)param_1 * 0.05 + 1.0) * 85000.0;
+}
+
+
+// 180072280
+
+/* public: static float __cdecl DqDesignAnalysis::CannonBayRange(unsigned char) */
+
+float __cdecl DqDesignAnalysis::CannonBayRange(uchar param_1)
+
+{
+                    /* 0x72280  2866  ?CannonBayRange@DqDesignAnalysis@@SAME@Z */
+  return ((float)param_1 * 0.05 + 1.0) * 16404.2;
+}
+
+
+// 180072ec0
+
+/* public: static float __cdecl DqDesignAnalysis::HarvesterBayRange(unsigned int,unsigned char) */
+
+float __cdecl DqDesignAnalysis::HarvesterBayRange(uint param_1,uchar param_2)
+
+{
+  float fVar1;
+  
+                    /* 0x72ec0  3986  ?HarvesterBayRange@DqDesignAnalysis@@SAMIE@Z */
+  fVar1 = sqrtf((float)(param_1 * 10));
+  return fVar1 * 100.0 * 3.28084 * ((float)param_2 * 0.05 + 1.0);
+}
+
+
+// 180075b90
+
+/* public: static float __cdecl DqDesignAnalysis::TurretPower(unsigned char) */
+
+float __cdecl DqDesignAnalysis::TurretPower(uchar param_1)
+
+{
+                    /* 0x75b90  6038  ?TurretPower@DqDesignAnalysis@@SAME@Z */
+  return ((float)param_1 * 0.05 + 1.0) * 40.0;
+}
+
+
+// 180075bc0
+
+/* public: static float __cdecl DqDesignAnalysis::TurretRange(unsigned char) */
+
+float __cdecl DqDesignAnalysis::TurretRange(uchar param_1)
+
+{
+                    /* 0x75bc0  6039  ?TurretRange@DqDesignAnalysis@@SAME@Z */
+  return ((float)param_1 * 0.05 + 1.0) * 3280.8398;
+}
+
+
+// 1801c3970
+
+/* public: bool __cdecl DqDesignAnalysis::MustBuildInSpace(unsigned int)const __ptr64 */
+
+bool __thiscall DqDesignAnalysis::MustBuildInSpace(DqDesignAnalysis *this,uint param_1)
+
+{
+  uchar uVar1;
+  STRUCTURE SVar2;
+  
+                    /* 0x1c3970  4954  ?MustBuildInSpace@DqDesignAnalysis@@QEBA_NI@Z */
+  uVar1 = TechLevel(this);
+  SVar2 = Structure(this,uVar1,param_1);
+  if ((((1 < SVar2 - 3) && ((*(int *)(this + 0x80) - *(int *)(this + 0xe8)) + 1 < 6)) &&
+      ((float)(*(double *)(this + 0xa8) - *(double *)(this + 0x90)) <= 119.0)) &&
+     ((float)(*(double *)(this + 0xa0) - *(double *)(this + 0x88)) <= 119.0)) {
+    return false;
+  }
+  return true;
+}
+
+
+

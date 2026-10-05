@@ -1,0 +1,328 @@
+1801c3c95 -> 18023cd70: Invalid Design %1
+1801c3d44 -> 18023cd88: <b>%1</b><br>
+1801c407e -> 18023cd98: DISJOINT 
+1801c40c0 -> 18023cda8: STREAMLINED 
+1801c411c -> 18023cdf8: SPACEPORT
+1801c4153 -> 18023cde8: STARBASE
+1801c418a -> 18023cdd8: SPACESHIP
+1801c41be -> 18023cdc8: STARSHIP
+1801c41f2 -> 18023cdb8: INVALID DESIGN
+1801c4235 -> 18023ce08: <div style="margin-left: 10px;">
+1801c424e -> 18023ce30: Tech Level %1
+1801c42d1 -> 18023ce08: <div style="margin-left: 10px;">
+1801c42ea -> 18023ce40: Armor Level %1 = TL%2
+1801c43c5 -> 18023ce58: <br>%L1kg Mass = TL%2
+1801c44d6 -> 18023ce70: %1 Crew+Passenger+Troop Berths
+1801c45b3 -> 18023ce90: <br>%1 = TL%2
+1801c46b0 -> 18023ce90: <br>%1 = TL%2
+1801c4786 -> 18023cea0: <br>Manufacture = TL%2
+1801c482a -> 18023ce08: <div style="margin-left: 10px;">
+1801c4882 -> 18023ceb8: Estimated Cost %L1%2 at TL%3 Using Q%4 Components
+1801c49f4 -> 18023cef0: <hr><b>HULL</b>
+1801c4a25 -> 18023ce08: <div style="margin-left: 10px;">
+1801c4a8f -> 18023cf00: <span style="color: rgb(255, 32, 32);">
+1801c4ace -> 18023cf28: Helm Needed<br>
+1801c4b13 -> 18023cf38: %L1 Life Support Units Needed<br>
+1801c4b9f -> 18023cf60: Gravity Drive Needed<br>
+1801c4be1 -> 18023cf80: Power Plant Needed<br>
+1801c4c20 -> 18023cf98: Fuel Cell Needed<br>
+1801c4c6e -> 18023cfb0: Hull Opening or Transporter Needed<br>
+1801c4cb0 -> 18023cfd8: Must Connect Separate Hull Pieces Together<br>
+1801c4ce1 -> 18023d008: </span>
+1801c4d3a -> 18023d010: %3 TL%4<br>
+1801c4f47 -> 18023d020: Armor Level %1 Absorbs %2 Kinetic Damage, %3 Energy Damage<br>
+1801c5084 -> 18023d060: Unarmored Absorbs %1 Kinetic Damage, %2 Energy Damage<br>
+1801c5277 -> 18023d0a0: %L1m%2 Volume
+1801c533e -> 18023ce08: <div style="margin-left: 10px;">
+1801c5399 -> 18023d0b0: <span style="color: rgb(255, 32, 32);">OUT OF BOUNDS to Port</span><br>
+1801c53e8 -> 18023d100: <span style="color: rgb(255, 32, 32);">OUT OF BOUNDS to Starboard</span><br>
+1801c542b -> 18023d150: <span style="color: rgb(255, 32, 32);">OUT OF BOUNDS to Aft</span><br>
+1801c5472 -> 18023d1a0: <span style="color: rgb(255, 32, 32);">OUT OF BOUNDS to Fore</span><br>
+1801c54b4 -> 18023d1f0: <span style="color: rgb(255, 32, 32);">OUT OF BOUNDS Below</span><br>
+1801c54f6 -> 18023d240: <span style="color: rgb(255, 32, 32);">OUT OF BOUNDS Aloft</span><br>
+1801c5557 -> 18023d288: %L1m Length<br>
+1801c55d8 -> 18023d298: %L1m Width<br>
+1801c565c -> 18023d2a8: %L1m Height, %2 Decks
+1801c574e -> 18023d2c0: %L1m Length, <b>Must Spawn at Station</b><br>
+1801c57cb -> 18023d288: %L1m Length<br>
+1801c5873 -> 18023d2f0: %L1m Width, <b>Must Spawn at Station</b><br>
+1801c58f0 -> 18023d298: %L1m Width<br>
+1801c5987 -> 18023d320: %L1m Height, %2 Decks, <b>Must Spawn at Station</b><br>
+1801c5a4d -> 18023d358: %L1m Height, %2 Decks<br>
+1801c5b6d -> 18023ce08: <div style="margin-left: 10px;">
+1801c5c0c -> 18023d378: %L1kg Mass
+1801c5c89 -> 18023ce08: <div style="margin-left: 10px;">
+1801c5cc1 -> 18023d388: %L1kg Equipment<br>
+1801c5d3f -> 18023d3a0: %L1kg Fuel<br>
+1801c5dba -> 18023d3b0: %L1kg Hull
+1801c5e97 -> 18023d3c0: <hr><b>ENGINEERING</b>
+1801c5ed3 -> 18023ce08: <div style="margin-left: 10px;">
+1801c5eec -> 18023d3d8: %L1 Maneuver Drive Units
+1801c5f61 -> 18023ce08: <div style="margin-left: 10px;">
+1801c5f97 -> 18023d3f8: %1 TL%2<br>
+1801c60b2 -> 18023d410: %L1m/sec/sec Acceleration <span style="color: rgb(32, 255, 255);"><b>STATION</b></span><br>
+1801c6137 -> 18023d470: %L1m/sec/sec Acceleration <span style="color: rgb(255, 255, 32);"><b>SLOW</b></span><br>
+1801c61b9 -> 18023d4d0: %L1m/sec/sec Acceleration <span style="color: rgb(32, 255, 32);"><b><i>FAST</i></b></span><br>
+1801c6233 -> 18023d530: %L1m/sec/sec Acceleration<br>
+1801c6308 -> 18023d550: %L1m/sec/sec Vertical Acceleration <span style="color: rgb(255, 255, 32);"><b>WEAK</b></span>
+1801c6382 -> 18023d5b0: %L1m/sec/sec Vertical Acceleration
+1801c650d -> 18023ce08: <div style="margin-left: 10px;">
+1801c656f -> 18023d5e0: %L1 Power Plant Units<div style="margin-left: 10px;">%4 TL%5<br>Capacitor %L3<br><span style="color: rgb(255, 32, 32);">%L2 NEEDED to Meet Idle Demand%6</span></div>
+1801c67b9 -> 18023ce08: <div style="margin-left: 10px;">
+1801c67f3 -> 18023d6a0: %L1 Power Plant Units<div style="margin-left: 10px;">%4 TL%5<br>Capacitor %L2<br><span style="color: rgb(255, 255, 32);">Less Than 60 sec. Capacitor While Idling</span></div>
+1801c6963 -> 18023ce08: <div style="margin-left: 10px;">
+1801c699d -> 18023d750: %L1 Power Plant Units<div style="margin-left: 10px;">%4 TL%5<br>Capacitor %L2</div>
+1801c6b3e -> 18023ce08: <div style="margin-left: 10px;">
+1801c6be3 -> 18023d7b0: %L1 FTL Drive Units<div style="margin-left: 10px;">%3 TL%4<br><span style="color: rgb(255, 32, 32);">%L2 Units NEEDED to Engage</span></div>
+1801c6d50 -> 18023d840: %L1 FTL Drive Units<div style="margin-left: 10px;">%3 TL%4<br>%L2 Units Sufficient to Engage<br>Maximum Warp Factor %5</div>
+1801c6f14 -> 18023d7b0: %L1 FTL Drive Units<div style="margin-left: 10px;">%3 TL%4<br><span style="color: rgb(255, 32, 32);">%L2 Units NEEDED to Engage</span></div>
+1801c7081 -> 18023d8c0: %L1 FTL Drive Units<div style="margin-left: 10px;">%3 TL%4<br>%L2 Units Sufficient to Engage</div>
+1801c71e4 -> 18023d930: <div style="margin-left: 10px;"><span style="color: rgb(255, 32, 32);">INADEQUATE CAPACITOR to Engage</span></div>
+1801c7263 -> 18023d9b0: <div style="margin-left: 10px;"><span style="color: rgb(255, 32, 32);">ENGINEER STATION NEEDED to Operate FTL Drive</span></div>
+1801c72ad -> 18023da38: <hr><b>FUEL</b>
+1801c72de -> 18023ce08: <div style="margin-left: 10px;">
+1801c735d -> 18023da48: Fuel Cell TL%3<br>%L1m%2 Hydrogen (H%4)
+1801c75f4 -> 18023ce08: <div style="margin-left: 10px;">
+1801c762d -> 18023da70: %L3 days at %L1m%2 H%4 per Real Day while Idling
+1801c7792 -> 18023ce08: <div style="margin-left: 10px;">
+1801c77ab -> 18023daa8: Life Support, Maneuver Drive and Sensor Powered On
+1801c78f1 -> 18023ce08: <div style="margin-left: 10px;">
+1801c792a -> 18023dae0: %L3 days at %L1m%2 H%4 per Real Day while Idling with Shields Up
+1801c7a8b -> 18023ce08: <div style="margin-left: 10px;">
+1801c7aad -> 18023db28: Life Support, Sensor and Shields Powered On
+1801c7ada -> 18023db58: Life Support, Maneuver Drive, Sensor and Shields Powered On
+1801c7c11 -> 18023ce08: <div style="margin-left: 10px;">
+1801c7c4a -> 18023db98: %L3 days at %L1m%2 H%4 per Real Day while Holding
+1801c7dab -> 18023ce08: <div style="margin-left: 10px;">
+1801c7dc4 -> 18023dbd0: Life Support and Sensor Powered On; Maneuver Drive on Hold
+1801c7eab -> 18023ce08: <div style="margin-left: 10px;">
+1801c7ee4 -> 18023dc10: %L3 days at %L1m%2 H%4 per Real Day while Holding with Shields Up
+1801c8044 -> 18023ce08: <div style="margin-left: 10px;">
+1801c805d -> 18023dc60: Life Support, Sensor and Shields Powered On; Maneuver Drive on Hold
+1801c80cf -> 18023cf00: <span style="color: rgb(255, 32, 32);">
+1801c8107 -> 18023dca8: NO FUEL
+1801c8138 -> 18023d008: </span>
+1801c8232 -> 18023dcb0: <hr><b>AVIONICS</b>
+1801c8274 -> 18023ce08: <div style="margin-left: 10px;">
+1801c82ae -> 18023dcc8: %1 TL%2
+1801c8433 -> 18023dcd0: - Useless Without Weapon Bay
+1801c84ee -> 18023dcf0: - Useless Without Surgery Unit
+1801c85b5 -> 18023dd10: - Useless Without Transporter Pads
+1801c8651 -> 18023dd38: %1 - %2 %3 Deck %4
+1801c8801 -> 18023dd50: %1 - %2 %3 Deck %4 <span style="color: rgb(255, 32, 32);">%5</span>
+1801c8b2c -> 18023ce08: <div style="margin-left: 10px;">
+1801c8b78 -> 18023dd98: Station Service Range %4m<br>
+1801c8eac -> 18023ce08: <div style="margin-left: 10px;">
+1801c8ec5 -> 18023ddb8: %L1 Game Tables
+1801c8f67 -> 18023ce08: <div style="margin-left: 10px;">
+1801c8f80 -> 18023ddc8: %L1 Life Support Units
+1801c8ffb -> 18023ce08: <div style="margin-left: 10px;">
+1801c9035 -> 18023dcc8: %1 TL%2
+1801c918a -> 18023dde0: System Range
+1801c91cd -> 18023ddf0: Planetary Range
+1801c920d -> 18023de00: Orbital Range
+1801c923d -> 18023de10: Short Range
+1801c9263 -> 18023ce08: <div style="margin-left: 10px;">
+1801c927c -> 18023de20: %L1 Sensor Units
+1801c92f7 -> 18023ce08: <div style="margin-left: 10px;">
+1801c9331 -> 18023de38: %4 TL%5<br>%2 %L3m
+1801c948b -> 18023de50: <br><span style="color: rgb(255, 32, 32);">
+1801c949d -> 18023de80: SENSOR STATION NEEDED to Operate Sensors
+1801c94af -> 18023d008: </span>
+1801c95fa -> 18023ce08: <div style="margin-left: 10px;">
+1801c9613 -> 18023deb0: %L1 Shield Units
+1801c968e -> 18023ce08: <div style="margin-left: 10px;">
+1801c96f7 -> 18023ded0: %3 TL%4<br>Absorbs %1 Kinetic Damage per Side<br>Absorbs %2 Energy Damage per Side
+1801c9863 -> 18023de50: <br><span style="color: rgb(255, 32, 32);">
+1801c9875 -> 18023df28: SHIELD STATION NEEDED to Operate Shields
+1801c9887 -> 18023d008: </span>
+1801c9924 -> 18023ce08: <div style="margin-left: 10px;">
+1801c993d -> 18023df58: Sickbay %1 Deck %2
+1801c9a12 -> 18023ce08: <div style="margin-left: 10px;">
+1801c9a5b -> 18023df70: %3 TL%4
+1801c9b7f -> 18023de50: <br><span style="color: rgb(255, 32, 32);">
+1801c9b91 -> 18023df78: MEDIC STATION NEEDED to Operate Medical Unit
+1801c9ba3 -> 18023d008: </span>
+1801c9c61 -> 18023ce08: <div style="margin-left: 10px;">
+1801c9c7a -> 18023dfa8: Transporter Room %1 Deck %2
+1801c9d42 -> 18023ce08: <div style="margin-left: 10px;">
+1801c9db4 -> 18023dfc8: %4 TL%5<br>%L3 Transporter Pads
+1801c9f0f -> 18023de50: <br><span style="color: rgb(255, 32, 32);">
+1801c9f21 -> 18023dfe8: TRANSPORTER STATION NEEDED to Operate Transporter
+1801c9f33 -> 18023d008: </span>
+1801c9f4f -> 18023de50: <br><span style="color: rgb(255, 32, 32);">
+1801c9f61 -> 18023e020: SENSORS NEEDED to Lock-On Transporter Targets
+1801c9f73 -> 18023d008: </span>
+1801c9fb1 -> 18023e050: <span style="color: rgb(255, 255, 32);">
+1801c9fc3 -> 18023e080: Duplicate Room Number Causes <i>Beam Up</i> Ambiguity
+1801c9fd5 -> 18023d008: </span>
+1801ca071 -> 18023ce08: <div style="margin-left: 10px;">
+1801ca08a -> 18023e0b8: %L1 Operable Doors/Hatches
+1801ca132 -> 18023ce08: <div style="margin-left: 10px;">
+1801ca144 -> 18023e050: <span style="color: rgb(255, 255, 32);">
+1801ca15d -> 18023e0e0: %1 doors/hatches cannot be animated due to rendering limitations. They are functional but they appear half open whether open or closed.
+1801ca1e2 -> 18023d008: </span>
+1801ca295 -> 18023e168: <hr><b>ARMAMENT</b>
+1801ca2e8 -> 18023ce08: <div style="margin-left: 10px;">
+1801ca2fa -> 18023cf00: <span style="color: rgb(255, 32, 32);">
+1801ca31c -> 18023e180: FIRE CONTROL STATION NEEDED to Operate Weapon Bays
+1801ca325 -> 18023e1b8: FIRE CONTROL STATION NEEDED to Operate Weapon Bay
+1801ca332 -> 18023d008: </span>
+1801ca360 -> 18023ce08: <div style="margin-left: 10px;">
+1801ca372 -> 18023cf00: <span style="color: rgb(255, 32, 32);">
+1801ca384 -> 18023e1f0: SENSORS NEEDED to Lock-On Weapon Bay Targets
+1801ca396 -> 18023d008: </span>
+1801ca40f -> 18023ce08: <div style="margin-left: 10px;">
+1801ca428 -> 18023e220: Weapon Bay %1, %L2 Units
+1801ca4e6 -> 18023ce08: <div style="margin-left: 10px;">
+1801ca55f -> 18023e240: %4 TL%5
+1801ca727 -> 18023e248: <br>%L1 Cannon Barrels
+1801ca7a2 -> 18023e260: <br>Targeting Range %L1m
+1801ca894 -> 18023e280: <br>Example Firing %1
+1801ca911 -> 18023ce08: <div style="margin-left: 10px;">
+1801ca940 -> 18023e298: One Round Damage %L1-%L2hp, %L3m Radius
+1801caa9a -> 18023e2c0: One Round Damage %L1-%L2hp
+1801cabc6 -> 18023e2e0: <br>Full Barrage of %4 Damage %L1-%L2hp, %L3m Radius
+1801cad3e -> 18023e318: <br>Full Barrage of %4 Damage %L1-%L2hp
+1801caea8 -> 18023e340: <br>%L1 Beam Projectors
+1801caf26 -> 18023e260: <br>Targeting Range %L1m
+1801cafd1 -> 18023ce08: <div style="margin-left: 10px;">
+1801cafeb -> 18023cf00: <span style="color: rgb(255, 32, 32);">
+1801cb023 -> 18023e358: INADEQUATE CAPACITOR to Fire Energy Weapons at Full Power
+1801cb054 -> 18023d008: </span>
+1801cb090 -> 18023e398: Capacitor Adequate for One Shot of Energy Weapon at Full Power
+1801cb0bd -> 18023e3e0: Capacitor Adequate for %L1 Consecutive Shots of Energy Weapons at Full Power
+1801cb158 -> 18023ce08: <div style="margin-left: 10px;">
+1801cb1e9 -> 18023e430: Example Firing %1
+1801cb266 -> 18023ce08: <div style="margin-left: 10px;">
+1801cb295 -> 18023e448: One Beam Damage %L1-%L2hp, %L3m Radius
+1801cb3ef -> 18023e470: One Beam Damage %L1-%L2hp
+1801cb51b -> 18023e490: <br>Full Bundle of %4 Damage %L1-%L2hp, %L3m Radius
+1801cb693 -> 18023e4c8: <br>Full Bundle of %4 Damage %L1-%L2hp
+1801cb7f4 -> 18023e4f0: <br>%L1 Ejector Racks
+1801cb872 -> 18023e260: <br>Targeting Range %L1m
+1801cb97f -> 18023e508: <br>Example Dropping %1
+1801cb9fc -> 18023ce08: <div style="margin-left: 10px;">
+1801cba27 -> 18023e520: One Bomb Damage %L1-%L2hp, %L3m Radius
+1801cbb59 -> 18023e548: One Bomb Damage %L1-%L2hp
+1801cbcf8 -> 18023e568: <br>Full Load of %4 Damage %L1-%L2hp, %L3m Radius
+1801cbe64 -> 18023e5a0: <br>Full Load of %4 Damage %L1-%L2hp
+1801cbfc5 -> 18023e5c8: <br>%L1 Launchers
+1801cc040 -> 18023e260: <br>Targeting Range %L1m
+1801cc130 -> 18023e5e0: <br>Example Launching %1
+1801cc1aa -> 18023ce08: <div style="margin-left: 10px;">
+1801cc1d9 -> 18023e600: One Rocket Damage %L1-%L2hp, %L3m Radius
+1801cc32a -> 18023e630: One Rocket Damage %L1-%L2hp
+1801cc450 -> 18023e650: <br>Full Volley of %4 Damage %L1-%L2hp, %L3m Radius
+1801cc5c5 -> 18023e688: <br>Full Volley of %4 Damage %L1-%L2hp
+1801cc6fe -> 18023ce08: <div style="margin-left: 10px;">
+1801cc7a6 -> 18023e6b0: Example Launching %1
+1801cc823 -> 18023ce08: <div style="margin-left: 10px;">
+1801cc852 -> 18023e6c8: One Missile Damage %L1-%L2hp, %L3m Radius
+1801cc9ac -> 18023e6f8: One Missile Damage %L1-%L2hp
+1801ccb87 -> 18023e650: <br>Full Volley of %4 Damage %L1-%L2hp, %L3m Radius
+1801cccff -> 18023e688: <br>Full Volley of %4 Damage %L1-%L2hp
+1801ccf2c -> 18023e718: <br>Range %L1m<br>Harvest %2u at %L3m
+1801cd040 -> 18023cf00: <span style="color: rgb(255, 32, 32);">
+1801cd078 -> 18023e740: <br>INADEQUATE CAPACITOR to Fire at Full Power
+1801cd0a9 -> 18023d008: </span>
+1801cd0e5 -> 18023e770: <br>Capacitor Adequate for One Shot at Full Power
+1801cd115 -> 18023e7a8: <br>Capacitor Adequate for %L1 Consecutive Shots at Full Power
+1801cd18b -> 18023cf00: <span style="color: rgb(255, 32, 32);">
+1801cd1c3 -> 18023e7e8: <br>INADEQUATE WEAPON UNITS to Fire
+1801cd1f4 -> 18023d008: </span>
+1801cd288 -> 18023ce08: <div style="margin-left: 10px;">
+1801cd2a1 -> 18023e810: %L1 Turrets
+1801cd360 -> 18023e820: <div style="margin-left: 20px;">
+1801cd379 -> 18023e848: %1 %2 Deck %3
+1801cd4bf -> 18023ce08: <div style="margin-left: 10px;">
+1801cd504 -> 18023dcc8: %1 TL%2
+1801cd680 -> 18023e280: <br>Example Firing %1
+1801cd6fd -> 18023ce08: <div style="margin-left: 10px;">
+1801cd72c -> 18023e858: Damage %L1-%L2hp, %L3m Radius
+1801cd886 -> 18023e878: Damage %L1-%L2hp
+1801cd9a9 -> 18023ce08: <div style="margin-left: 10px;">
+1801cd9ee -> 18023dcc8: %1 TL%2
+1801cdb6a -> 18023e5e0: <br>Example Launching %1
+1801cdbe7 -> 18023ce08: <div style="margin-left: 10px;">
+1801cdc16 -> 18023e858: Damage %L1-%L2hp, %L3m Radius
+1801cdd70 -> 18023e878: Damage %L1-%L2hp
+1801cde86 -> 18023ce08: <div style="margin-left: 10px;">
+1801cdf44 -> 18023e6b0: Example Launching %1
+1801cdfc1 -> 18023ce08: <div style="margin-left: 10px;">
+1801cdff0 -> 18023e858: Damage %L1-%L2hp, %L3m Radius
+1801ce14a -> 18023e878: Damage %L1-%L2hp
+1801ce26d -> 18023ce08: <div style="margin-left: 10px;">
+1801ce2b2 -> 18023dcc8: %1 TL%2
+1801ce42e -> 18023e280: <br>Example Firing %1
+1801ce4ab -> 18023ce08: <div style="margin-left: 10px;">
+1801ce4da -> 18023e858: Damage %L1-%L2hp, %L3m Radius
+1801ce634 -> 18023e878: Damage %L1-%L2hp
+1801ce7be -> 18023e890: <hr><b>CREW</b>
+1801ce836 -> 18023ce08: <div style="margin-left: 10px;">
+1801ce859 -> 18023e8a0: %L1 Officer Stations<br>
+1801ce8dc -> 18023e8c0: %L1 Crew Stations<br>
+1801ce95e -> 18023e8d8: %L1 Drivers<br>
+1801ce9e0 -> 18023e8e8: %L1 Pilots<br>
+1801cea6f -> 18023e8f8: %L1 Turret Gunners<br>
+1801ceb0d -> 18023e910: %L1 Guards<br>
+1801cec16 -> 18023e920: <hr><b>QUARTERS</b>
+1801cec47 -> 18023ce08: <div style="margin-left: 10px;">
+1801cec6e -> 18023e938: %L1 Officer Berths<br>
+1801ced07 -> 18023e050: <span style="color: rgb(255, 255, 32);">
+1801ced20 -> 18023e950: %L1 Officer Berths Recommended for %L1 Officer Stations
+1801ced97 -> 18023e988: </span><br>
+1801cedb7 -> 18023e998: %L1 Crew Berths<br>
+1801cee42 -> 18023e050: <span style="color: rgb(255, 255, 32);">
+1801cee5b -> 18023e9b0: %L1 Crew Berths Recommended for %L1 Crew Stations
+1801ceed2 -> 18023e988: </span><br>
+1801cef11 -> 18023e9e8: %L1 1st Class Passenger Berths<br>
+1801cef96 -> 18023ea10: %L1 2nd Class Passenger Berths<br>
+1801cf014 -> 18023ea38: %L1 3rd Class Passenger Berths<br>
+1801cf0a4 -> 18023ea60: %L1 Troop Berths<br>
+1801cf13e -> 18023e050: <span style="color: rgb(255, 255, 32);">
+1801cf157 -> 18023ea78: %L1 Troop Berths Recommended for %L1 Turrets
+1801cf1d9 -> 18023e988: </span><br>
+1801cf276 -> 18023eaa8: <hr><b>HOLD</b>
+1801cf2a7 -> 18023ce08: <div style="margin-left: 10px;">
+1801cf2d0 -> 18023eab8: %L1m%2 Storage Space
+1801cf39a -> 18023ead0: <br>Room for %L1 Commodities
+1801cf486 -> 18023eaf0: <hr><b>VEHICLE BAYS</b>
+1801cf4d0 -> 18023ce08: <div style="margin-left: 10px;">
+1801cf4f9 -> 18023eb08: %L1m%2 Vehicle Bays
+1801cf623 -> 18023eb20: <br><img height="32" src="qrc%3"> %1 %2
+1801cf793 -> 18023eb48: <hr><b>DAMAGE CONTROL</b>
+1801cf7c4 -> 18023ce08: <div style="margin-left: 10px;">
+1801cf7dd -> 18023eb68: %L1 Total Hit Points
+1801cf88f -> 18023ce08: <div style="margin-left: 10px;">
+1801cf8a8 -> 18023eb80: %L1 Structure Hit Points
+1801cf976 -> 18023ce08: <div style="margin-left: 10px;">
+1801cf998 -> 18023eba0: %L1 Fuel Cell<br>
+1801cfa2e -> 18023ebb8: %L1 Hold<br>
+1801cfac4 -> 18023ebc8: %L1 Hull<br>
+1801cfb5b -> 18023ebd8: %L1 Vehicle Bay<br>
+1801cfc54 -> 18023ce08: <div style="margin-left: 10px;">
+1801cfc6d -> 18023ebf0: %L1 Equipment Hit Points
+1801cfcf4 -> 18023ce08: <div style="margin-left: 10px;">
+1801cfd1e -> 18023ec10: %L1 Command and Control<br>
+1801cfdc4 -> 18023ec30: %L1 Maneuver Drive<br>
+1801cfe64 -> 18023ec48: %L1 Life Support<br>
+1801cff08 -> 18023ec60: %L1 Power Plant<br>
+1801cffab -> 18023ec78: %L1 Sensor<br>
+1801d004f -> 18023ec88: %L1 Shield<br>
+1801d00f8 -> 18023ec98: %L1 Medical<br>
+1801d01a3 -> 18023eca8: %L1 Transporter<br>
+1801d024c -> 18023ecc0: %L1 Turret<br>
+1801d02f7 -> 18023ecd0: %L1 Weapon<br>
+1801d039a -> 18023ece0: %L1 FTL Drive<br>
+1801d04aa -> 18023ecf8: <hr><b>MANUFACTURE</b>
+1801d04db -> 18023ce08: <div style="margin-left: 10px;">
+1801d0501 -> 18023cf00: <span style="color: rgb(255, 32, 32);">
+1801d0539 -> 18023ed10: UNABLE TO MAKE A MANUFACTURING PROCESS
+1801d057b -> 18023ed38: <br>Tech Level Exceeds Maximum TL%1
+1801d0606 -> 18023ed60: <br>Design May be Too Large<br>Try Reducing the Size of the Design
+1801d0637 -> 18023d008: </span>
+1801d0788 -> 18023eda8: <img height="16" src="qrc%3"> %L1 %2 TL%4
+1801d0924 -> 18023edd8: <img height="16" src="qrc%2"> %1 TL%4
+1801d0a76 -> 18023ee00: <img height="16" src="qrc%3"> %L1 %2
+1801d0bbc -> 18023ee28: <img height="16" src="qrc%2"> %1

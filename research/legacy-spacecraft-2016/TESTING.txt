@@ -1,44 +1,37 @@
 Recovery validation
-====================
+===================
 
-Build policy and evidence limits
---------------------------------
-The user builds manually. The assistant must not run a compiler or client build.
-Native harnesses below are outside game targets and have not been built/run by
-the assistant. Synthetic fixtures test recovered algorithms; they do not prove
-original-client runtime or visual parity. The user verified the viewer, cell
-editing and fresh designs. The restored panel still needs native UI comparison.
+The user builds manually; the assistant must never initiate a build. Native
+harnesses are outside game targets and have not been built/run by the assistant.
+Python references and synthetic fixtures do not establish C++ runtime or visual
+parity. The user verified the viewer, cell editing and fresh designs; remaining
+native/UI checks are below. Run commands from the repository root.
 
-Reference checks (repository root; no build)
---------------------------------------------
+Reference checks (no build)
+--------------------------
   python3 -B research/legacy-spacecraft-2016/cell_shapes.py --self-test
   python3 -B research/legacy-spacecraft-2016/room_raster.py --self-test
   python3 -B research/legacy-spacecraft-2016/inspect_vehicle_bounds.py --self-test
   python3 -B research/legacy-spacecraft-2016/tests/check_ship_writer.py
+  python3 -B research/legacy-spacecraft-2016/check_ship_stats.py --require-samples
   python3 -B research/legacy-spacecraft-2016/tests/check_detail_placements.py \
     '/path/to/design.ship'
+  python3 -B research/legacy-spacecraft-2016/inspect_equipment_assets.py \
+    '/path/to/original/2016/client/directory'
 
-Recorded coverage: cell shapes passed 2,156 independent half-plane checks,
-8,624 translated checks, every byte mask, literal bits, ties and negative seams.
-The raster reference checked 19,160 occupancy/boundary points, 220 complete
-erasures, 105,840 interior subtraction samples, all 16 scanline predicates and
-13 topology fixtures. All 84 original sample room boundaries traced; all
-8,328 details passed the categorical placement audit. That audit does not test
-full spacing, vehicle geometry or native reconciliation. Original asset checks
-covered 143 detail definitions, 15 vehicle commodities and 111 unchanged PNGs.
+Recorded passes: cell masks/ties/negative seams, raster/erasure/topology fixtures,
+84 sample room boundaries, 8,328 categorical equipment placements, 143 equipment
+stat rows and three ship-stat baselines. Placement audits exclude full spacing,
+vehicle geometry and native reconciliation. Texture/model hashes, 62 surface
+atlas rectangles and the recovered effect table were independently checked.
+Full sample hashes/counts: sample-inspection.json and ship-stats-baselines.json.
+Samples are Antiflux Harvester MK2, B8_Galatine_A1 and tl20StarDriver (v2/state 0,
+exact EOF, open in the old client). v0/v1 and ellipse coverage is synthetic.
+Stats accepts explicit .ship paths; without --require-samples missing originals
+are skipped. Writer defaults to recorded sample paths, or accepts explicit paths.
 
-Sample baselines (full hashes and per-deck counts: sample-inspection.json):
-  File                          Bytes   Rooms   Stored vertices   Details
-  Antiflux Harvester MK2.ship    35755      29              312      2040
-  B8_Galatine_A1.ship            39059      30              332      2235
-  tl20StarDriver.ship           69654      25              204      4053
-All are version 2/state 0, consume exactly to EOF, and open in the 2016 client.
-None has empty/ellipse-control rooms. Version 0/1 coverage is synthetic.
-
-Manual native harnesses (commands for the user only)
----------------------------------------------------
-From the repository root, with Qt 5 development packages and pkg-config:
-
+Native harnesses (user commands only; Qt 5 development packages/pkg-config)
+-------------------------------------------------------------------------
   c++ -std=c++11 -fPIC -no-pie -Isrc/lib/data/designs \
     research/legacy-spacecraft-2016/tests/native_ship_reader.cpp \
     src/lib/data/designs/aulegacyship.cpp \
@@ -63,178 +56,11 @@ From the repository root, with Qt 5 development packages and pkg-config:
     src/lib/data/designs/aulegacyshipedit.cpp \
     $(pkg-config --cflags --libs Qt5Core Qt5Gui) -o /tmp/native_ship_edit
 
-Run the already-built harnesses:
-  /tmp/native_ship_reader --self-test
-  /tmp/native_ship_geometry research/legacy-spacecraft-2016/room-raster-fixtures.json \
-    research/legacy-spacecraft-2016/cell-shapes.json
-  /tmp/native_detail_reconciliation
-  /tmp/native_ship_edit
-
-Reader fixtures use Qt's own Qt_4_0 writer and cover versions 0/1/2, every
-truncation, exact EOF, UTF-16/null strings, count/size limits, atomic failure,
-signed coordinates, normalization and ellipse expansion/degeneracy. Geometry
-checks exact fixture outputs, 3,072 cell outputs and unsupported-input guards.
-Edit/detail fixtures cover room keys, ID reuse, competing repaint, atomicity,
-empty/full erasure, roofs, coordinate limits and equipment correction/removal.
-
-For full native/Python record parity, substitute an original sample path:
-  python3 -B research/legacy-spacecraft-2016/tests/compare_native_reader.py \
-    /tmp/native_ship_reader '/path/to/design.ship'
-Multiple sample paths are accepted. /tmp/native_ship_edit also accepts sample
-paths for in-memory new-deck edits and reconciliation; it never writes them.
-/tmp/native_ship_reader '/path/to/design.ship' emits a complete JSON dump.
-
-Native saving checks (user builds manually)
--------------------------------------------
-The reference save check above audits the three recorded sample paths; pass
-other paths explicitly if the originals are elsewhere. It has passed on all
-three samples: Antiflux is byte-identical and Galatine changes 11 old vehicle
-ID bytes. Star Driver normalizes 18 vehicle IDs, adds the transporter module
-entry and puts equipment in the original designer's deck/room/ID order.
-This is a Python reference check, not a claim that the C++ serializer has run.
-
-Build this isolated harness manually; it is not a client build target:
-
   c++ -std=c++11 -fPIC -no-pie -Isrc/lib/data/designs \
     research/legacy-spacecraft-2016/tests/native_ship_writer.cpp \
     src/lib/data/designs/aulegacyship.cpp \
     src/lib/data/designs/aulegacyshipsave.cpp \
     $(pkg-config --cflags --libs Qt5Core Qt5Gui) -o /tmp/native_ship_writer
-
-  /tmp/native_ship_writer --self-test
-  python3 -B research/legacy-spacecraft-2016/tests/check_ship_writer.py \
-    --native /tmp/native_ship_writer '/path/to/original/sample.ship'
-
-The Python comparison gives the already-built harness a temporary output path,
-compares its entire output against the independent reference, then removes the
-temporary file. It never overwrites sample files or starts a build. Multiple
-sample paths are accepted; omitting paths uses sample-inspection.json.
-
-Compare a single input against its actual 2016 designer re-save:
-
-  python3 -B research/legacy-spacecraft-2016/tests/check_ship_writer.py \
-    '/path/to/tl20StarDriver.ship' \
-    --legacy-save '/path/to/tl20StarDriver 2016 designer save.ship'
-
-This reference comparison has passed on the supplied files. It reports the
-identity fields, projects only the captured design ID and architect ID/name,
-and compares every byte. No equipment order, module data or geometry is copied
-from the original save into the expected output. Add --native with the already
-built harness to also check the actual C++ Save path. The original session's
-random avatar ID cannot be reproduced by retaining the source author; see the
-architect identity investigation in FORMAT.txt.
-
-The native tests cover a fixed 104-byte wire oracle, exact v0/v1 upgrades,
-original default modules, record order, null/empty/surrogate UTF-16, fallback
-names, all normalization rules, negative XY/decks, signed rounding ties,
-working boundary precedence, ellipse compression, empty room removal,
-invalid geometry/counts and atomic file replacement/failure. Preparation tests
-cover signed detail ordering, transporter consoles versus pads, multiple pads,
-negative/multiple decks, room numbers, custom selections, duplicate/stale keys,
-empty/orphan rooms, bay units/emitters and module-map collision/growth ordering
-at 8/9, 64/65 and 512/513 entries. The fixed hex oracles and module-order digests
-have been checked independently in Python. The native
-harness itself has NOT been compiled/run by the assistant.
-
-Expected reference saved SHA-256 values:
-  Antiflux Harvester MK2.ship
-    beaa58348bd2a0a0cb76cf20871afa07a7a79448aa70adda4545d0e28f459037
-  B8_Galatine_A1.ship
-    5cebd0457f90d6a088c13ca7725f0960ac13edc11d601fda16418ee19bec6658
-  tl20StarDriver.ship
-    54394f386fb669b69776b59c09d42692f99412956f7a5a8319cf45722ba4ddc1
-  tl20StarDriver.ship with captured 2016 session identity (comparison only)
-    e8b20a55dda90b87f047eaa131e0036a5894211e9bfdeebbd9990ac0952cc5a2
-
-Manual UI and original-client comparisons
------------------------------------------
-Launch AuSceneClient -legacy-spacecraft [file] or use the designer chooser.
-The VS Code "Legacy spacecraft viewer (already built)" profiles have no build
-task. Paths must match the executable's platform (Windows uses C:\ paths).
-
-Check the right-docked palette, F6 hide/float/redock, icon availability without
-legacy DLLs, dark controls, selected tools, pan/zoom/fit and record inspection.
-The Fit view button must be absent; the F shortcut and automatic fitting remain.
-Check the original design-disk icon appears at the left of the F6 panel title,
-both docked and floating; the application window icon must remain unchanged.
-Drag and double-click the title, use Dock/Float and close, then reopen with F6.
-The bottom status bar and cursor-coordinate readout must be absent in both
-launch paths. Rejected edits and grid warnings must appear in the tools panel;
-the inspector must still show current deck/Z after switching decks.
-Check New and loaded designs show a finite 80x80-cell grid, with no lines outside
-+/-226.27416996 feet and brighter lines every ten cells. Exercise all four grid
-directions at the edges; disabling them leaves the square boundary and labels.
-Fore/Port Fore/Starboard Fore must be at the top; Aft/Port Quarter/Starboard
-Quarter at the bottom; Port left and Starboard right. Fit must leave all labels
-visible, and zoom must preserve their text size. The grid's scrollbars and top
-summary strip must be absent; middle-drag must still pan. The title's dirty
-asterisk and discard confirmation must still work after painting/header edits.
-Check room labels (e.g. Engine Room 1/2/3): name and subtype+1, first-boundary
-vertex anchor, original label color and black shadow. Pan/zoom must move their
-anchors without scaling the text. Switch decks, paint/grow/repaint/erase rooms,
-and start a fresh design; labels must follow the current geometry without stale
-copies. Clicking/painting through a label must still reach the room or detail.
-Confirm the File/View menu bar is absent and Escape exits from the deck and
-docked/floating panel, offering Save/Discard/Cancel when modified. Ctrl+N, Ctrl+O,
-Ctrl+S, F and F6 must still work with the panel hidden. Escape in a file dialog or
-discard prompt must dismiss that dialog rather than exit the designer.
-Deck arrows must stop at -41/+41. New rooms must be rejected outside -28/+28,
-but cell erasure remains available there. Paint a Hold on deck 28, move to 29,
-and place a hull hatch or top turret over its interior; it must attach to the
-room below. Room painting on 29 must fail without deleting that attachment.
-Check the deck buttons in both floor-plan and rendered walkthrough modes.
-Outdoor flag/light poles and roof tools must not appear in the spacecraft
-palette. Native_ship_edit/native_detail_edit add mode-restriction cases; they
-have not been compiled or run by the assistant. See BUILDING-VS-SPACECRAFT.txt.
-Room Number wraps 1..256; minimum TL displays 32..1.
-New defaults: streamline enabled, armor 0, minimum TL display 1. Loading
-must preserve design settings without marking dirty; it assigns a fresh working
-design ID. Disabled tools must do nothing.
-
-Test New/Open/Exit/close with Save, Discard and Cancel, failed loads preserving
-edits, and last-directory persistence (successful opens/saves; folder fallback).
-Use the existing Save icon: the original always-prompt save dialog must open.
-Test new and loaded designs, filename suffixes, overwrite confirmation, Cancel,
-read-only destinations and invalid geometry. Only a successful save clears the
-dirty asterisk; a cancelled/failed save during exit must keep the editor open.
-Paint cells and place/rotate every available equipment type, save to a copy,
-reopen and check room numbers, decks, IDs, positions and 3D appearance. Repeat
-Save without editing and compare bytes. Open the current file while dirty,
-choose Save to that same path, and verify the newly saved geometry loads.
-Load saved copies in the original 2016 client as the final interoperability
-check. Do not infer full original-session parity solely from a round-trip:
-the original world-backed workflow may assign different design/architect IDs.
-In a fresh process, the initial blank design must have ID 20000 and the first
-successful import 20001. Verify that header, rooms and equipment all carry the
-same working ID. Save twice: the ID must not change. Cancel New/Open and try a
-failed load: none must consume an ID. The next successful New/import must use
-20002. Restart both designers and perform the same import sequence before
-comparing: design IDs should now agree, leaving only architect identity.
-Add transporter pads in two room numbers on different decks and save. Confirm
-each group gains one header module; adding only a console must not add one.
-Remove the final pad and save again; its module must disappear. Remove a bay
-or change its Room Number and verify stale/default module reconciliation.
-Check embedded entry/exit, music restoration, reopening Legacy and subsequent
-Modern entry; the two designers cannot be switched directly while open.
-
-For original parity, save controlled before/after files in the old client:
-adjacent/contained/disconnected/corner-touch paints; competing type/subtype;
-edge/full/bridge/hole erases; a closed loop; diagonal cells and negative seams;
-XY +/-120 and deck +/-28 limits. Compare IDs, boundaries and equipment changes,
-not just appearance. Whole-room hit tests and type/number reassignment remain
-future comparisons; PAINTING-RULES.txt records their distinct original paths.
-
-Rendering validation (user builds manually)
-------------------------------------------
-The rendering work did not run a compiler, build system, or native client.
-The cell-shape and room-raster Python reference checks above passed again.
-All 62 atlas rectangles in the new renderer were independently compared
-with the surviving AuBodyRenderWidget::ShipTexture table and matched.
-These checks do not establish native rendering or visual parity.
-
-The CPU mesh harness can be built by the user without an OpenGL context.
-It stubs only the resource-model importer; it checks the real surface,
-procedural equipment and stair code, not 3DS loading or vehicle materials:
 
   c++ -std=c++11 -fPIC -no-pie -Isrc/lib/data/designs \
     -Isrc/lib/designer/legacy \
@@ -247,112 +73,6 @@ procedural equipment and stair code, not 3DS loading or vehicle materials:
     src/lib/data/designs/aulegacyshipdetails.cpp \
     src/lib/data/designs/aulegacyshipgeometry.cpp \
     $(pkg-config --cflags --libs Qt5Core Qt5Gui) -o /tmp/native_ship_mesh
-
-  /tmp/native_ship_mesh
-
-It checks single/stacked-deck area, hidden hull suppression, open-below
-over ordinary/fuel/missing decks, concavity, signed deck heights, same-type
-different-number room partitions, inherited open-below partition ownership,
-square/diamond hatch aperture areas, small doors and full-span wall openings,
-finite normals/positions across every
-spacecraft room type at all eleven armor settings, every nonempty cell-mask
-shape's area, invalid/zero-area boundary rejection, top/bottom turret cut areas,
-dome normals/depth, side turret profiles and frame UVs. It has not been built or run.
-
-After a manual client build, compare the three sample ships and controlled
-one/two-deck fixtures with the original client. Check Render Mode in its
-original palette position, unchanged dp_RenderMode icon/tooltip, and repeated
-floor-plan/solid switching. Check the floor-plan camera and selected tool
-survive toggling; selecting Paint/Erase/Inspect returns to the floor plan.
-Check captured mouse look, walking controls, resize, F6 docking/floating, and entry/exit
-through both launch paths. The floor-plan F shortcut must not fit the 3D view.
-Home is now a recovery action that finds a clear standing position.
-
-Check armor 0..10 room silhouettes and transparent window frames; bridge,
-lounge, captain's cabin and weapon-bay glass floors/tops; neighboring room
-partitions; fuel rooms; negative decks; open-to-below and gravity-well rooms.
-The cutaway and orbit camera have been replaced by the walkthrough. Changing
-the selected deck changes the outside studio plane without teleporting the
-character. Test hatch/door/opening fixtures and read the inspector's explicit
-rendering limitations. Full original visual parity still needs comparison.
-
-Walkthrough validation (user builds manually)
---------------------------------------------
-No client build, compilation or native execution was performed for this pass.
-Read WALKTHROUGH-RECOVERY.txt, WALKTHROUGH-COLLISION.txt and DOOR-INTERACTION.txt
-for the recovered behavior and remaining local approximations.
-
-After building, exercise both standalone and embedded designer entry:
-  - New/Open, toggle Render Mode and confirm first-person entry at the origin.
-    Switch to the floor plan and back: position and facing should persist.
-    Editing geometry should retain states of unchanged doors; opening another
-    design should reset the character and all doors.
-  - Walk with WASD, move the captured mouse to look, run with Shift, toggle forward with Q, and
-    jump with Space. Release keys, focus another panel/window or leave render
-    mode: no held movement should remain. Ctrl+S/F6 must still reach the UI.
-  - Return or right-click toggles avatar input/free hand mode. Holding Ctrl
-    releases the cursor temporarily; releasing Ctrl captures it again only
-    when the scene has focus. Click a door with the hand. Verify loss of focus,
-    file dialogs, floating tools and application switching never trap the
-    cursor or apply a large stale mouse delta. Repeat after releasing Ctrl
-    in another application. Looking should not require dragging.
-  - Confirm the shared yellow crosshair appears even for an empty design.
-    Point at the ship: arms converge and the original green hull-health bar,
-    hull icon and ship name appear above. Look away: the lock decays. Return
-    from floor-plan mode and resize the viewport without losing the overlay.
-  - With studio gravity off, fly outside using C/Z and pitched forward motion.
-    Boarding a normal room must enable ship gravity; C must not fly there.
-    Gravity wells permit vertical travel. With studio gravity on, outside
-    feet land on the selected deck plane, including when it moves above them.
-  - Check walls, sloped hulls, windows, floor/ceiling corners and stairs for
-    collision. Walk through consoles, berths, surgery/transporter equipment,
-    captain chairs, parked vehicle previews and turret guns. Machinery and
-    game-table cells should still block. Walk through permanent openings. Check
-    negative decks and movement above/below open hatches without tunnelling.
-  - Press E near a ladder, climb with C/Z, exit with E or by leaving its reach.
-    Merely walking near a ladder must not suspend gravity. Include a hatch at
-    deck 29 whose ladder reaches down to the highest room deck (28).
-  - Approach automatic small doors/hatches. Verify closed -> half -> open
-    texture frames and passage once logically open; idle floor support must
-    not open an automatic hatch beneath a stationary character.
-  - Use Ctrl+P/C within six feet to open/close nearby doors or hatches on the
-    actor's deck or immediately above. Click a nearby panel to toggle it.
-    Use hand mode to click the panel. Manual hull/large doors must not open on approach. Open doors must stay
-    open while waiting in the designer. Check rapid reversal during animation.
-  - Check each door/hatch texture family from both sides, including hull doors
-    with crew textures inside. Test stacked large doors through gravity-well
-    and open-to-below rooms; unrelated nearby doors must not join the stack.
-  - Press Home on populated, empty and crowded decks. A clear position should
-    be chosen, or a failure message shown without silently moving the avatar.
-  - Save before and after walking, toggling gravity and operating doors. For
-    the same working design with no authored changes, bytes must stay equal.
-  - With the packaged sfx.har present, verify the interior, exterior, cargo
-    and hatch opening/closing sounds. Stacked doors share their sound channel.
-    Footsteps use metal aboard and hard floor outside; running changes pitch,
-    standing/jumping/flying stops the footstep loop. Test user sound settings,
-    both launch paths, and leaving/reopening the walkthrough without leaked
-    sounds. The designer must use the existing game OpenAL context and buffers;
-    returning to the launch screen must preserve its audio behavior. Also close
-    the application directly from the walkthrough to check shared-service shutdown.
-
-Equipment validation (user builds manually)
-------------------------------------------
-Read-only checks passed for the cell, raster and vehicle reference algorithms.
-All 251 effect-rectangle components available in the saved decompilation match
-the 63-entry renderer table; the remaining frame-zero X came from assembly.
-The embedded original atlas hash matches (376990 bytes, 2048x256 pixels).
-The recovered full-resolution spacecraft atlas (2626889 bytes, 256x8192) and
-helm bitmap (98358 bytes after decompression) also match their original hashes.
-All embedded string chunks stay below MSVC literal limits.
-The equipment palette has 51 distinct slots, including six vehicle buttons.
-Model/texture identity is recorded in equipment-assets.json; inspect it again
-without compiling with:
-
-  python3 -B research/legacy-spacecraft-2016/inspect_equipment_assets.py \
-    '/path/to/original/2016/client/directory'
-
-The assistant has not compiled or run these new harnesses. Commands below are
-provided for the user; they are not part of a build the assistant initiated.
 
   c++ -std=c++11 -fPIC -no-pie -Isrc/lib/data/designs \
     research/legacy-spacecraft-2016/tests/native_detail_edit.cpp \
@@ -376,37 +96,147 @@ provided for the user; they are not part of a build the assistant initiated.
     src/lib/data/designs/aulegacyshipdetails.cpp \
     $(pkg-config --cflags --libs Qt5Core Qt5Gui) -o /tmp/native_ship_stairs
 
+Run already-built harnesses:
+  /tmp/native_ship_reader --self-test
+  /tmp/native_ship_geometry research/legacy-spacecraft-2016/room-raster-fixtures.json \
+    research/legacy-spacecraft-2016/cell-shapes.json
+  /tmp/native_detail_reconciliation
+  /tmp/native_ship_edit
+  /tmp/native_ship_writer --self-test
+  /tmp/native_ship_mesh
   /tmp/native_detail_edit
   /tmp/native_ship_equipment
   /tmp/native_ship_stairs
 
-Coverage includes replacement atomicity, IDs/order, snap ties, single-station
-limits, bridge fallback, same-room brush fill, type-filtered erase, vehicle
-footprints, original procedural profiles/materials/effect sequences, and all
-40 stair orientations. See the individual evidence files for exact coverage.
+native_ship_stats.cpp additionally requires the project's AuData library and
+normal dependencies; it is not a build target. Harness source documents detailed
+assertions. Coverage: reader versions/truncation/UTF-16/atomic failure; geometry
+and cell fixtures; editing/reconciliation/IDs/limits; writer wire oracles,
+normalization/module maps/atomic saves; mesh surfaces/partitions/apertures;
+equipment placement/rotation and 40 stair orientations; stats volumes, mass,
+crew roles, room grouping, TL scaling, nonmutation and strict FTL capacitor bounds.
+The CPU mesh harness stubs resource import: it does not validate 3DS/materials.
 
-After building the client, exercise both standalone and embedded launch paths:
-  - Place every enabled equipment type in its permitted room and reject it in
-    an incompatible room. Check bridge exceptions and one-station limits.
-  - Rotate single/double berths, hatch ladders, game tables, all five stairs and
-    each of the six original vehicles with Left/Right. Check negative XY/decks.
-  - Place machinery with brush sizes 1 and 26. The center must succeed; adjacent
-    rooms are excluded. Erase-area must remove only the clicked equipment type.
-  - Repaint or erase occupied rooms and check equipment reconciliation.
-  - Switch Render Mode repeatedly; inspect machinery, consoles, berths, ladders,
-    stairs, railings, turret apertures and vehicles from the walkthrough.
-  - Confirm console screens and vehicle textures load without legacy DLLs.
-    Machinery effect textures should advance every 100 ms without moving geometry.
-  - Check the six vehicle footprints near bay edges and after 45-degree rotation.
-    Parked vehicles are static; no arbitrary wheel/rotor animation is added.
-  - Confirm logical markers (pivot, contrail/weapon emitter, troop station) show
-    their plan icons but do not invent a physical 3D model in the stationary view.
-  - Check rounded red palette groups at different dock widths and while floating;
-    Render Mode remains at its original position. Inspect/edit/arrow shortcuts,
-    dirty state and discard confirmation should still work.
-  - Drag within one snapped equipment point: one edit should occur. A fresh
-    click may erase the next co-located marker; tiny movements must not do so.
+Native/reference and original-save comparisons
+---------------------------------------------
+  python3 -B research/legacy-spacecraft-2016/tests/compare_native_reader.py \
+    /tmp/native_ship_reader '/path/to/design.ship'
+  python3 -B research/legacy-spacecraft-2016/tests/check_ship_writer.py \
+    --native /tmp/native_ship_writer '/path/to/design.ship'
+  python3 -B research/legacy-spacecraft-2016/tests/check_ship_writer.py \
+    '/path/to/tl20StarDriver.ship' --legacy-save '/path/to/2016-resaved.ship'
 
-Doors/hatches are interactive in the walkthrough. Console bitmap faces are
-restored, but live ship-system readouts, interactive firing/transport, vehicle
-driving and contrails need world state and are outside this preview.
+Comparisons accept multiple samples; writer uses temporary output, never
+replaces originals or starts a build. Combine --native and --legacy-save to
+check C++ output against the captured old-client save. Reader also emits JSON
+when passed a sample; native_ship_edit accepts samples for in-memory edits.
+Reference saves passed: Antiflux unchanged; Galatine normalizes 11 vehicle IDs;
+Star Driver normalizes 18, adds a transporter module and sorts equipment.
+Captured-save comparison projects only design/architect identity, not geometry,
+equipment order or modules. See FORMAT.txt for identity limitations.
+Expected reference SHA-256 (captured identity applies only to the last entry):
+  Antiflux:   beaa58348bd2a0a0cb76cf20871afa07a7a79448aa70adda4545d0e28f459037
+  Galatine:   5cebd0457f90d6a088c13ca7725f0960ac13edc11d601fda16418ee19bec6658
+  StarDriver: 54394f386fb669b69776b59c09d42692f99412956f7a5a8319cf45722ba4ddc1
+  Captured:   e8b20a55dda90b87f047eaa131e0036a5894211e9bfdeebbd9990ac0952cc5a2
+
+Manual client checklist (after the user's build)
+-----------------------------------------------
+Exercise standalone AuSceneClient -legacy-spacecraft [file] and the embedded
+chooser. VS Code's "Legacy spacecraft viewer (already built)" profiles do not
+build. Paths must match the executable platform. Compare the three sample ships
+and controlled fixtures with the original client, including saved-file reloads.
+
+Panel, editing and saving:
+- F6: right dock, float/redock/close/reopen, design-disk title icon, dark controls,
+  rounded palette groups, icons without legacy DLLs. No menu bar, bottom status
+  bar, cursor readout, Fit button, canvas scrollbars or top summary strip.
+  Ctrl+N/O/S, F/F6 and deck-view Escape work with the panel hidden/floating;
+  Escape in a dialog dismisses it. Disabled/building-only tools remain absent
+  or inert. Room Number wraps 1..256; minimum TL displays 32..1.
+- Grid: finite 80x80 cells (+/-226.27416996ft), brighter ten-cell lines, four
+  directions and correctly positioned compass labels. Fit includes labels;
+  zoom preserves label size, middle-drag pans. Room labels use first-boundary
+  anchors, subtype+1, original colors/shadows; edits/deck switches leave no
+  stale labels, and clicks pass through labels.
+- Deck navigation stops at -41/+41; new rooms at -28/+28. Erasure works outside
+  room limits. On deck 29, hatch/top-turret attachment to deck 28 succeeds while
+  room painting fails without removing it. Test both render modes.
+- New defaults: streamline on, armor 0, TL1. Loading preserves settings without
+  dirtying. Test Save/Discard/Cancel on New/Open/Exit, failed-load preservation,
+  last-directory fallback, always-prompt Save, suffix/overwrite handling and
+  failed/cancelled saves retaining edits. Reopen copies; repeated unchanged saves
+  must match. Open the current dirty file after saving it to the same path.
+- Fresh-process IDs: blank 20000, first import 20001, next New/import 20002;
+  cancelled/failed actions and saves consume none. Header/rooms/equipment agree.
+  Match import sequences when comparing old-client IDs; architect may differ.
+- Paint/repaint/erase adjacency, containment, disjoint/corner touches, bridges,
+  holes, closed loops, diagonal/negative seams and XY +/-120/deck +/-28 limits.
+  Compare boundaries, IDs and equipment changes, not just appearance.
+- Place each enabled equipment type in allowed/disallowed rooms; check bridge
+  exceptions, single stations, rotations, negative decks, vehicle footprints
+  near edges/at 45 degrees, and brush sizes 1/26. Repaint reconciles equipment;
+  area erase is type-specific. Dragging within one snapped point edits once.
+- Save transporter pads across room numbers/decks: one module per group, none
+  for consoles alone; removing final pads/bays reconciles stale/default maps.
+  Embedded exit restores music; reopen Legacy then Modern via the chooser.
+
+Ship statistics and the single F6 information pane:
+- Empty designs show tips; hulls show stats without tabs. Match Star Driver's
+  compact pale text/navy background, uppercase headings, rules, nested 10px
+  indentation and wrapped lines. Yellow Modified appears on edit, clears on
+  save. Updates preserve scrolling; New/Open reset it. Feedback is at the end
+  and in the tooltip. Section order: HULL, ENGINEERING, FUEL, AVIONICS, ARMAMENT,
+  CREW, QUARTERS, HOLD, VEHICLE BAYS, DAMAGE CONTROL, MANUFACTURE.
+- Room/equipment/header edits refresh stats. A 32ft2 floor gives 256ft3; double
+  berths give two crew/officer/passenger places in the corresponding room.
+  Galley/lounge affect passenger class. Sensor/shield stations count as both
+  console and system. Weapon bays group across decks; transporters and their
+  station checks use deck plus room number (as do surgery station checks).
+- TL changes capacity/capacitor/performance, not reactor output or fueled mass;
+  armor/streamline affect mass, acceleration and HP. Rocket drives omit holding
+  endurance; energy/harvester bays distinguish capacitor shots from output.
+  Save/render toggles preserve stats and dirty state. Unrecovered manufacture
+  TL/cost, absorption and ammunition damage must remain explicitly unavailable.
+
+Rendering, walkthrough and audio:
+- Render Mode keeps its original palette icon/position. Repeated toggles retain
+  floor-plan camera/tool and avatar position/facing. F does not fit the 3D view;
+  Home finds clear standing space or reports failure. New/Open reset avatar and
+  doors; geometry edits retain unchanged-door states. Deck selection moves the
+  outside studio plane without teleporting the avatar.
+- Compare armor 0..10, glass floors/tops/windows, partitions, fuel rooms,
+  negative decks, open-below/gravity wells, stairs, door/hatch openings, turrets
+  and equipment. Console/vehicle textures need no legacy DLLs; effects advance
+  every 100ms without moving geometry. Parked vehicles remain static; logical
+  markers have plan icons without invented preview models.
+- WASD/mouse, Shift run, Q forward, Space jump, C/Z flight/wells, E ladder entry/
+  exit. Nearby ladders alone must not suspend gravity; include deck-29 hatches.
+  Ship interiors restore gravity; studio gravity lands feet on the selected
+  plane. Check walls/slopes/corners/stairs and open hatches for tunnelling.
+  Consoles/berths/chairs/vehicles/turret guns are passable; machinery/tables block.
+- Return/right-click toggles hand mode; Ctrl releases temporarily. Focus loss,
+  dialogs, floating panels and application switches clear held input and avoid
+  trapped cursors/stale mouse deltas. Ctrl+S/F6 still work. Crosshair appears on
+  empty designs; hull targeting adds name/icon/health bar and decays on look-away.
+- Automatic doors/hatches animate closed/half/open; idle floor support must not
+  open a hatch. Ctrl+P/C within six feet works on current/above-deck doors; hand
+  clicks toggle nearby panels. Hull/large doors stay manual; open doors persist.
+  Test rapid reversal, both texture sides and stacked doors without joining
+  unrelated neighbors. Walking/gravity/door operation must not change saved bytes.
+- With sfx.har, test door families, shared stacked-door channels, metal/interior
+  and hard-floor/outside footsteps, run pitch and loop stops. Respect sound
+  settings, reuse game OpenAL services, and avoid leaks on exit/reopen/app close.
+
+Evidence and remaining scope
+----------------------------
+Detailed recovery: FORMAT.txt, PAINTING-RULES.txt, BUILDING-VS-SPACECRAFT.txt,
+PANEL-RECOVERY.txt, SHIP-STATS-EVIDENCE.txt, ship-stats-report-evidence.txt,
+SURFACE-RECOVERY-NOTES.txt, RENDERING-MATERIAL-EVIDENCE.txt,
+EQUIPMENT-EDITING-EVIDENCE.txt, RESOURCE-EQUIPMENT-EVIDENCE.txt,
+STAIR-RENDERING-EVIDENCE.txt, WALKTHROUGH-RECOVERY.txt,
+WALKTHROUGH-COLLISION.txt and DOOR-INTERACTION.txt. Asset identities are in
+equipment-assets.json. Whole-room hit tests/type reassignment need further
+original-client comparison. Live systems, firing/transport, vehicle driving and
+contrails need world state. Stats are not a complete manufacturing/path gate;
+restoring the removed city manufacturing infrastructure is a separate project.

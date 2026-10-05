@@ -1,0 +1,290 @@
+Ghidra decompiler output; not recovered compilable source.
+Captured 2026-10-05, explicit /AuData13.dll, read-only MCP.
+
+AuData13.dll 180126fb0 DeManufacturingProcess::InitSpacecraft
+
+/* public: bool __cdecl DeManufacturingProcess::InitSpacecraft(unsigned int,unsigned char) __ptr64
+    */
+
+bool __thiscall
+DeManufacturingProcess::InitSpacecraft(DeManufacturingProcess *this,uint param_1,uchar param_2)
+
+{
+  Data *pDVar1;
+  longlong lVar2;
+  DnRoom *this_00;
+  undefined8 uVar3;
+  bool bVar4;
+  undefined8 *puVar5;
+  QMessageLogger *this_01;
+  QString *pQVar6;
+  undefined2 *puVar7;
+  Data *pDVar8;
+  Data *pDVar9;
+  COMMODITYID CVar10;
+  QChar local_res8 [8];
+  QChar local_res10 [8];
+  QChar local_res18 [8];
+  Data *local_res20;
+  Data *local_1b8;
+  QString local_1b0 [8];
+  QString local_1a8 [8];
+  QString local_1a0 [8];
+  QString local_198 [8];
+  QString local_190 [8];
+  undefined8 local_188;
+  DnSpaceShip local_178 [8];
+  longlong local_170;
+  char local_164;
+  byte local_163;
+  longlong local_158 [3];
+  AuSpaceShipModules local_140 [68];
+  ushort local_fc;
+  DhDNA local_88 [24];
+  QMessageLogger local_70 [48];
+  
+                    /* 0x126fb0  4314  ?InitSpacecraft@DeManufacturingProcess@@QEAA_NIE@Z */
+  local_188 = 0xfffffffffffffffe;
+  QVector<DeProcessComponent>::clear((QVector<DeProcessComponent> *)this);
+  *(undefined8 *)(this + 0xc) = 0;
+  *(undefined8 *)(this + 0x6c) = 0;
+  QString::operator=((QString *)(this + 0x18),"");
+  this[0x20] = (DeManufacturingProcess)param_2;
+  this[0x21] = (DeManufacturingProcess)param_2;
+  *(undefined8 *)(this + 0x28) = 0;
+  this[0x30] = (DeManufacturingProcess)0x0;
+  *(undefined4 *)(this + 0x34) = 0;
+  this[0x38] = (DeManufacturingProcess)0x0;
+  puVar5 = (undefined8 *)DhDNA::DhDNA(local_88);
+  uVar3 = puVar5[1];
+  *(undefined8 *)(this + 0x3c) = *puVar5;
+  *(undefined8 *)(this + 0x44) = uVar3;
+  *(undefined8 *)(this + 0x4c) = puVar5[2];
+  *(undefined2 *)(this + 0x54) = 0;
+  if (param_1 == 0) {
+    return true;
+  }
+  DnSpaceShip::DnSpaceShip(local_178);
+  local_1b8 = (Data *)shared_null_exref;
+  local_res20 = (Data *)shared_null_exref;
+  lVar2 = *(longlong *)gp_AuGlobal_exref;
+  QReadWriteLock::lockForRead((QReadWriteLock *)(lVar2 + 0x1e0));
+  bVar4 = DgData::SpaceShipDesign
+                    (*(DgData **)(lVar2 + 0x68),param_1,local_178,(DnDetailArray *)&local_1b8,
+                     (DnRoomArray *)&local_res20);
+  QReadWriteLock::unlock((QReadWriteLock *)(*(longlong *)gp_AuGlobal_exref + 0x1e0));
+  if (bVar4) {
+    if (*(int *)(local_170 + 4) != 0) {
+      if (*(int *)(local_158[0] + 4) == 0) {
+        if (*(int *)(local_170 + 4) == 0) goto LAB_180127219;
+        pQVar6 = (QString *)QObject::tr((char *)local_1a8,"%1",0);
+        puVar7 = (undefined2 *)QChar::QChar(local_res8,0x20);
+        pQVar6 = (QString *)QString::arg(pQVar6,local_1b0,&local_170,0,*puVar7);
+        QString::operator=((QString *)(this + 0x18),pQVar6);
+        QString::~QString(local_1b0);
+        pQVar6 = local_1a8;
+      }
+      else {
+        pQVar6 = (QString *)QObject::tr((char *)local_198,"%1 by %2",0);
+        puVar7 = (undefined2 *)QChar::QChar(local_res18,0x20);
+        pQVar6 = (QString *)QString::arg(pQVar6,local_190,&local_170,0,*puVar7);
+        puVar7 = (undefined2 *)QChar::QChar(local_res10,0x20);
+        pQVar6 = (QString *)QString::arg(pQVar6,local_1a0,local_158,0,*puVar7);
+        QString::operator=((QString *)(this + 0x18),pQVar6);
+        QString::~QString(local_1a0);
+        QString::~QString(local_190);
+        pQVar6 = local_198;
+      }
+      QString::~QString(pQVar6);
+    }
+LAB_180127219:
+    CVar10 = 0xed;
+    if (local_fc != 0) {
+      CVar10 = (COMMODITYID)local_fc;
+    }
+    pDVar8 = local_res20 + ((longlong)*(int *)(local_res20 + 8) + 2) * 8;
+    if (pDVar8 != local_res20 + (longlong)*(int *)(local_res20 + 0xc) * 8 + 0x10) {
+      do {
+        DnRoom::ListComponents
+                  (*(DnRoom **)pDVar8,(DeProcessComponentArray *)this,(uint)local_163,
+                   local_164 != '\0',CVar10);
+        pDVar8 = pDVar8 + 8;
+      } while (pDVar8 != local_res20 + (longlong)*(int *)(local_res20 + 0xc) * 8 + 0x10);
+    }
+    pDVar8 = local_1b8 + ((longlong)*(int *)(local_1b8 + 8) + 2) * 8;
+    if (pDVar8 != local_1b8 + (longlong)*(int *)(local_1b8 + 0xc) * 8 + 0x10) {
+      do {
+        DnDetail::ListComponents
+                  (*(DnDetail **)pDVar8,(DeProcessComponentArray *)this,local_140,
+                   (DnRoomArray *)&local_res20);
+        pDVar8 = pDVar8 + 8;
+      } while (pDVar8 != local_1b8 + (longlong)*(int *)(local_1b8 + 0xc) * 8 + 0x10);
+    }
+    DeProcessComponentArray::AddRequirement((DeProcessComponentArray *)this,3,5,0);
+    bVar4 = DeProcessComponentArray::IsRequired((DeProcessComponentArray *)this,5);
+    if (bVar4) {
+      DeProcessComponentArray::AddRequirement((DeProcessComponentArray *)this,0x7b,5,0);
+    }
+    bVar4 = DeProcessComponentArray::IsRequired((DeProcessComponentArray *)this,2);
+    if (bVar4) {
+      DeProcessComponentArray::AddRequirement((DeProcessComponentArray *)this,0x7d,5,0);
+    }
+    bVar4 = DeProcessComponentArray::IsRequired((DeProcessComponentArray *)this,0x10c);
+    if (bVar4) {
+      if ((byte)this[0x20] < 0x15) {
+        this[0x20] = (DeManufacturingProcess)0x15;
+      }
+      DeProcessComponentArray::AddRequirement((DeProcessComponentArray *)this,0x7d,5,0);
+    }
+    bVar4 = DeProcessComponentArray::IsRequired((DeProcessComponentArray *)this,0xe3);
+    if (bVar4) {
+      if ((byte)this[0x20] < 3) {
+        this[0x20] = (DeManufacturingProcess)0x3;
+      }
+      DeProcessComponentArray::AddRequirement((DeProcessComponentArray *)this,0xe5,5,0);
+    }
+    bVar4 = DeProcessComponentArray::IsRequired((DeProcessComponentArray *)this,0x108);
+    if (bVar4) {
+      if ((byte)this[0x20] < 9) {
+        this[0x20] = (DeManufacturingProcess)0x9;
+      }
+      DeProcessComponentArray::AddRequirement((DeProcessComponentArray *)this,0xe5,5,0);
+    }
+    bVar4 = DeProcessComponentArray::IsRequired((DeProcessComponentArray *)this,0x109);
+    if (bVar4) {
+      if ((byte)this[0x20] < 0x12) {
+        this[0x20] = (DeManufacturingProcess)0x12;
+      }
+      DeProcessComponentArray::AddRequirement((DeProcessComponentArray *)this,0xe5,5,0);
+    }
+    bVar4 = DeProcessComponentArray::IsRequired((DeProcessComponentArray *)this,0x1b);
+    if (bVar4) {
+      DeProcessComponentArray::AddRequirement((DeProcessComponentArray *)this,0x7f,5,0);
+    }
+    bVar4 = DeProcessComponentArray::IsRequired((DeProcessComponentArray *)this,0xe2);
+    if ((bVar4) ||
+       (bVar4 = DeProcessComponentArray::IsRequired((DeProcessComponentArray *)this,0x40), bVar4)) {
+      DeProcessComponentArray::AddRequirement((DeProcessComponentArray *)this,0x87,5,0);
+    }
+    bVar4 = DeProcessComponentArray::IsRequired((DeProcessComponentArray *)this,0x66);
+    if (bVar4) {
+      DeProcessComponentArray::AddRequirement((DeProcessComponentArray *)this,0x88,5,0);
+    }
+    bVar4 = DeProcessComponentArray::IsRequired((DeProcessComponentArray *)this,0xe4);
+    if (bVar4) {
+      if ((byte)this[0x20] < 6) {
+        this[0x20] = (DeManufacturingProcess)0x6;
+      }
+      DeProcessComponentArray::AddRequirement((DeProcessComponentArray *)this,0xe6,5,0);
+    }
+    bVar4 = DeProcessComponentArray::IsRequired((DeProcessComponentArray *)this,0x6f);
+    if (bVar4) {
+      DeProcessComponentArray::AddRequirement((DeProcessComponentArray *)this,0x80,5,0);
+    }
+    bVar4 = DeProcessComponentArray::IsRequired((DeProcessComponentArray *)this,0x10f);
+    if (bVar4) {
+      if ((byte)this[0x20] < 0x17) {
+        this[0x20] = (DeManufacturingProcess)0x17;
+      }
+      DeProcessComponentArray::AddRequirement((DeProcessComponentArray *)this,0x80,5,0);
+    }
+    bVar4 = DeProcessComponentArray::IsRequired((DeProcessComponentArray *)this,0x92);
+    if (bVar4) {
+      if ((byte)this[0x20] < 9) {
+        this[0x20] = (DeManufacturingProcess)0x9;
+      }
+      DeProcessComponentArray::AddRequirement((DeProcessComponentArray *)this,4,5,0);
+    }
+    bVar4 = DeProcessComponentArray::IsRequired((DeProcessComponentArray *)this,0x33);
+    if (bVar4) {
+      DeProcessComponentArray::AddRequirement((DeProcessComponentArray *)this,4,5,0);
+    }
+    bVar4 = DeProcessComponentArray::IsRequired((DeProcessComponentArray *)this,0x91);
+    if (bVar4) {
+      if ((byte)this[0x20] < 0x12) {
+        this[0x20] = (DeManufacturingProcess)0x12;
+      }
+      DeProcessComponentArray::AddRequirement((DeProcessComponentArray *)this,4,5,0);
+    }
+    bVar4 = DeProcessComponentArray::IsRequired((DeProcessComponentArray *)this,0x32);
+    if (bVar4) {
+      DeProcessComponentArray::AddRequirement((DeProcessComponentArray *)this,0x81,5,0);
+    }
+    bVar4 = DeProcessComponentArray::IsRequired((DeProcessComponentArray *)this,0x3f);
+    if (bVar4) {
+      DeProcessComponentArray::AddRequirement((DeProcessComponentArray *)this,0x7c,5,0);
+    }
+    bVar4 = DeProcessComponentArray::IsRequired((DeProcessComponentArray *)this,0x4f);
+    if (bVar4) {
+      DeProcessComponentArray::AddRequirement((DeProcessComponentArray *)this,0x7e,5,0);
+    }
+    bVar4 = DeProcessComponentArray::IsRequired((DeProcessComponentArray *)this,0x10a);
+    if (bVar4) {
+      if ((byte)this[0x20] < 0xc) {
+        this[0x20] = (DeManufacturingProcess)0xc;
+      }
+      DeProcessComponentArray::AddRequirement((DeProcessComponentArray *)this,0x10b,5,0);
+    }
+    bVar4 = DeProcessComponentArray::IsRequired((DeProcessComponentArray *)this,0x10d);
+    if (bVar4) {
+      if ((byte)this[0x20] < 0x17) {
+        this[0x20] = (DeManufacturingProcess)0x17;
+      }
+      DeProcessComponentArray::AddRequirement((DeProcessComponentArray *)this,0x10e,5,0);
+    }
+    this[0x21] = this[0x20];
+    *(uint *)(this + 0x10) = -param_1;
+    *(uint *)(this + 0x6c) = -param_1;
+    *(undefined4 *)(this + 0x70) = 0x10014;
+    *(undefined4 *)(this + 0xc) = 0x14;
+    bVar4 = true;
+  }
+  else {
+    this_01 = (QMessageLogger *)QMessageLogger::QMessageLogger(local_70,(char *)0x0,0,(char *)0x0);
+    QMessageLogger::debug
+              (this_01,"DeManufacturingProcess::InitSpacecraft design %d not loaded",
+               (ulonglong)param_1);
+    bVar4 = false;
+  }
+  pDVar8 = local_res20;
+  if (*(int *)local_res20 == 0) {
+LAB_180127695:
+    pDVar9 = local_res20 + ((longlong)*(int *)(local_res20 + 0xc) + 2) * 8;
+    pDVar1 = local_res20 + ((longlong)*(int *)(local_res20 + 8) + 2) * 8;
+    while (pDVar1 != pDVar9) {
+      pDVar9 = pDVar9 + -8;
+      this_00 = *(DnRoom **)pDVar9;
+      if (this_00 != (DnRoom *)0x0) {
+        DnRoom::~DnRoom(this_00);
+        operator_delete(this_00);
+      }
+    }
+    QListData::dispose(pDVar8);
+  }
+  else if (*(int *)local_res20 != -1) {
+    LOCK();
+    *(int *)local_res20 = *(int *)local_res20 + -1;
+    UNLOCK();
+    if (*(int *)local_res20 == 0) goto LAB_180127695;
+  }
+  pDVar8 = local_1b8;
+  if (*(int *)local_1b8 != 0) {
+    if (*(int *)local_1b8 == -1) goto LAB_18012772f;
+    LOCK();
+    *(int *)local_1b8 = *(int *)local_1b8 + -1;
+    UNLOCK();
+    if (*(int *)local_1b8 != 0) goto LAB_18012772f;
+  }
+  pDVar9 = local_1b8 + ((longlong)*(int *)(local_1b8 + 0xc) + 2) * 8;
+  pDVar1 = local_1b8 + ((longlong)*(int *)(local_1b8 + 8) + 2) * 8;
+  while (pDVar1 != pDVar9) {
+    pDVar9 = pDVar9 + -8;
+    operator_delete(*(void **)pDVar9);
+  }
+  QListData::dispose(pDVar8);
+LAB_18012772f:
+  DnSpaceShip::~DnSpaceShip(local_178);
+  return bVar4;
+}
+
+
