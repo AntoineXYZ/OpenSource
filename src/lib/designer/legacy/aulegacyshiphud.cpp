@@ -9,6 +9,8 @@
 #include <QString>
 #include <QtGlobal>
 
+static const int TargetFontSize = 24; 
+
 namespace AuLegacyShip
 {
 namespace Rendering
@@ -84,6 +86,9 @@ void PaintShipTarget(QPainter& painter, const QSize& size, const QString& name, 
 		painter.drawImage(QRectF(iconLeft, top, height, height), images.systems[health.system], QRectF(.5, .5, 15, 15));
 	// The local designer's ship has no empire, so the target name is neutral.
 	painter.setPen(QColor(192, 192, 192));
+	QFont font = painter.font();
+	font.setPixelSize(TargetFontSize);
+	painter.setFont(font);
 	const qreal textTop = top + height + .005 * unit;
 	const qreal center = (iconLeft + left + width) * .5;
 	const qreal textWidth = QFontMetricsF(painter.font()).boundingRect(name).width() + 4;
