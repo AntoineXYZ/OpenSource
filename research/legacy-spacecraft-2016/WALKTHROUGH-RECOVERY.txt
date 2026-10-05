@@ -65,6 +65,41 @@ the person/animal branch of IsPathBlocked sends point locations to the path
 model; the transformed-box branch serves other actor types. The local
 capsule/triangle controller is an implementation approximation.
 
+Jump pose correction in the local adapter
+----------------------------------------
+Modern DaPerson::ProcessControlInput applies Jump(), selects AuPose::Jump,
+then requests a zero-time Move by new CG height minus previous CG height.
+DpBody::CGHeight halves standing height for Jump. Applying that downward
+stance displacement in the local adapter lowered the camera before takeoff;
+the drop can exceed a normal human's walking-jump rise.
+
+The adapter now suppresses only negative Z stance displacement when the
+new pose is Jump and elapsed milliseconds is zero. The atom origin stays
+put while the feet tuck upward. Body clearance is still checked, and the
+native jump velocity, timed movement, gravity and collision response remain
+in effect. Crouching and standing retain their normal stance displacement.
+This is a local integration correction, not a claim of recovered 2016 parity.
+
+Runtime evidence subsequently identified a separate takeoff failure: a single
+Space tap produced five CI_BrakeOrJump requests over consecutive 18-19 ms
+frames. The first applied +11.25 ft/s and moved upward. On the next frame,
+CanJump was false because the pose was already Jump; the combined command
+fell back to ACT_Brake. Designer friction became 10000 on all axes and erased
+the remaining +10.6054 ft/s immediately. The character fell after brake decay.
+The pose correction above alone did not fix this failure.
+
+The local input adapter now routes CI_BrakeOrJump to native CI_Jump while in
+gravity and not flying. Native CanJump still controls eligibility; repeated
+requests during a jump cannot apply brakes. In zero gravity or flight the
+combined command retains its native behavior, and explicit CI_Brake is
+unchanged. Temporary Legacy jump logging was removed after diagnosis.
+
+Validation: source tracing, arithmetic checks of origin/feet and velocity
+preservation, and git diff --check. No build or runtime test was run.
+After a manual build, check standing/walking/running jumps in a tall room,
+low-ceiling collision, landing and repeat jumps, crouch/stand clearance,
+ladder release with Space, and zero-gravity braking.
+
 Ship membership and studio ground correction
 -------------------------------------------
 AuAtom13.dll 0x1803f9ab0 IsInOrOnHull queries the path cell at the person's

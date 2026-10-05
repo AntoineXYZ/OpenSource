@@ -870,6 +870,7 @@ public:	// Methods
 	virtual bool SetMoonOrbitRingsVisible(const QString& roomName, bool visible);
 
 	virtual void SetNotNew();
+	static QString SystemInitializationMessage();
 
 	virtual bool SetOrbitRingsVisible(const QString& roomName, bool visible);
 

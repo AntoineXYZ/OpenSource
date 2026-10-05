@@ -7268,6 +7268,18 @@ void AuDesignerView::RenderOverlayText()
 	m_RenderInfo->re->glDisable(GL_BLEND);
 }
 
+void AuDesignerView::RenderSceneCommunications()
+{
+	// Local renderers do not run AnimateScene's world/message upkeep.
+	m_MessageLock.lock();
+	for(auto it = m_Messages.begin(); it != m_Messages.end();)
+		if(it->DecayMessage()) it = m_Messages.erase(it);
+		else ++it;
+	m_MessageLock.unlock();
+	if(s_RenderComm) RenderCommMessages();
+	if(m_RenderInfo->re) m_RenderInfo->re->DecayRenderText();
+}
+
 void AuDesignerView::RenderCommMessages()
 {
 	//qDebug("AuDesignerView::RenderCommMessages %d messages intensity %d", m_Messages.count(), m_MessageIntensity);

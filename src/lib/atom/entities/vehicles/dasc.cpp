@@ -9372,6 +9372,11 @@ void DaSc::SetFTLDriveSetting(quint16 whichFTL, quint8 setting)
 	m_FTLLock.unlock();
 }
 
+QString DaSc::SystemInitializationMessage()
+{
+	return tr("System initialization complete. Welcome aboard.");
+}
+
 void DaSc::SetNotNew()
 {
 	m_New = false;
@@ -9380,7 +9385,7 @@ void DaSc::SetNotNew()
 	if(!IsPirateWithFreeWill())
 	{
 		// Notify all hands that we're alive.
-		QString text = tr("System initialization complete. Welcome aboard.");
+		QString text = SystemInitializationMessage();
 		AuCommChat msg(text, AuCommStdChannel::IntercomChannelName(), Id(), Name(), FindParentSector()->Id(),
 				Galaxy(), AuCommStdChannel::Close, AuCommStdChannel::Intercom);
 		g_Au.SendAtomChat(msg);
@@ -17489,4 +17494,3 @@ void DaSc::ToggleDoorState(const DaSentient& who, unsigned int doorIndex)
 		who.Thought(text);
 	}
 }
-

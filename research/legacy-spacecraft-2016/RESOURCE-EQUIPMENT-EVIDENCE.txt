@@ -80,14 +80,16 @@ DaSpaceShip::AnimateDeviceObjects 0x1803c9950 advances effect frames every100ms.
 EffectTexture 0x1803e8300 supplies the exact 63 rectangles in a 1024 x 128
 logical coordinate system (the image has twice that pixel resolution).
 Procedural equipment supplies recovered starting indices and 3/4-frame cycles.
-The preview cycles those effects without rebuilding or uploading mesh geometry.
+The preview cycles enabled effects without rebuilding or uploading mesh geometry.
+Working-state gating and offline startup are documented in
+WALKTHROUGH-SYSTEM-STARTUP.txt; fuel/charge-dependent machinery stays inactive.
 
 The original GLSL sources are extracted from AuGL13.dll :/glsl.har, a Qt hash
 of compressed shader sources, and saved in shaders/Spacecraft.f.glsl and
 shaders/Spacecraft.v.glsl. The original fragment shader alpha-mixes unlit effect
 color after lighting; the widget preserves that composition. Camera lighting
-remains the independent orbit preview lighting, without world simulation,
-power-state simulation or gameplay effects. Ordinary console/captain-chair
+remains the independent orbit preview lighting, without world simulation
+or gameplay effects. Ordinary console/captain-chair
 occupancy and swivelling are implemented in the walkthrough; see
 WALKTHROUGH-FLIGHT-CONSOLES-BODY.txt.
 

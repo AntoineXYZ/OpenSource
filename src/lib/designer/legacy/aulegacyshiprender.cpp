@@ -25,6 +25,11 @@
 #include "dagalaxy.h"
 #include "dhdna.h"
 #include "dpconsole.h"
+#include "dpconsolehelm.h"
+#include "dpconsoleengineer.h"
+#include "dasc.h"
+#include "aucommpacket.h"
+#include "auquad.h"
 
 #include <QByteArray>
 #include <QApplication>
@@ -68,6 +73,29 @@ namespace
 const float Pi = 3.14159265358979323846f;
 using namespace AuLegacyShip::Rendering;
 const qint64 DoorTickMilliseconds = qint64(DoorAnimationTickSeconds * 1000);
+
+enum SystemAction { PowerToggle, DriveToggle, DriveCycle, DriveHold };
+
+struct SystemBindings
+{
+	DiControlInputArray controls;
+	QHash<int, int> actions;
+};
+
+template<class Station>
+SystemBindings LoadSystemBindings(const Station& station)
+{
+	SystemBindings result;
+	result.actions.insert(Station::CI_PowerPlantOnOff, PowerToggle);
+	result.actions.insert(Station::CI_GravityDriveOnOff, DriveToggle);
+	result.actions.insert(Station::CI_GravityDriveOnOffHold, DriveCycle);
+	result.actions.insert(Station::CI_GravityDriveHold, DriveHold);
+	DiControlInputArray configured;
+	station.EnumControlInputs(configured);
+	for(const DiControlInput& control : configured)
+		if(result.actions.contains(control.GetId())) result.controls.append(control);
+	return result;
+}
 
 struct SkyJob
 {
@@ -175,8 +203,16 @@ public:
 		sky.DeleteDeviceObjects(re);
 		// AuGLTexture's destructor intentionally does not delete GL names.
 		// These caches belong only to this worker, even in the shared group.
-		if(auto* texture = re.FindTexture(QStringLiteral("StarGlow"))) texture->Delete(re);
-		if(auto* texture = re.FindTexture(QStringLiteral("StarSpriteDot"))) texture->Delete(re);
+		const QString textureIds[] = {QStringLiteral("StarGlow"), QStringLiteral("StarSpriteDot")};
+		for(const QString& textureId : textureIds)
+		{
+			if(auto* texture = re.FindTexture(textureId))
+			{
+				const GLuint name = texture->GlName();
+				re.glDeleteTextures(1, &name);
+				re.DeleteTexture(STATIC_TEXTURE_ID, textureId);
+			}
+		}
 	}
 };
 
@@ -357,6 +393,10 @@ public:
 	std::unordered_map<Qt::Key, AuElapsedTimer, AuKey_Hash> keys;
 	QSet<int> releasedKeys, handKeys;
 	DiControlInputArray controls, pendingControls, sceneControls, pendingSceneControls;
+	SystemBindings systemBindings[3]; // No station, helm, engineering.
+	bool shipNew = true;
+	bool powerPlantOn = false;
+	int driveState = 0; // 2016 GD_Off, GD_On, GD_Hold.
 	DiControlInput handControl, toggleControl;
 	Qt::MouseButtons mouseButtons = Qt::NoButton;
 	Qt::MouseButtons pendingMouseButtons = Qt::NoButton;
@@ -430,7 +470,14 @@ public:
 			if(MatchesKey(control, event)) return true;
 		for(const DiControlInput& control : sceneControls)
 			if(MatchesKey(control, event)) return true;
+		for(const DiControlInput& control : systemBindings[SystemBindingIndex()].controls)
+			if(MatchesKey(control, event)) return true;
 		return MatchesKey(handControl, event) || MatchesKey(toggleControl, event);
+	}
+
+	int SystemBindingIndex() const
+	{
+		return character.consoleType == 12 ? 1 : character.consoleType == 6 ? 2 : 0;
 	}
 
 	QVector3D CameraDirection() const
@@ -480,14 +527,19 @@ public:
 			if(character.consoleType) { atom->SetVector(AuPoint(0, 0, 0)); return false; }
 			const QVector3D start = Vector3(atom->Location()) - QVector3D(0, 0, creature->CGHeight());
 			QVector3D displacement = Vector3(delta);
+			// Entering Jump halves the native CG height. Its zero-time stance
+			// adjustment would lower the entire body to keep the feet planted,
+			// cancelling the visible rise of a walking jump. Tuck the legs up
+			// around the existing origin instead; retain the native jump velocity.
+			if(milliseconds == 0 && creature->IsJumping() && displacement.z() < 0)
+				displacement.setZ(0);
 			if(character.ladderEngaged) { displacement.setX(0); displacement.setY(0); }
 			const QVector3D destination = start + displacement;
 			const float eyeHeight = creature->CGHeight() + float(creature->CameraOffset().z);
 			if(!world.TrySetBodySize(destination, creature->PhysicalHeight(), eyeHeight, milliseconds == 0)) return false;
 			if(milliseconds == 0)
 			{
-				// Native stance transitions move the CG by its height change.
-				// Test the new body at the destination, keeping the feet planted.
+				// Commit the checked pose position without replacing velocity.
 				character.feet = destination;
 			}
 			else
@@ -588,6 +640,14 @@ public:
 		PlaceCharacter();
 	}
 
+	QMatrix4x4 ConsoleTransform() const
+	{
+		QMatrix4x4 transform;
+		transform.translate(character.feet);
+		transform.rotate(azimuth - 90.f, 0, 0, 1);
+		return transform;
+	}
+
 	void RenderConsole(AuAtomRenderInfo& ari, const QMatrix4x4& projection, const QMatrix4x4& view)
 	{
 		if(!character.consoleType) return;
@@ -612,9 +672,7 @@ public:
 			// DpConsole is also used by the modern designer. Supply the
 			// operator's floor transform; it owns the chair/panel placement
 			// and the user's screen distance, height and tilt adjustments.
-			QMatrix4x4 floorTransform = view;
-			floorTransform.translate(character.feet);
-			floorTransform.rotate(azimuth - 90.f, 0, 0, 1);
+			const QMatrix4x4 floorTransform = view * ConsoleTransform();
 			for(int i = 0; i < 16; ++i) model[i] = floorTransform.constData()[i];
 			if(character.consoleType == 73)
 				console.RenderChair(p, model, ari);
@@ -717,6 +775,9 @@ public:
 	QString TextureKey(int source) const
 	{
 		const auto& batch = mesh.batches[source];
+		if(batch.textureFile == QStringLiteral("legacy:pc_Console.bmp")
+			|| batch.textureFile == QStringLiteral(":/data/ec_Console.bmp"))
+			return QStringLiteral("%1:power%2:drive%3").arg(batch.textureFile).arg(powerPlantOn).arg(driveState);
 		return batch.textureFile.isEmpty() ? QStringLiteral("atlas:%1").arg(FrameMaterial(source)) : batch.textureFile;
 	}
 
@@ -771,6 +832,31 @@ public:
 			tile.fill(QColor(175, 185, 195));
 		}
 		tile = tile.convertToFormat(QImage::Format_ARGB32);
+		if(batch.textureFile == QStringLiteral("legacy:pc_Console.bmp")
+			|| batch.textureFile == QStringLiteral(":/data/ec_Console.bmp"))
+		{
+			// Use the native station button artwork and bottom-origin positions.
+			// The image is already mirrored for GL, as are these button images.
+			QPainter painter(&tile);
+			const auto button = [&painter](const char* resource, int x, int y) {
+				painter.drawImage(x, y, QImage(QString::fromLatin1(resource)).mirrored());
+			};
+			if(batch.textureFile == QStringLiteral("legacy:pc_Console.bmp"))
+			{
+				button(powerPlantOn ? ":/data/pc_PowerPlantOn.bmp" : ":/data/pc_PowerPlantOff.bmp", 218, 90);
+				button(driveState == 1 ? ":/data/pc_ManeuverOn.bmp" : driveState == 2
+					? ":/data/pc_ManeuverPark.bmp" : ":/data/pc_ManeuverOff.bmp", 236, 90);
+			}
+			else
+			{
+				button(powerPlantOn ? ":/data/ec_PowerOn.bmp" : ":/data/ec_PowerOff.bmp", 156, 13);
+				button(powerPlantOn ? ":/data/ec_StatusLightGreen.bmp" : ":/data/ec_StatusLightOff.bmp", 157, 32);
+				button(driveState == 1 ? ":/data/ec_PowerOn.bmp" : driveState == 2
+					? ":/data/ec_PowerPark.bmp" : ":/data/ec_PowerOff.bmp", 156, 90);
+				button(driveState == 1 ? ":/data/ec_StatusLightGreen.bmp" : driveState == 2
+					? ":/data/ec_StatusLightPurple.bmp" : ":/data/ec_StatusLightOff.bmp", 157, 109);
+			}
+		}
 		for (int y = 0; y < tile.height() && !transparentTextures.contains(key); ++y)
 		{
 			const QRgb* pixels = reinterpret_cast<const QRgb*>(tile.constScanLine(y));
@@ -794,7 +880,29 @@ public:
 
 	void BindEffect(const AuLegacyShip::Rendering::Batch& batch, qint64 elapsed)
 	{
-		const bool enabled = batch.effectFirstFrame >= 0 && batch.effectFrameCount > 0;
+		bool enabled = batch.effectFirstFrame >= 0 && batch.effectFrameCount > 0;
+		switch(batch.material)
+		{
+		case Material::PowerPlant:
+		case Material::GravityDrive:
+		case Material::Sensor:
+		case Material::Shield:
+		case Material::FTLDrive:
+		case Material::WeaponBay:
+		case Material::TransporterPad:
+			// AuAtom13:1803c9950 hides the overlay for non-working systems.
+			// Offline designs have no fuel/charge, weapon fire or transport.
+			// Turning a switch on does not supply either resource.
+			enabled = false;
+			break;
+		case Material::Berth:
+		case Material::LifeSupport:
+		case Material::Surgery:
+			// The original checks life-support allocation, not capacitor charge.
+			enabled = enabled && designStats.lifeSupportUnits > 0;
+			break;
+		default: break;
+		}
 		program->setUniformValue("u_hasEffect", enabled);
 		if (!enabled)
 			return;
@@ -863,6 +971,8 @@ void AuLegacyShipRender::ControlsChanged()
 	m_Impl->controls.clear();
 	m_Impl->sceneControls.clear();
 	m_Impl->pendingSceneControls.clear();
+	m_Impl->systemBindings[1] = LoadSystemBindings(DpConsoleHelm());
+	m_Impl->systemBindings[2] = LoadSystemBindings(DpConsoleEngineer(0));
 	DaPerson person;
 	DiControlInputArray configured;
 	person.EnumControlInputs(configured);
@@ -927,6 +1037,14 @@ void AuLegacyShipRender::SetDesign(const AuLegacyShip::Design& design)
 	m_Impl->design = design;
 	m_Impl->designStats = AuLegacyShip::CalculateStats(design);
 	m_Impl->performance = AuLegacyShip::CalculatePerformance(design, m_Impl->designStats, design.header.minimumTechLevel);
+	if(reset)
+	{
+		m_Impl->shipNew = true;
+		m_Impl->powerPlantOn = false;
+		m_Impl->driveState = 0;
+	}
+	if(!m_Impl->designStats.powerPlantUnits) m_Impl->powerPlantOn = false;
+	if(!m_Impl->designStats.maneuverUnits) m_Impl->driveState = 0;
 	m_Impl->sound.SetDesign(design);
 	m_Impl->haveDesign = true;
 	m_Impl->mesh = AuLegacyShip::Rendering::BuildMesh(design);
@@ -1073,6 +1191,15 @@ void AuLegacyShipRender::Tick()
 		m_Impl->sceneControls.SampleJoystickInput(sceneActive, joystick, AuId(0), 0, false, AuPoint(0, 0), 0);
 	ProcessControlInput(sceneActive);
 	m_Impl->sceneControls.ClearRanges();
+	SystemBindings& systems = m_Impl->systemBindings[m_Impl->SystemBindingIndex()];
+	DiControlInputArray systemActive;
+	if(m_Impl->mouseCaptured)
+	{
+		systems.controls.SampleKeyInput(systemActive, m_Impl->keys,
+			systems.controls.FilterModState(m_Impl->keys, modifiers), AuId(0), 0, false, AuPoint(0, 0), 0);
+		if(sampleJoystick)
+			systems.controls.SampleJoystickInput(systemActive, joystick, AuId(0), 0, false, AuPoint(0, 0), 0);
+	}
 	active += m_Impl->pendingControls;
 	m_Impl->pendingControls.clear();
 	for(auto& key : m_Impl->keys)
@@ -1099,7 +1226,10 @@ void AuLegacyShipRender::Tick()
 		m_Impl->sceneControls.ClearRanges();
 		const bool streaming = m_Impl->controls.SampleMouseInput(mouse, m_Impl->mouseButtons | m_Impl->pendingMouseButtons, keyModifiers,
 			QPoint(), AuId(0), 0, false, AuPoint(0, 0), 0);
-		if(!streaming && !sceneStreaming) m_Impl->mouseButtons = Qt::NoButton;
+		const bool systemStreaming = systems.controls.SampleMouseInput(systemActive,
+			m_Impl->mouseButtons | m_Impl->pendingMouseButtons, modifiers,
+			QPoint(), AuId(0), 0, false, AuPoint(0, 0), 0);
+		if(!streaming && !sceneStreaming && !systemStreaming) m_Impl->mouseButtons = Qt::NoButton;
 		m_Impl->pendingMouseButtons = Qt::NoButton;
 		m_Impl->controls.SampleMouseInput(mouse, Qt::NoButton, keyModifiers,
 			QPoint(qRound(delta.x() * unitsPerPixel), qRound(delta.y() * unitsPerPixel)),
@@ -1108,6 +1238,9 @@ void AuLegacyShipRender::Tick()
 		CenterMouse();
 	}
 	m_Impl->controls.ClearRanges();
+	for(const DiControlInput& control : systemActive)
+		OperateSystem(systems.actions.value(control.GetId(), -1));
+	systems.controls.ClearRanges();
 	if(m_Impl->mouseCaptured && active.HasId(DaPerson::CI_EnterExit))
 	{
 		bool changed = false;
@@ -1171,6 +1304,15 @@ void AuLegacyShipRender::Tick()
 					&& id != DaPerson::CI_TurnLeft && id != DaPerson::CI_TurnRight) continue;
 				if(m_Impl->character.ladderEngaged && (id == DaPerson::CI_Crouch || id == DaPerson::CI_ProneStandToggle
 					|| id == DaPerson::CI_Stand)) continue;
+				// Space streams while held. In gravity, a rejected repeat jump
+				// must not turn into the designer's 10000 ft/s^2 brake and
+				// erase takeoff velocity. Keep native braking for flight/zero-G.
+				if(id == DaPerson::CI_BrakeOrJump && m_Impl->person->IsInGravity()
+					&& !m_Impl->person->IsFlying())
+				{
+					nativeControls.append(DiControlInput(-1, DaPerson::CI_Jump));
+					continue;
+				}
 				// Keep forward/backward input intact: native Acceleration tilts it
 				// with the head, then FilterFinalMoveVector keeps only Z on ladders.
 				// The 2016 controller used this same path (AuAtom13:18031be50).
@@ -1261,6 +1403,51 @@ void AuLegacyShipRender::UpdateTarget(qint64 now)
 	}
 }
 
+void AuLegacyShipRender::OperateSystem(int action)
+{
+	if(!m_Impl->SystemBindingIndex()) return;
+	if(action == PowerToggle)
+	{
+		if(!m_Impl->designStats.powerPlantUnits) return;
+		m_Impl->powerPlantOn = !m_Impl->powerPlantOn;
+		m_Impl->interaction = m_Impl->powerPlantOn ? tr("Power plant on.") : tr("Power plant off.");
+	}
+	else
+	{
+		if(!m_Impl->designStats.maneuverUnits || (m_Impl->shipNew && !m_Impl->powerPlantOn)) return;
+		const bool station = m_Impl->performance.structure == 3 || m_Impl->performance.structure == 4;
+		int state = m_Impl->driveState;
+		switch(action)
+		{
+		case DriveToggle: state = state ? 0 : 1; break;
+		case DriveCycle: state = !state ? 1 : state == 1 && !station ? 2 : 0; break;
+		case DriveHold:
+			if(m_Impl->shipNew || !state || (state == 1 && station)) return;
+			state = state == 1 ? 2 : 1;
+			break;
+		default: return;
+		}
+		if(state == m_Impl->driveState) return;
+		m_Impl->driveState = state;
+		// The original SetGravityDriveState calls SetNotNew once, regardless
+		// of fuel or capacitor charge. Use the surviving announcement text
+		// and native local message path; no world/sector or network is needed.
+		if(m_Impl->shipNew)
+		{
+			m_Impl->shipNew = false;
+			const AuId shipId(m_Impl->design.header.designId);
+			const QString name = m_Impl->design.header.name.isEmpty() ? shipId.StringId() : m_Impl->design.header.name;
+			AuCommChat message(DaSc::SystemInitializationMessage(), AuCommStdChannel::IntercomChannelName(),
+				shipId, name, AuId(0), ShoresOfHazeron, AuCommStdChannel::Close, AuCommStdChannel::Intercom);
+			ChatReceived(&message);
+		}
+		m_Impl->interaction = !state ? tr("Maneuver drive off.")
+			: state == 1 ? tr("Maneuver drive on.") : tr("Maneuver drive holding.");
+	}
+	m_Impl->interactionUntil = m_Impl->animationClock.elapsed() + 2500;
+	update();
+}
+
 void AuLegacyShipRender::OperateDoor(quint32 id, bool open)
 {
 	if (!id || !m_Impl->doorStates.contains(id)) return;
@@ -1274,6 +1461,67 @@ void AuLegacyShipRender::OperateDoor(quint32 id, bool open)
 	m_Impl->interaction = open ? QStringLiteral("Opening door / hatch.") : QStringLiteral("Closing door / hatch.");
 	m_Impl->interactionUntil = m_Impl->animationClock.elapsed() + 1800;
 	update();
+}
+
+bool AuLegacyShipRender::UseConsole(const QPoint& screenPosition)
+{
+	if(!m_Impl->ready || !m_Impl->person || !m_Impl->SystemBindingIndex()) return false;
+	const auto camera = m_Impl->Camera(SceneRenderInfo());
+	const QVector3D right = QVector3D::crossProduct(camera.forward, camera.up).normalized();
+	const QVector3D up = QVector3D::crossProduct(right, camera.forward).normalized();
+	const float tangent = std::tan(FieldOfView() * Pi / 360.0f);
+	const float aspect = float(std::max(1, width())) / std::max(1, height());
+	const float x = 2.0f * screenPosition.x() / std::max(1, width()) - 1;
+	const float y = 1 - 2.0f * screenPosition.y() / std::max(1, height());
+	const QVector3D direction = (camera.forward + right * (x * tangent * aspect) + up * (y * tangent)).normalized();
+	const float reach = (camera.eye - m_Impl->Eye()).length() + 16;
+	const AuPoint start = Point3(camera.eye), end = Point3(camera.eye + direction * reach);
+	const QMatrix4x4 transform = m_Impl->ConsoleTransform();
+	AuMatrix4x4 model;
+	for(int i = 0; i < 16; ++i) model[i] = transform.constData()[i];
+	AuQuadArray panels;
+	QVector<qint16> ids;
+	// The same native panel geometry/adjustments are used to draw the screen.
+	m_Impl->console.EnumControlPanels(panels, model, ids);
+	int nearest = -1;
+	double distance = reach;
+	AuPoint panelHit;
+	for(int i = 0; i < panels.size(); ++i)
+	{
+		AuPoint hit, normal;
+		if(panels[i].TestSegmentIntersection(hit, normal, start, end) && start.Distance(hit) < distance)
+		{
+			nearest = i;
+			distance = start.Distance(hit);
+			panelHit = hit;
+		}
+	}
+	if(nearest < 0) return false;
+	WalkHit obstruction;
+	if(m_Impl->world.Raycast(camera.eye, direction, float(distance), obstruction)
+		&& obstruction.detailId != m_Impl->character.consoleId) return false;
+	if(ids[nearest] != 0) return true;
+	const AuQuad& panel = panels[nearest];
+	AuPoint rightAxis = panel.vlr - panel.vll, upAxis = panel.vul - panel.vll;
+	rightAxis.Unit();
+	upAxis.Unit();
+	const AuPoint offset = panelHit - panel.vll;
+	const AuPoint panelLocation(offset.Dot(rightAxis), offset.Dot(upAxis), 0);
+	DiControlInputArray active;
+	if(m_Impl->character.consoleType == 12)
+	{
+		DpConsoleHelm station;
+		station.SampleControlPanelInput(0, panelLocation, active, false);
+	}
+	else
+	{
+		DpConsoleEngineer station(0);
+		station.SampleControlPanelInput(0, panelLocation, active, false);
+	}
+	const SystemBindings& systems = m_Impl->systemBindings[m_Impl->SystemBindingIndex()];
+	for(const DiControlInput& control : active)
+		OperateSystem(systems.actions.value(control.GetId(), -1));
+	return true;
 }
 
 void AuLegacyShipRender::UseDoor(const QPoint& screenPosition)
@@ -1761,6 +2009,7 @@ void AuLegacyShipRender::paintGL()
 	}
 	painter.beginNativePainting();
 	RenderSceneInterface(m_Impl->mouseCaptured);
+	RenderSceneCommunications();
 	painter.endNativePainting();
 }
 
@@ -1865,7 +2114,7 @@ void AuLegacyShipRender::mouseReleaseEvent(QMouseEvent* event)
 	m_Impl->mouseButtons &= ~event->button();
 	if(event->button() == Qt::LeftButton)
 	{
-		if(m_Impl->handClick && !m_Impl->mouseCaptured) UseDoor(event->pos());
+		if(m_Impl->handClick && !m_Impl->mouseCaptured && !UseConsole(event->pos())) UseDoor(event->pos());
 		m_Impl->handClick = false;
 	}
 	event->accept();
@@ -1886,7 +2135,15 @@ void AuLegacyShipRender::wheelEvent(QWheelEvent* event)
 		UpdateMouseCapture();
 	}
 	else if(m_Impl->mouseCaptured)
+	{
 		m_Impl->controls.SampleWheelInput(m_Impl->pendingControls, event, AuId(0), 0, false, AuPoint(0, 0), 0);
+		SystemBindings& systems = m_Impl->systemBindings[m_Impl->SystemBindingIndex()];
+		DiControlInputArray active;
+		systems.controls.SampleWheelInput(active, event, AuId(0), 0, false, AuPoint(0, 0), 0);
+		for(const DiControlInput& control : active)
+			OperateSystem(systems.actions.value(control.GetId(), -1));
+		systems.controls.ClearRanges();
+	}
 	event->accept();
 }
 
@@ -1929,6 +2186,18 @@ void AuLegacyShipRender::keyPressEvent(QKeyEvent* event)
 		event->accept();
 		return;
 	}
+	if(m_Impl->mouseCaptured)
+		for(const DiControlInput& control : m_Impl->systemBindings[m_Impl->SystemBindingIndex()].controls)
+			if(m_Impl->MatchesKey(control, event))
+			{
+				if(!event->isAutoRepeat())
+				{
+					m_Impl->keys.emplace(key, AuElapsedTimer());
+					m_Impl->releasedKeys.remove(key);
+				}
+				event->accept();
+				return;
+			}
 	// Retain the recovered legacy door shortcuts only when the user has not
 	// assigned the same combination to a supported game control.
 	if(!m_Impl->HasKeyBinding(event) && event->modifiers() == Qt::ControlModifier

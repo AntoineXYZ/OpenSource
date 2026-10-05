@@ -59,7 +59,9 @@ private:
 	void ReleaseMouseCapture();
 	void CenterMouse();
 	void UseDoor(const QPoint& screenPosition);
+	bool UseConsole(const QPoint& screenPosition);
 	void OperateDoor(quint32 id, bool open);
+	void OperateSystem(int action);
 	class Impl;
 	Impl* m_Impl;
 };
