@@ -415,7 +415,15 @@ void AppendResourceEquipment(const Design& design, Mesh& mesh)
 		else if (detail.detailType == 21 || detail.detailType == 22 || (detail.detailType >= 33 && detail.detailType <= 40))
 			TurretGun(append, detail, location);
 		else if (ResourceEquipmentSupported(detail.detailType))
+		{
+			const int first = mesh.batches.size();
 			Console(append, detail, location);
+			for(int i = first; i < mesh.batches.size(); ++i)
+			{
+				mesh.batches[i].consoleId = detail.detailId;
+				mesh.batches[i].rotationPivot = location;
+			}
+		}
 	}
 }
 }

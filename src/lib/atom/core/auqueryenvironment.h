@@ -87,6 +87,10 @@ private:
 	quint8								m_WorldAtomType;		// DaAtom::ATOM_TYPE of my parent world, at any depth.
 
 public:
+	// Supply an offline design scene's geometry query to the native controller.
+	void SetDesignScene(bool gravity, bool spacecraft, ROOMTYPE roomType, bool gravityWell, bool ladder,
+		double fallDistance, const AuPoint& up, ON_GROUND ground);
+
 	inline AuQueryEnvironment()
 	{
 		Init();

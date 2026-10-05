@@ -5,6 +5,24 @@
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
 #include "auqueryenvironment.h"
+
+void AuQueryEnvironment::SetDesignScene(bool gravity, bool spacecraft, ROOMTYPE roomType, bool gravityWell, bool ladder,
+	double fallDistance, const AuPoint& up, ON_GROUND ground)
+{
+	Init();
+	m_AtmType = ATMTYPE_Standard;
+	m_Environment = EB_Design | EB_Breathable | EB_Atmosphere;
+	if(gravity) m_Environment |= EB_Gravity;
+	if(spacecraft) m_Environment |= EB_Spacecraft | EB_Pathable;
+	if(ladder) m_Environment |= EB_InLadderWell;
+	if(gravityWell) m_Environment |= EB_GravityWell;
+	m_FallDist = fallDistance;
+	m_GravityNormal = up;
+	m_terNormal = up;
+	m_OnGround = ground;
+	m_fAirDensity = spacecraft ? .5f : 0.f;
+	m_CapRoomType = roomType;
+}
 //
 
 quint64 AuQueryEnvironment::MemoryUsage() const

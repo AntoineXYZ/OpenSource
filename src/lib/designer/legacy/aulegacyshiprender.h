@@ -3,6 +3,7 @@
 
 #include "audesignerview.h"
 #include <QStringList>
+#include <functional>
 
 namespace AuLegacyShip { struct Design; }
 class QKeyEvent;
@@ -26,6 +27,7 @@ public:
 	void SetWalkthrough(bool enabled);
 	void ControlsChanged();
 	QStringList Warnings() const;
+	std::function<void(const QString&)> tipsChanged;
 
 protected:
 	void initializeGL() override;
@@ -48,6 +50,7 @@ protected:
 
 private:
 	void CleanupGL();
+	void PrepareSky();
 	void RenderSky();
 	void Tick();
 	float FieldOfView() const;

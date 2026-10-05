@@ -1183,6 +1183,7 @@ public:
 
 	// Return CG height of this atom in current pose.
 	float CGHeight() const;
+	float PhysicalHeight() const;
 
 	// Return CG height of this atom in current pose, when fully grown. Ignores minutes to full grown.
 	float CGHeightFullGrown() const;

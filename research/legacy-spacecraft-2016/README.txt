@@ -44,8 +44,11 @@ The original Render Mode button switches the floor plan to a first-person
 walkthrough. It uses the game's Avatar and Scene bindings; with defaults,
 WASD moves, the captured mouse looks, Shift runs, Q toggles continuous
 forward movement, and Space jumps or brakes in zero gravity. C/Z moves up/down
-in zero gravity, gravity wells or on a ladder; E engages/releases a nearby
-ladder. Attachment centers the avatar and faces the rungs once; free look
+in zero gravity, gravity wells or on a ladder. Outside the ship, thrust builds
+momentum; Shift increases acceleration, releasing input coasts with drag,
+and Space brakes. E sits at a nearby ordinary console/captain chair or leaves
+the occupied console; otherwise it engages/releases a nearby ladder.
+Attachment centers the avatar and faces the rungs once; free look
 continues while W/S or C/Z climbs vertically along the ladder. E or Space releases
 the ladder. Home finds a clear standing position on the selected deck unless rebound.
 The configured avatar/hand input toggle (default Return/right-click) and
@@ -60,6 +63,9 @@ pixels retained in the modern assets. Its repeatable preview environment is
 not the random temporary world from a particular 2016 session. Skybox graphics
 settings apply. The backdrop shares the in-game galactic star generator and
 uses a deep-space environment without a nearby nebula or artificial dimming.
+Sky preparation starts in floor-plan mode and yields between sampling batches
+and cube faces. Render mode can open while it finishes; completed skies are
+cached across mode switches.
 See WALKTHROUGH-SKY-LADDERS.txt for evidence and manual checks.
 The orbit camera and cutaway control are removed. Armor changes the recovered
 wall profiles and windows; Streamline Hull is a physics setting.
@@ -72,8 +78,17 @@ person path queries, as are ladder attachment and ship membership. The
 default-human speeds, jump impulse, gravity values and door animation timing
 are recovered. FOV follows g_Au.FieldOfViewY and the game's aspect-ratio limit;
 mouse sensitivity, mouse-grab preference and hand cursor use game settings. The
-short near plane is a local adaptation. No visible third-person
-body, crouching, console occupation or vehicle driving is implemented here.
+short near plane is a local adaptation. A default male Gen3 human uses the
+native DaPerson controller for input, stances, momentum, jumping and camera.
+Legacy geometry supplies floor/gravity queries, collision and interaction attachment. The local body is hidden in every camera mode, matching
+the 2016 DaPerson renderer. Shared Scene bindings and legacy Escape/Shift+Escape
+switch top-down and first/third-person views. Console selection uses the original strict three-foot XY
+range, avatar deck and detail order. Occupied consoles swivel with the player.
+See WALKTHROUGH-FLIGHT-CONSOLES-BODY.txt for the recovered rules and checks.
+Crouch (held) and prone/stand (toggle) use configured Avatar controls and
+native pose camera heights/speeds. Taller stance changes require clearance.
+Vehicle driving remains unimplemented. Help and transient messages are inside
+the blue Tips tab; the added inspection tool and Selection tab were removed.
 
 The mesh uses the original quarter-grid occupancy rules, room/armor wall
 profiles, interior wall materials, adjacent-deck floors/ceilings and transparent
@@ -138,6 +153,7 @@ WALKTHROUGH-RECOVERY.txt       Avatar, controls, camera and gravity evidence.
 WALKTHROUGH-COLLISION.txt      Local controller and explicit approximations.
 WALKTHROUGH-INPUT.txt          Captured mouse, hand mode and focus lifecycle.
 WALKTHROUGH-AUDIO.txt          Original sound families, footsteps and system state.
+WALKTHROUGH-FLIGHT-CONSOLES-BODY.txt Momentum, console seating and native Gen3 body.
 DOOR-INTERACTION.txt           Animation, manual/automatic operation and stacks.
 TESTING.txt                   Reference checks and manual native harnesses.
 

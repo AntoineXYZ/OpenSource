@@ -4,6 +4,7 @@
 #include "aulegacyshipdetails.h"
 
 #include <QHash>
+#include <QMatrix4x4>
 #include <QSet>
 #include <algorithm>
 #include <cmath>
@@ -58,6 +59,7 @@ struct Triangle
 	QVector3D a, b, c, normal;
 	Box bounds;
 	quint32 doorId;
+	quint32 consoleId = 0;
 	int obstacle;
 	bool blocksMovement;
 	Triangle() : doorId(0), obstacle(-1), blocksMovement(true) {}
@@ -82,8 +84,10 @@ struct Contact
 	bool wall = false;
 	QVector<quint32> doors;
 	QVector<quint32> supportDoors;
+	QVector<QVector3D> normals;
 	void Add(const QVector3D& normal)
 	{
+		normals.append(normal);
 		ground = ground || normal.z() >= WalkableNormal;
 		ceiling = ceiling || normal.z() <= -WalkableNormal;
 		wall = wall || std::abs(normal.z()) < WalkableNormal;
@@ -211,11 +215,20 @@ public:
 	QHash<quint64, QVector<int>> cells;
 	QHash<quint64, QVector<int>> roomCells;
 	QSet<quint32> openDoors;
+	quint32 consoleId = 0;
+	QMatrix4x4 consoleTransform;
+	Box sceneBounds;
 	float plane = 0;
 
 	void AddTriangle(const Triangle& triangle)
 	{
 		const int index = triangles.size();
+		if(!index) sceneBounds = triangle.bounds;
+		else
+		{
+			sceneBounds.Include(triangle.bounds.minimum);
+			sceneBounds.Include(triangle.bounds.maximum);
+		}
 		triangles.append(triangle);
 		const Box& box = triangle.bounds;
 		for(int x = Cell(box.minimum.x()); x <= Cell(box.maximum.x()); ++x)
@@ -413,18 +426,33 @@ void WalkWorld::SetSettings(const WalkSettings& settings)
 {
 	WalkSettings value = settings;
 	if(!std::isfinite(value.radius) || !std::isfinite(value.height) || !std::isfinite(value.eyeHeight)
-		|| !std::isfinite(value.gravityAcceleration) || !std::isfinite(value.jumpSpeed)
 		|| !std::isfinite(value.stepHeight)) return;
 	value.radius = qBound(.2f, value.radius, 3.f);
 	value.height = qBound(value.radius * 2 + .1f, value.height, 20.f);
 	value.eyeHeight = qBound(value.radius, value.eyeHeight, value.height);
-	value.gravityAcceleration = qBound(0.f, value.gravityAcceleration, 100.f);
-	value.jumpSpeed = qBound(0.f, value.jumpSpeed, 50.f);
 	value.stepHeight = qBound(0.f, value.stepHeight, 2.f);
 	m_Impl->settings = value;
 }
 
 const WalkSettings& WalkWorld::Settings() const { return m_Impl->settings; }
+
+bool WalkWorld::TrySetBodySize(const QVector3D& feet, float height, float eyeHeight, bool requireClear)
+{
+	const WalkSettings previous = m_Impl->settings;
+	WalkSettings next = previous;
+	next.height = height;
+	next.eyeHeight = eyeHeight;
+	SetSettings(next);
+	// Explicit stance moves must fit before committing. Animated size changes
+	// during physics movement are resolved by the collision solver instead.
+	if(requireClear && !m_Impl->Clear(feet))
+	{
+		m_Impl->settings = previous;
+		return false;
+	}
+	return true;
+}
+
 void WalkWorld::SetDesignPlane(float height) { if(std::isfinite(height)) m_Impl->plane = height; }
 
 void WalkWorld::SetMesh(const Mesh& mesh, const Design& design)
@@ -432,6 +460,7 @@ void WalkWorld::SetMesh(const Mesh& mesh, const Design& design)
 	Impl& world = *m_Impl;
 	world.triangles.clear(); world.obstacles.clear(); world.cells.clear(); world.openDoors.clear();
 	world.rooms.clear(); world.ladders.clear(); world.roomCells.clear();
+	world.consoleId = 0;
 	int lowestDeck = MaximumDeck + 1;
 	int highestDeck = MinimumDeck - 1;
 	for(const Room& room : design.rooms)
@@ -467,6 +496,7 @@ void WalkWorld::SetMesh(const Mesh& mesh, const Design& design)
 			Triangle triangle(a, b, c, batch.doorId);
 			if(!Finite(triangle.normal) || triangle.normal.isNull()) continue;
 			triangle.blocksMovement = solid;
+			triangle.consoleId = batch.consoleId;
 			world.AddTriangle(triangle);
 		}
 	}
@@ -502,6 +532,7 @@ void WalkWorld::SetDoorOpen(quint32 doorId, bool open)
 
 bool WalkWorld::ToggleLadder(WalkState& state) const
 {
+	if(state.consoleType) return false;
 	if(state.ladderEngaged)
 	{
 		state.ladderEngaged = false;
@@ -600,131 +631,152 @@ bool WalkWorld::FindSpawn(const Design& design, int deck, WalkState& state) cons
 	return false;
 }
 
-void WalkWorld::Step(WalkState& state, const QVector3D& desiredVelocity, float seconds,
-	bool gravity, bool jump) const
+bool WalkWorld::EnterConsole(const Design& design, WalkState& state, float cgHeight) const
 {
-	const Impl& world = *m_Impl;
-	state.blockedDoors.clear();
-	if(!Finite(state.feet) || !Finite(state.velocity) || !Finite(desiredVelocity)
-		|| !std::isfinite(seconds) || seconds <= 0) return;
-	seconds = std::min(seconds, .25f);
-	const bool jumpOffLadder = jump && state.ladderEngaged;
-	if(jumpOffLadder)
+	if(state.consoleType || state.ladderEngaged || !Finite(state.feet) || !std::isfinite(cgHeight)
+		|| !m_Impl->InShip(state.feet)) return false;
+	const int deck = int(std::floor((state.feet.z() + cgHeight + .05f) / DeckHeight));
+	// AuAtom13!DaSpaceShip::CanEnterConsole: first eligible detail, same
+	// deck at the avatar's CG, strictly less than three feet in XY.
+	// Hidden is not tested.
+	for(const Detail& detail : design.details)
 	{
-		ToggleLadder(state);
-		state.velocity.setZ(world.settings.jumpSpeed * .8f);
-	}
-	QVector3D desired = desiredVelocity;
-	for(int axis = 0; axis < 3; ++axis)
-	{
-		desired[axis] = qBound(-200.f, desired[axis], 200.f);
-		state.velocity[axis] = qBound(-200.f, state.velocity[axis], 200.f);
-	}
-	const float speed = std::max(desired.length(), state.velocity.length()) + world.settings.gravityAcceleration * seconds;
-	seconds = std::min(seconds, 256 * world.settings.radius * .25f / std::max(speed, 1.f));
-	const float travel = std::max(desired.length(), state.velocity.length()) * seconds
-		+ world.settings.gravityAcceleration * seconds * seconds;
-	const int count = qBound(1, int(std::ceil(std::max(seconds * 120, travel / (world.settings.radius * .3f)))), 256);
-	const float dt = seconds / count;
-	const QVector3D initial = state.feet;
-	state.grounded = !state.ladderEngaged && world.Resolve(state.feet, initial, gravity).ground;
-	const auto noteDoors = [&](const Contact& contact, bool descending)
-	{
-		for(quint32 door : contact.doors)
-			if(!state.blockedDoors.contains(door)) state.blockedDoors.append(door);
-		if(descending)
-			for(quint32 door : contact.supportDoors)
-				if(!state.blockedDoors.contains(door)) state.blockedDoors.append(door);
-	};
-	for(int i = 0; i < count; ++i)
-	{
-		state.onLadder = state.ladderEngaged;
-		state.inShip = world.InShip(state.feet);
-		state.gravityActive = (gravity || state.inShip) && !state.onLadder && world.RoomType(state.feet) != 11;
-		state.gravitySuspended = !state.gravityActive;
-		const bool falling = state.gravityActive;
-		if(state.onLadder)
+		switch(detail.detailType)
 		{
-			const QVector3D previous = state.feet;
-			state.velocity = QVector3D(0, 0, desired.z());
-			state.feet.setX(state.ladderAnchor.x());
-			state.feet.setY(state.ladderAnchor.y());
-			state.feet.setZ(state.feet.z() + desired.z() * dt);
-			const Contact contact = world.Resolve(state.feet, previous, gravity);
-			if(desired.z() != 0) noteDoors(contact, desired.z() < 0);
-			// A closed hatch or nearby wall must stop climbing, never push the
-			// avatar sideways out of the ladder well.
-			if(std::abs(state.feet.x() - state.ladderAnchor.x()) > 1e-5f
-				|| std::abs(state.feet.y() - state.ladderAnchor.y()) > 1e-5f)
+		case 1: case 4: case 6: case 7: case 12: case 13:
+		case 15: case 17: case 19: case 73:
+			break;
+		default: continue;
+		}
+		if(detail.deck != deck) continue;
+		const QPointF point = DecodePoint(detail.packedXY);
+		const QVector3D seat(float(point.x()), float(point.y()), float(deck * DeckHeight));
+		const QVector3D delta = seat - state.feet;
+		if(delta.x() * delta.x() + delta.y() * delta.y() >= 9.f) continue;
+		state.feet = seat;
+		state.velocity = QVector3D();
+		state.consoleType = detail.detailType;
+		state.consoleId = detail.detailId;
+		state.grounded = false;
+		state.gravityActive = false;
+		state.gravitySuspended = true;
+		state.inShip = true;
+		state.blockedDoors.clear();
+		return true;
+	}
+	return false;
+}
+
+void WalkWorld::SetConsoleRotation(quint32 consoleId, const QVector3D& floorPoint, float facing)
+{
+	Impl& world = *m_Impl;
+	world.consoleId = consoleId;
+	world.consoleTransform.setToIdentity();
+	world.consoleTransform.translate(floorPoint);
+	world.consoleTransform.rotate(facing - 90.f, 0, 0, 1);
+	world.consoleTransform.translate(-floorPoint);
+}
+
+WalkEnvironment WalkWorld::Environment(const QVector3D& feet, bool studioGravity, float bodyOriginHeight) const
+{
+	WalkEnvironment environment;
+	environment.roomType = m_Impl->RoomType(feet);
+	environment.inShip = m_Impl->InShip(feet);
+	// Probe from the atom origin, as the native floor query does. Returning
+	// from Jump to Stand can temporarily put the new feet below the floor;
+	// keep finding that floor so native physics can correct the penetration.
+	const float probeHeight = std::max(.25f, bodyOriginHeight);
+	const QVector3D origin = feet + QVector3D(0, 0, probeHeight);
+	if(!environment.inShip)
+	{
+		// A pose expansion below the deck must not lose ship gravity while
+		// the atom origin remains inside the room. RoomType adds the radius.
+		environment.roomType = m_Impl->RoomType(origin - QVector3D(0, 0, m_Impl->settings.radius));
+		environment.inShip = environment.roomType != 0;
+	}
+	environment.gravityWell = environment.roomType == 11;
+	environment.gravity = studioGravity || environment.inShip;
+	Box bounds(origin - QVector3D(0, 0, 256), origin);
+	for(int index : m_Impl->Candidates(bounds))
+	{
+		const Triangle& triangle = m_Impl->triangles.at(index);
+		if(!triangle.blocksMovement || std::abs(triangle.normal.z()) < .5f
+			|| (triangle.doorId && m_Impl->openDoors.contains(triangle.doorId))) continue;
+		const float distance = QVector3D::dotProduct(triangle.a - origin, triangle.normal) / -triangle.normal.z();
+		if(distance < 0 || distance > 256) continue;
+		if(InsideTriangle(origin - QVector3D(0, 0, distance), triangle))
+			environment.fallDistance = std::min(environment.fallDistance, distance - probeHeight);
+	}
+	if(studioGravity && !environment.inShip)
+		environment.fallDistance = std::min(environment.fallDistance, feet.z() - m_Impl->plane);
+	return environment;
+}
+
+void WalkWorld::MoveDisplacement(WalkState& state, const QVector3D& displacement, bool studioGravity) const
+{
+	if(!Finite(displacement) || !Finite(state.feet)) return;
+	const Impl& world = *m_Impl;
+	const bool groundPlane = studioGravity && !world.InShip(state.feet);
+	const auto contacts = [&](const Contact& contact, bool descending) {
+		for(quint32 id : contact.doors)
+			if(!state.blockedDoors.contains(id)) state.blockedDoors.append(id);
+		if(descending)
+			for(quint32 id : contact.supportDoors)
+				if(!state.blockedDoors.contains(id)) state.blockedDoors.append(id);
+		for(const QVector3D& normal : contact.normals)
+		{
+			const float inward = QVector3D::dotProduct(state.velocity, normal);
+			if(inward < 0) state.velocity -= normal * inward;
+		}
+	};
+	Box sweep = world.BodyBounds(state.feet);
+	const Box destinationBounds = world.BodyBounds(state.feet + displacement);
+	sweep.Include(destinationBounds.minimum);
+	sweep.Include(destinationBounds.maximum);
+	// Empty-space movement needs no collision subdivisions.
+	const int steps = groundPlane || sweep.Intersects(world.sceneBounds)
+		? std::max(1, int(std::ceil(displacement.length() / (world.settings.radius * .25f)))) : 1;
+	const QVector3D step = displacement / steps;
+	for(int i = 0; i < steps; ++i)
+	{
+		const QVector3D previous = state.feet;
+		state.feet += step;
+		const Contact contact = world.Resolve(state.feet, previous, groundPlane);
+		contacts(contact, step.z() < 0);
+		if(state.ladderEngaged)
+		{
+			if(std::abs(state.feet.x() - state.ladderAnchor.x()) > Skin
+				|| std::abs(state.feet.y() - state.ladderAnchor.y()) > Skin)
 			{
 				state.feet = previous;
-				state.velocity.setZ(0);
+				state.velocity = QVector3D();
 			}
-			if((contact.ceiling && desired.z() > 0) || (contact.ground && desired.z() < 0))
-				state.velocity.setZ(0);
-			state.grounded = contact.ground;
-			if(state.feet.z() < state.ladderBottom - world.settings.stepHeight
-				|| state.feet.z() > state.ladderTop + world.settings.stepHeight)
-				ToggleLadder(state);
-			continue;
+			state.feet.setX(state.ladderAnchor.x());
+			state.feet.setY(state.ladderAnchor.y());
 		}
-		if(!falling)
-		{
-			const QVector3D previous = state.feet;
-			state.velocity = desired;
-			state.feet += state.velocity * dt;
-			const Contact contact = world.Resolve(state.feet, previous, gravity);
-			if(!desired.isNull()) noteDoors(contact, desired.z() < 0);
-			state.grounded = contact.ground;
-			if((contact.ceiling && state.velocity.z() > 0) || (contact.ground && state.velocity.z() < 0)) state.velocity.setZ(0);
-			continue;
-		}
-		if(jump && !jumpOffLadder && i == 0 && state.grounded)
-		{
-			state.velocity.setZ(world.settings.jumpSpeed);
-			state.grounded = false;
-		}
-		const bool wasGrounded = state.grounded;
-		state.velocity.setX(desired.x()); state.velocity.setY(desired.y());
-		state.velocity.setZ(std::max(-200.f, state.velocity.z() - world.settings.gravityAcceleration * dt));
-		const QVector3D previous = state.feet;
-		const QVector3D horizontal(desired.x() * dt, desired.y() * dt, 0);
-		state.feet += horizontal;
-		const Contact horizontalContact = world.Resolve(state.feet, previous, gravity);
-		if(!horizontal.isNull()) noteDoors(horizontalContact, false);
-		const float attempted = horizontal.lengthSquared();
-		const float achieved = QVector3D::dotProduct(state.feet - previous, horizontal);
-		if(wasGrounded && horizontalContact.wall && attempted > 1e-10f && achieved + 1e-6f < attempted
-			&& world.settings.stepHeight > 0)
+		else if(state.grounded && contact.wall && world.settings.stepHeight > 0)
 		{
 			const QVector3D raised = previous + QVector3D(0, 0, world.settings.stepHeight);
 			if(world.Clear(raised))
 			{
-				QVector3D stepped = raised + horizontal;
-				world.Resolve(stepped, raised, gravity);
-				if(QVector3D::dotProduct(stepped - previous, horizontal) > achieved + 1e-6f
-					&& world.Drop(stepped, world.settings.stepHeight + .06f, gravity)
-					&& stepped.z() <= previous.z() + world.settings.stepHeight + ContactTolerance)
+				QVector3D stepped = raised + step;
+				world.Resolve(stepped, raised, groundPlane);
+				if(QVector3D::dotProduct(stepped - previous, step) > QVector3D::dotProduct(state.feet - previous, step)
+					&& world.Drop(stepped, world.settings.stepHeight + .06f, groundPlane))
 					state.feet = stepped;
 			}
 		}
-		const QVector3D beforeFall = state.feet;
-		state.feet.setZ(state.feet.z() + state.velocity.z() * dt);
-		const Contact verticalContact = world.Resolve(state.feet, beforeFall, gravity);
-		if(state.velocity.z() != 0) noteDoors(verticalContact, !wasGrounded || desired.z() < 0);
-		state.grounded = verticalContact.ground && state.velocity.z() <= 0;
-		if(state.grounded || (verticalContact.ceiling && state.velocity.z() > 0)) state.velocity.setZ(0);
-		if(!state.grounded && wasGrounded && state.velocity.z() <= 0)
-		{
-			QVector3D down = state.feet;
-			if(world.Drop(down, world.settings.stepHeight + .04f, gravity))
-			{ state.feet = down; state.velocity.setZ(0); state.grounded = true; }
-		}
+		state.grounded = contact.ground;
 	}
-	state.onLadder = state.ladderEngaged;
-	state.inShip = world.InShip(state.feet);
-	state.gravityActive = (gravity || state.inShip) && !state.onLadder && world.RoomType(state.feet) != 11;
+	const WalkEnvironment environment = Environment(state.feet, studioGravity, world.settings.eyeHeight);
+	state.inShip = environment.inShip;
+	state.gravityActive = environment.gravity && !environment.gravityWell;
 	state.gravitySuspended = !state.gravityActive;
+	state.grounded = state.gravityActive && !state.ladderEngaged && environment.fallDistance < .25f;
+	state.onLadder = state.ladderEngaged;
+	if(state.ladderEngaged && (state.feet.z() < state.ladderBottom - world.settings.stepHeight
+		|| state.feet.z() > state.ladderTop + world.settings.stepHeight))
+		ToggleLadder(state);
 }
 
 bool WalkWorld::Raycast(const QVector3D& origin, const QVector3D& direction,
@@ -738,20 +790,44 @@ bool WalkWorld::Raycast(const QVector3D& origin, const QVector3D& direction,
 	Box bounds(origin, origin); bounds.Include(end);
 	bool found = false;
 	float nearest = maximumDistance;
+	const auto intersect = [&](const Triangle& triangle, const QVector3D& from, const QVector3D& rayDirection, bool swivel)
+	{
+		if(triangle.obstacle >= 0) return;
+		if(!includeOpenDoors && triangle.doorId && m_Impl->openDoors.contains(triangle.doorId)) return;
+		const float denominator = QVector3D::dotProduct(triangle.normal, rayDirection);
+		if(std::abs(denominator) < 1e-8f) return;
+		const float distance = QVector3D::dotProduct(triangle.a - from, triangle.normal) / denominator;
+		if(distance < 0 || distance > nearest) return;
+		const QVector3D point = from + rayDirection * distance;
+		if(!InsideTriangle(point, triangle)) return;
+		found = true; nearest = distance;
+		hit.point = point; hit.normal = denominator < 0 ? triangle.normal : -triangle.normal;
+		if(swivel)
+		{
+			hit.point = m_Impl->consoleTransform.map(hit.point);
+			hit.normal = m_Impl->consoleTransform.mapVector(hit.normal);
+		}
+		hit.distance = distance; hit.doorId = triangle.doorId;
+	};
 	for(int index : m_Impl->Candidates(bounds))
 	{
 		const Triangle& triangle = m_Impl->triangles.at(index);
-		if(triangle.obstacle >= 0) continue;
-		if(!includeOpenDoors && triangle.doorId && m_Impl->openDoors.contains(triangle.doorId)) continue;
-		const float denominator = QVector3D::dotProduct(triangle.normal, ray);
-		if(std::abs(denominator) < 1e-8f) continue;
-		const float distance = QVector3D::dotProduct(triangle.a - origin, triangle.normal) / denominator;
-		if(distance < 0 || distance > nearest) continue;
-		const QVector3D point = origin + ray * distance;
-		if(!InsideTriangle(point, triangle)) continue;
-		found = true; nearest = distance;
-		hit.point = point; hit.normal = denominator < 0 ? triangle.normal : -triangle.normal;
-		hit.distance = distance; hit.doorId = triangle.doorId;
+		if(!m_Impl->consoleId || triangle.consoleId != m_Impl->consoleId)
+			intersect(triangle, origin, ray, false);
+	}
+	if(m_Impl->consoleId)
+	{
+		// Query the occupied console in its authored coordinates, so hand
+		// and sight targeting see the same swivelling geometry as rendering.
+		const QMatrix4x4 inverse = m_Impl->consoleTransform.inverted();
+		const QVector3D from = inverse.map(origin), localRay = inverse.mapVector(ray);
+		Box localBounds(from, from); localBounds.Include(from + localRay * maximumDistance);
+		for(int index : m_Impl->Candidates(localBounds))
+		{
+			const Triangle& triangle = m_Impl->triangles.at(index);
+			if(triangle.consoleId == m_Impl->consoleId)
+				intersect(triangle, from, localRay, true);
+		}
 	}
 	return found;
 }

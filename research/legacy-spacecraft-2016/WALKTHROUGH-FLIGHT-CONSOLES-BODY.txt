@@ -1,0 +1,266 @@
+2016 designer: momentum, consoles and player body
+================================================
+
+Evidence below comes from the open 2016 binaries in Ghidra. Addresses are
+preferred image addresses and require the named module. Decompiled signatures
+can misidentify return buffers and floating-point arguments.
+
+Free-flight momentum
+--------------------
+AuAtom13.dll:
+  0x18031be50 DaPerson::Acceleration
+  0x1802e9960 DaCreature::Friction
+  0x180330690 DaPerson::Friction
+  0x180219280 DaAtom::TickMovement
+AuData13.dll:
+  0x1800d0050 DpBody::MovementSpeed
+
+The designer uses the person's ordinary motion code. The suit restriction is
+bypassed in the studio. Outside ship/studio gravity, movement is thrust, not a
+velocity assignment. Default human speed is 5; the run-pose factor is 2.5,
+giving input forces of 5 and 12.5ft/s^2. No exterior human speed clamp applies
+when the EB_Gravity flag is absent.
+
+Forward/back follows head pitch. Local lateral weight is .75, down is 1, and
+up is .5. The combined nonzero vector is normalized to the movement force.
+When opposed controls coexist, forward has priority over backward, left over
+right, and down over up. These weights affect combined directions, not the
+final magnitude of single-axis thrust.
+
+In solid-mode exterior flight, each body-local velocity component loses
+min(force/2, 4)ft/s^2. With no movement input it loses 4ft/s^2. Solid ship
+interiors use min(force/3, 3), and gravity wells use min(force/3, 5), with
+idle values 3 and 5 respectively. The ship's gravity flag still limits
+acceleration in wells: sideways and upward limits are half movement speed,
+forward/backward and downward limits are full movement speed. Acceleration
+that would increase an already excessive component is suppressed.
+
+Explicit braking in the studio supplies friction (10000,10000,10000).
+TickMovement adds acceleration*dt before subtracting friction*dt, clamping a
+component to zero instead of letting friction reverse its sign. Rotation
+preserves the world direction of existing momentum. Thus unobstructed,
+straight exterior W flight gains approximately 2.5ft/s per second, or 8.5
+with Shift, and releasing input coasts to rest at 4ft/s per second.
+
+The preview now creates a native DaPerson with default Human Gen3 DNA and
+uses ProcessControlInput, TickMovement, AnimatePose and SetupCamera. Native
+DaPerson/DaCreature/DaAtom code owns stance selection, acceleration, friction,
+drag, momentum, braking, jumping, look and camera transforms. The copied
+MovementPose, SetStance and WalkWorld::Step implementations have been removed.
+
+A transient AuEther owns the person and a DaDesigner-derived geometry adapter.
+Both receive session-unique IDs through Create(). GetAtomEnvironment supplies
+legacy room, floor, gravity, ground material and hatch attachment information;
+MoveSubatom resolves native displacement against the authored ship mesh.
+The adapter reports solid rendering to the native controller. Exterior air
+density is zero for recovered unrestricted space acceleration; interiors use
+.5. Gravity wells retain EB_Gravity and EB_GravityWell: native code suppresses
+falling while keeping the well's movement limits.
+
+The controller uses global game configuration and the existing Scene controls.
+Legacy collision shapes and ship membership remain approximations described
+in WALKTHROUGH-COLLISION.txt. The floor plan remains the existing 2D editor.
+
+Jump/landing integration correction
+----------------------------------
+DaAtom::ChangePos invalidates the transform cache, but not the environment
+query. Native MoveSubatom explicitly invalidates that query after moving.
+The legacy adapter now does the same: otherwise DaCreature::TickMovement
+sees the pre-takeoff ground contact and prematurely calls Stand. Pose animation
+also invalidates the query, since it can change the feet relative to the atom.
+The floor ray starts at the body origin so a larger standing pose can still
+find a floor above its temporarily penetrating feet. Room membership retains
+ship gravity when that origin remains inside the ship. Animated body growth
+during timed movement is resolved by the collision solver; explicit zero-time
+stance transitions still require clearance and can be rolled back natively.
+
+DaCreature::Jump consumes stamina. AuModel::run resets hunger and stamina for
+the ordinary offline designer; the legacy preview now performs that upkeep
+before native input processing too, preventing permanent exhaustion after
+jumping. No native jump, stamina or pose-selection rules were changed.
+
+Manual regression checks: tap and hold Space, jump while moving/running,
+repeat under a low ceiling and beside a wall, and sprint after landing.
+Also check standing after crouch/prone under an obstruction and jumping on
+the exterior studio plane with gravity enabled. Runtime verification requires
+the user's build; no build or compiler was invoked for this correction.
+
+Ordinary console seating
+------------------------
+AuAtom13.dll:
+  0x1803ce930 DaSpaceShip::CanEnterConsole
+  0x18032e360 DaPerson::EnterShipConsole
+  0x1802e5dc0 DaCreature::ConsoleSeatOffset
+  0x1802f2280 DaCreature::SitAtConsole
+  0x1802e4030 DaCreature::CGOffset (static DpBody overload)
+  0x1802e92e0 DaCreature::ExitConsole
+  0x18033ab90 DaPerson::ProcessControlInput
+  0x1802ed640 DaCreature::RenderEnvironmentObject
+  0x1805f8010 DpConsole::Render
+
+E leaves an occupied console or attached ladder. Otherwise it tries console
+entry before ladder attachment. Ordinary consoles use the first eligible
+detail in array order, on the avatar's deck, with XY distance squared strictly
+less than 9. There is no hidden flag or line-of-sight filter. The deck uses
+the avatar atom location (CG for the standing 2016 human), not its eye or
+feet: floor((z + .05)/8). Local code uses the native body's CGHeight for this.
+The original ship lookup is represented by the local ship-membership query.
+
+Implemented ordinary console types and native poses:
+   1 Navigation       ConsoleNav
+   4 Medic            ConsoleSurgery
+   6 Engineer         ConsoleEngine
+   7 Fire control     ConsoleFireControl
+  12 Helm             ConsolePilot
+  13 Power            ConsolePower
+  15 Sensors          ConsoleSensor
+  17 Shields          ConsoleShield
+  19 Transporter      ConsoleTransporter
+  73 Captain chair    ConsoleCommand
+
+The seat is at the detail XY and deck floor + 20/12 feet. The body's negative
+head XY offset keeps the head above that seat axis; the seated CGHeight is
+the same 20/12 feet in the modern DpBody. Velocity is cleared and ordinary
+movement/jump input cannot move the seated character. E stands up again.
+Entry preserves viewing direction. Ordinary consoles do not have the berth
+orientation snap or the modern stationary-seat head-turn constraint.
+
+The original console is rendered with its operator's transform, lowered by
+the seated CG height. DpConsole::Render then applies its normal seat/panel
+model offsets. Both the console and avatar swivel with yaw. The occupied
+console uses the existing modern DpConsole::RenderConsole/RenderChair, also
+used by DaDesigner. The legacy adapter supplies the operator's floor transform
+and original primary display texture, including the recovered 2016 helm bitmap.
+DpConsole owns model placement and its shared screen distance/height/tilt
+adjustments. Static legacy batches carry their detail ID so the occupied
+instance is suppressed while the native renderer draws it. Unoccupied consoles
+retain their existing authored preview geometry.
+
+Sight and hand rays rotate the authored console proxy into the operator's
+orientation. That proxy matches the default panel placement; native custom
+panel distance/height/tilt adjustments are not reflected in its mesh queries.
+
+DpConsole has a texture-owner-ID overload so the preview can initialize its
+existing resources without inventing a live vessel. Its DaAtom overload
+delegates to the same implementation. The preview uses STATIC_TEXTURE_ID;
+owner zero would select the texture API's uncached path. A cleanup hook drops shared VAOs/model
+handles only when the closing preview owns their model cache, preventing stale
+handles on reopening. The native console renderer and shaders are reused.
+
+The native DaCreature::ExitConsole now handles stand-up and offset selection.
+For the right-handed default human it tries standing in place, then two feet
+right, left, forward and backward. Local standing-capsule
+clearance replaces the original person path query. Reloading/rebuilding the
+design releases the seat; successful Home recovery resets occupation too.
+Seat state is temporary and does not mutate the design or .ship serializer.
+
+Turret, surgery-unit patient, assigned-berth and game-table entry have separate
+rules in CanEnterConsole and remain outside this implementation. Original
+live console control panels/readouts and power-system controls are also still
+unimplemented; this pass adds seating, poses and occupied console geometry.
+
+Hidden native human and camera modes
+------------------------------------
+ShoresofHazeron.exe 0x140244760 creates the offline studio person as a male,
+right-handed default Human, stands him, then places his standing body at the
+origin. AuGlobal13.dll 0x180079d00 supplies InitDefaultHuman DNA. The modern
+DhDNA::InitDefaultHuman and DpBody retain this Gen3 body system.
+
+The walkthrough creates DaPerson(defaultHumanDNA, Alpha, RightHanded, Mature).
+The person owns its native Gen3 body. Native pose selection and AnimatePose
+supply stance, movement, ladder and console poses; CameraOffset/SetupCamera
+supply the view. There is no second body or local stance state machine.
+
+Correction verified in AuAtom13.dll 0x1803427c0, DaPerson::RenderEnvironmentObject:
+when this == sceneAtom and InDesignEnvironment(), it bypasses the creature
+body renderer and calls generic atom rendering plus creature/person audio.
+This is independent of camera mode and DrawBodyModel. The earlier inference
+from the base creature renderer was incomplete. The adapter now omits body
+drawing and GPU model preparation; CPU poses remain for camera/movement.
+Occupied console rendering remains independent of body visibility.
+
+DaPerson::SetupCamera at 0x18034f930 resets the camera in top-down mode,
+translates up by view altitude from the person's CG, then rotates by head tilt
+(-pi/2 followed by pi/2 + tilt). Body yaw still supplies the facing. Ordinary
+top-down is therefore not a fixed north-up map, and looking can tilt it.
+DaCreature::SetupCamera at 0x1802f1450 offsets third-person behind/above the eyes
+by cos(angle)*distance and sin(angle)*distance, with the existing look direction.
+
+The adapter uses shared AuAtomRenderInfo mode/distance/angle/altitude settings
+and AuDesignerView::ProcessControlInput for configured Scene camera controls
+(keyboard, mouse, wheel and joystick). Escape and Shift+Escape provide legacy
+aliases unless assigned to another supported control. Modern defaults remain
+Backspace and Shift+Backspace. Escape no longer exits while in render mode;
+Ctrl+W/Exit Designer still closes. Top-down toggle returns to the preferred
+first/third-person mode; first/third toggle exits top-down before toggling.
+Geometry, sky, hand picking and OpenAL listener use the same camera basis.
+Crosshair/ship-target HUD are suppressed in top-down. Avatar movement and
+interaction ranges still originate at the person. Camera transforms now come
+from native SetupCamera; the legacy mesh has no native camera-obstruction
+query yet. The existing short near-plane adaptation remains.
+FOV, sidebar and OpenAL integration remain shared.
+
+Crouch and prone recovery
+-------------------------
+AuAtom13.dll DaPerson::ProcessControlInput 0x18033ab90 sets Crouch (pose 0x10)
+for control 0x71. Control 0x88 toggles Prone (0x20) and Stand (0x24).
+SelectPoseForMeOrMount 0x18034ce60 selects CrouchCreep (0x11) and ProneCreep
+(0x21) for movement, including with the run modifier; stopping restores the
+stationary pose. The modern Scene input loop injects CI_Stand when the held
+crouch control is released. The legacy adapter now follows that convention
+using configured Avatar inputs (default held Caps Lock and toggle X).
+
+AuData13.dll DpBody::MovementSpeed 0x1800d0050 confirms multipliers .5 for
+crouch creep and 1/3 for prone creep, versus 1 walking and 2.5 running, all
+times DNA.Speed + 1. Native DaPerson now selects poses and handles transitions,
+including its gravity-dependent CG adjustment, jump stance and rollback.
+Native body poses supply eye position and physical height.
+Original ProcessControlInput rolls back a pose change if the upward CG move
+cannot fit. The adapter tests the taller capsule against blocking geometry,
+including closed doors, and leaves the shorter stance when blocked. A released
+crouch retries standing until there is clearance; prone/stand requires a tap.
+Console/ladder poses take precedence and
+successful entry clears the previous free-moving stance. Home restores a
+standing body only if a standing spawn position is available.
+
+DaCreature::RenderAudioSources 0x1802ec860 uses the ground-indexed dragging
+sound for ProneCreep (case 0x21), with a .25 local-player gain multiplier.
+The adapter uses existing DragMetal/DragHardFloor buffers while crawling;
+crouch walking retains the .5 pose-speed footstep pitch. The existing base
+volume approximation remains. Prone collision remains a shortened vertical
+capsule, not the original oriented body shape.
+
+Manual checks after building: hold/release crouch, X down/up, move in both
+stances with and without Shift, rebind each control, and try standing under a
+low obstruction. Verify camera height and crawl/footstep audio, then check
+console entry/exit, ladders, Home recovery and zero-gravity stance changes.
+
+Validation and manual comparison
+--------------------------------
+No build or compiler was run; the user builds manually. No deleted research
+test harness was restored. Source review checked native API signatures,
+console type/pose mappings, GL winding/state restoration, transient state
+reset, and static versus rotating geometry queries. git diff --check passes.
+Native runtime behavior and visual parity still need the user's comparison.
+
+With default controls after building:
+  1. Disable studio gravity, leave the hull/ship gravity region, and hold W.
+     Speed should keep increasing. Repeat with Shift; acceleration should be
+     appreciably stronger. Release W to coast; Space should brake sharply.
+     Turn while coasting: existing momentum must retain its world direction.
+     Reverse thrust should brake before reversing. Home returns to the ship.
+  2. Return toward the ship at speed. Closed structure must still stop travel,
+     and automatic small doors/hatches should open on attempted entry.
+  3. Approach each of the ten ordinary console types within three feet and E.
+     Entry must preserve facing, lower the eyes, freeze translation and pose
+     the body. Turning should swivel the occupied seat/panel with the body.
+     E exits; another deck's console and out-of-range consoles must not engage.
+     Check E and Space still release ladders, and W/S still climbs them.
+  4. Look down while standing, walking, running, climbing and seated: no body
+     should render, regardless of full/headless/hidden body settings. Escape
+     enters/leaves top-down; Shift+Escape exits top-down or toggles first/third.
+     Test the configured Scene bindings, distance/angle adjustments and rebinding.
+     Check sky orientation, door clicks, mouse capture, audio and settings dialogs
+     in each mode. Reopen the designer and revisit floor-plan/render mode.
+     Save after walking/seating;
+     transient player/console state must not appear in the .ship file.

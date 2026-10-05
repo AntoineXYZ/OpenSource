@@ -62,6 +62,34 @@ normal intensity, preserving star contrast against deep space. Ship lighting
 is unaffected. The custom top-left deck/gravity and missing-texture overlays
 are removed; texture warnings remain available through Warnings().
 
+Preparation and render-mode entry
+---------------------------------
+The initial implementation ran all galaxy sampling and all six cube faces
+inside the first walkthrough paint. For this galaxy the native sample grid
+is 501*501*51 (12,801,051 samples), before star vertices and texture uploads.
+That synchronous path blocks Qt event processing while it runs.
+
+PrepareSky now runs during floor-plan paints as well as walkthrough paints.
+It advances the shared sampler in X slices, yielding after a four-millisecond
+budget checked between slices. The random state and next X persist between
+frames. After sampling, CreateSkyBoxFace draws one face per paint using the
+same native face-rendering code. The existing CreateSkyBox entry point still
+builds all faces for in-game callers. No drawing algorithm or sample density
+was reduced. GL work remains on the widget's context/thread.
+
+The walkthrough can render before the sky is ready, against a black backdrop.
+The cube becomes visible only after all six faces succeed, including mipmap
+generation on the final face. Switching modes reuses the finished cube.
+Changing cube resolution/mipmaps or recreating the GL context reuses the
+galactic samples and rebuilds only the texture. Universe-star generation is
+reset before face zero so repeated rebuilds cannot accumulate extra stars.
+A framebuffer failure stops preparation and records a warning instead of
+retrying allocation every frame. Closing the view requires no worker join.
+
+This is incremental preparation, not a hard frame-time guarantee: a sample
+slice, individual cube-face draw or texture allocation can exceed the CPU
+budget on slower hardware. Runtime timing has not been measured here.
+
 Ladder evidence
 ---------------
 AuAtom13.dll:
@@ -104,8 +132,18 @@ Validation
 Performed: read-only decompilation/disassembly, original/current PNG pixel
 comparison, source review of shader/context ownership and movement branches,
 and git diff --check. Compilation and runtime checks remain for the user.
+Source comparison also verified that the sliced sampling body and cube-face
+drawing body match the previous implementations, with commented-out code
+preserved.
 
 After the user's build:
+  - Open the editor and immediately enter render mode, then repeat after
+    spending time in the floor plan. Input should remain usable during sky
+    preparation; only the background waits for completion. Repeated mode
+    switches should reuse the finished sky without regenerating it.
+  - Change skybox size/mipmaps midway through preparation, disable/re-enable
+    it, and close the editor while preparation is incomplete. Check that
+    there are no partial cube faces, repeated brightening or stale GL objects.
   - Enter render mode with an empty design and a ship. Look around outside
     and through windows; sky orientation should follow look, not translation.
   - Toggle skybox settings, change its resolution/mipmaps and FOV, resize on

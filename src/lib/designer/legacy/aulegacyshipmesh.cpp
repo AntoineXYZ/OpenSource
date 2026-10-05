@@ -707,21 +707,10 @@ void HullWalls(Builder& out, const QVector<Edge>& edges, int deck, int armor, co
 				}
 				const quint32 doorId = p.strip == 1 || p.strip == 2 ? edge.doorId : 0;
 				out.Quad(material, deck, false, a0, b0, b1, a1, 1, doorId);
-				if(Type(edge.tag) != 30)
-				{
-					const Material inside = p.strip == 1 ? Material::LargeCrewDoor : material;
-					out.Triangle(inside, deck, true, a0, b1, b0, {0, 0}, {1, 1}, {1, 0}, doorId);
-					out.Triangle(inside, deck, true, a0, a1, b1, {0, 0}, {0, 1}, {1, 1}, doorId);
-				}
-			}
-			if(Type(edge.tag) == 30)
-			{
-				// RenderInterior uses a full-height crew panel behind the exterior
-				// seven-foot hull door and its projecting upper hull profile.
-				const QVector3D a0 = Position(a, deck * DeckHeight), b0 = Position(b, deck * DeckHeight);
-				const QVector3D a1 = Position(a, (deck + 1) * DeckHeight), b1 = Position(b, (deck + 1) * DeckHeight);
-				out.Triangle(Material::CrewDoor, deck, true, a0, b1, b0, {0, 0}, {1, 1}, {1, 0}, edge.doorId);
-				out.Triangle(Material::CrewDoor, deck, true, a0, a1, b1, {0, 0}, {0, 1}, {1, 1}, edge.doorId);
+				// CreateModels calls RenderExterior again with reversed faces for
+				// the interior model, retaining each hull strip's texture and UVs.
+				out.Triangle(material, deck, true, a0, b1, b0, {0, 0}, {1, 1}, {1, 0}, doorId);
+				out.Triangle(material, deck, true, a0, a1, b1, {0, 0}, {0, 1}, {1, 1}, doorId);
 			}
 			// RenderWallEndCap closes both room profiles to the baseline. Its
 			// interior-facing strip uses the end-cap tile and height-scaled V.

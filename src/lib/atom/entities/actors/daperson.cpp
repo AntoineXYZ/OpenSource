@@ -9039,6 +9039,15 @@ void DaPerson::WillfullyChangedEmpire(quint32 nuEmpireId)
 		emit AddCitizenToEmpire(oldEmpireId, nuEmpireId, Id(), AssignedName(), (quint8)Gender());
 }
 
+void DaPerson::ClearMovementInput()
+{
+	m_PersonLock.lockForWrite();
+	m_uiActions &= ~(ACT_MoveMask | ACT_LookMask | ACT_TurnMask | ACT_BrakeMask | ACT_Jump | ACT_Continuous | ACT_Run);
+	m_byRotSpeedX = m_byRotSpeedZ = 0;
+	m_PowerMove = 0;
+	m_PersonLock.unlock();
+}
+
 // This function is only called on the client during animate.
 void DaPerson::ApplyMovement(unsigned int msElapsed)
 {
@@ -25860,4 +25869,3 @@ void DaPerson::SetAccountActive()
 	if(!land.empty())
 		emit AvatarAccountActive(land);
 }
-

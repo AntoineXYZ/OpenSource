@@ -105,42 +105,67 @@ void auNebula::DeleteDeviceObjects(AuOpenGLFunctions& GLf)
 void auNebula::CreateGalacticStarField(const DaGalaxy& galaxy, const AuPoint& sectorLoc, AuDice& dice)
 {
 	m_vStars.clear();
+	const int radius = galaxy.Radius() / 10;
+	for(int x = -radius; x <= radius;)
+		x = AppendGalacticStarFieldSlice(galaxy, sectorLoc, dice, x);
+}
+
+int auNebula::AppendGalacticStarFieldSlice(const DaGalaxy& galaxy, const AuPoint& sectorLoc, AuDice& dice, int ix)
+{
 	int iDistance = galaxy.Radius() / 10;
 	int zDist = galaxy.CoreRadius() / 10;
 	int step = sectorLoc.Length() / (iDistance*2);
 	if(step < 1)
 		step = 1;
-	for(int ix=-iDistance; ix<=iDistance; ix+=step)
+	for(int iy=-iDistance; iy<=iDistance; iy+=step)
 	{
-		for(int iy=-iDistance; iy<=iDistance; iy+=step)
+		for(int iz=-zDist; iz<=zDist; iz+=step)
 		{
-			for(int iz=-zDist; iz<=zDist; iz+=step)
+			AuPoint nbsec(ix, iy, iz);				// Neighboring sector. ix, iy, iz are sectors.
+			float fDensity = galaxy.StarDensity(nbsec*10);	// Returns a number from 0 to 1.
+			if(fDensity > 0)
 			{
-				AuPoint nbsec(ix, iy, iz);				// Neighboring sector. ix, iy, iz are sectors.
-				float fDensity = galaxy.StarDensity(nbsec*10);	// Returns a number from 0 to 1.
-				if(fDensity > 0)
+				double sdist = (nbsec - sectorLoc).Length() + 1;	// Distance from my sector, in sectors.
+				int iStars = (int)ceil(fDensity*50 / (sdist*8));
+				for(int i=0; i<iStars; i++)
 				{
-					double sdist = (nbsec - sectorLoc).Length() + 1;	// Distance from my sector, in sectors.
-					int iStars = (int)ceil(fDensity*50 / (sdist*8));
-					for(int i=0; i<iStars; i++)
-					{
-						float fX = dice.RandomMinMax(-step, step);
-						float fY = dice.RandomMinMax(-step, step);
-						float fZ = dice.RandomMinMax(-step, step);
-						galParticle nuParticle;
-						nuParticle.pos = nbsec + AuPoint(fX, fY, fZ) - sectorLoc;
-						m_vStars.append(nuParticle);
-					}
+					float fX = dice.RandomMinMax(-step, step);
+					float fY = dice.RandomMinMax(-step, step);
+					float fZ = dice.RandomMinMax(-step, step);
+					galParticle nuParticle;
+					nuParticle.pos = nbsec + AuPoint(fX, fY, fZ) - sectorLoc;
+					m_vStars.append(nuParticle);
 				}
 			}
 		}
 	}
+	return ix + step;
 }
 
 void auNebula::CreateSkyBox(AuAtomRenderInfo& ari, const AuPoint& pos, unsigned int paneSize, bool mipMap)
 {
+	BuildSkyBox(ari, pos, paneSize, mipMap, -1);
+}
+
+bool auNebula::CreateSkyBoxFace(AuAtomRenderInfo& ari, const AuPoint& pos, unsigned int paneSize, bool mipMap, int face)
+{
+	if(face < 0 || face > 5 || (face > 0 && !m_img)) return false;
+	return BuildSkyBox(ari, pos, paneSize, mipMap, face);
+}
+
+bool auNebula::BuildSkyBox(AuAtomRenderInfo& ari, const AuPoint& pos, unsigned int paneSize, bool mipMap, int face)
+{
 	//qDebug() << "auNebula::CreateSkyBox pos" << pos << "size" << paneSize << "mip" << mipMap;
-	CreateNebula();
+	if(face == 0)
+	{
+		// Rebuilding the cube after a graphics-setting change reuses galactic
+		// samples, but must regenerate the same universe stars, without appending.
+		m_vNebula.clear();
+		m_vUniStars.clear();
+		if(m_iStars) m_vStars.clear();
+		m_fTotalMax = (float)0xffffffff;
+	}
+	if(face <= 0) CreateNebula();
 	//qDebug() << "auNebula::CreateSkyBox nebula created";
 
 	GLuint glowTexture = ari.re->CreateTextureFromBitmap(STATIC_TEXTURE_ID, "StarGlow", ":data/smoketransparent.png",
@@ -155,27 +180,33 @@ void auNebula::CreateSkyBox(AuAtomRenderInfo& ari, const AuPoint& pos, unsigned 
 	// Setup our FBO
 	GLuint fbo;
 	ari.re->glGenFramebuffers(1, &fbo);
-	ari.re->glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
 	if(!fbo)
-		return;
+		return false;
+	ari.re->glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
 
 	// Now setup the environment map texture
-	ari.re->glGenTextures(1, &m_img);
-	ari.re->glBindTexture(GL_TEXTURE_CUBE_MAP, m_img);
-	ari.re->glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	ari.re->glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	ari.re->glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-	ari.re->glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	if(mipMap)
-		ari.re->glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	if(face <= 0)
+	{
+		if(m_img) ari.re->glDeleteTextures(1, &m_img);
+		ari.re->glGenTextures(1, &m_img);
+		ari.re->glBindTexture(GL_TEXTURE_CUBE_MAP, m_img);
+		ari.re->glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		ari.re->glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		ari.re->glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+		ari.re->glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		if(mipMap)
+			ari.re->glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		else
+			ari.re->glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		ari.re->glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
+		ari.re->glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
+		ari.re->glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
+		ari.re->glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
+		ari.re->glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
+		ari.re->glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
+	}
 	else
-		ari.re->glTexParameterf(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	ari.re->glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
-	ari.re->glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
-	ari.re->glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
-	ari.re->glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
-	ari.re->glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
-	ari.re->glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGBA8, paneSize, paneSize, 0, GL_RGBA, GL_FLOAT, NULL);
+		ari.re->glBindTexture(GL_TEXTURE_CUBE_MAP, m_img);
 
 	// Attach it to the FBO so we can render to it
 	ari.re->glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X+0, m_img, 0);
@@ -187,7 +218,11 @@ void auNebula::CreateSkyBox(AuAtomRenderInfo& ari, const AuPoint& pos, unsigned 
 
 	GLenum status = ari.re->glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER);
 	if(status != GL_FRAMEBUFFER_COMPLETE)
-		return;
+	{
+		ari.re->glBindFramebuffer(GL_DRAW_FRAMEBUFFER, oldfbo);
+		ari.re->glDeleteFramebuffers(1, &fbo);
+		return false;
+	}
 
 	// Determine max total returned fudge factor.  This creates different types of nebula.
 	// Ones that are more swirly to ones that are more dispersed making them look more cloudy.
@@ -240,7 +275,7 @@ void auNebula::CreateSkyBox(AuAtomRenderInfo& ari, const AuPoint& pos, unsigned 
 	projection.Perspective(90*DEG2RAD, 1, .1, 100000);
 
 	ari.re->glViewport(0,0, paneSize,paneSize);
-	for(int i=0; i<6; i++)
+	for(int i = face < 0 ? 0 : face; i < (face < 0 ? 6 : face + 1); ++i)
 	{
 		// Then render as normal
 		ari.re->glDrawBuffer(colorAttachments[i]);
@@ -422,8 +457,12 @@ void auNebula::CreateSkyBox(AuAtomRenderInfo& ari, const AuPoint& pos, unsigned 
 	ari.re->glDisable(GL_BLEND);
 	ari.re->glDepthMask(GL_TRUE);
 
-	if(mipMap)
+	if(mipMap && (face < 0 || face == 5))
+	{
+		ari.re->glActiveTexture(GL_TEXTURE0);
+		ari.re->glBindTexture(GL_TEXTURE_CUBE_MAP, m_img);
 		ari.re->glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+	}
 
 	// Cleanup frame buffer.
 	ari.re->glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X+0, 0, 0);
@@ -437,6 +476,7 @@ void auNebula::CreateSkyBox(AuAtomRenderInfo& ari, const AuPoint& pos, unsigned 
 
 	ari.re->glDeleteFramebuffers(1, &fbo);
 	//qDebug() << "auNebula::CreateSkyBox done";
+	return true;
 }
 
 void auNebula::RenderSkyBox(AuGLEffects& re, const AuMatrix4x4& projection, const AuMatrix4x4& model, float opacity)

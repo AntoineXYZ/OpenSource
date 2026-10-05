@@ -38,6 +38,9 @@ public:
 
 	// 'inBuilding' is true if this console is in a building, false if this console is in a spacecraft.
 	void CreateDeviceObjects(AuAtomRenderInfo& ari, const DaAtom& parent, bool inBuilding);
+	void CreateDeviceObjects(AuAtomRenderInfo& ari, const AuId& textureOwner, bool inBuilding);
+	// Release shared handles before the model cache which owns them is destroyed.
+	static void ReleaseSharedDeviceObjects(AuAtomRenderInfo& ari);
 
 	void DeleteGL();
 

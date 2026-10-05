@@ -14,10 +14,16 @@
 #include "audesignerframe.h"
 #include "audesignerview.h"
 #include "daperson.h"
+#include "dadesigner.h"
+#include "auether.h"
+#include "auqueryenvironment.h"
+#include "augear.h"
 #include "dicontrolinput.h"
 #include "aujoystick.h"
 #include "auNebula.h"
 #include "dagalaxy.h"
+#include "dhdna.h"
+#include "dpconsole.h"
 
 #include <QByteArray>
 #include <QApplication>
@@ -48,6 +54,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <functional>
 #include <limits>
 #include <memory>
 
@@ -180,10 +187,31 @@ struct TransparentTriangle
 	QVector3D center;
 };
 
-float Bounded(float value, float minimum, float maximum)
+QVector3D Vector3(const AuPoint& point)
 {
-	return std::max(minimum, std::min(maximum, value));
+	return QVector3D(float(point.x), float(point.y), float(point.z));
 }
+
+AuPoint Point3(const QVector3D& point)
+{
+	return AuPoint(point.x(), point.y(), point.z());
+}
+
+// The native designer interface supplies environment and movement queries.
+// Only the geometry behind those queries is specific to the legacy ship.
+class LegacyDesignEnvironment : public DaDesigner
+{
+public:
+	LegacyDesignEnvironment() : DaDesigner(0) {}
+	std::function<void(AuQueryEnvironment&, const DaAtom*)> query;
+	std::function<bool(DaAtom*, const AuPoint&, int)> move;
+	void GetAtomEnvironment(AuQueryEnvironment& result, const DaAtom* atom) const override { query(result, atom); }
+	bool MoveSubatom(DaAtom* atom, const AuPoint& displacement, int milliseconds) override
+	{
+		return move(atom, displacement, milliseconds);
+	}
+	bool IsRenderSolid(const AuId&) const override { return true; }
+};
 }
 
 class AuLegacyShipRender::Impl
@@ -196,8 +224,19 @@ public:
 	AuLegacyShip::Design design;
 	WalkWorld world;
 	WalkState character;
+	AuEther characterEther{"Legacy designer character"};
+	DaPerson* person = nullptr;
+	LegacyDesignEnvironment* environment = nullptr;
+	AuElapsedTimer personClock;
+	DpConsole console;
+	QHash<quint32, int> consoleScreens;
 	SoundSession sound;
 	std::unique_ptr<auNebula> sky;
+	std::unique_ptr<DaGalaxy> skyGalaxy;
+	AuDice skyDice;
+	int skyNextX = 0;
+	int skyFace = 0;
+	QString skyError;
 	unsigned int skyPaneSize = 0;
 	bool skyMipMap = false;
 	AuPoint skyPosition;
@@ -205,7 +244,7 @@ public:
 	QHash<quint32, DoorAnimation> doorStates;
 	std::unordered_map<Qt::Key, AuElapsedTimer, AuKey_Hash> keys;
 	QSet<int> releasedKeys, handKeys;
-	DiControlInputArray controls, pendingControls;
+	DiControlInputArray controls, pendingControls, sceneControls, pendingSceneControls;
 	DiControlInput handControl, toggleControl;
 	Qt::MouseButtons mouseButtons = Qt::NoButton;
 	Qt::MouseButtons pendingMouseButtons = Qt::NoButton;
@@ -238,8 +277,6 @@ public:
 	bool dirty = true;
 	bool ready = false;
 	bool gravity = false;
-	bool continuousForward = false;
-	bool jumpRequested = false;
 	bool haveDesign = false;
 	qint64 lastTick = 0;
 	qint64 lastDoorTick = 0;
@@ -248,6 +285,7 @@ public:
 	int targetLevel = 0;
 	QVector3D targetPoint;
 	QString interaction;
+	QString reportedTips;
 	qint64 interactionUntil = 0;
 
 	bool HandInput(Qt::KeyboardModifiers modifiers)
@@ -274,6 +312,8 @@ public:
 	{
 		for(const DiControlInput& control : controls)
 			if(MatchesKey(control, event)) return true;
+		for(const DiControlInput& control : sceneControls)
+			if(MatchesKey(control, event)) return true;
 		return MatchesKey(handControl, event) || MatchesKey(toggleControl, event);
 	}
 
@@ -287,7 +327,190 @@ public:
 
 	QVector3D Eye() const
 	{
-		return character.feet + QVector3D(0, 0, world.Settings().eyeHeight);
+		return person ? Vector3(person->Transform().Project(person->CameraOffset()))
+			: character.feet + QVector3D(0, 0, world.Settings().eyeHeight);
+	}
+
+	struct CameraView { QVector3D eye, forward, up; };
+	CameraView Camera(AuAtomRenderInfo& ari) const
+	{
+		AuMatrix4x4 camera;
+		double nearClip = .1, farClip = 1000000;
+		person->SetupCamera(camera, nearClip, farClip, ari);
+		camera = person->Transform() * camera;
+		return {Vector3(camera.Project(AuPoint(0, 0, 0))),
+			Vector3(camera.ProjectVector(AuPoint(0, 0, -1))),
+			Vector3(camera.ProjectVector(AuPoint(0, 1, 0)))};
+	}
+
+	void InitializeCharacter()
+	{
+		if(person) return;
+		environment = new LegacyDesignEnvironment;
+		environment->Create();
+		environment->SetNormal();
+		environment->query = [this](AuQueryEnvironment& result, const DaAtom* atom) {
+			const auto* creature = static_cast<const DaPerson*>(atom);
+			const QVector3D feet = Vector3(creature->Location()) - QVector3D(0, 0, creature->CGHeight());
+			const WalkEnvironment sample = world.Environment(feet, gravity, creature->CGHeight());
+			const ON_GROUND ground = sample.gravity && !sample.gravityWell && sample.fallDistance < .25f && !character.ladderEngaged
+				? (sample.inShip ? OG_Metal : OG_HardFloor) : OG_None;
+			result.SetDesignScene(sample.gravity, sample.inShip, ROOMTYPE(sample.roomType), sample.gravityWell, character.ladderEngaged,
+				sample.fallDistance, atom->Transform().UnProjectVector(AuPoint(0, 0, 1)), ground);
+		};
+		environment->move = [this](DaAtom* atom, const AuPoint& delta, int milliseconds) {
+			auto* creature = static_cast<DaPerson*>(atom);
+			atom->SetMoveResult(DaAtom::CT_HitParent);
+			if(character.consoleType) { atom->SetVector(AuPoint(0, 0, 0)); return false; }
+			const QVector3D start = Vector3(atom->Location()) - QVector3D(0, 0, creature->CGHeight());
+			QVector3D displacement = Vector3(delta);
+			if(character.ladderEngaged) { displacement.setX(0); displacement.setY(0); }
+			const QVector3D destination = start + displacement;
+			const float eyeHeight = creature->CGHeight() + float(creature->CameraOffset().z);
+			if(!world.TrySetBodySize(destination, creature->PhysicalHeight(), eyeHeight, milliseconds == 0)) return false;
+			if(milliseconds == 0)
+			{
+				// Native stance transitions move the CG by its height change.
+				// Test the new body at the destination, keeping the feet planted.
+				character.feet = destination;
+			}
+			else
+			{
+				character.feet = start;
+				character.velocity = displacement * (1000.f / milliseconds);
+				world.MoveDisplacement(character, displacement, gravity);
+			}
+			AuAtomPos position(atom->ParentId(), Point3(character.feet + QVector3D(0, 0, creature->CGHeight())), atom->Rotation());
+			atom->ChangePos(position);
+			// ChangePos invalidates transforms, but not cached floor/contact data.
+			// Native TickMovement checks landing again before returning.
+			atom->InvalidateEnvironment();
+			const bool complete = (character.feet - destination).lengthSquared() < 1e-8f;
+			atom->SetMoveResult(complete ? DaAtom::CT_Miss : DaAtom::CT_HitParent);
+			if(!complete) atom->SetVector(atom->Transform().UnProjectVector(Point3(character.velocity)));
+			return complete;
+		};
+		characterEther.AddAtom(environment);
+		DhDNA dna;
+		dna.InitDefaultHuman();
+		person = new DaPerson(dna, AuDNABase::Alpha, RightHanded, QStringLiteral("Designer"), Mature, 0);
+		person->Create();
+		person->Stand();
+		person->ResetHitPoints();
+		person->ResetHunger();
+		person->ResetStamina();
+		person->ClearSpawnCity();
+		person->SetPosAndOrient(AuAtomPos(environment->Id(), AuPoint(0, 0, person->CGHeight()), AuPoint(0, 0, 0)));
+		characterEther.AddAtom(person);
+		person->SetNormal();
+		personClock.start();
+		SyncCharacter();
+	}
+
+	void PlaceCharacter()
+	{
+		person->ChangePosAndOrient(AuAtomPos(environment->Id(),
+			Point3(character.feet + QVector3D(0, 0, person->CGHeight())),
+			AuPoint(0, 0, (azimuth - 90.f) * Pi / 180.f)));
+		person->TiltHeadTo(elevation * Pi / 180.f);
+		person->SetVector(person->Transform().UnProjectVector(Point3(character.velocity)));
+		person->InvalidateEnvironment();
+		person->SetInMotion();
+		personClock.restart();
+		SyncCharacter();
+	}
+
+	void SyncCharacter()
+	{
+		if(!person) return;
+		character.feet = Vector3(person->Location()) - QVector3D(0, 0, person->CGHeight());
+		character.velocity = Vector3(person->Transform().ProjectVector(person->Vector()));
+		const WalkEnvironment sample = world.Environment(character.feet, gravity, person->CGHeight());
+		character.inShip = sample.inShip;
+		character.gravityActive = sample.gravity && !sample.gravityWell;
+		character.gravitySuspended = !character.gravityActive;
+		character.grounded = character.gravityActive && !character.ladderEngaged && sample.fallDistance < .25f;
+		character.onLadder = character.ladderEngaged;
+		azimuth = float(person->Rotation().z) * 180.f / Pi + 90.f;
+		elevation = person->CurrentHeadTilt() * 180.f / Pi;
+		running = person->CurrentGeneralPose() == AuPose::StandRun;
+		WalkSettings settings = world.Settings();
+		settings.height = person->PhysicalHeight();
+		settings.eyeHeight = person->CGHeight() + float(person->CameraOffset().z);
+		world.SetSettings(settings);
+		world.SetConsoleRotation(character.consoleId, character.feet, azimuth);
+	}
+
+	void ExitConsole()
+	{
+		character.consoleType = 0;
+		character.consoleId = 0;
+		person->ClearMovementInput();
+		person->ExitConsole();
+		SyncCharacter();
+	}
+
+	void SetInteractionPose()
+	{
+		AuPose pose = character.ladderEngaged ? AuPose::Ladder : AuPose::Stand;
+		switch(character.consoleType)
+		{
+		case 1: pose = AuPose::ConsoleNav; break;
+		case 4: pose = AuPose::ConsoleSurgery; break;
+		case 6: pose = AuPose::ConsoleEngine; break;
+		case 7: pose = AuPose::ConsoleFireControl; break;
+		case 12: pose = AuPose::ConsolePilot; break;
+		case 13: pose = AuPose::ConsolePower; break;
+		case 15: pose = AuPose::ConsoleSensor; break;
+		case 17: pose = AuPose::ConsoleShield; break;
+		case 19: pose = AuPose::ConsoleTransporter; break;
+		case 73: pose = AuPose::ConsoleCommand; break;
+		default: break;
+		}
+		person->ClearMovementInput();
+		person->SetGeneralPose(pose);
+		PlaceCharacter();
+	}
+
+	void RenderConsole(AuAtomRenderInfo& ari, const QMatrix4x4& projection, const QMatrix4x4& view)
+	{
+		if(!character.consoleType) return;
+		AuGLEffects& re = *ari.re;
+		AuMatrix4x4 p, model;
+		for(int i = 0; i < 16; ++i)
+		{
+			p[i] = projection.constData()[i];
+			model[i] = view.constData()[i];
+		}
+		re.glEnable(GL_DEPTH_TEST);
+		re.glDepthMask(GL_TRUE);
+		re.glEnable(GL_CULL_FACE);
+		re.glCullFace(GL_BACK);
+		re.glFrontFace(GL_CW);
+		re.glDisable(GL_BLEND);
+		re.DisableSuns();
+		re.DisableLights();
+		re.SetAmbientLight(1, 1, 1, 1);
+		if(character.consoleType)
+		{
+			// DpConsole is also used by the modern designer. Supply the
+			// operator's floor transform; it owns the chair/panel placement
+			// and the user's screen distance, height and tilt adjustments.
+			QMatrix4x4 floorTransform = view;
+			floorTransform.translate(character.feet);
+			floorTransform.rotate(azimuth - 90.f, 0, 0, 1);
+			for(int i = 0; i < 16; ++i) model[i] = floorTransform.constData()[i];
+			if(character.consoleType == 73)
+				console.RenderChair(p, model, ari);
+			else
+			{
+				const int screen = consoleScreens.value(character.consoleId, -1);
+				console.RenderConsole(p, model, ari, screen >= 0 ? Texture(screen)->textureId() : 0);
+			}
+		}
+		re.glFrontFace(GL_CCW);
+		re.glDepthMask(GL_TRUE);
+		re.glDisable(GL_BLEND);
 	}
 
 	int FrameMaterial(int source) const
@@ -297,18 +520,22 @@ public:
 			: batch.material);
 	}
 
-	void StopMovement(bool preserveFall = false)
+	void StopMovement(bool preserveVelocity = false)
 	{
 		keys.clear();
 		releasedKeys.clear();
 		pendingControls.clear();
+		pendingSceneControls.clear();
 		mouseButtons = Qt::NoButton;
 		pendingMouseButtons = Qt::NoButton;
 		running = false;
-		continuousForward = false;
-		jumpRequested = false;
-		character.velocity = preserveFall && character.gravityActive
-			? QVector3D(0, 0, character.velocity.z()) : QVector3D();
+		if(person)
+		{
+			person->ClearMovementInput();
+			if(!preserveVelocity) person->SetVector(AuPoint(0, 0, 0));
+			personClock.restart();
+		}
+		if(!preserveVelocity) character.velocity = QVector3D();
 		handClick = false;
 	}
 
@@ -494,6 +721,7 @@ AuLegacyShipRender::AuLegacyShipRender(QWidget* parent)
 	setAccessibleName(QStringLiteral("Legacy spacecraft walkthrough"));
 	setMinimumSize(160, 120);
 	m_Impl->animationClock.start();
+	m_Impl->InitializeCharacter();
 	m_Impl->animationTimer = new QTimer(this);
 	m_Impl->animationTimer->setInterval(16);
 	connect(m_Impl->animationTimer, &QTimer::timeout, this, [this]() { Tick(); });
@@ -517,6 +745,8 @@ void AuLegacyShipRender::ControlsChanged()
 	m_Impl->StopMovement();
 	m_Impl->handKeys.clear();
 	m_Impl->controls.clear();
+	m_Impl->sceneControls.clear();
+	m_Impl->pendingSceneControls.clear();
 	DaPerson person;
 	DiControlInputArray configured;
 	person.EnumControlInputs(configured);
@@ -531,6 +761,7 @@ void AuLegacyShipRender::ControlsChanged()
 		case DaPerson::CI_MoveForwardContinuously: case DaPerson::CI_Run:
 		case DaPerson::CI_BrakeOrJump: case DaPerson::CI_Brake: case DaPerson::CI_Jump:
 		case DaPerson::CI_EnterExit: case DaPerson::CI_DoorOpen:
+		case DaPerson::CI_Crouch: case DaPerson::CI_ProneStandToggle: case DaPerson::CI_Stand:
 			m_Impl->controls.append(control);
 			break;
 		default: break;
@@ -541,6 +772,15 @@ void AuLegacyShipRender::ControlsChanged()
 	{
 		if(control.GetId() == CI_InputModeToggle) m_Impl->toggleControl = control;
 		if(control.GetId() == CI_InputModeHandTemporary) m_Impl->handControl = control;
+		switch(control.GetId())
+		{
+		case CI_TopDownViewToggle: case CI_FirstThirdPersonViewToggle:
+		case CI_ViewDistanceDecrease: case CI_ViewDistanceIncrease:
+		case CI_ViewAngleDecrease: case CI_ViewAngleIncrease:
+			m_Impl->sceneControls.append(control);
+			break;
+		default: break;
+		}
 	}
 	m_Impl->temporaryHand = m_Impl->HandInput(QApplication::queryKeyboardModifiers());
 	UpdateMouseCapture();
@@ -572,8 +812,18 @@ void AuLegacyShipRender::SetDesign(const AuLegacyShip::Design& design)
 	m_Impl->sound.SetDesign(design);
 	m_Impl->haveDesign = true;
 	m_Impl->mesh = AuLegacyShip::Rendering::BuildMesh(design);
+	m_Impl->consoleScreens.clear();
+	for(int i = 0; i < m_Impl->mesh.batches.size(); ++i)
+	{
+		const Batch& batch = m_Impl->mesh.batches[i];
+		if(batch.consoleId && batch.selfIllumination > 0
+			&& batch.textureFile != QStringLiteral(":/data/txConsole_Lower.bmp"))
+			m_Impl->consoleScreens.insert(batch.consoleId, i);
+	}
 	if(m_Impl->character.ladderEngaged)
 		m_Impl->world.ToggleLadder(m_Impl->character);
+	if(m_Impl->character.consoleType)
+		m_Impl->ExitConsole();
 	m_Impl->world.SetMesh(m_Impl->mesh, design);
 	m_Impl->hasTarget = false;
 	m_Impl->targetLevel = 0;
@@ -599,6 +849,7 @@ void AuLegacyShipRender::SetDesign(const AuLegacyShip::Design& design)
 		// The original studio creates its standing avatar at the ship origin;
 		// switching line/solid mode never resets this character transform.
 		m_Impl->character = WalkState();
+		m_Impl->person->Stand();
 		m_Impl->azimuth = 90;
 		m_Impl->elevation = 0;
 		m_Impl->StopMovement();
@@ -610,6 +861,8 @@ void AuLegacyShipRender::SetDesign(const AuLegacyShip::Design& design)
 		m_Impl->glError.clear();
 	m_Impl->lastTick = m_Impl->animationClock.elapsed();
 	m_Impl->lastDoorTick = m_Impl->lastTick / DoorTickMilliseconds;
+	m_Impl->person->Stand();
+	m_Impl->PlaceCharacter();
 	update();
 }
 
@@ -617,27 +870,42 @@ void AuLegacyShipRender::SetDeck(int deck)
 {
 	m_Impl->deck = deck;
 	m_Impl->world.SetDesignPlane(float(deck * AuLegacyShip::DeckHeight));
+	m_Impl->person->InvalidateEnvironment();
 	update();
 }
 
 void AuLegacyShipRender::SetGravity(bool enabled)
 {
 	m_Impl->gravity = enabled;
-	m_Impl->character.velocity = QVector3D();
+	m_Impl->person->InvalidateEnvironment();
 	update();
 }
 
 void AuLegacyShipRender::ResetCharacter()
 {
 	m_Impl->StopMovement();
-	if (m_Impl->world.FindSpawn(m_Impl->design, m_Impl->deck, m_Impl->character))
+	const AuPose previousPose = m_Impl->person->CurrentGeneralPose();
+	const WalkSettings previous = m_Impl->world.Settings();
+	m_Impl->person->Stand();
+	WalkSettings standing = previous;
+	standing.height = m_Impl->person->PhysicalHeight();
+	standing.eyeHeight = m_Impl->person->CGHeight() + float(m_Impl->person->CameraOffset().z);
+	m_Impl->world.SetSettings(standing);
+	WalkState recovered;
+	if(m_Impl->world.FindSpawn(m_Impl->design, m_Impl->deck, recovered))
 	{
+		m_Impl->character = recovered;
 		m_Impl->azimuth = 90;
 		m_Impl->elevation = 0;
+		m_Impl->PlaceCharacter();
 		m_Impl->interaction = QStringLiteral("Returned to the design.");
 	}
 	else
+	{
+		m_Impl->person->SetGeneralPose(previousPose);
+		m_Impl->world.SetSettings(previous);
 		m_Impl->interaction = QStringLiteral("No clear standing position on this deck. Select another deck and press Home.");
+	}
 	m_Impl->interactionUntil = m_Impl->animationClock.elapsed() + 2500;
 	update();
 }
@@ -658,6 +926,7 @@ void AuLegacyShipRender::Tick()
 	}
 	AuApp* app = qobject_cast<AuApp*>(qApp);
 	m_Impl->sound.SetAudio(app ? app->Sound() : nullptr);
+	m_Impl->InitializeCharacter();
 	const Qt::KeyboardModifiers modifiers = QApplication::queryKeyboardModifiers();
 	m_Impl->temporaryHand = m_Impl->HandInput(modifiers);
 	AuDesignerFrame* frame = app ? qobject_cast<AuDesignerFrame*>(app->Frame()) : nullptr;
@@ -675,6 +944,15 @@ void AuLegacyShipRender::Tick()
 	DiControlInputArray active;
 	const Qt::KeyboardModifiers keyModifiers = m_Impl->controls.FilterModState(m_Impl->keys, modifiers);
 	m_Impl->controls.SampleKeyInput(active, m_Impl->keys, keyModifiers, AuId(0), 0, false, AuPoint(0, 0), 0);
+	DiControlInputArray sceneActive;
+	m_Impl->sceneControls.SampleKeyInput(sceneActive, m_Impl->keys,
+		m_Impl->sceneControls.FilterModState(m_Impl->keys, modifiers), AuId(0), 0, false, AuPoint(0, 0), 0);
+	sceneActive += m_Impl->pendingSceneControls;
+	m_Impl->pendingSceneControls.clear();
+	if(sampleJoystick)
+		m_Impl->sceneControls.SampleJoystickInput(sceneActive, joystick, AuId(0), 0, false, AuPoint(0, 0), 0);
+	ProcessControlInput(sceneActive);
+	m_Impl->sceneControls.ClearRanges();
 	active += m_Impl->pendingControls;
 	m_Impl->pendingControls.clear();
 	for(auto& key : m_Impl->keys)
@@ -683,19 +961,6 @@ void AuLegacyShipRender::Tick()
 	m_Impl->releasedKeys.clear();
 	if(m_Impl->mouseCaptured && sampleJoystick)
 		m_Impl->controls.SampleJoystickInput(active, joystick, AuId(0), 0, false, AuPoint(0, 0), 0);
-	float yawChange = 0, pitchChange = 0;
-	const auto look = [&yawChange, &pitchChange](const DiControlInput& control, float limit) {
-		const float angle = std::min(float(control.GetRangeValue()) / 300.f, limit);
-		switch(control.GetId())
-		{
-		case DaPerson::CI_TurnLeft: yawChange += angle; break;
-		case DaPerson::CI_TurnRight: yawChange -= angle; break;
-		case DaPerson::CI_LookUp: pitchChange += angle; break;
-		case DaPerson::CI_LookDown: pitchChange -= angle; break;
-		default: break;
-		}
-	};
-	for(const DiControlInput& control : active) look(control, 1080.f * seconds);
 	m_Impl->controls.ClearRanges();
 	if (m_Impl->mouseCaptured)
 	{
@@ -704,45 +969,59 @@ void AuLegacyShipRender::Tick()
 		const QPoint delta = QCursor::pos() - m_Impl->mouseAnchor;
 		const float unitsPerPixel = float(g_AuClient.MouseLookSensitivity()) * 300.f / std::max(1, width());
 		DiControlInputArray mouse;
+		DiControlInputArray sceneMouse;
+		const bool sceneStreaming = m_Impl->sceneControls.SampleMouseInput(sceneMouse, m_Impl->mouseButtons | m_Impl->pendingMouseButtons,
+			modifiers, QPoint(), AuId(0), 0, false, AuPoint(0, 0), 0);
+		m_Impl->sceneControls.SampleMouseInput(sceneMouse, Qt::NoButton, modifiers,
+			QPoint(qRound(delta.x() * unitsPerPixel), qRound(delta.y() * unitsPerPixel)),
+			AuId(0), 0, false, AuPoint(0, 0), 0);
+		ProcessControlInput(sceneMouse);
+		m_Impl->sceneControls.ClearRanges();
 		const bool streaming = m_Impl->controls.SampleMouseInput(mouse, m_Impl->mouseButtons | m_Impl->pendingMouseButtons, keyModifiers,
 			QPoint(), AuId(0), 0, false, AuPoint(0, 0), 0);
-		if(!streaming) m_Impl->mouseButtons = Qt::NoButton;
+		if(!streaming && !sceneStreaming) m_Impl->mouseButtons = Qt::NoButton;
 		m_Impl->pendingMouseButtons = Qt::NoButton;
 		m_Impl->controls.SampleMouseInput(mouse, Qt::NoButton, keyModifiers,
 			QPoint(qRound(delta.x() * unitsPerPixel), qRound(delta.y() * unitsPerPixel)),
 			AuId(0), 0, false, AuPoint(0, 0), 0);
-		for(const DiControlInput& control : mouse) look(control, 100.f);
 		active += mouse;
-		m_Impl->azimuth = std::fmod(m_Impl->azimuth + yawChange, 360.0f);
-		m_Impl->elevation = Bounded(m_Impl->elevation + pitchChange, -89.0f, 89.0f);
 		CenterMouse();
 	}
 	m_Impl->controls.ClearRanges();
-	m_Impl->running = m_Impl->mouseCaptured && active.HasId(DaPerson::CI_Run);
-	if(m_Impl->mouseCaptured)
+	if(m_Impl->mouseCaptured && active.HasId(DaPerson::CI_EnterExit))
 	{
-		if(active.HasId(DaPerson::CI_MoveForwardContinuously))
-			m_Impl->continuousForward = !m_Impl->continuousForward;
-		if(active.HasId(DaPerson::CI_MoveBackward) || active.HasId(DaPerson::CI_Brake)
-			|| active.HasId(DaPerson::CI_BrakeOrJump)) m_Impl->continuousForward = false;
-		if(active.HasId(DaPerson::CI_Jump) || active.HasId(DaPerson::CI_BrakeOrJump))
-			m_Impl->jumpRequested = true;
-		if(active.HasId(DaPerson::CI_EnterExit))
+		bool changed = false;
+		if(m_Impl->character.consoleType)
 		{
-			if(m_Impl->world.ToggleLadder(m_Impl->character))
-			{
-				m_Impl->interaction = m_Impl->character.ladderEngaged
-					? QStringLiteral("On ladder.") : QStringLiteral("Released ladder.");
-				m_Impl->continuousForward = false;
-				if(m_Impl->character.ladderEngaged)
-				{
-					m_Impl->azimuth = m_Impl->character.ladderFacing;
-					m_Impl->elevation = 0;
-				}
-			}
-			else m_Impl->interaction = QStringLiteral("Move closer to a ladder.");
-			m_Impl->interactionUntil = now + 2500;
+			m_Impl->ExitConsole();
+			m_Impl->interaction = QStringLiteral("Left console.");
 		}
+		else if(!m_Impl->character.ladderEngaged && m_Impl->world.EnterConsole(m_Impl->design,
+			m_Impl->character, m_Impl->person->CGHeight()))
+		{
+			m_Impl->interaction = QStringLiteral("Seated at console.");
+			changed = true;
+		}
+		else if(m_Impl->world.ToggleLadder(m_Impl->character))
+		{
+			m_Impl->interaction = m_Impl->character.ladderEngaged
+				? QStringLiteral("On ladder.") : QStringLiteral("Released ladder.");
+			if(m_Impl->character.ladderEngaged)
+			{
+				m_Impl->azimuth = m_Impl->character.ladderFacing;
+				m_Impl->elevation = 0;
+			}
+			changed = true;
+		}
+		else m_Impl->interaction = QStringLiteral("Move within 3 feet of a console or 6 feet of a ladder.");
+		if(changed) m_Impl->SetInteractionPose();
+		m_Impl->interactionUntil = now + 2500;
+	}
+	if(m_Impl->mouseCaptured && m_Impl->character.ladderEngaged
+		&& (active.HasId(DaPerson::CI_Jump) || active.HasId(DaPerson::CI_BrakeOrJump)))
+	{
+		m_Impl->world.ToggleLadder(m_Impl->character);
+		m_Impl->SetInteractionPose();
 	}
 	if(hasFocus() && active.HasId(DaPerson::CI_DoorOpen))
 	{
@@ -760,39 +1039,45 @@ void AuLegacyShipRender::Tick()
 						break;
 					}
 	m_Impl->lastDoorTick = tick;
-	if (hasFocus() && seconds > 0)
+	if(hasFocus() && seconds > 0)
 	{
-		const auto pressed = [this, &active](int id) { return m_Impl->mouseCaptured && active.HasId(id); };
-		const float forward = float(pressed(DaPerson::CI_MoveForward) || m_Impl->continuousForward)
-			- float(pressed(DaPerson::CI_MoveBackward));
-		const float sideways = float(pressed(DaPerson::CI_MoveRight)) - float(pressed(DaPerson::CI_MoveLeft));
-		const float vertical = float(pressed(DaPerson::CI_MoveUp)) - float(pressed(DaPerson::CI_MoveDown));
-		const float speed = m_Impl->running ? 12.5f : 5.0f;
-		const float yaw = m_Impl->azimuth * Pi / 180.0f;
-		QVector3D direction = m_Impl->CameraDirection();
-		if (m_Impl->character.gravityActive && !m_Impl->character.onLadder)
-			direction = QVector3D(std::cos(yaw), std::sin(yaw), 0);
-		QVector3D motion = direction * forward + QVector3D(std::sin(yaw), -std::cos(yaw), 0) * sideways
-			+ QVector3D(0, 0, vertical);
-		if (m_Impl->character.ladderEngaged)
-			motion = QVector3D(0, 0, Bounded(forward + vertical, -1.f, 1.f));
-		else if (m_Impl->character.gravityActive)
-		{
-			// Vertical input cannot fly in ship gravity, but Z still requests
-			// descent through a supporting automatic hatch. Keep that intent
-			// without reducing walking speed when C/Z is held with WASD.
-			motion.setZ(0);
-			if (motion.lengthSquared() > 1) motion.normalize();
-			motion.setZ(vertical);
-		}
-		else if (motion.lengthSquared() > 1) motion.normalize();
-		if (!m_Impl->character.gravityActive && (pressed(DaPerson::CI_BrakeOrJump) || pressed(DaPerson::CI_Brake)))
-		{
-			motion = QVector3D();
-			m_Impl->character.velocity = QVector3D();
-		}
-		m_Impl->world.Step(m_Impl->character, motion * speed, seconds, m_Impl->gravity, m_Impl->jumpRequested);
-		m_Impl->jumpRequested = false;
+		DiControlInputArray nativeControls;
+		if(m_Impl->mouseCaptured)
+			for(const DiControlInput& control : active)
+			{
+				const int id = control.GetId();
+				if(id == DaPerson::CI_EnterExit || id == DaPerson::CI_DoorOpen) continue;
+				if(m_Impl->character.consoleType && id != DaPerson::CI_LookUp && id != DaPerson::CI_LookDown
+					&& id != DaPerson::CI_TurnLeft && id != DaPerson::CI_TurnRight) continue;
+				if(m_Impl->character.ladderEngaged && (id == DaPerson::CI_Crouch || id == DaPerson::CI_ProneStandToggle
+					|| id == DaPerson::CI_Stand)) continue;
+				if(m_Impl->character.ladderEngaged && (id == DaPerson::CI_MoveForward || id == DaPerson::CI_MoveBackward
+					|| id == DaPerson::CI_MoveForwardContinuously))
+				{
+					nativeControls.append(DiControlInput(-1, id == DaPerson::CI_MoveBackward
+						? DaPerson::CI_MoveDown : DaPerson::CI_MoveUp));
+					continue;
+				}
+				nativeControls.append(control);
+			}
+		// The native Scene input loop requests standing when held crouch ends.
+		if(m_Impl->person->IsCrouched() && !nativeControls.HasId(DaPerson::CI_Crouch))
+			nativeControls.append(DiControlInput(-1, DaPerson::CI_Stand));
+		m_Impl->character.blockedDoors.clear();
+		// Match AuModel's offline designer upkeep. Jump consumes stamina in
+		// the native controller; this transient person has no AuModel loop.
+		m_Impl->person->ResetHunger();
+		m_Impl->person->ResetStamina();
+		m_Impl->person->InvalidateEnvironment();
+		m_Impl->person->ProcessControlInput(nativeControls, m_Impl->person, AuGearPos(), 0, CONTROL_Client,
+			int(std::min<qint64>(150, m_Impl->personClock.elapsed())));
+		const bool onLadder = m_Impl->character.ladderEngaged;
+		m_Impl->person->TickMovement(m_Impl->personClock);
+		m_Impl->person->AnimatePose(false, m_Impl->person->MovementSpeedMod());
+		m_Impl->person->InvalidateEnvironment();
+		m_Impl->personClock.restart();
+		m_Impl->SyncCharacter();
+		if(onLadder && !m_Impl->character.ladderEngaged) m_Impl->SetInteractionPose();
 		// The 2016 path query requests opening only for automatic small doors
 		// and hatches. Designer Tock deliberately skips world auto-closing.
 		for (quint32 id : m_Impl->character.blockedDoors)
@@ -803,22 +1088,25 @@ void AuLegacyShipRender::Tick()
 					break;
 				}
 	}
+	m_Impl->SyncCharacter();
 	UpdateTarget(now);
 	if (isActiveWindow())
 	{
 		SoundListener listener;
 		listener.feet = m_Impl->character.feet;
-		listener.eye = m_Impl->Eye();
-		listener.forward = m_Impl->CameraDirection();
-		listener.up = QVector3D::crossProduct(QVector3D::crossProduct(listener.forward, QVector3D(0, 0, 1)),
-			listener.forward).normalized();
+		const auto camera = m_Impl->Camera(SceneRenderInfo());
+		listener.eye = camera.eye;
+		listener.forward = camera.forward;
+		listener.up = camera.up;
 		listener.inShip = m_Impl->character.inShip;
 		listener.grounded = m_Impl->character.grounded;
 		listener.climbing = m_Impl->character.onLadder;
 		listener.running = m_Impl->running;
+		listener.crouching = m_Impl->person->IsCrouched();
+		listener.prone = m_Impl->person->IsProne();
 		const QVector3D velocity = m_Impl->character.velocity;
-		listener.moving = hasFocus() && (velocity.x() * velocity.x() + velocity.y() * velocity.y()
-			+ (listener.climbing ? velocity.z() * velocity.z() : 0) > .001f);
+		listener.moving = hasFocus() && !m_Impl->character.consoleType && (m_Impl->person->IsMoving()
+			|| (listener.climbing && std::abs(velocity.z()) > .01f));
 		m_Impl->sound.Update(listener);
 	}
 	else
@@ -857,6 +1145,7 @@ void AuLegacyShipRender::OperateDoor(quint32 id, bool open)
 		m_Impl->doorStates[member].open = open;
 		m_Impl->world.SetDoorOpen(member, open);
 	}
+	m_Impl->person->InvalidateEnvironment();
 	m_Impl->interaction = open ? QStringLiteral("Opening door / hatch.") : QStringLiteral("Closing door / hatch.");
 	m_Impl->interactionUntil = m_Impl->animationClock.elapsed() + 1800;
 	update();
@@ -864,16 +1153,17 @@ void AuLegacyShipRender::OperateDoor(quint32 id, bool open)
 
 void AuLegacyShipRender::UseDoor(const QPoint& screenPosition)
 {
-	const QVector3D forward = m_Impl->CameraDirection();
-	const QVector3D right = QVector3D::crossProduct(forward, QVector3D(0, 0, 1)).normalized();
-	const QVector3D up = QVector3D::crossProduct(right, forward).normalized();
+	const auto camera = m_Impl->Camera(SceneRenderInfo());
+	const QVector3D forward = camera.forward;
+	const QVector3D right = QVector3D::crossProduct(forward, camera.up).normalized();
+	const QVector3D up = camera.up;
 	const float aspect = float(std::max(1, width())) / std::max(1, height());
 	const float tangent = std::tan(FieldOfView() * Pi / 360.0f);
 	const float x = 2.0f * screenPosition.x() / std::max(1, width()) - 1;
 	const float y = 1 - 2.0f * screenPosition.y() / std::max(1, height());
 	const QVector3D direction = (forward + right * (x * tangent * aspect) + up * (y * tangent)).normalized();
 	WalkHit hit;
-	if (m_Impl->world.Raycast(m_Impl->Eye(), direction, 16, hit) && hit.doorId)
+	if (m_Impl->world.Raycast(camera.eye, direction, (camera.eye - m_Impl->Eye()).length() + 16, hit) && hit.doorId)
 		for (const DoorDefinition& door : m_Impl->doors)
 			if (door.id == hit.doorId)
 			{
@@ -896,6 +1186,8 @@ QStringList AuLegacyShipRender::Warnings() const
 	warnings.append(m_Impl->textureWarnings);
 	if (!m_Impl->glError.isEmpty())
 		warnings.append(m_Impl->glError);
+	if (!m_Impl->skyError.isEmpty())
+		warnings.append(m_Impl->skyError);
 	return warnings;
 }
 
@@ -1006,10 +1298,13 @@ void AuLegacyShipRender::CleanupGL()
 	QObject::disconnect(m_Impl->contextConnection);
 	if (context())
 		makeCurrent();
+	m_Impl->console.DeleteGL();
+	if(m_Impl->ready) DpConsole::ReleaseSharedDeviceObjects(SceneRenderInfo());
 	if(m_Impl->sky)
 	{
 		m_Impl->sky->DeleteDeviceObjects(*SceneRenderInfo().re);
-		m_Impl->sky.reset();
+		m_Impl->skyFace = 0;
+		m_Impl->skyError.clear();
 	}
 	qDeleteAll(m_Impl->textures);
 	m_Impl->textures.clear();
@@ -1032,7 +1327,7 @@ float AuLegacyShipRender::FieldOfView() const
 	return float(AuGLEffects::WindowFieldOfViewY(rect(), g_Au.FieldOfViewY()) * 180.0 / Pi);
 }
 
-void AuLegacyShipRender::RenderSky()
+void AuLegacyShipRender::PrepareSky()
 {
 	if(!g_Au.DrawSkyBox() || !g_AuClient.DesignerShowSkyBox()) return;
 	AuAtomRenderInfo& ari = SceneRenderInfo();
@@ -1042,14 +1337,18 @@ void AuLegacyShipRender::RenderSky()
 	if(m_Impl->sky && (m_Impl->skyPaneSize != paneSize || m_Impl->skyMipMap != mipMap))
 	{
 		m_Impl->sky->DeleteDeviceObjects(re);
-		m_Impl->sky.reset();
+		m_Impl->skyFace = 0;
+		m_Impl->skyError.clear();
 	}
+	m_Impl->skyPaneSize = paneSize;
+	m_Impl->skyMipMap = mipMap;
 	if(!m_Impl->sky)
 	{
 		// The 2016 studio generated a temporary Shores of Hazeron sector.
 		// Use a repeatable preview sector; no environment is stored in .ship.
-		DaGalaxy galaxy(ShoresOfHazeron);
-		AuDice dice;
+		m_Impl->skyGalaxy.reset(new DaGalaxy(ShoresOfHazeron));
+		DaGalaxy& galaxy = *m_Impl->skyGalaxy;
+		AuDice& dice = m_Impl->skyDice;
 		dice.Seed(2016);
 		AuPoint sector;
 		for(int attempt = 0; attempt < 128; ++attempt)
@@ -1064,9 +1363,25 @@ void AuLegacyShipRender::RenderSky()
 		// be invented merely because the editor has no surrounding world.
 		m_Impl->sky.reset(new auNebula(0, 0, -2.9924924f, .38151205f, -1.8401746f, -1.8524430f,
 			30, 0, false, AuPoint(), 2016, 0, galaxy.Color()));
-		m_Impl->sky->CreateGalacticStarField(galaxy, sector, dice);
-		m_Impl->skyPaneSize = paneSize;
-		m_Impl->skyMipMap = mipMap;
+		m_Impl->skyNextX = -int(galaxy.Radius() / 10);
+	}
+	if(m_Impl->skyGalaxy)
+	{
+		// Yield to input/painting between small batches of the native sampler.
+		// Preserve its dice and traversal order so the completed sky is unchanged.
+		QElapsedTimer budget;
+		budget.start();
+		const int radius = m_Impl->skyGalaxy->Radius() / 10;
+		do
+		{
+			m_Impl->skyNextX = m_Impl->sky->AppendGalacticStarFieldSlice(*m_Impl->skyGalaxy,
+				m_Impl->skyPosition, m_Impl->skyDice, m_Impl->skyNextX);
+		} while(m_Impl->skyNextX <= radius && budget.elapsed() < 4);
+		if(m_Impl->skyNextX > radius) m_Impl->skyGalaxy.reset();
+		return;
+	}
+	if(m_Impl->skyFace < 6 && m_Impl->skyError.isEmpty())
+	{
 		GLint drawFramebuffer, readFramebuffer, viewport[4];
 		re.glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFramebuffer);
 		re.glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFramebuffer);
@@ -1075,15 +1390,24 @@ void AuLegacyShipRender::RenderSky()
 		re.glDisable(GL_CULL_FACE);
 		re.glDisable(GL_SCISSOR_TEST);
 		re.glActiveTexture(GL_TEXTURE0);
-		m_Impl->sky->CreateSkyBox(ari, m_Impl->skyPosition, paneSize, mipMap);
+		const bool success = m_Impl->sky->CreateSkyBoxFace(ari, m_Impl->skyPosition, paneSize, mipMap, m_Impl->skyFace);
 		// QOpenGLWidget renders into its own FBO, with a physical-pixel viewport.
 		re.glBindFramebuffer(GL_DRAW_FRAMEBUFFER, drawFramebuffer);
 		re.glBindFramebuffer(GL_READ_FRAMEBUFFER, readFramebuffer);
 		re.glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+		if(success) ++m_Impl->skyFace;
+		else m_Impl->skyError = QStringLiteral("Unable to create the spacecraft preview skybox.");
 	}
-	if(!m_Impl->sky->m_img) return;
+}
+
+void AuLegacyShipRender::RenderSky()
+{
+	if(!g_Au.DrawSkyBox() || !g_AuClient.DesignerShowSkyBox()
+		|| !m_Impl->sky || m_Impl->skyFace != 6 || !m_Impl->sky->m_img) return;
+	AuGLEffects& re = *SceneRenderInfo().re;
 	QMatrix4x4 rotation;
-	rotation.lookAt(QVector3D(), m_Impl->CameraDirection(), QVector3D(0, 0, 1));
+	const auto camera = m_Impl->Camera(SceneRenderInfo());
+	rotation.lookAt(QVector3D(), camera.forward, camera.up);
 	AuMatrix4x4 model, projection;
 	for(int i = 0; i < 16; ++i) model[i] = rotation.constData()[i];
 	projection.Perspective(FieldOfView() * Pi / 180., double(std::max(1, height())) / std::max(1, width()),
@@ -1110,6 +1434,16 @@ void AuLegacyShipRender::resizeEvent(QResizeEvent* event)
 
 bool AuLegacyShipRender::event(QEvent* event)
 {
+	if(event->type() == QEvent::ShortcutOverride && m_Impl->Walkthrough())
+	{
+		const auto* key = static_cast<QKeyEvent*>(event);
+		if(m_Impl->HasKeyBinding(key) || (key->key() == Qt::Key_Escape
+			&& (key->modifiers() == Qt::NoModifier || key->modifiers() == Qt::ShiftModifier)))
+		{
+			event->accept();
+			return true;
+		}
+	}
 	if(event->type() == QEvent::KeyPress && m_Impl->Walkthrough())
 	{
 		QKeyEvent* key = static_cast<QKeyEvent*>(event);
@@ -1125,9 +1459,16 @@ bool AuLegacyShipRender::event(QEvent* event)
 void AuLegacyShipRender::paintGL()
 {
 	QOpenGLFunctions* gl = context()->functions();
-	gl->glClearColor(0.055f, 0.075f, 0.10f, 1.0f);
+	gl->glClearColor(0, 0, 0, 1);
 	gl->glDepthMask(GL_TRUE);
 	gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	if(m_Impl->ready) PrepareSky();
+	if(m_Impl->ready)
+	{
+		m_Impl->console.CreateDeviceObjects(SceneRenderInfo(), AuId(STATIC_TEXTURE_ID), false);
+		m_Impl->InitializeCharacter();
+		m_Impl->SyncCharacter();
+	}
 	if(!m_Impl->Walkthrough())
 	{
 		RenderSceneInterface(false);
@@ -1136,10 +1477,11 @@ void AuLegacyShipRender::paintGL()
 	if (m_Impl->ready && (!m_Impl->dirty || m_Impl->Upload()))
 	{
 		RenderSky();
-		const QVector3D direction = m_Impl->CameraDirection();
-		const QVector3D eye = m_Impl->Eye();
+		const auto camera = m_Impl->Camera(SceneRenderInfo());
+		const QVector3D direction = camera.forward;
+		const QVector3D eye = camera.eye;
 		QMatrix4x4 view;
-		view.lookAt(eye, eye + direction, QVector3D(0.0f, 0.0f, 1.0f));
+		view.lookAt(eye, eye + direction, camera.up);
 		QMatrix4x4 projection;
 		const float nearPlane = 0.1f;
 		const float farPlane = std::max(nearPlane + 1.0f,
@@ -1195,13 +1537,21 @@ void AuLegacyShipRender::paintGL()
 		};
 		for (const DrawBatch& batch : m_Impl->batches)
 		{
+			if(m_Impl->character.consoleId && m_Impl->mesh.batches[batch.source].consoleId == m_Impl->character.consoleId)
+				continue;
 			bindBatch(batch.source);
 			gl->glDrawArrays(GL_TRIANGLES, batch.first, batch.count);
 		}
+		m_Impl->vao.release();
+		m_Impl->program->release();
+		m_Impl->RenderConsole(SceneRenderInfo(), projection, view);
+		m_Impl->program->bind();
+		m_Impl->vao.bind();
 		QVector<const TransparentTriangle*> transparent;
 		transparent.reserve(m_Impl->transparentTriangles.size());
 		for (const TransparentTriangle& triangle : m_Impl->transparentTriangles)
-			transparent.append(&triangle);
+			if(!m_Impl->character.consoleId || m_Impl->mesh.batches[triangle.source].consoleId != m_Impl->character.consoleId)
+				transparent.append(&triangle);
 		std::sort(transparent.begin(), transparent.end(), [&direction, &transforms](const TransparentTriangle* a, const TransparentTriangle* b)
 		{
 			return QVector3D::dotProduct(transforms[a->source].map(a->center), direction)
@@ -1260,22 +1610,19 @@ void AuLegacyShipRender::paintGL()
 	painter.setPen(QColor(195, 205, 215));
 	// Draw HUD after the scene, independently of whether any ship mesh exists.
 	// The native crosshair is a yellow textured dot with four spreading arms.
-	PaintCrosshair(painter, size(), m_Impl->targetLevel);
-	if (m_Impl->hasTarget && m_Impl->targetLevel > 0
+	if(!SceneRenderInfo().IsViewTopDown()) PaintCrosshair(painter, size(), m_Impl->targetLevel);
+	if (!SceneRenderInfo().IsViewTopDown() && m_Impl->hasTarget && m_Impl->targetLevel > 0
 		&& (m_Impl->targetPoint - m_Impl->Eye()).length() <= m_Impl->targetLevel * 10)
 		PaintShipTarget(painter, size(), m_Impl->design.header.name);
-	if (!m_Impl->glError.isEmpty())
-		painter.drawText(rect().adjusted(24, 24, -24, -24), Qt::AlignCenter | Qt::TextWordWrap, m_Impl->glError);
-	else if (m_Impl->mesh.batches.isEmpty())
-		painter.drawText(rect().adjusted(24, int(height() * .72), -24, -12), Qt::AlignHCenter | Qt::AlignTop | Qt::TextWordWrap,
-			QStringLiteral("Paint cells in the floor plan to create a spacecraft."));
-	else
+	QString tips = m_Impl->glError;
+	if(tips.isEmpty() && m_Impl->mesh.batches.isEmpty())
+		tips = QStringLiteral("Paint cells in the floor plan to create a spacecraft.");
+	if(tips.isEmpty() && m_Impl->animationClock.elapsed() < m_Impl->interactionUntil)
+		tips = m_Impl->interaction;
+	if(tips != m_Impl->reportedTips)
 	{
-		painter.drawText(QRect(12, height() - 34, std::max(0, width() - 24), 24), Qt::AlignLeft | Qt::AlignVCenter,
-			QStringLiteral("Use your Avatar and Scene control bindings. Switch to hand input for the sidebar and doors."));
-		if (m_Impl->animationClock.elapsed() < m_Impl->interactionUntil)
-			painter.drawText(QRect(12, height() - 64, std::max(0, width() - 24), 28),
-				Qt::AlignLeft | Qt::AlignVCenter, m_Impl->interaction);
+		m_Impl->reportedTips = tips;
+		if(tipsChanged) tipsChanged(tips);
 	}
 	painter.beginNativePainting();
 	RenderSceneInterface(m_Impl->mouseCaptured);
@@ -1397,6 +1744,7 @@ void AuLegacyShipRender::mouseDoubleClickEvent(QMouseEvent* event)
 void AuLegacyShipRender::wheelEvent(QWheelEvent* event)
 {
 	if(!m_Impl->Walkthrough()) { event->ignore(); return; }
+	m_Impl->sceneControls.SampleWheelInput(m_Impl->pendingSceneControls, event, AuId(0), 0, false, AuPoint(0, 0), 0);
 	if(m_Impl->toggleControl.TestWheelTriggered(event))
 	{
 		m_Impl->freeMouse = !m_Impl->freeMouse;
@@ -1411,6 +1759,31 @@ void AuLegacyShipRender::keyPressEvent(QKeyEvent* event)
 {
 	if(!m_Impl->Walkthrough()) { QOpenGLWidget::keyPressEvent(event); return; }
 	const Qt::Key key = Qt::Key(event->key());
+	for(const DiControlInput& control : m_Impl->sceneControls)
+		if(m_Impl->MatchesKey(control, event))
+		{
+			if(!event->isAutoRepeat())
+			{
+				m_Impl->keys.emplace(key, AuElapsedTimer());
+				m_Impl->releasedKeys.remove(key);
+			}
+			event->accept();
+			return;
+		}
+	if(key == Qt::Key_Escape && !m_Impl->HasKeyBinding(event)
+		&& (event->modifiers() == Qt::NoModifier || event->modifiers() == Qt::ShiftModifier))
+	{
+		if(!event->isAutoRepeat())
+		{
+			DiControlInputArray active;
+			active.append(DiControlInput(-1, event->modifiers() == Qt::ShiftModifier
+				? CI_FirstThirdPersonViewToggle : CI_TopDownViewToggle));
+			ProcessControlInput(active);
+			update();
+		}
+		event->accept();
+		return;
+	}
 	if(m_Impl->MatchesKey(m_Impl->toggleControl, event))
 	{
 		if(!event->isAutoRepeat())

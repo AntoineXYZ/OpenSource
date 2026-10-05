@@ -37,7 +37,6 @@
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QPainter>
-#include <QPlainTextEdit>
 #include <QPixmap>
 #include <QSet>
 #include <QSettings>
@@ -370,7 +369,6 @@ public:
 	int equipmentRotation = 0;
 	QIcon equipmentIcon;
 	QRectF equipmentFootprint;
-	QString emptyMessage;
 	std::function<void(const QPointF&)> cellEntered;
 	std::function<void(int)> rotateEquipment;
 
@@ -597,18 +595,6 @@ protected:
 		painter->drawPolygon(cell);
 	}
 
-	void paintEvent(QPaintEvent* event) override
-	{
-		QGraphicsView::paintEvent(event);
-		if (!emptyMessage.isEmpty())
-		{
-			QPainter painter(viewport());
-			painter.setPen(QColor(194, 205, 219));
-			painter.drawText(viewport()->rect().adjusted(30, 30, -30, -30),
-				Qt::AlignCenter | Qt::TextWordWrap, emptyMessage);
-		}
-	}
-
 private:
 	void EditCursor()
 	{
@@ -647,7 +633,7 @@ public:
 	explicit DetailMarker(const AuLegacyShip::Detail& detail)
 		: m_Color(RecordColor(detail.detailType)), m_Shape(detail.detailType % 3u)
 	{
-		setFlags(QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIgnoresTransformations);
+		setFlags(QGraphicsItem::ItemIgnoresTransformations);
 		setZValue(10.0);
 		const EquipmentChoice* choice = EquipmentFor(detail.detailType, detail.commodityIdNormalized);
 		if (choice)
@@ -704,7 +690,7 @@ private:
 class AuLegacyShipViewer::Impl
 {
 public:
-	enum ToolMode { InspectMode, PaintMode, EraseMode, EquipmentMode, DeleteEquipmentMode, DeleteEquipmentAreaMode };
+	enum ToolMode { PaintMode, EraseMode, EquipmentMode, DeleteEquipmentMode, DeleteEquipmentAreaMode };
 
 	explicit Impl(AuLegacyShipViewer* owner) : window(owner),
 		settings(QSettings::NativeFormat, QSettings::UserScope,
@@ -760,15 +746,9 @@ public:
 
 		tools = new QActionGroup(window);
 		tools->setExclusive(true);
-		inspectAction = MakeAction("Inspect", "dp_Select", "Select a room or equipment marker to inspect it.");
 		eraseAction = MakeAction("Erase room cells", "dp_DelRoomCells", "Erase cells from the current deck.");
-		for (QAction* action : { inspectAction, eraseAction })
-		{
-			action->setCheckable(true);
-			tools->addAction(action);
-		}
-		inspectAction->setChecked(true);
-		QObject::connect(inspectAction, &QAction::triggered, window, [this]() { SetToolMode(InspectMode); });
+		eraseAction->setCheckable(true);
+		tools->addAction(eraseAction);
 		QObject::connect(eraseAction, &QAction::triggered, window, [this]() { SetToolMode(EraseMode); });
 		for (const RoomChoice& choice : RoomChoices)
 		{
@@ -849,7 +829,7 @@ public:
 			"QTabWidget::pane { border: 1px solid #55709a; }"
 			"QTabBar::tab { color: #b7cff3; background: #081834; padding: 3px 9px; }"
 			"QTabBar::tab:selected { background: #16305c; }"
-			"QTextBrowser, QPlainTextEdit { background: #081a40; color: #b8cef5; border: 0; padding: 3px; }"));
+			"QTextBrowser { background: #081a40; color: #b8cef5; border: 0; padding: 3px; }"));
 		QWidget* panel = new QWidget(toolDock);
 		panel->setObjectName(QStringLiteral("LegacyPalette"));
 		QVBoxLayout* panelLayout = new QVBoxLayout(panel);
@@ -859,19 +839,21 @@ public:
 		editPanel->setObjectName(QStringLiteral("LegacyPalette"));
 		BuildPalette(editPanel, newAction, openAction, saveAction);
 		panelLayout->addWidget(editPanel);
-		QHBoxLayout* viewTools = new QHBoxLayout;
-		viewTools->addStretch();
-		QToolButton* inspect = new QToolButton(panel);
-		inspect->setDefaultAction(inspectAction);
-		inspect->setIconSize(QSize(16, 16));
-		inspect->setAccessibleName(QStringLiteral("Inspect rooms and equipment"));
-		viewTools->addWidget(inspect);
-		panelLayout->addLayout(viewTools);
-		toolLabel = new QLabel(panel);
-		toolLabel->setWordWrap(true);
-		panelLayout->addWidget(toolLabel);
 		informationTabs = new QTabWidget(panel);
-		QTextBrowser* tips = new QTextBrowser(informationTabs);
+		QWidget* tipsPanel = new QWidget(informationTabs);
+		tipsPanel->setStyleSheet(QStringLiteral("background: #081a40; color: #b8cef5;"));
+		QVBoxLayout* tipsLayout = new QVBoxLayout(tipsPanel);
+		tipsLayout->setContentsMargins(4, 4, 4, 4);
+		toolLabel = new QLabel(tipsPanel);
+		toolLabel->setWordWrap(true);
+		toolLabel->setTextFormat(Qt::PlainText);
+		tipsLayout->addWidget(toolLabel);
+		renderView->tipsChanged = [this](const QString& text) {
+			if(!renderAction->isChecked()) return;
+			if(text.isEmpty()) ShowRenderHelp();
+			else toolLabel->setText(text);
+		};
+		QTextBrowser* tips = new QTextBrowser(tipsPanel);
 		tips->setOpenExternalLinks(false);
 		tips->setHtml(QStringLiteral(
 			"<b>NEW SPACECRAFT DESIGN TIPS</b><br>"
@@ -885,12 +867,13 @@ public:
 			"- Left/right arrow keys rotate berths, vehicles, hatches and stairs before placement.<br>"
 			"- The brush arrows resize machinery placement and Erase Equipment Area.<br>"
 			"- Middle drag pans; the mouse wheel zooms.<br>"
-			"- Use the selection arrow to inspect rooms and equipment.<br><br>"
 			"- Render Mode enters the spacecraft scene. Returning to the floor plan preserves your position.<br>"
 			"- In the scene, W/A/S/D move, the mouse looks around, and Shift runs. Q toggles continuous forward movement.<br>"
 			"- Return or right-click switches between avatar input and the free hand cursor. Hold Ctrl to use the hand temporarily.<br>"
 			"- C/Z move up/down when flying, in a gravity well, or on a ladder. Space jumps or brakes in zero gravity.<br>"
-			"- E engages/releases a nearby ladder.<br>"
+			"- E enters/exits a console or engages/releases a nearby ladder.<br>"
+			"- Hold Caps Lock to crouch; X toggles prone/standing. These use your Avatar bindings.<br>"
+			"- Escape toggles top-down; Shift+Escape switches first/third person. Scene camera bindings also work.<br>"
 			"- Use the hand to click a nearby door or hatch. Ctrl+P opens the nearest closed door; Ctrl+C closes the nearest open door.<br>"
 			"- Regular and crew doors open on approach. Hull and large doors require manual operation.<br>"
 			"- Gravity toggles the studio floor outside the ship. Ship interiors have their own gravity.<br>"
@@ -898,15 +881,12 @@ public:
 			"<b>CURRENT EDITOR</b><br>"
 			"Rooms and equipment can be edited in the floor plan. Unavailable tools remain disabled.<br><br>"
 			"<b>WHEN FINISHED</b><br>"
-			"Press Escape to exit the designer.<br>"
+			"Use Exit Designer or Ctrl+W to exit. Escape exits from the floor plan.<br>"
 			"Use Save or Ctrl+S to save a .ship file. New, Open and Exit offer to save changes.<br>"
 			"The sidebar designer button or your Design Parts window binding hides or shows this panel. "
 			"Drag its title to dock it elsewhere or float it beside the deck view."));
-		informationTabs->addTab(tips, QStringLiteral("Tips"));
-		inspector = new QPlainTextEdit(informationTabs);
-		inspector->setReadOnly(true);
-		inspector->setAccessibleName(QStringLiteral("Selected room or equipment record"));
-		informationTabs->addTab(inspector, QStringLiteral("Selection"));
+		tipsLayout->addWidget(tips, 1);
+		informationTabs->addTab(tipsPanel, QStringLiteral("Tips"));
 		informationTabs->setMinimumHeight(130);
 		panelLayout->addWidget(informationTabs, 1);
 		QScrollArea* panelScroll = new QScrollArea(toolDock);
@@ -931,12 +911,11 @@ public:
 			selectedEquipmentType = AuLegacyShip::RotateDetailType(selectedEquipmentType, steps);
 			SetToolMode(EquipmentMode);
 		};
-		QObject::connect(scene, &QGraphicsScene::selectionChanged, window, [this]() { ShowSelection(); });
-		ShowOverview();
 	}
 
 	~Impl()
 	{
+		renderView->tipsChanged = {};
 		QObject::disconnect(scene, nullptr, window, nullptr);
 		view->cellEntered = std::function<void(const QPointF&)>();
 		view->rotateEquipment = std::function<void(int)>();
@@ -1155,7 +1134,6 @@ public:
 			RefreshRendering();
 		RefreshHeaderControls();
 		UpdateTitle();
-		ShowOverview();
 		toolLabel->setText(QStringLiteral("Design settings updated. Press Ctrl+S to save."));
 	}
 
@@ -1193,6 +1171,7 @@ public:
 		if (!renderAction->isChecked())
 			return;
 		toolLabel->setText(QStringLiteral("Walkthrough uses your Avatar and Scene control bindings. Use hand input for the sidebar and door clicks.\n"
+			"Escape toggles top-down view; Shift+Escape switches first/third person. Configured Scene camera bindings also work. Ctrl+W exits.\n"
 			"Settings changes apply here immediately. Legacy Ctrl+P/C opens/closes nearby doors unless rebound; Home returns to the selected deck unless rebound.\n"
 			"Studio gravity is %1; ship interiors retain their own gravity. Render Mode returns to the floor plan.")
 			.arg(gravityAction->isChecked() ? QStringLiteral("on") : QStringLiteral("off")));
@@ -1200,6 +1179,8 @@ public:
 
 	void SetRenderMode(bool solid)
 	{
+		closeAction->setShortcuts(solid ? QList<QKeySequence>{QKeySequence::Close}
+			: QList<QKeySequence>{QKeySequence(Qt::Key_Escape), QKeySequence::Close});
 		if (solid)
 			RefreshRendering();
 		renderView->SetWalkthrough(solid);
@@ -1207,7 +1188,6 @@ public:
 		{
 			renderView->setFocus();
 			ShowRenderHelp();
-			ShowOverview();
 		}
 		else
 		{
@@ -1229,9 +1209,8 @@ public:
 		view->equipmentRotation = AuLegacyShip::DetailRotationStep(selectedEquipmentType);
 		view->equipmentFootprint = mode == EquipmentMode && selectedEquipment && selectedEquipment->commodity
 			? AuLegacyShip::Rendering::VehicleFootprint(selectedEquipment->commodity) : QRectF();
-		view->SetEditing(loaded && mode != InspectMode,
+		view->SetEditing(loaded,
 			mode == EraseMode || mode == DeleteEquipmentMode || mode == DeleteEquipmentAreaMode);
-		inspectAction->setChecked(mode == InspectMode);
 		eraseAction->setChecked(mode == EraseMode);
 		deleteEquipmentAction->setChecked(mode == DeleteEquipmentMode);
 		deleteEquipmentAreaAction->setChecked(mode == DeleteEquipmentAreaMode);
@@ -1259,9 +1238,8 @@ public:
 			view->setFocus();
 			return;
 		}
-		toolLabel->setText(mode == InspectMode ? QStringLiteral("Selection tool: click a room or equipment marker.")
-			: (mode == EraseMode ? QStringLiteral("Erase Room Cells: left click or drag.")
-				: QStringLiteral("Paint %1: left click or drag.").arg(RoomName(selectedRoomType))));
+		toolLabel->setText(mode == EraseMode ? QStringLiteral("Erase Room Cells: left click or drag.")
+				: QStringLiteral("Paint %1: left click or drag.").arg(RoomName(selectedRoomType)));
 	}
 
 	void ChangeEquipmentBrush(int delta)
@@ -1290,7 +1268,7 @@ public:
 
 	void EditAt(const QPointF& cursor)
 	{
-		if (!loaded || renderAction->isChecked() || toolMode == InspectMode)
+		if (!loaded || renderAction->isChecked())
 			return;
 		const int deck = currentDeck;
 		if (view->equipmentTool)
@@ -1350,118 +1328,11 @@ public:
 		}
 	}
 
-	QString DesignInformation() const
-	{
-		if (!loaded)
-			return QStringLiteral("Open a 2016 .ship design to inspect its room boundaries and equipment positions.\n\n"
-				"Paint and Erase Cells edit the loaded design. Use Save or Ctrl+S to save a .ship file.\n\n"
-				"The four grid directions combine to form the original squares, triangles, diamonds and parallelograms.\n\n"
-				"Left click or drag applies the selected tool. Middle drag pans; the wheel zooms.");
-		const AuLegacyShip::Header& header = design.header;
-		QString text = QStringLiteral("%1\n\nFile: %2\nDesign ID: %3\nArchitect: %4\nArchitect ID: %5\n"
-			"Format version: %6\nState: %7\nStreamline: %8\nArmor: %9\n")
-			.arg(DisplayName(), fileName.isEmpty() ? QStringLiteral("(new spacecraft; no file)") : fileName).arg(header.designId)
-			.arg(header.architectName.isEmpty() ? QStringLiteral("(not stored)") : header.architectName)
-			.arg(header.architectId).arg(header.version).arg(header.state).arg(header.streamline).arg(header.armor);
-		const bool hasExtendedHeader = header.version > 1;
-		const QString absent = QStringLiteral("(not stored in this format version)");
-		text += QStringLiteral("Minimum tech level: %1\nHull volume: %2\nStructure: %3\nTech level: %4\n\n"
-			"Current rooms: %5\nCurrent details: %6\nDecks with geometry: %7\nSource bytes read: %8\n")
-			.arg(int(header.minimumTechLevel) + 1).arg(hasExtendedHeader ? QString::number(header.hullVolume) : absent)
-			.arg(hasExtendedHeader ? QString::number(header.structure) : absent)
-			.arg(hasExtendedHeader ? QString::number(header.techLevel) : absent)
-			.arg(design.rooms.size()).arg(design.details.size()).arg(occupiedDeckCount).arg(design.bytesConsumed);
-		text += QStringLiteral("Current deck: %1 (Z %2 ft)\n")
-			.arg(currentDeck).arg(currentDeck * AuLegacyShip::DeckHeight);
-		text += modified ? QStringLiteral("\nThis design has unsaved changes. Press Ctrl+S to save.\n")
-			: fileName.isEmpty() ? QStringLiteral("\nThis design has not been saved yet.\n")
-			: QStringLiteral("\nNo unsaved changes.\n");
-		text += QStringLiteral("\nUse Inspect to select a room or detail for its record. "
-			"Equipment uses the original palette icons; Render Mode shows its 3D geometry.\n");
-		if (!geometryWarnings.isEmpty())
-			text += QStringLiteral("\nGeometry warnings for this deck:\n") + geometryWarnings.join(QLatin1Char('\n'));
-		if (!renderDirty && !renderView->Warnings().isEmpty())
-			text += QStringLiteral("\n3D rendering notes:\n") + renderView->Warnings().join(QLatin1Char('\n'));
-		return text;
-	}
-
 	QString DisplayName() const
 	{
 		if (!design.header.name.isEmpty())
 			return design.header.name;
 		return fileName.isEmpty() ? QStringLiteral("Untitled spacecraft") : QFileInfo(fileName).completeBaseName();
-	}
-
-	void ShowOverview()
-	{
-		inspector->setPlainText(DesignInformation());
-	}
-
-	QString RoomInformation(int index) const
-	{
-		const AuLegacyShip::Room& room = design.rooms[index];
-		QString text = QStringLiteral("Room record %1\n\nNumeric room type: %2 (%3)\nDeck: %4\nZ: %5 ft\n"
-			"Design ID: %6\nRecord index: %7\nSource stream offset: %8\nCurrent vertices: %9\n")
-			.arg(room.roomId).arg(room.roomType).arg(Hex(room.roomType)).arg(int(room.deck))
-			.arg(int(room.deck) * AuLegacyShip::DeckHeight).arg(room.designId).arg(index)
-			.arg(room.streamOffset < 0 ? QStringLiteral("new room") : Hex(room.streamOffset, 8))
-			.arg(room.packedVertices.size());
-		text += QStringLiteral("Room type: %1\nRoom Number: %2\nStored subtype: %3\nBoundary: %4\n\nPoints (X, Y feet):\n")
-			.arg(RoomName(room.roomType)).arg(int(room.roomSubtype) + 1).arg(Hex(room.roomSubtype))
-			.arg(room.IsEllipse() ? QStringLiteral("ellipse from three control points") : QStringLiteral("polygon"));
-		const int limit = std::min(room.packedVertices.size(), 64);
-		for (int i = 0; i < limit; ++i)
-		{
-			const QPointF point = AuLegacyShip::DecodePoint(room.packedVertices[i]);
-			text += QStringLiteral("%1: %2, %3  [%4]\n").arg(i).arg(point.x(), 0, 'f', 4)
-				.arg(point.y(), 0, 'f', 4).arg(Hex(room.packedVertices[i], 4));
-		}
-		if (room.packedVertices.size() > limit)
-			text += QStringLiteral("... %1 more points\n").arg(room.packedVertices.size() - limit);
-		return text;
-	}
-
-	QString DetailInformation(int index) const
-	{
-		const AuLegacyShip::Detail& detail = design.details[index];
-		const QPointF point = AuLegacyShip::DecodePoint(detail.packedXY);
-		return QStringLiteral("Detail %1\n\nDeck: %2\nX: %3 ft\nY: %4 ft\nZ: %5 ft\n"
-			"Design ID: %6\nRecord index: %7\nStream offset: %8\nPacked coordinate: %9\n")
-			.arg(detail.detailId).arg(int(detail.deck)).arg(point.x(), 0, 'f', 4).arg(point.y(), 0, 'f', 4)
-			.arg(int(detail.deck) * AuLegacyShip::DeckHeight).arg(detail.designId).arg(index)
-			.arg(detail.streamOffset < 0 ? QStringLiteral("new equipment") : Hex(detail.streamOffset, 8))
-			.arg(Hex(detail.packedXY, 4))
-			+ QStringLiteral("\nNumeric detail type: %1\nHidden byte (raw): %2\n"
-				"Room ID: %3\nCommodity ID (raw): %4\n"
-				"Commodity ID after legacy normalization: %5\n\n"
-				"Hidden details are included in this inspection view.")
-				.arg(Hex(detail.detailType)).arg(Hex(detail.hiddenRaw)).arg(detail.roomId)
-				.arg(Hex(detail.commodityIdRaw, 4)).arg(Hex(detail.commodityIdNormalized, 4))
-			+ QStringLiteral("\n\n%1\n%2").arg(AuLegacyShip::DetailName(detail.detailType),
-				AuLegacyShip::DetailPlacementDescription(detail.detailType));
-	}
-
-	void ShowSelection()
-	{
-		const QList<QGraphicsItem*> selected = scene->selectedItems();
-		if (selected.isEmpty())
-		{
-			ShowOverview();
-			return;
-		}
-		QGraphicsItem* item = selected.first();
-		const int kind = item->data(RecordKind).toInt();
-		const int index = item->data(RecordIndex).toInt();
-		if (kind == RoomKind && index >= 0 && index < design.rooms.size())
-		{
-			inspector->setPlainText(RoomInformation(index));
-			informationTabs->setCurrentWidget(inspector);
-		}
-		else if (kind == DetailKind && index >= 0 && index < design.details.size())
-		{
-			inspector->setPlainText(DetailInformation(index));
-			informationTabs->setCurrentWidget(inspector);
-		}
 	}
 
 	void AddGridLabels(const QFont& font)
@@ -1530,7 +1401,6 @@ public:
 			QPen pen(RecordColor(room.roomType));
 			pen.setCosmetic(true);
 			QGraphicsPolygonItem* item = scene->addPolygon(polygon, pen, QBrush(RecordColor(room.roomType, 70)));
-			item->setFlag(QGraphicsItem::ItemIsSelectable);
 			item->setData(RecordKind, RoomKind);
 			item->setData(RecordIndex, index);
 			item->setToolTip(QStringLiteral("%1 %2 | record %3 | type %4 (%5) | deck %6")
@@ -1573,15 +1443,15 @@ public:
 		deckBounds = (hasBounds ? GridBounds().united(bounds) : GridBounds()).adjusted(-margin, -margin, margin, margin);
 		const double extent = AuLegacyShip::GridSpacing * 66.0;
 		scene->setSceneRect(QRectF(-extent, -extent, extent * 2.0, extent * 2.0).united(deckBounds));
-		view->emptyMessage = hasBounds ? QString() : (warningCount
-			? QStringLiteral("No displayable geometry on this deck. See the inspector for boundary warnings.")
-			: QStringLiteral("This deck is empty. Select Paint to add room cells."));
 		QString message = QStringLiteral("Deck %1 (Z %2 ft): %3 room boundaries, %4 details")
 			.arg(deck).arg(deck * AuLegacyShip::DeckHeight).arg(visibleRooms).arg(detailDecks.value(deck).size());
+		if(!hasBounds) message += warningCount
+			? QStringLiteral("\nNo displayable geometry on this deck.")
+			: QStringLiteral("\nThis deck is empty. Select Paint to add room cells.");
 		if (warningCount)
-			message += QStringLiteral("; %1 geometry warnings (see inspector)").arg(warningCount);
+			message += QStringLiteral("; %1 geometry warnings").arg(warningCount);
+		if (!geometryWarnings.isEmpty()) message += QLatin1Char('\n') + geometryWarnings.join(QLatin1Char('\n'));
 		toolLabel->setText(message);
-		ShowOverview();
 		if (fit && !renderAction->isChecked())
 			FitDeck();
 		else
@@ -1668,7 +1538,6 @@ public:
 		fileName = path;
 		modified = false;
 		UpdateTitle();
-		ShowOverview();
 		toolLabel->setText(QStringLiteral("Saved %1").arg(QFileInfo(path).fileName()));
 		settings.setValue(QStringLiteral("LegacySpacecraft/LastOpenDirectory"), QFileInfo(path).absolutePath());
 		settings.sync();
@@ -1718,14 +1587,12 @@ public:
 	QComboBox* minimumTech;
 	QLabel* toolLabel;
 	QLabel* brushSize;
-	QPlainTextEdit* inspector;
 	QAction* roomsAction;
 	QAction* detailsAction;
 	QAction* gridAction;
 	QAction* renderAction;
 	QAction* gravityAction;
 	QAction* closeAction;
-	QAction* inspectAction;
 	QAction* eraseAction;
 	QAction* deleteEquipmentAction;
 	QAction* deleteEquipmentAreaAction;
@@ -1746,7 +1613,7 @@ public:
 	QMap<int, QVector<int> > roomDecks;
 	QMap<int, QVector<int> > detailDecks;
 	QRectF deckBounds = GridBounds();
-	ToolMode toolMode = InspectMode;
+	ToolMode toolMode = PaintMode;
 	int selectedRoomType = 2;
 	const EquipmentChoice* selectedEquipment = nullptr;
 	int selectedEquipmentType = 0;

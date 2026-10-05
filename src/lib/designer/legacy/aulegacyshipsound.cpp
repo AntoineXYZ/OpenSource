@@ -249,12 +249,15 @@ void SoundSession::Update(const SoundListener& listener)
 	Source& footsteps = m_Impl->sources[Footsteps];
 	if(listener.moving && (listener.grounded || listener.climbing))
 	{
-		const float speed = listener.climbing || listener.crouching ? .5f : listener.running ? 2.f : 1.f;
+		const float speed = listener.climbing || listener.crouching ? .5f : listener.prone ? 1.f : listener.running ? 2.f : 1.f;
 		// Default 2016 human DNA Speed = 4. The local preview uses one pair
 		// of feet; the original scales loudness by sqrt(body volume) / 2.
 		const float pitch = 1.5f * speed / (1.f + 4.f / 5.f);
-		m_Impl->Play(footsteps, listener.inShip ? SOUND_FootstepsMetal : SOUND_FootstepsHardFloor,
-			listener.feet, 1, pitch, true, false, 0, 1, true);
+		const SOUND_EFFECT sound = listener.prone
+			? (listener.inShip ? SOUND_DragMetal : SOUND_DragHardFloor)
+			: (listener.inShip ? SOUND_FootstepsMetal : SOUND_FootstepsHardFloor);
+		m_Impl->Play(footsteps, sound, listener.feet, listener.prone ? .25f : 1.f,
+			pitch, true, false, 0, 1, true);
 	}
 	else
 		m_Impl->StopSource(footsteps);

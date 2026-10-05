@@ -8001,6 +8001,21 @@ float DaCreature::CGHeight() const
 	return h;
 }
 
+float DaCreature::PhysicalHeight() const
+{
+	m_BodyLock.lockForRead();
+	float height;
+	if(m_Body) height = m_Body->PhysicalHeight();
+	else
+	{
+		AuPoint minimum, maximum;
+		m_Animalia->SightExtents(minimum, maximum);
+		height = float(maximum.z - minimum.z);
+	}
+	m_BodyLock.unlock();
+	return height * GrowthScale();
+}
+
 float DaCreature::CGHeightFullGrown() const
 {
 	bool inVehicle = dynamic_cast<const DaVehicle*>(Parent());
@@ -10562,4 +10577,3 @@ void DaCreature::Defibrillated(quint32 byEmpireId)
 	Q_UNUSED(byEmpireId);
 	ClearPendingDamage();
 }
-

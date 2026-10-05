@@ -87,7 +87,9 @@ of compressed shader sources, and saved in shaders/Spacecraft.f.glsl and
 shaders/Spacecraft.v.glsl. The original fragment shader alpha-mixes unlit effect
 color after lighting; the widget preserves that composition. Camera lighting
 remains the independent orbit preview lighting, without world simulation,
-power-state simulation, station occupancy or gameplay effects.
+power-state simulation or gameplay effects. Ordinary console/captain-chair
+occupancy and swivelling are implemented in the walkthrough; see
+WALKTHROUGH-FLIGHT-CONSOLES-BODY.txt.
 
 Verification
 ------------

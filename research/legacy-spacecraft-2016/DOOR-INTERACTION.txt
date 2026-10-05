@@ -20,11 +20,35 @@ spacecraft atlas already contains every image, including the alpha channels.
 RenderHatch 0x18042ee90 starts with the half-open region and assigns a
 per-door UV-offset animation index. RenderInterior 0x18042f410 and
 RenderExteriorWalls 0x18042cdb0 use the same mechanism for wall panels.
-Hull doors have different panels on their two sides: the interior uses the
-crew-door family, or large crew-door family for a large hull door. The small
-interior panel spans the full eight-foot deck height; the exterior hull-door
-panel is seven feet high beneath its projecting upper hull profile. Both
-sides share the same logical door and animation state.
+Hull doors use the hull-door texture family on both sides, including the
+yellow-bordered panel and transparent window shown in the 2016 screenshot.
+The small panel is seven feet high beneath its projecting upper hull profile.
+Large hull doors likewise retain the large-hull-door family on both sides.
+Both faces share geometry, texture coordinates, logical door and animation
+state, with reversed winding/normals on the interior face.
+
+Correction to the earlier interior-material interpretation, verified by
+read-only Ghidra review after the user's reference screenshot:
+  CreateModels 0x1803df500 calls RenderInterior for interior partitions,
+  then RenderExterior(..., true, ...) for the reverse hull faces.
+  RenderExterior 0x180426360 passes texture 20 / wall strip 2 for small
+  hull doors and texture 9 / strip 1 for large hull doors in both passes.
+  RenderExteriorWalls 0x18042cdb0 keeps those UVs and passes its reversal
+  flag to ModelAdd. ModelAdd 0x1800d4390 reverses the winding and normal
+  while keeping each vertex's texture coordinates.
+  RenderInterior 0x18042f410 gates partition rendering on !IsExteriorWall
+  (decompiled cVar14 == 0). Its crew-door mapping for detail types 49/50
+  applies to interior partitions, not reverse hull faces.
+The reimplementation incorrectly added a full-height crew panel for a small
+hull door and substituted the large crew texture for a large hull door.
+Those substitutions are removed; the upper hull profile is now also drawn
+from the inside. Internal crew doors retain their original materials.
+
+Validation: source/atlas inspection and git diff --check; no build initiated.
+After building, inspect small and large hull doors from both sides, closed,
+half-open and open, on straight and diagonal walls. The small interior face
+should match the yellow-bordered window panel in the reference screenshot;
+its window must show the exterior, and both sides must animate together.
 
 Hatches are flat 4 x 4 foot quads, axis-aligned or rotated 45 degrees by the
 cell orientation. A diamond therefore extends 2.8284271245 feet from its

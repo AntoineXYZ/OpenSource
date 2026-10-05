@@ -63,6 +63,19 @@ DaAtom::CreateEnvironmentQuery (0x1802049a0) assigns ground enum 3 on a
 ship deck and 2 on the designer plane. Creature rendering selects
 SOUND_FootstepsForest + ground - 1, hence Metal and HardFloor respectively.
 
+Rechecked for material variation: the ship branch sets OG_Metal (3) when
+ship gravity is nonzero and floor fall distance is below .25 feet. It does
+not inspect room type, floor texture or equipment. The studio branch retains
+the ship result; outside the ship it sets OG_HardFloor (2) near the gravity
+plane. It returns before the terrain/building material branches. Those world
+branches select other ground types but do not apply to this offline designer.
+DaUnit::OnGroundSound at 0x1800d50c0 can override ground with water (9) for
+liquid depth above 1/6 foot; the studio has no such liquid environment.
+DaCreature::RenderAudioSources at 0x1802ec860 selects the ground-indexed loop.
+The existing adapter already selects Metal versus HardFloor this way, so no
+speculative per-room/carpet sound mapping was added. Walking against an
+obstruction now retains the walking-pose sound; seated input remains silent.
+
 Footsteps are a looping recorded effect while a grounded walking pose is
 active, not an artificial series of timer-triggered clicks. The walking
 pose can remain active while pushing against a wall. Airborne/free flight
@@ -76,10 +89,10 @@ The run sound multiplier differs from the 2.5 movement speed multiplier.
 The 2016 creature playback explicitly uses reference distance 1 foot and
 rolloff 1, with the source at the feet.
 
-Original loudness scales by sqrt(body volume) / 2. The current fixed human
-preview uses gain 1 rather than instantiating the original procedural body.
-Its fixed eye height also affects attenuation, as it does other perspective
-and collision behavior. These are documented approximations.
+Original loudness scales by sqrt(body volume) / 2. The preview still uses
+gain 1 as an approximation. Its camera now follows native CPU body poses and
+the shared first/third-person and top-down settings; audio listener orientation
+and position follow that camera too.
 
 System ambience and initial state
 --------------------------------

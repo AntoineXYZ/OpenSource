@@ -79,6 +79,8 @@ struct Batch
 	// Only the animated door/hatch panel carries its persistent detail ID.
 	// Both sides share the ID; surrounding hull/frame geometry remains static.
 	quint32 doorId = 0;
+	// Occupied consoles use the native renderer instead of these static batches.
+	quint32 consoleId = 0;
 	QString textureFile;
 	QVector4D tint = QVector4D(1, 1, 1, 1);
 	float selfIllumination = 0;

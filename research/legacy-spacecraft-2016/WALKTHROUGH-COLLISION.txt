@@ -2,9 +2,10 @@ Legacy designer local walkthrough collision
 ===========================================
 
 Implementation: src/lib/designer/legacy/aulegacyshipwalk.h/.cpp.
-This is an independent local authoring-preview controller. It does not create a
-server character, attach to the live game scene, or claim to reproduce the full
-2016 character physics implementation.
+This is the legacy geometry adapter for a native DaPerson controller in a
+transient AuEther. It supplies GetAtomEnvironment and MoveSubatom through a
+DaDesigner subclass; it no longer implements a parallel movement controller.
+Native movement/camera reuse is described in WALKTHROUGH-FLIGHT-CONSOLES-BODY.
 
 Recovered behavior used
 -----------------------
@@ -12,7 +13,9 @@ The design and render mesh use feet. Original designer gravity is32ft/s^2
 (AuAtom13!DaDesignEnvironment::Gravity,1802f91e0). Default Human standing jump
 impulse is15ft/s (AuData13!DpBody::StandingJump,1800cd730, and the Human DNA
 JumpForce path in AuGlobal13,1800092c0). Walk/run input speeds are5/12.5ft/s;
-the rendering widget supplies the desired velocity to this module.
+native DaPerson/DaCreature/DaAtom code supplies movement, jumping and
+zero-gravity acceleration, using the default human Gen3 body.
+WALKTHROUGH-FLIGHT-CONSOLES-BODY.txt details recovered free-flight integration.
 
 Original no-gravity motion still collides with solid ship geometry:
 DaSpaceShip::IsPathBlocked1803fa2a0 gates collision on solid rendering, rather
@@ -113,9 +116,15 @@ capsule, segment/triangle closest-point queries, iterative separation and small
 time/displacement steps. It slides along walls and blocks at floors/ceilings.
 A bounded step-up and downward support probe make the recovered stair treads
 walkable. Gravity applies to the feet velocity, with a standing jump impulse.
-Zero-gravity travel uses the full supplied velocity, including its z component.
-The renderer supplies C/Z climb velocity near ladders and inside gravity wells.
-E explicitly attaches to a nearby ladder or detaches from it. Proximity alone
+Zero-gravity travel accumulates the supplied thrust into world velocity, with
+body-local per-axis drag and braking. It no longer overwrites velocity with
+the input or clamps flight speed to 200ft/s. Displacement steps become smaller
+near ship geometry as speed grows; empty-space steps consume the same elapsed
+time without imposing that displacement limit. Gravity wells retain the
+original interior speed-limit rule and their distinct drag.
+The renderer supplies W/S and C/Z climb velocity while attached to ladders.
+E first tries ordinary console seating, then explicitly attaches to a nearby
+ladder or detaches from it. Proximity alone
 does not disable gravity; moving out of the climb region clears attachment.
 
 Outside ship membership, enabled studio gravity uses SetDesignPlane's height.
@@ -132,12 +141,26 @@ Deliberate local approximations
 DaSpaceShip::IsPathBlocked (AuAtom13.dll 0x1803fa2a0) sends persons/animals
 through AuPath::TestSpacecraftPath using their movement points. Its transformed
 multi-corner bounding-box tests belong to other object branches. Character eye
-height and floor queries still depend on body DNA/pose. The local preview uses
-a radius of .75ft, height of 6ft and eye height of 5.5ft, configurable through
-WalkSettings. The .75ft step threshold and
+height and floor queries still depend on body DNA/pose. The local controller's
+default dimensions are .75ft radius, 6ft height and 5.5ft eye height, configurable
+through WalkSettings. The rendering widget reads physical height from DaCreature;
+native movement supplies jump impulse and native SetupCamera supplies the view.
+The .75ft radius, .75ft step threshold and
 capsule separation tolerances are controller settings, not recovered constants.
-This implementation does not simulate crouching, creatures, moving vehicles,
+This implementation now changes capsule height for crouch/prone using native
+body poses and rejects a taller stance if the capsule cannot fit. The prone
+body is still approximated by a short vertical capsule, not the original
+extended, oriented body collision shape.
+This implementation does not simulate other creatures, moving vehicles,
 forces from live equipment, water, or the original parent/peer scene graph.
+Grounded motion and free flight both use native TickMovement. WalkWorld only
+resolves requested displacement, projects velocity away from contact normals
+and reports blocked doors. Zero-time native stance/console moves check clearance.
+Seating suppresses translation until E exits. Seat-selection rules are recovered;
+native ExitConsole chooses stand-up
+probes and the geometry adapter checks clearance with the local capsule solver.
+Swivelling console geometry is transformed for sight/hand rays and remains
+passable for movement, just like its unoccupied form.
 
 Ship gravity membership uses authored room volumes. A body above a supporting
 room footprint remains in ship gravity up to one body height above its roof;

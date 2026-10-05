@@ -2236,6 +2236,9 @@ public:
 
 	virtual void WeaponAtUsePos(const AuGearPos& pos, INVENTORYSUB sub, AuCombatWeapon& weapon, int& ammoCur, int& ammoFull) const;
 
+	// Release local movement input when a scene loses capture or focus.
+	void ClearMovementInput();
+
 protected:
 	void ApplyMovement(unsigned int msElapsed);
 

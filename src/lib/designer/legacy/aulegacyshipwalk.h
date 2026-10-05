@@ -10,13 +10,10 @@ namespace Rendering
 {
 struct WalkSettings
 {
-	// Body dimensions approximate a standing human; the original derives
-	// them from the character's DNA and current pose.
+	// Defaults until the native character supplies its current body dimensions.
 	float radius = .75f;
 	float height = 6;
 	float eyeHeight = 5.5f;
-	float gravityAcceleration = 32;
-	float jumpSpeed = 15;
 	float stepHeight = .75f;
 };
 
@@ -34,6 +31,8 @@ struct WalkState
 	bool gravitySuspended = false;
 	bool gravityActive = false;
 	bool inShip = false;
+	int consoleType = 0;
+	quint32 consoleId = 0;
 	QVector<quint32> blockedDoors;
 };
 
@@ -45,8 +44,16 @@ struct WalkHit
 	quint32 doorId = 0;
 };
 
-// Local authoring preview collision. No server, live character or world scene
-// is required. Positions, speeds and accelerations use the design's feet units.
+struct WalkEnvironment
+{
+	int roomType = 0;
+	bool inShip = false;
+	bool gravity = false;
+	bool gravityWell = false;
+	float fallDistance = 1000000;
+};
+
+// Legacy geometry adapter for the native character controller, in feet.
 class WalkWorld
 {
 public:
@@ -54,6 +61,7 @@ public:
 	~WalkWorld();
 	void SetMesh(const Mesh& mesh, const Design& design);
 	void SetSettings(const WalkSettings& settings);
+	bool TrySetBodySize(const QVector3D& feet, float height, float eyeHeight, bool requireClear);
 	const WalkSettings& Settings() const;
 	void SetDesignPlane(float height);
 	// SetMesh clears door states. Reapply current states after rebuilding.
@@ -61,11 +69,12 @@ public:
 	// Attach to the nearest reachable hatch axis, or release the current ladder.
 	// ladderFacing is the initial camera azimuth in degrees, not a look constraint.
 	bool ToggleLadder(WalkState& state) const;
+	bool EnterConsole(const Design& design, WalkState& state, float cgHeight) const;
+	void SetConsoleRotation(quint32 consoleId, const QVector3D& floorPoint, float facing);
 	bool FindSpawn(const Design& design, int deck, WalkState& state) const;
-	// desiredVelocity is already expressed in world coordinates, in feet/s.
-	// Its z component controls free flight and ladder/gravity-well travel.
-	void Step(WalkState& state, const QVector3D& desiredVelocity, float seconds,
-		bool gravity, bool jump) const;
+	WalkEnvironment Environment(const QVector3D& feet, bool studioGravity, float bodyOriginHeight) const;
+	// Geometry adapter only: native DaPerson integrates forces and velocities.
+	void MoveDisplacement(WalkState& state, const QVector3D& displacement, bool studioGravity) const;
 	// Visible static surfaces, including passable equipment, occlude the ray;
 	// invisible obstacle-cell volumes do not. Open panels remain hand targets;
 	// sight targeting can exclude them.

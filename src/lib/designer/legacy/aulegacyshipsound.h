@@ -25,6 +25,7 @@ struct SoundListener
 	bool moving = false;
 	bool running = false;
 	bool crouching = false;
+	bool prone = false;
 	bool climbing = false;
 	// The original designer starts these systems off. These inputs describe
 	// working systems, for later console controls; avatar gravity is separate.

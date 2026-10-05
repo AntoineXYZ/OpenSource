@@ -26,6 +26,7 @@ static float							g_PanelRotAdj = 0;		// Rotation adjustment, relative to the b
 static Au3dsGLSLModelInstance*			g_SeatModel = 0;
 static AuPoint							g_SeatOff;				// Offset for placement of the seat model.
 static AuGLVAO							g_SmallScreenVAO;		// Console small secondary display screen quad.
+static const AuGLModelCache*				g_ConsoleModelCache = nullptr;
 
 DpConsole::DpConsole()
 {
@@ -131,19 +132,25 @@ void DpConsole::RenderConsole(const AuMatrix4x4& projection, const AuMatrix4x4& 
 // Drawn facing the negative Y direction with origin at 0,0.
 void DpConsole::CreateDeviceObjects(AuAtomRenderInfo& ari, const DaAtom& parent, bool inBuilding)
 {
+	CreateDeviceObjects(ari, parent.Id(), inBuilding);
+}
+
+void DpConsole::CreateDeviceObjects(AuAtomRenderInfo& ari, const AuId& textureOwner, bool inBuilding)
+{
 	if(!m_glLowerConsole)
 	{
 		// Create a texture map from a resource bitmap.
 		// Identify it uniquely by parent so all lower consoles on the same vessel show the same data.
-		QString name = QString("LCon%1").arg(parent.Id().GetID());
+		QString name = QString("LCon%1").arg(textureOwner.GetID());
 		if(inBuilding)
-			m_glLowerConsole = ari.re->CreateTextureFromBitmap(parent.Id().GetID(), name, ":data/BldConsole_Lower.bmp");
+			m_glLowerConsole = ari.re->CreateTextureFromBitmap(textureOwner.GetID(), name, ":data/BldConsole_Lower.bmp");
 		else
-			m_glLowerConsole = ari.re->CreateTextureFromBitmap(parent.Id().GetID(), name, ":data/txConsole_Lower.bmp");
+			m_glLowerConsole = ari.re->CreateTextureFromBitmap(textureOwner.GetID(), name, ":data/txConsole_Lower.bmp");
 	}
 
 	if(!g_SeatModel)
 	{
+		g_ConsoleModelCache = &ari.Models();
 		// Start loading the 3ds model of the seat using a worker thread.
 		QString modelFile(":data/mConsoleSeat.3dsN");
 		if(!QFile::exists(modelFile))
@@ -248,6 +255,17 @@ void DpConsole::CreateDeviceObjects(AuAtomRenderInfo& ari, const DaAtom& parent,
 
 	if(!g_glSeatTexture)
 		g_glSeatTexture = ari.re->CreateTextureFromBitmap(STATIC_TEXTURE_ID, "ConTex", ":data/mConsoleTex.png");
+}
+
+void DpConsole::ReleaseSharedDeviceObjects(AuAtomRenderInfo& ari)
+{
+	if(g_ConsoleModelCache != &ari.Models()) return;
+	if(g_BigScreenVAO.VAO()) g_BigScreenVAO.DeleteGL();
+	if(g_SmallScreenVAO.VAO()) g_SmallScreenVAO.DeleteGL();
+	g_SeatModel = nullptr;
+	g_PanelModel = nullptr;
+	g_glSeatTexture = 0;
+	g_ConsoleModelCache = nullptr;
 }
 
 void DpConsole::DeleteGL()
