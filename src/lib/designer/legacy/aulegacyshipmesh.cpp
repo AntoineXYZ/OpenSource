@@ -390,13 +390,14 @@ QVector<QVector3D> TurretPoints(const QVector3D& center, const QVector3D& right,
 	return points;
 }
 
-void TurretDome(Builder& out, const QVector<QVector3D>& points, int deck, bool side)
+void TurretDome(Builder& out, const QVector<QVector3D>& points, int deck)
 {
 	static const int triangles[][3] = {{8,12,9}, {1,8,9}, {8,1,0}, {8,0,7},
 		{9,12,10}, {3,9,10}, {9,3,2}, {9,2,1}, {10,12,11}, {5,10,11},
 		{10,5,4}, {10,4,3}, {11,12,8}, {7,11,8}, {11,7,6}, {11,6,5}};
-	const QVector2D uv[3] = {side ? QVector2D(1, 1) : QVector2D(0, 0),
-		side ? QVector2D(1, 0) : QVector2D(0, 1), side ? QVector2D(0, 1) : QVector2D(1, 0)};
+	// Both original dome paths use the lower-left glass half of ST_Turret.
+	// The upper-right hull half belongs to the surrounding wall corners.
+	const QVector2D uv[3] = {{0, 0}, {0, 1}, {1, 0}};
 	for(const auto& tri : triangles)
 	{
 		out.Triangle(Material::Turret, deck, false, points[tri[0]], points[tri[2]], points[tri[1]], uv[0], uv[2], uv[1]);
@@ -413,7 +414,7 @@ void SideTurret(Builder& out, int deck, const QVector3D& a0, const QVector3D& b0
 	// right points opposite the boundary walk, so its left normal faces out.
 	const QVector3D facing = -outward;
 	const QVector<QVector3D> points = TurretPoints(center, right, facing, {0, 0, 1});
-	TurretDome(out, points, deck, true);
+	TurretDome(out, points, deck);
 	// RenderExteriorWalls maps a complete tile onto each corner separately.
 	const QVector3D corners[] = {a0, a1, b1, b0};
 	const int ring[][3] = {{0, 1, 2}, {6, 7, 0}, {4, 5, 6}, {2, 3, 4}};
@@ -764,7 +765,7 @@ void DeckSurfaces(Builder& out, const Raster& raster, int deck, int armor, const
 		const bool top = detail.detailType == 22;
 		const QVector3D center = Position(DecodePoint(detail.packedXY), deck * DeckHeight);
 		TurretDome(out, TurretPoints(center, {1, 0, 0}, {0, 0, top ? 1.0f : -1.0f},
-			{0, top ? -1.0f : 1.0f, 0}), top ? deck - 1 : deck, false);
+			{0, top ? -1.0f : 1.0f, 0}), top ? deck - 1 : deck);
 	}
 	DetailGrid wallDetails;
 	QSet<quint32> wallPositions;

@@ -788,8 +788,27 @@ public:
 		}
 
 		closeAction = new QAction(QStringLiteral("Exit Designer"), window);
-		closeAction->setShortcuts(QList<QKeySequence>() << QKeySequence(Qt::Key_Escape) << QKeySequence::Close);
+		closeAction->setShortcut(QKeySequence::Close);
 		closeAction->setAutoRepeat(false);
+		QAction* backAction = new QAction(QStringLiteral("Back"), window);
+		backAction->setShortcut(QKeySequence(Qt::Key_Escape));
+		backAction->setAutoRepeat(false);
+		window->addAction(backAction);
+		QObject::connect(backAction, &QAction::triggered, window, [this]() {
+			if(renderAction->isChecked()) renderAction->setChecked(false);
+			else closeAction->trigger();
+		});
+		QAction* interfaceAction = new QAction(QStringLiteral("Show or hide interface"), window);
+		interfaceAction->setShortcut(QKeySequence(Qt::SHIFT | Qt::Key_Escape));
+		interfaceAction->setAutoRepeat(false);
+		window->addAction(interfaceAction);
+		QObject::connect(interfaceAction, &QAction::triggered, window, [this]() {
+			interfaceVisible = !interfaceVisible;
+			if(!interfaceVisible) toolsWereVisible = toolDock->isVisible();
+			renderView->SetInterfaceVisible(interfaceVisible);
+			toolDock->setVisible(interfaceVisible && toolsWereVisible);
+			if(!interfaceVisible) (renderAction->isChecked() ? static_cast<QWidget*>(renderView) : view)->setFocus();
+		});
 		for (QAction* action : { newAction, openAction, saveAction, fitAction, closeAction })
 			window->addAction(action);
 		QObject::connect(closeAction, &QAction::triggered, window, [this]() {
@@ -871,7 +890,7 @@ public:
 			"- E enters/exits a console or engages/releases a nearby ladder.<br>"
 			"- On ladders, W climbs toward your look direction (up/down); S reverses it. C/Z climb directly. Shift does not increase climb speed.<br>"
 			"- Hold Caps Lock to crouch; X toggles prone/standing. These use your Avatar bindings.<br>"
-			"- Escape toggles top-down; Shift+Escape switches first/third person. Scene camera bindings also work.<br>"
+			"- Escape returns to the floor plan, then exits the designer. Shift+Escape hides or shows the interface.<br>"
 			"- Use the hand to click a nearby door or hatch. Ctrl+P opens the nearest closed door; Ctrl+C closes the nearest open door.<br>"
 			"- Regular and crew doors open on approach. Hull and large doors require manual operation.<br>"
 			"- Gravity toggles the studio floor outside the ship. Ship interiors have their own gravity.<br>"
@@ -898,6 +917,8 @@ public:
 		showTools->setIcon(designerIcon);
 		toolDock->addAction(showTools);
 		toolDock->addAction(closeAction);
+		toolDock->addAction(backAction);
+		toolDock->addAction(interfaceAction);
 		window->addAction(showTools);
 		RefreshControlLabels();
 
@@ -1209,7 +1230,7 @@ public:
 		if (!renderAction->isChecked())
 			return;
 		SetFeedback(QStringLiteral("Walkthrough uses your Avatar and Scene control bindings. Use hand input for the sidebar and door clicks.\n"
-			"Escape toggles top-down view; Shift+Escape switches first/third person. Configured Scene camera bindings also work. Ctrl+W exits.\n"
+			"Escape returns to the floor plan; Shift+Escape hides or shows the interface. Configured Scene camera bindings still work. Ctrl+W exits.\n"
 			"Settings changes apply here immediately. Legacy Ctrl+P/C opens/closes nearby doors unless rebound; Home returns to the selected deck unless rebound.\n"
 			"Studio gravity is %1; ship interiors retain their own gravity. Render Mode returns to the floor plan.")
 			.arg(gravityAction->isChecked() ? QStringLiteral("on") : QStringLiteral("off")));
@@ -1217,8 +1238,6 @@ public:
 
 	void SetRenderMode(bool solid)
 	{
-		closeAction->setShortcuts(solid ? QList<QKeySequence>{QKeySequence::Close}
-			: QList<QKeySequence>{QKeySequence(Qt::Key_Escape), QKeySequence::Close});
 		if (solid)
 			RefreshRendering();
 		renderView->SetWalkthrough(solid);
@@ -1671,6 +1690,8 @@ public:
 	bool modified = false;
 	bool fittedOnShow = false;
 	bool renderDirty = true;
+	bool interfaceVisible = true;
+	bool toolsWereVisible = true;
 };
 
 AuLegacyShipViewer::AuLegacyShipViewer(QWidget* parent)

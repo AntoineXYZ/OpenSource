@@ -154,6 +154,10 @@ Panel, editing and saving:
   Ctrl+N/O/S, F/F6 and deck-view Escape work with the panel hidden/floating;
   Escape in a dialog dismisses it. Disabled/building-only tools remain absent
   or inert. Room Number wraps 1..256; minimum TL displays 32..1.
+- Esc returns render view to floor plan, then exits via the save prompt.
+  Shift+Esc hides/restores HUD, sidebar and tools in either mode; check floating
+  tools, focus, held-key repeats and hidden-button clicks. Backspace retains
+  camera switching. Restoring the UI preserves prior tool-window visibility.
 - Grid: finite 80x80 cells (+/-226.27416996ft), brighter ten-cell lines, four
   directions and correctly positioned compass labels. Fit includes labels;
   zoom preserves label size, middle-drag pans. Room labels use first-boundary
@@ -213,6 +217,16 @@ Rendering, walkthrough and audio:
 - Windows, including glass tops/bottoms: outside glass is opaque near-black
   with the original beams; inside glass is clear and beams remain visible.
   Check opposite windows, oblique angles, New/Open and render toggles.
+- Turret domes: check top, bottom and all side orientations. Domes use dark
+  glass outside and clear glass inside with beams retained; the surrounding
+  side-wall corners keep their hull texture. Gun textures remain unchanged.
+- Compare fixed studio lighting from opposite sides; turning the camera must
+  not rotate the lights. Check hull slopes, interior beams, rotating equipment,
+  occupied consoles, self-lit screens and transparent surfaces.
+- Outside the ship with studio gravity off, compare sustained C/Z ascent and
+  descent in render mode, from rest and combined with WASD. Check release,
+  reversal, Space braking and focus loss; repeat on a large design. Movement
+  timing must include physics/animation work. Recheck jump/ladder/well behavior.
 - WASD/mouse, Shift run, Q forward, Space jump, C/Z flight/wells, E ladder entry/
   exit. Nearby ladders alone must not suspend gravity; include deck-29 hatches.
   On ladders W follows head pitch (up/down), S reverses it; level W adds no

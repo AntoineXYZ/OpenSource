@@ -25,6 +25,7 @@ public:
 	void ResetCharacter();
 	void SetFloorPlan(QWidget* floorPlan);
 	void SetWalkthrough(bool enabled);
+	void SetInterfaceVisible(bool visible);
 	void ControlsChanged();
 	QStringList Warnings() const;
 	std::function<void(const QString&)> tipsChanged;

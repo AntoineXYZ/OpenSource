@@ -32,6 +32,8 @@
 #include "auquad.h"
 #include "audice.h"
 #include "auid.h"
+#include "psenginetrail.h"
+#include "dgdata.h"
 
 #include <QByteArray>
 #include <QApplication>
@@ -69,6 +71,7 @@
 #include <limits>
 #include <memory>
 #include <mutex>
+#include <vector>
 
 namespace
 {
@@ -78,10 +81,10 @@ const qint64 DoorTickMilliseconds = qint64(DoorAnimationTickSeconds * 1000);
 
 enum SystemAction { PowerToggle, DriveToggle, DriveCycle, DriveHold };
 
-bool IsHullWindow(const Batch& batch)
+bool IsStudioWindow(const Batch& batch)
 {
 	return batch.textureFile.isEmpty() && (batch.material == Material::HullTopBottomWindow
-		|| batch.material == Material::HullWallWindow);
+		|| batch.material == Material::HullWallWindow || batch.material == Material::Turret);
 }
 
 struct SystemBindings
@@ -357,6 +360,52 @@ AuPoint Point3(const QVector3D& point)
 	return AuPoint(point.x(), point.y(), point.z());
 }
 
+class LegacyRenderPerson : public DaPerson
+{
+public:
+	using DaPerson::DaPerson;
+
+	AuPoint Acceleration() const override
+	{
+		const unsigned int actions = Actions();
+		if(IsInGravity() || IsInSpacecraft() || IsLadderPose() || IsLockedPose() || IsRider()
+			|| (actions & ACT_Brake) || !(actions & (ACT_MoveUp | ACT_MoveDown)))
+			return DaPerson::Acceleration();
+
+		// 2016 solid-render movement (18031be50), including normalization:
+		// a lone C or Z gets the full movement force, despite its .5/-1 weight.
+		AuPoint direction(0, 0, 0);
+		if(actions & ACT_MoveForward) direction.y = 1;
+		else if(actions & ACT_MoveBackward) direction.y = -1;
+		direction = direction.RotateX(CurrentHeadTilt());
+		if(actions & ACT_MoveLeft) direction.x -= .75;
+		else if(actions & ACT_MoveRight) direction.x += .75;
+		direction.z += (actions & ACT_MoveDown) ? -1.0 : .5;
+		if(!direction.IsZero()) direction.Unit(MovementSpeed(m_RenderMovePower / 100.f));
+		return direction;
+	}
+
+	void TickMovement(const AuElapsedTimer& last) override
+	{
+		const unsigned int movement = Actions() & ACT_MoveMask;
+		if(!movement) m_RenderMovePower = 0;
+		DaPerson::TickMovement(last);
+		// Original DecayMoveActions (18032c740) adds 10%, not the modern
+		// controller's 1/15 step, and resets power when any move axis expires.
+		if(movement & ~Actions()) m_RenderMovePower = 0;
+		else if(movement) m_RenderMovePower = std::min(100, m_RenderMovePower + 10);
+	}
+
+	void ClearMovementInput()
+	{
+		DaPerson::ClearMovementInput();
+		m_RenderMovePower = 0;
+	}
+
+private:
+	int m_RenderMovePower = 0;
+};
+
 // The native designer interface supplies environment and movement queries.
 // Only the geometry behind those queries is specific to the legacy ship.
 class LegacyDesignEnvironment : public DaDesigner
@@ -385,12 +434,15 @@ public:
 	WalkWorld world;
 	WalkState character;
 	AuEther characterEther{"Legacy designer character"};
-	DaPerson* person = nullptr;
+	LegacyRenderPerson* person = nullptr;
 	LegacyDesignEnvironment* environment = nullptr;
 	AuElapsedTimer personClock;
 	DpConsole console;
 	QHash<quint32, int> consoleScreens;
 	SoundSession sound;
+	QList<AuGLSun> studioSuns;
+	std::vector<std::unique_ptr<PsEngineTrail>> contrails;
+	GLuint contrailStreak = 0, contrailGlow = 0;
 	std::unique_ptr<auNebula> sky;
 	std::shared_ptr<SkyJob> skyJob;
 	QString skyError;
@@ -572,7 +624,7 @@ public:
 		characterEther.AddAtom(environment);
 		DhDNA dna;
 		dna.InitDefaultHuman();
-		person = new DaPerson(dna, AuDNABase::Alpha, RightHanded, QStringLiteral("Designer"), Mature, 0);
+		person = new LegacyRenderPerson(dna, AuDNABase::Alpha, RightHanded, QStringLiteral("Designer"), Mature, 0);
 		person->Create();
 		person->Stand();
 		person->ResetHitPoints();
@@ -582,6 +634,8 @@ public:
 		person->SetPosAndOrient(AuAtomPos(environment->Id(), AuPoint(0, 0, person->CGHeight()), AuPoint(0, 0, 0)));
 		characterEther.AddAtom(person);
 		person->SetNormal();
+		QList<AuGLLight> lights;
+		environment->GetRenderLightsRecursive(*person, AuMatrix4x4(), studioSuns, lights);
 		personClock.start();
 		SyncCharacter();
 	}
@@ -677,7 +731,16 @@ public:
 		re.glDisable(GL_BLEND);
 		re.DisableSuns();
 		re.DisableLights();
-		re.SetAmbientLight(1, 1, 1, 1);
+		re.SetAmbientLight(0.014352942f, 0.015f, 0.014705883f, 1);
+		for(int i = 0; i < std::min(3, studioSuns.size()); ++i)
+		{
+			AuGLSun sun = studioSuns[i];
+			const QVector3D position = view.map(QVector3D(sun.m_LocX, sun.m_LocY, sun.m_LocZ));
+			sun.m_LocX = position.x();
+			sun.m_LocY = position.y();
+			sun.m_LocZ = position.z();
+			re.SetSun(i, sun);
+		}
 		if(character.consoleType)
 		{
 			// DpConsole is also used by the modern designer. Supply the
@@ -696,6 +759,77 @@ public:
 		re.glFrontFace(GL_CCW);
 		re.glDepthMask(GL_TRUE);
 		re.glDisable(GL_BLEND);
+	}
+
+	void RebuildContrails()
+	{
+		contrails.clear();
+		// RenderLast's studio branch ignores fuel and drive switches, but
+		// requires a classified spacecraft rather than an incomplete hull.
+		if(!performance.structure || !designStats.hasHull) return;
+		const bool station = performance.structure == 3 || performance.structure == 4;
+		QVector<AuPoint> positions;
+		for(const auto& detail : design.details)
+		{
+			if(detail.detailType != 98) continue;
+			const QPointF xy = AuLegacyShip::DecodePoint(detail.packedXY);
+			positions.append(AuPoint(xy.x(), xy.y() - (station ? 0 : designStats.width / 10),
+				detail.deck * AuLegacyShip::DeckHeight + (station ? -4 : 4)));
+			if(positions.size() == 10) break;
+		}
+		if(positions.isEmpty() && !station)
+		{
+			// Original fallback: center, port and starboard aft emitters.
+			const double y = designStats.hullCenter.y() - designStats.length / 2 - designStats.width / 10;
+			const double z = (designStats.minimumDeck + designStats.maximumDeck) * AuLegacyShip::DeckHeight / 2;
+			for(double x : {0.0, -designStats.width / 3, designStats.width / 3})
+				positions.append(AuPoint(designStats.hullCenter.x() + x, y, z));
+		}
+		const DgData& data = g_Au.LockDataForRead();
+		const QColor color = data.EmpireContrailColor(0);
+		g_Au.UnlockData();
+		for(const AuPoint& position : positions)
+		{
+			std::unique_ptr<PsEngineTrail> trail(new PsEngineTrail);
+			trail->SetMaxParticles(35);
+			trail->SetLifeCycle(1.f);
+			trail->SetReleaseInterval(0.f);
+			trail->SetNumToRelease(1);
+			trail->SetColor(color);
+			trail->SetPosition(position);
+			trail->SetSize(station ? 5000.f : float(designStats.width * 100));
+			trail->SetVelocity(station ? AuPoint(0, 0, -25) : AuPoint(0, -500, 0));
+			trail->SetParent(environment->Id(), AuMatrix4x4());
+			contrails.push_back(std::move(trail));
+		}
+	}
+
+	void RenderContrails(AuGLEffects& re, const QMatrix4x4& projection, const QMatrix4x4& view)
+	{
+		if(contrails.empty()) return;
+		if(!contrailStreak)
+			contrailStreak = re.CreateTextureFromBitmap(STATIC_TEXTURE_ID, QStringLiteral("LegacyEngineStreak"),
+				QStringLiteral(":/data/EngineStreak.png"));
+		if(!contrailGlow)
+			contrailGlow = re.CreateTextureFromBitmap(STATIC_TEXTURE_ID, QStringLiteral("LegacyEngineGlow"),
+				QStringLiteral(":/data/particle.bmp"));
+		AuMatrix4x4 p, model;
+		for(int i = 0; i < 16; ++i)
+		{
+			p[i] = projection.constData()[i];
+			model[i] = view.constData()[i];
+		}
+		re.glDepthMask(GL_FALSE);
+		re.glEnable(GL_BLEND);
+		re.glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+		for(const auto& trail : contrails)
+		{
+			trail->SetTextureID(contrailStreak);
+			trail->SetTextureID2(contrailGlow);
+			if(trail->Update() && trail->GetParticleCount()) trail->Render(p, model, re);
+		}
+		re.glDisable(GL_BLEND);
+		re.glDepthMask(GL_TRUE);
 	}
 
 	int FrameMaterial(int source) const
@@ -746,7 +880,7 @@ public:
 			DrawBatch draw = { source, vertices.size(), batch.vertices.size(), batch.deck };
 			batches.append(draw);
 			Texture(source);
-			if (!IsHullWindow(batch)
+			if (!IsStudioWindow(batch)
 				&& (batch.doorId || batch.tint.w() < 0.999f || transparentTextures.contains(TextureKey(source))))
 			{
 				for (int i = 0; i + 2 < batch.vertices.size(); i += 3)
@@ -1031,9 +1165,20 @@ void AuLegacyShipRender::SetFloorPlan(QWidget* floorPlan)
 	SetWalkthrough(false);
 }
 
+void AuLegacyShipRender::SetInterfaceVisible(bool visible)
+{
+	// Cancel a pending sidebar click before its button disappears.
+	SceneInterfaceMouseRelease(QPoint(-width(), -height()));
+	SceneRenderInfo().m_ShowHUD = visible;
+	m_Impl->handClick = false;
+	update();
+}
+
 void AuLegacyShipRender::SetWalkthrough(bool enabled)
 {
 	if(m_Impl->floorPlan) m_Impl->floorPlan->setVisible(!enabled);
+	if(!enabled)
+		for(const auto& trail : m_Impl->contrails) trail->RestartParticleSystem();
 	m_Impl->StopMovement();
 	m_Impl->sound.Stop();
 	m_Impl->freeMouse = false;
@@ -1049,6 +1194,7 @@ void AuLegacyShipRender::SetDesign(const AuLegacyShip::Design& design)
 	m_Impl->design = design;
 	m_Impl->designStats = AuLegacyShip::CalculateStats(design);
 	m_Impl->performance = AuLegacyShip::CalculatePerformance(design, m_Impl->designStats, design.header.minimumTechLevel);
+	m_Impl->RebuildContrails();
 	if(reset)
 	{
 		// The preview has its own registration, independent of the saved design.
@@ -1175,7 +1321,7 @@ void AuLegacyShipRender::Tick()
 	if (!isVisible()) return;
 	if(!m_Impl->Walkthrough())
 	{
-		const int sidebarWidth = SceneInterfaceWidth();
+		const int sidebarWidth = SceneRenderInfo().m_ShowHUD ? SceneInterfaceWidth() : 0;
 		m_Impl->floorPlan->setGeometry(sidebarWidth, 0, std::max(0, width() - sidebarWidth), height());
 		UpdateMouseCapture();
 		update();
@@ -1349,10 +1495,13 @@ void AuLegacyShipRender::Tick()
 		m_Impl->person->ProcessControlInput(nativeControls, m_Impl->person, AuGearPos(), 0, CONTROL_Client,
 			int(std::min<qint64>(150, m_Impl->personClock.elapsed())));
 		const bool onLadder = m_Impl->character.ladderEngaged;
+		// Keep the start of this physics step, as AuModel does. Restarting
+		// after movement/animation discards their cost from simulated time.
+		const AuElapsedTimer movementStart = AuElapsedTimer::Now();
 		m_Impl->person->TickMovement(m_Impl->personClock);
+		m_Impl->personClock = movementStart;
 		m_Impl->person->AnimatePose(false, m_Impl->person->MovementSpeedMod());
 		m_Impl->person->InvalidateEnvironment();
-		m_Impl->personClock.restart();
 		m_Impl->SyncCharacter();
 		if(onLadder && !m_Impl->character.ladderEngaged) m_Impl->SetInteractionPose();
 		// The 2016 path query requests opening only for automatic small doors
@@ -1602,22 +1751,50 @@ IN vec2 a_uv;
 uniform mat4 u_mvp;
 uniform mat4 u_model;
 uniform vec2 u_uvOffset;
-OUT vec3 v_normal;
-OUT vec3 v_position;
+struct StudioSun
+{
+	vec3 position;
+	vec3 color;
+	float attenuation;
+	float radius;
+};
+uniform StudioSun u_suns[3];
+uniform vec3 u_ambient;
+OUT vec3 v_light;
+OUT vec3 v_backLight;
 OUT vec2 v_uv;
+vec3 lighting(vec3 position, vec3 normal)
+{
+	// Original Spacecraft.v.glsl: spherical ambient plus three studio suns.
+	vec3 color = u_ambient * mix(0.15, 1.0, (normal.z + 1.0) * 0.5);
+	for (int i = 0; i < 3; ++i)
+	{
+		vec3 toSun = u_suns[i].position - position;
+		float distanceSquared = max(dot(toSun, toSun), 0.0001);
+		float distanceToSun = sqrt(distanceSquared);
+		float cosine = clamp(dot(normal, toSun / distanceToSun), -1.0, 1.0);
+		float angle = acos(cosine);
+		float diskAngle = atan(u_suns[i].radius, distanceToSun);
+		float diffuse = max(0.0, max(cosine, max(cos(angle + diskAngle), cos(angle - diskAngle))));
+		color += u_suns[i].color * diffuse / max(u_suns[i].attenuation * distanceSquared, 0.0001);
+	}
+	return clamp(color, 0.0, 1.0);
+}
 void main()
 {
-	v_position = (u_model * vec4(a_position, 1.0)).xyz;
-	v_normal = mat3(u_model) * a_normal;
+	vec3 position = (u_model * vec4(a_position, 1.0)).xyz;
+	vec3 normal = normalize(mat3(u_model) * a_normal);
+	v_light = lighting(position, normal);
+	v_backLight = lighting(position, -normal);
 	v_uv = a_uv + u_uvOffset;
-	gl_Position = u_mvp * vec4(v_position, 1.0);
+	gl_Position = u_mvp * vec4(position, 1.0);
 }
 )";
 	const QByteArray fragment = version + (es
 		? "#define IN varying\n#define SAMPLE texture2D\n#define COLOR gl_FragColor\n"
 		: "#define IN in\n#define SAMPLE texture\nout vec4 fragColor;\n#define COLOR fragColor\n") + R"(
-IN vec3 v_normal;
-IN vec3 v_position;
+IN vec3 v_light;
+IN vec3 v_backLight;
 IN vec2 v_uv;
 uniform sampler2D u_texture;
 uniform sampler2D u_effect;
@@ -1628,7 +1805,6 @@ uniform float u_selfIllumination;
 uniform bool u_atlas;
 uniform bool u_twoSided;
 uniform vec2 u_inset;
-uniform vec3 u_light;
 uniform bool u_translucentPass;
 uniform int u_windowSide;
 void main()
@@ -1645,11 +1821,8 @@ void main()
 	}
 	if (texel.a < 0.01 || u_translucentPass != (texel.a < 0.999))
 		discard;
-	vec3 normal = normalize(v_normal);
-	if (u_twoSided && !gl_FrontFacing)
-		normal = -normal;
-	float diffuse = max(0.0, dot(normal, u_light));
-	vec3 color = texel.rgb * mix(0.48 + 0.52 * diffuse, 1.0, u_selfIllumination);
+	vec3 light = u_twoSided && !gl_FrontFacing ? v_backLight : v_light;
+	vec3 color = texel.rgb * mix(light, vec3(1.0), u_selfIllumination);
 	if (u_hasEffect)
 	{
 		vec4 effect = SAMPLE(u_effect, u_effectRect.xy + fract(v_uv) * u_effectRect.zw);
@@ -1698,6 +1871,18 @@ void AuLegacyShipRender::CleanupGL()
 	if (context())
 		makeCurrent();
 	m_Impl->console.DeleteGL();
+	for(const QString& id : {QStringLiteral("LegacyEngineStreak"), QStringLiteral("LegacyEngineGlow")})
+	{
+		AuGLEffects& re = *SceneRenderInfo().re;
+		if(auto* texture = re.FindTexture(id))
+		{
+			const GLuint name = texture->GlName();
+			re.glDeleteTextures(1, &name);
+			re.DeleteTexture(STATIC_TEXTURE_ID, id);
+		}
+	}
+	m_Impl->contrailStreak = m_Impl->contrailGlow = 0;
+	for(const auto& trail : m_Impl->contrails) trail->RestartParticleSystem();
 	if(m_Impl->ready) DpConsole::ReleaseSharedDeviceObjects(SceneRenderInfo());
 	if(m_Impl->skyJob)
 	{
@@ -1846,8 +2031,11 @@ bool AuLegacyShipRender::event(QEvent* event)
 	if(event->type() == QEvent::ShortcutOverride && m_Impl->Walkthrough())
 	{
 		const auto* key = static_cast<QKeyEvent*>(event);
-		if(m_Impl->HasKeyBinding(key) || (key->key() == Qt::Key_Escape
-			&& (key->modifiers() == Qt::NoModifier || key->modifiers() == Qt::ShiftModifier)))
+		// Escape belongs to the viewer's Back/visibility actions in both modes.
+		if(key->key() == Qt::Key_Escape
+			&& (key->modifiers() == Qt::NoModifier || key->modifiers() == Qt::ShiftModifier))
+			return QOpenGLWidget::event(event);
+		if(m_Impl->HasKeyBinding(key))
 		{
 			event->accept();
 			return true;
@@ -1893,8 +2081,11 @@ void AuLegacyShipRender::paintGL()
 		view.lookAt(eye, eye + direction, camera.up);
 		QMatrix4x4 projection;
 		const float nearPlane = 0.1f;
-		const float farPlane = std::max(nearPlane + 1.0f,
+		float farPlane = std::max(nearPlane + 1.0f,
 			(eye - (m_Impl->mesh.minimum + m_Impl->mesh.maximum) * 0.5f).length() + m_Impl->radius * 2.0f);
+		for(const auto& trail : m_Impl->contrails)
+			farPlane = std::max(farPlane, float((Point3(eye) - trail->GetPosition()).Length()
+				+ trail->GetVelocity().Length() * trail->GetLifeCycle() + trail->GetSize() / 900.f));
 		projection.perspective(FieldOfView(), float(std::max(1, width())) / std::max(1, height()), nearPlane, farPlane);
 		gl->glEnable(GL_DEPTH_TEST);
 		gl->glDepthFunc(GL_LEQUAL);
@@ -1907,7 +2098,15 @@ void AuLegacyShipRender::paintGL()
 		m_Impl->program->setUniformValue("u_mvp", projection * view);
 		m_Impl->program->setUniformValue("u_texture", 0);
 		m_Impl->program->setUniformValue("u_effect", 1);
-		m_Impl->program->setUniformValue("u_light", (-direction + QVector3D(0.15f, -0.1f, 0.5f)).normalized());
+		for(int i = 0; i < std::min(3, m_Impl->studioSuns.size()); ++i)
+		{
+			const AuGLSun& sun = m_Impl->studioSuns[i];
+			const QByteArray name = "u_suns[" + QByteArray::number(i) + "].";
+			m_Impl->program->setUniformValue((name + "position").constData(), QVector3D(sun.m_LocX, sun.m_LocY, sun.m_LocZ));
+			m_Impl->program->setUniformValue((name + "color").constData(), QVector3D(sun.m_ColorR, sun.m_ColorG, sun.m_ColorB));
+			m_Impl->program->setUniformValue((name + "attenuation").constData(), sun.m_Attenuation);
+			m_Impl->program->setUniformValue((name + "radius").constData(), sun.m_DiskRadius);
+		}
 		m_Impl->program->setUniformValue("u_translucentPass", false);
 		const qint64 elapsed = m_Impl->animationClock.elapsed();
 		const float seconds = float(elapsed) / 1000;
@@ -1936,9 +2135,11 @@ void AuLegacyShipRender::paintGL()
 			m_Impl->program->setUniformValue("u_model", transforms[source]);
 			m_Impl->program->setUniformValue("u_uvOffset", batch.uvVelocity * seconds);
 			m_Impl->program->setUniformValue("u_tint", batch.tint);
+			m_Impl->program->setUniformValue("u_ambient", batch.interior
+				? QVector3D(0.014352942f, 0.015f, 0.014705883f) : QVector3D(0.125f, 0.125f, 0.125f));
 			m_Impl->program->setUniformValue("u_selfIllumination", batch.selfIllumination);
 			m_Impl->program->setUniformValue("u_twoSided", batch.twoSided);
-			m_Impl->program->setUniformValue("u_windowSide", IsHullWindow(batch) ? (batch.interior ? 2 : 1) : 0);
+			m_Impl->program->setUniformValue("u_windowSide", IsStudioWindow(batch) ? (batch.interior ? 2 : 1) : 0);
 			if (batch.twoSided)
 				gl->glDisable(GL_CULL_FACE);
 			else
@@ -1955,6 +2156,7 @@ void AuLegacyShipRender::paintGL()
 		m_Impl->vao.release();
 		m_Impl->program->release();
 		m_Impl->RenderConsole(SceneRenderInfo(), projection, view);
+		m_Impl->RenderContrails(*SceneRenderInfo().re, projection, view);
 		m_Impl->program->bind();
 		m_Impl->vao.bind();
 		QVector<const TransparentTriangle*> transparent;
@@ -2020,8 +2222,8 @@ void AuLegacyShipRender::paintGL()
 	painter.setPen(QColor(195, 205, 215));
 	// Draw HUD after the scene, independently of whether any ship mesh exists.
 	// The native crosshair is a yellow textured dot with four spreading arms.
-	if(!SceneRenderInfo().IsViewTopDown()) PaintCrosshair(painter, size(), m_Impl->targetLevel);
-	if (!SceneRenderInfo().IsViewTopDown() && m_Impl->hasTarget && m_Impl->targetLevel > 0
+	if(SceneRenderInfo().m_ShowHUD && !SceneRenderInfo().IsViewTopDown()) PaintCrosshair(painter, size(), m_Impl->targetLevel);
+	if (SceneRenderInfo().m_ShowHUD && !SceneRenderInfo().IsViewTopDown() && m_Impl->hasTarget && m_Impl->targetLevel > 0
 		&& (m_Impl->targetPoint - m_Impl->Eye()).length() <= m_Impl->targetLevel * 10)
 		PaintShipTarget(painter, size(), m_Impl->targetName, m_Impl->targetHealth);
 	QString tips = m_Impl->glError;
@@ -2094,7 +2296,7 @@ void AuLegacyShipRender::UpdateMouseCapture()
 
 void AuLegacyShipRender::mousePressEvent(QMouseEvent* event)
 {
-	if(SceneInterfaceMousePress(event->pos()))
+	if(SceneRenderInfo().m_ShowHUD && SceneInterfaceMousePress(event->pos()))
 	{
 		event->accept();
 		return;
@@ -2133,7 +2335,7 @@ void AuLegacyShipRender::mouseMoveEvent(QMouseEvent* event)
 
 void AuLegacyShipRender::mouseReleaseEvent(QMouseEvent* event)
 {
-	if(SceneInterfaceMouseRelease(event->pos()))
+	if(SceneRenderInfo().m_ShowHUD && SceneInterfaceMouseRelease(event->pos()))
 	{
 		event->accept();
 		return;
@@ -2189,20 +2391,6 @@ void AuLegacyShipRender::keyPressEvent(QKeyEvent* event)
 			event->accept();
 			return;
 		}
-	if(key == Qt::Key_Escape && !m_Impl->HasKeyBinding(event)
-		&& (event->modifiers() == Qt::NoModifier || event->modifiers() == Qt::ShiftModifier))
-	{
-		if(!event->isAutoRepeat())
-		{
-			DiControlInputArray active;
-			active.append(DiControlInput(-1, event->modifiers() == Qt::ShiftModifier
-				? CI_FirstThirdPersonViewToggle : CI_TopDownViewToggle));
-			ProcessControlInput(active);
-			update();
-		}
-		event->accept();
-		return;
-	}
 	if(m_Impl->MatchesKey(m_Impl->toggleControl, event))
 	{
 		if(!event->isAutoRepeat())

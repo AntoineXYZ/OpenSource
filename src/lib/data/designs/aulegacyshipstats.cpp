@@ -320,6 +320,7 @@ Stats CalculateStats(const Design& design)
 	{
 		stats.width = hullBounds.width();
 		stats.length = hullBounds.height();
+		stats.hullCenter = hullBounds.center();
 		// AnalyzeDesign extends the extrema one full deck above and below.
 		stats.height = (stats.maximumDeck - stats.minimumDeck + 2) * DeckHeight;
 	}

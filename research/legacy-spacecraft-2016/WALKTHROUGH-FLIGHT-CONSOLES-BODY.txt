@@ -53,13 +53,37 @@ Both receive session-unique IDs through Create(). GetAtomEnvironment supplies
 legacy room, floor, gravity, ground material and hatch attachment information;
 MoveSubatom resolves native displacement against the authored ship mesh.
 The adapter reports solid rendering to the native controller. Exterior air
-density is zero for recovered unrestricted space acceleration; interiors use
-.5. Gravity wells retain EB_Gravity and EB_GravityWell: native code suppresses
-falling while keeping the well's movement limits.
+density remains a preview approximation of zero; the original studio query
+uses .5, as do our interiors. Gravity wells retain EB_Gravity and
+EB_GravityWell: native code suppresses falling while keeping movement limits.
 
 The controller uses global game configuration and the existing Scene controls.
 Legacy collision shapes and ship membership remain approximations described
 in WALKTHROUGH-COLLISION.txt. The floor plan remains the existing 2D editor.
+
+Render-mode vertical movement correction
+---------------------------------------
+The reported case is outside the ship, with studio gravity disabled.
+Rechecked the solid-render branch of 0x18031be50: lone C and Z both normalize
+to the full human thrust of 5ft/s^2. Its separate wireframe multiplier is not
+applicable. DaPerson::DecayMoveActions (0x18032c740) increases movement power
+by 10 percentage points per update, versus the modern controller's 1/15.
+The original constructors (0x18031aa40 and 0x18031af10) initialize it to zero;
+expiration of any movement axis resets it to zero again.
+
+LegacyRenderPerson restores this ramp for exterior zero-gravity C/Z, including
+combined directions. The native controller still handles other movement,
+friction, braking, poses and collisions. Clearing input also clears this ramp.
+At full power the recovered force already matches modern solid rendering;
+the ramp difference alone does not establish a sustained-speed discrepancy.
+
+The adapter also discarded time spent in TickMovement and AnimatePose by
+restarting personClock after both. It now retains the start of the physics
+step, so that work is counted on the following step, as in AuModel's timer
+handling. This prevents simulation time loss when movement processing is
+expensive. Its contribution to the user's slowdown is not runtime-measured.
+No build was run; compare C/Z after the user's Windows rebuild, including
+release/coasting, Space braking, direction reversal and re-entry into gravity.
 
 Jump/landing integration correction
 ----------------------------------
@@ -188,10 +212,13 @@ by cos(angle)*distance and sin(angle)*distance, with the existing look direction
 
 The adapter uses shared AuAtomRenderInfo mode/distance/angle/altitude settings
 and AuDesignerView::ProcessControlInput for configured Scene camera controls
-(keyboard, mouse, wheel and joystick). Escape and Shift+Escape provide legacy
-aliases unless assigned to another supported control. Modern defaults remain
-Backspace and Shift+Backspace. Escape no longer exits while in render mode;
-Ctrl+W/Exit Designer still closes. Top-down toggle returns to the preferred
+(keyboard, mouse, wheel and joystick). Camera defaults remain Backspace and
+Shift+Backspace. The erroneous Escape camera aliases have been removed:
+Escape returns to floor plan, then exits through the existing save/exit path.
+Shift+Escape toggles the HUD, sidebar and tools, retaining the tools' previous
+visibility on restoration. Both actions also belong to the floating tool dock;
+modal dialogs retain their own Escape handling. Ctrl+W/Exit Designer closes.
+Top-down toggle returns to the preferred
 first/third-person mode; first/third toggle exits top-down before toggling.
 Geometry, sky, hand picking and OpenAL listener use the same camera basis.
 Crosshair/ship-target HUD are suppressed in top-down. Avatar movement and
@@ -257,8 +284,8 @@ With default controls after building:
      E exits; another deck's console and out-of-range consoles must not engage.
      Check E and Space still release ladders, and W/S still climbs them.
   4. Look down while standing, walking, running, climbing and seated: no body
-     should render, regardless of full/headless/hidden body settings. Escape
-     enters/leaves top-down; Shift+Escape exits top-down or toggles first/third.
+     should render, regardless of full/headless/hidden body settings. Backspace
+     enters/leaves top-down; Shift+Backspace exits it or toggles first/third.
      Test the configured Scene bindings, distance/angle adjustments and rebinding.
      Check sky orientation, door clicks, mouse capture, audio and settings dialogs
      in each mode. Reopen the designer and revisit floor-plan/render mode.

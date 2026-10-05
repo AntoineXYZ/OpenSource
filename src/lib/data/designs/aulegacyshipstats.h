@@ -62,6 +62,7 @@ struct Stats
 	double width = 0;
 	double length = 0;
 	double height = 0;
+	QPointF hullCenter;
 	int equipmentTechLevel = 0;
 	int equipmentTechSource = 0;
 	QMap<quint8, WeaponBayStats> weaponBays;
