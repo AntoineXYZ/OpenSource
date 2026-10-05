@@ -5588,11 +5588,11 @@ void AuDesignerFrame::LaunchDesigner()
 		return;
 
 	QMessageBox choice(QMessageBox::Question, tr("Choose Designer"),
-		tr("Choose a designer. Exit the selected designer before choosing another.\n\n"
-			"Legacy Spacecraft opens saved 2016 .ship designs for inspection."),
+		tr("Choose a designer.\n\n"
+			"Legacy Spacecraft is the old designer."),
 		QMessageBox::NoButton, this);
 	QPushButton* modern = choice.addButton(tr("Modern Designer"), QMessageBox::AcceptRole);
-	QPushButton* legacy = choice.addButton(tr("Legacy Spacecraft"), QMessageBox::ActionRole);
+	QPushButton* legacy = choice.addButton(tr("Old Designer"), QMessageBox::ActionRole);
 	choice.addButton(QMessageBox::Cancel);
 	choice.setDefaultButton(modern);
 	choice.exec();
