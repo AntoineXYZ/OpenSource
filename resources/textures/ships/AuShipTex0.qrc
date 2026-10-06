@@ -107,5 +107,8 @@
 	<file>data/EffWormPos5.png</file>
 	<file>data/EffWormPos6.png</file>
 	<file>data/txSpacecraft0Lit.png</file>
+	<file>data/legacy_txSpacecraft0Lit.png</file>
+	<file>data/legacy_pc_Console.bmp</file>
+	<file>data/legacy_ShipEffects.png</file>
 </qresource>
 </RCC>

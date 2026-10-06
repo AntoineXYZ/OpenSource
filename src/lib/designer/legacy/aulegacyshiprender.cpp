@@ -6,8 +6,6 @@
 #include "aulegacyshiphud.h"
 #include "aulegacyshipperformance.h"
 #include "aulegacyshipsound.h"
-#include "aulegacyshipeffects.h"
-#include "aulegacyshiphelm.h"
 #include "auapp.h"
 #include "auclientglobal.h"
 #include "augleffects.h"
@@ -1103,8 +1101,9 @@ public:
 		if (textures.contains(key))
 			return remember(textures.value(key));
 		QImage tile;
-		if (batch.textureFile == QStringLiteral("legacy:pc_Console.bmp"))
-			tile = QImage::fromData(qUncompress(QByteArray::fromBase64(LegacyShipHelmBmp)), "BMP").mirrored();
+		if (batch.textureFile == QStringLiteral("legacy:pc_Console.bmp")){
+    		tile = QImage(":/data/legacy_pc_Console.bmp").mirrored();
+		}
 		else if (!batch.textureFile.isEmpty())
 			tile = QImage(batch.textureFile).mirrored();
 		else if (material < 0)
@@ -1116,7 +1115,7 @@ public:
 		{
 			if (atlas.isNull())
 			{
-					atlas.load(QStringLiteral(":/data/txSpacecraft0Lit.png"));
+				atlas.load(QStringLiteral(":/data/legacy_txSpacecraft0Lit.png"));
 			}
 			if (!atlas.isNull())
 			{
@@ -1213,10 +1212,7 @@ public:
 			return;
 		if (!effectTexture)
 		{
-			QByteArray encoded;
-			for (const char* part : LegacyShipEffectsPng)
-				encoded.append(part);
-			const QImage effects = QImage::fromData(QByteArray::fromBase64(encoded), "PNG").mirrored();
+			const QImage effects = QImage(":/data/legacy_ShipEffects.png");
 			effectTexture = new QOpenGLTexture(effects);
 			effectTexture->setWrapMode(QOpenGLTexture::ClampToEdge);
 			effectTexture->setMinificationFilter(QOpenGLTexture::Linear);
