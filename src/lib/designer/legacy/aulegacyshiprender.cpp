@@ -6,7 +6,6 @@
 #include "aulegacyshiphud.h"
 #include "aulegacyshipperformance.h"
 #include "aulegacyshipsound.h"
-#include "aulegacyshipatlas.h"
 #include "aulegacyshipeffects.h"
 #include "aulegacyshiphelm.h"
 #include "auapp.h"
@@ -1117,16 +1116,7 @@ public:
 		{
 			if (atlas.isNull())
 			{
-				QByteArray encoded;
-				encoded.reserve(3502520);
-				for (const char* part : LegacyShipAtlasPng)
-					encoded.append(part);
-				atlas.loadFromData(QByteArray::fromBase64(encoded), "PNG");
-				if (atlas.isNull())
-				{
-					textureWarnings.append(QStringLiteral("The original spacecraft atlas could not be decoded; using the current source atlas."));
 					atlas.load(QStringLiteral(":/data/txSpacecraft0Lit.png"));
-				}
 			}
 			if (!atlas.isNull())
 			{
