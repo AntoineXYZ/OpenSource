@@ -227,7 +227,7 @@ protected:
 		if (!grid) return;
 		QPainter painter(this);
 		painter.setRenderHint(QPainter::Antialiasing);
-		painter.setPen(QPen(QColor(160, 57, 64, 210), 1.0));
+		painter.setPen(QPen(QColor(255, 0, 0, 210), 1.0));
 		painter.setBrush(Qt::NoBrush);
 		for (const QRect& group : groups)
 		{
