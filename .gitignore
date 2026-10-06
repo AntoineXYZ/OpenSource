@@ -3,6 +3,7 @@
 /release/
 /old-editor/
 /scripts/
+/research/
 
 __pycache__/
 *.pyc
