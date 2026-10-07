@@ -706,7 +706,7 @@ public:
 		QAction* newAction = MakeAction("New spacecraft", "dp_New", "Start a new spacecraft (Ctrl+N).");
 		newAction->setShortcut(QKeySequence::New);
 		QObject::connect(newAction, &QAction::triggered, window, &AuLegacyShipViewer::NewDesign);
-		QAction* openAction = MakeAction("Open .ship...", "dp_Load", "Open a 2016 spacecraft design (Ctrl+O).");
+		QAction* openAction = MakeAction("Open .ship...", "dp_Load", "Open a spacecraft design (Ctrl+O).");
 		openAction->setShortcut(QKeySequence::Open);
 		QObject::connect(openAction, &QAction::triggered, window, &AuLegacyShipViewer::ChooseFile);
 		QAction* saveAction = MakeAction("Save spacecraft", "dp_Save", "Save spacecraft to a .ship file (Ctrl+S).");
@@ -1795,8 +1795,8 @@ void AuLegacyShipViewer::ChooseFile()
 		directory = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
 	if(directory.isEmpty() || !QFileInfo(directory).isDir())
 		directory = QDir::homePath();
-	const QString selected = QFileDialog::getOpenFileName(this, QStringLiteral("Open 2016 spacecraft design"),
-		directory, QStringLiteral("2016 spacecraft designs (*.ship);;All files (*)"));
+	const QString selected = QFileDialog::getOpenFileName(this, QStringLiteral("Open spacecraft design"),
+		directory, QStringLiteral("Old spacecraft designs (*.ship);;All files (*)"));
 	if (!selected.isEmpty())
 		OpenFile(selected);
 }
