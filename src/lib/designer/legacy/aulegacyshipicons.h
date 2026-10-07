@@ -6,7 +6,7 @@
 #include <QString>
 
 // Accepts an original base name (dp_Bridge), filename, or :data/ resource path.
-// Self-contained original resources also work in the standalone QApplication.
+// Original 2016 PNGs are registered by AuShipTex0.qrc through AuTexture.
 QIcon AuLegacyShipIcon(const QString& originalBaseName);
 
 QImage AuLegacyShipDesignAtlas();
