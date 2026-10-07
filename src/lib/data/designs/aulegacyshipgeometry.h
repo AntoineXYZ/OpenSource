@@ -1,6 +1,7 @@
 #ifndef AuLegacyShipGeometry_H
 #define AuLegacyShipGeometry_H
 
+#include <QByteArray>
 #include <QPointF>
 #include <QPolygonF>
 #include <QString>
@@ -16,6 +17,11 @@ QPolygonF FillShape(quint8 mask, const QPointF& cursor);
 // The original raster edge walker supports horizontal, vertical and 45-degree
 // edges. Reject unsupported input before its sign-step loops can fail to end.
 bool IsSupportedBoundary(const QPolygonF& boundary, QString* error = nullptr);
+
+// DnFloorBuffer82::FillRoom (2016 AuData13.dll 0x180171d60).
+// The 256 by 256 half-grid raster is indexed x*256+y: 0 outside,
+// 1 perimeter, 2 interior. Invalid input leaves output unchanged.
+bool RasterFloor(const QPolygonF& boundary, QByteArray& output, QString* error = nullptr);
 
 // Original DnRoom operations. Failed/unchanged operations leave boundary alone.
 // Subtract returns true when a room is fully erased (the new boundary is empty).

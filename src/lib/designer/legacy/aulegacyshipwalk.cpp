@@ -213,6 +213,7 @@ public:
 	QVector<Triangle> triangles;
 	QVector<Box> obstacles;
 	QVector<Ladder> ladders;
+	QHash<quint32, quint32> hatchDoors;
 	QVector<RoomVolume> rooms;
 	QHash<quint64, QVector<int>> movementCells;
 	QHash<quint64, QVector<int>> sightCells;
@@ -371,6 +372,21 @@ public:
 				}
 		}
 		return result;
+	}
+
+	bool AboveOpenHatch(const QVector3D& origin) const
+	{
+		// 2016 DaSpaceShip::HatchBelow (AuAtom13.dll:1803f4ed0) uses
+		// the atom origin's deck and rounded half-grid cell, not ladder reach.
+		if(!Finite(origin)) return false;
+		const double x = std::round(double(origin.x()) / CoordinateSpacing);
+		const double y = std::round(double(origin.y()) / CoordinateSpacing);
+		if(x < -120 || x > 120 || y < -120 || y > 120) return false;
+		const int deck = int(qBound(-127.0, std::floor((double(origin.z()) + .05) / DeckHeight), 127.0));
+		const quint16 packed = quint16(((int(x) & 0xff) << 8) | (int(y) & 0xff));
+		const quint32 key = (quint32(quint8(deck)) << 16) | packed;
+		const auto hatch = hatchDoors.constFind(key);
+		return hatch != hatchDoors.constEnd() && openDoors.contains(hatch.value());
 	}
 
 	int RoomType(const QVector3D& feet) const
@@ -534,6 +550,7 @@ void WalkWorld::SetMesh(const Mesh& mesh, const Design& design)
 	world.triangles.clear(); world.obstacles.clear(); world.openDoors.clear();
 	world.movementCells.clear(); world.sightCells.clear();
 	world.rooms.clear(); world.ladders.clear(); world.roomCells.clear();
+	world.hatchDoors.clear();
 	world.consoleId = 0;
 	int lowestDeck = MaximumDeck + 1;
 	int highestDeck = MinimumDeck - 1;
@@ -605,6 +622,8 @@ void WalkWorld::SetMesh(const Mesh& mesh, const Design& design)
 			ladder.rotation = DetailRotationStep(detail.detailType);
 			ladder.deck = detail.deck;
 			world.ladders.append(ladder);
+			const quint32 key = (quint32(quint8(detail.deck)) << 16) | detail.packedXY;
+			if(!world.hatchDoors.contains(key)) world.hatchDoors.insert(key, detail.detailId);
 		}
 		if(detail.deck < lowestDeck || detail.deck > highestDeck || !BlocksPathCell(detail.detailType)) continue;
 		// The original painter does not test hiddenRaw. Detail coordinates are
@@ -780,6 +799,7 @@ WalkEnvironment WalkWorld::Environment(const QVector3D& feet, bool studioGravity
 	// keep finding that floor so native physics can correct the penetration.
 	const float probeHeight = std::max(.25f, bodyOriginHeight);
 	const QVector3D origin = feet + QVector3D(0, 0, probeHeight);
+	environment.aboveOpenHatch = m_Impl->AboveOpenHatch(origin);
 	if(!environment.inShip)
 	{
 		// A pose expansion below the deck must not lose ship gravity while
@@ -805,7 +825,7 @@ WalkEnvironment WalkWorld::Environment(const QVector3D& feet, bool studioGravity
 	return environment;
 }
 
-void WalkWorld::MoveDisplacement(WalkState& state, const QVector3D& displacement, bool studioGravity) const
+void WalkWorld::MoveDisplacement(WalkState& state, const QVector3D& displacement, bool studioGravity, float bodyOriginHeight) const
 {
 	if(!Finite(displacement) || !Finite(state.feet)) return;
 	const Impl& world = *m_Impl;
@@ -861,9 +881,10 @@ void WalkWorld::MoveDisplacement(WalkState& state, const QVector3D& displacement
 		}
 		state.grounded = contact.ground;
 	}
-	const WalkEnvironment environment = Environment(state.feet, studioGravity, world.settings.eyeHeight);
+	const WalkEnvironment environment = Environment(state.feet, studioGravity, bodyOriginHeight);
 	state.inShip = environment.inShip;
-	state.gravityActive = environment.gravity && !environment.gravityWell;
+	state.gravityActive = environment.gravity && !environment.gravityWell
+		&& !environment.aboveOpenHatch && !state.ladderEngaged;
 	state.gravitySuspended = !state.gravityActive;
 	state.grounded = state.gravityActive && !state.ladderEngaged && environment.fallDistance < .25f;
 	state.onLadder = state.ladderEngaged;

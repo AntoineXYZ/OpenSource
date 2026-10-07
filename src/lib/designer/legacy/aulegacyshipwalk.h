@@ -51,6 +51,7 @@ struct WalkEnvironment
 	bool inShip = false;
 	bool gravity = false;
 	bool gravityWell = false;
+	bool aboveOpenHatch = false;
 	float fallDistance = 1000000;
 };
 
@@ -75,7 +76,7 @@ public:
 	bool FindSpawn(const Design& design, int deck, WalkState& state) const;
 	WalkEnvironment Environment(const QVector3D& feet, bool studioGravity, float bodyOriginHeight) const;
 	// Geometry adapter only: native DaPerson integrates forces and velocities.
-	void MoveDisplacement(WalkState& state, const QVector3D& displacement, bool studioGravity) const;
+	void MoveDisplacement(WalkState& state, const QVector3D& displacement, bool studioGravity, float bodyOriginHeight) const;
 	// Hand rays include visible passable equipment and open panels. Passing
 	// includeOpenDoors=false applies legacy sight eligibility and skips open
 	// panels. Invisible obstacle-cell volumes never occlude either ray type.

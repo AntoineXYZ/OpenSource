@@ -609,9 +609,11 @@ public:
 			const auto* creature = static_cast<const DaPerson*>(atom);
 			const QVector3D feet = Vector3(creature->Location()) - QVector3D(0, 0, creature->CGHeight());
 			const WalkEnvironment sample = world.Environment(feet, gravity, creature->CGHeight());
-			const ON_GROUND ground = sample.gravity && !sample.gravityWell && sample.fallDistance < .25f && !character.ladderEngaged
+			const ON_GROUND ground = sample.gravity && !sample.gravityWell && !sample.aboveOpenHatch
+				&& sample.fallDistance < .25f && !character.ladderEngaged
 				? (sample.inShip ? OG_Metal : OG_HardFloor) : OG_None;
-			result.SetDesignScene(sample.gravity, sample.inShip, ROOMTYPE(sample.roomType), sample.gravityWell, character.ladderEngaged,
+			result.SetDesignScene(sample.gravity, sample.inShip, ROOMTYPE(sample.roomType), sample.gravityWell,
+				character.ladderEngaged || sample.aboveOpenHatch,
 				sample.fallDistance, atom->Transform().UnProjectVector(AuPoint(0, 0, 1)), ground);
 		};
 		environment->move = [this](DaAtom* atom, const AuPoint& delta, int milliseconds) {
@@ -639,7 +641,7 @@ public:
 			{
 				character.feet = start;
 				character.velocity = displacement * (1000.f / milliseconds);
-				world.MoveDisplacement(character, displacement, gravity);
+				world.MoveDisplacement(character, displacement, gravity, creature->CGHeight());
 			}
 			AuAtomPos position(atom->ParentId(), Point3(character.feet + QVector3D(0, 0, creature->CGHeight())), atom->Rotation());
 			atom->ChangePos(position);
@@ -690,7 +692,8 @@ public:
 		character.velocity = Vector3(person->Transform().ProjectVector(person->Vector()));
 		const WalkEnvironment sample = world.Environment(character.feet, gravity, person->CGHeight());
 		character.inShip = sample.inShip;
-		character.gravityActive = sample.gravity && !sample.gravityWell;
+		character.gravityActive = sample.gravity && !sample.gravityWell
+			&& !sample.aboveOpenHatch && !character.ladderEngaged;
 		character.gravitySuspended = !character.gravityActive;
 		character.grounded = character.gravityActive && !character.ladderEngaged && sample.fallDistance < .25f;
 		character.onLadder = character.ladderEngaged;

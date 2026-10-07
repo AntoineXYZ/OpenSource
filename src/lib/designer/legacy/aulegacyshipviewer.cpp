@@ -5,6 +5,7 @@
 #include "aulegacyshipequipment.h"
 #include "aulegacyshipgeometry.h"
 #include "aulegacyshipicons.h"
+#include "aulegacyshippathreport.h"
 #include "aulegacyshiprender.h"
 #include "aulegacyshipsave.h"
 #include "aulegacyshipstatsreport.h"
@@ -17,7 +18,10 @@
 #include <QCloseEvent>
 #include <QComboBox>
 #include <QCheckBox>
+#include <QCoreApplication>
 #include <QCursor>
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QDir>
 #include <QDockWidget>
 #include <QFileDialog>
@@ -39,6 +43,8 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPixmap>
+#include <QPointer>
+#include <QProgressDialog>
 #include <QSet>
 #include <QSettings>
 #include <QScrollBar>
@@ -729,6 +735,10 @@ public:
 			renderView->SetGravity(enabled);
 			ShowRenderHelp();
 		});
+		checkPathsAction = MakeAction("Check paths", "dp_Check",
+			"Check paths from berths to stations, turrets and the outside.");
+		checkPathsAction->setEnabled(false);
+		QObject::connect(checkPathsAction, &QAction::triggered, window, [this]() { CheckPaths(); });
 		roomsAction = new QAction(QStringLiteral("Rooms"), window);
 		detailsAction = new QAction(QStringLiteral("Equipment markers"), window);
 		gridAction = MakeAction("Grid", "dp_ShowDesignPlane", "Show the selected grid line families.");
@@ -985,7 +995,7 @@ public:
 		AddButton(outer, saveAction, 0, 3);
 		AddButton(outer, renderAction, 1, 0);
 		AddButton(outer, gravityAction, 1, 1);
-		AddButton(outer, UnavailableAction("Check paths", "dp_Check", "Path checking is not available yet."), 1, 2);
+		AddButton(outer, checkPathsAction, 1, 2);
 		AddButton(outer, UnavailableAction("Burn design CD", "dp_BurnCD", "In-world design publishing is not available here."), 1, 3);
 		AddButton(outer, deckUpAction, 2, 0);
 		AddButton(outer, lineActions[2], 2, 1);
@@ -1170,6 +1180,78 @@ public:
 		statsDirty = true;
 		if (!statsTimer->isActive())
 			statsTimer->start();
+	}
+
+	void CheckPaths()
+	{
+		if (!loaded || pathsChecking)
+			return;
+		InvalidatePathReport();
+		pathsChecking = true;
+		checkPathsAction->setEnabled(false);
+		QProgressDialog progress(QStringLiteral("Checking paths..."), QStringLiteral("Cancel"), 0, 0, window);
+		progress.setWindowTitle(QStringLiteral("Checking paths..."));
+		progress.setWindowModality(Qt::WindowModal);
+		progress.setMinimumDuration(0);
+		progress.setAutoClose(false);
+		progress.setAutoReset(false);
+		progress.show();
+		const QString report = AuLegacyShipPathReport(design,
+			[&progress](const QString& label, int value, int maximum) {
+				if (progress.wasCanceled())
+					return false;
+				if (progress.labelText() != label)
+					progress.setLabelText(label);
+				if (progress.maximum() != maximum)
+					progress.setRange(0, maximum);
+				if (progress.value() != value)
+					progress.setValue(value);
+				QCoreApplication::processEvents();
+				return !progress.wasCanceled();
+			});
+		progress.hide();
+		pathsChecking = false;
+		checkPathsAction->setEnabled(loaded);
+		if (report.isEmpty())
+			return;
+		QDialog* dialog = new QDialog(window);
+		pathReportDialog = dialog;
+		dialog->setAttribute(Qt::WA_DeleteOnClose);
+		dialog->setWindowTitle(QStringLiteral("Check Paths Report"));
+		dialog->setWindowIcon(AuLegacyShipIcon(QStringLiteral("dp_Check")));
+		dialog->resize(720, 520);
+		dialog->setStyleSheet(QStringLiteral(
+			"QDialog, QTextBrowser { background: #081a40; color: #b8cef5; }"
+			"QLabel { color: #b8cef5; }"));
+		QVBoxLayout* layout = new QVBoxLayout(dialog);
+		const QString legends[] = {
+			QStringLiteral("Warnings do not prevent a design from being burned to a disk and manufactured."),
+			QStringLiteral("<span style=\"color: rgb(255,0,0);\">Path Warning</span> Identifies something that may prevent access to parts of the ship by players and AI."),
+			QStringLiteral("<span style=\"color: rgb(255,255,0);\">Security Warning</span> Identifies something that may be unsecure.")
+		};
+		for (const QString& legend : legends)
+		{
+			QLabel* label = new QLabel(legend, dialog);
+			label->setWordWrap(true);
+			layout->addWidget(label);
+		}
+		QTextBrowser* browser = new QTextBrowser(dialog);
+		browser->setAccessibleName(QStringLiteral("Spacecraft path check report"));
+		browser->setOpenLinks(false);
+		browser->setOpenExternalLinks(false);
+		browser->setHtml(report);
+		layout->addWidget(browser, 1);
+		QDialogButtonBox* buttons = new QDialogButtonBox(QDialogButtonBox::Close, dialog);
+		QObject::connect(buttons, &QDialogButtonBox::rejected, dialog, &QDialog::reject);
+		layout->addWidget(buttons);
+		dialog->show();
+	}
+
+	void InvalidatePathReport()
+	{
+		if (pathReportDialog)
+			pathReportDialog->close();
+		pathReportDialog.clear();
 	}
 
 	void RefreshStats()
@@ -1523,6 +1605,7 @@ public:
 
 	void IndexDecks()
 	{
+		InvalidatePathReport();
 		ScheduleStatsRefresh();
 		roomDecks.clear();
 		detailDecks.clear();
@@ -1620,6 +1703,7 @@ public:
 		design = std::move(incoming);
 		fileName = path.isEmpty() ? QString() : QFileInfo(path).absoluteFilePath();
 		loaded = true;
+		checkPathsAction->setEnabled(true);
 		modified = false;
 		renderDirty = true;
 		gravityAction->setChecked(false);
@@ -1653,6 +1737,8 @@ public:
 	QAction* gridAction;
 	QAction* renderAction;
 	QAction* gravityAction;
+	QAction* checkPathsAction;
+	QPointer<QDialog> pathReportDialog;
 	QAction* closeAction;
 	QAction* eraseAction;
 	QAction* deleteEquipmentAction;
@@ -1690,6 +1776,7 @@ public:
 	bool modified = false;
 	bool fittedOnShow = false;
 	bool renderDirty = true;
+	bool pathsChecking = false;
 	bool interfaceVisible = true;
 	bool toolsWereVisible = true;
 };
