@@ -2,6 +2,9 @@
 #define AuLegacyShipRender_H
 
 #include "audesignerview.h"
+#include <QIcon>
+#include <QPointF>
+#include <QRectF>
 #include <QStringList>
 #include <functional>
 
@@ -12,6 +15,18 @@ class QWheelEvent;
 class QFocusEvent;
 class QHideEvent;
 class QShowEvent;
+class QMatrix4x4;
+
+struct AuLegacyShipEditTool
+{
+	bool active = false;
+	bool erasing = false;
+	bool equipment = false;
+	int radius = 0;
+	int rotation = 0;
+	QIcon icon;
+	QRectF footprint;
+};
 
 class AuLegacyShipRender : public AuDesignerView
 {
@@ -23,12 +38,20 @@ public:
 	void SetDeck(int deck);
 	void SetGravity(bool enabled);
 	void ResetCharacter();
-	void SetFloorPlan(QWidget* floorPlan);
-	void SetWalkthrough(bool enabled);
+	void SetRenderSolid(bool solid);
+	void SetGrid(bool visible, quint8 mask);
+	void SetEditTool(const AuLegacyShipEditTool& tool);
+	void ResetEditStroke();
+	void FocusDesignPlane();
+	void UseHandCursor();
+	bool SkyboxNeedsPreparation() const;
+	void PrepareSkybox();
 	void SetInterfaceVisible(bool visible);
 	void ControlsChanged();
 	QStringList Warnings() const;
 	std::function<void(const QString&)> tipsChanged;
+	std::function<void(const QPointF&)> cellEntered;
+	std::function<void(int)> rotateEquipment;
 
 protected:
 	void initializeGL() override;
@@ -57,12 +80,17 @@ private:
 	float FieldOfView() const;
 	void UpdateTarget(qint64 now);
 	void UpdateMouseCapture();
+	void UpdateToolCursor();
 	void ReleaseMouseCapture();
 	void CenterMouse();
 	void UseDoor(const QPoint& screenPosition);
 	bool UseConsole(const QPoint& screenPosition);
 	void OperateDoor(quint32 id, bool open);
 	void OperateSystem(int action);
+	bool DesignPlanePoint(const QPoint& pixel, QPointF& point);
+	void UpdateEditCursor(const QPoint& pixel);
+	void EditCursor();
+	void RenderWireframe(const QMatrix4x4& viewProjection);
 	class Impl;
 	Impl* m_Impl;
 };

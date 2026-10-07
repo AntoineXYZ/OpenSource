@@ -19,30 +19,21 @@
 #include <QComboBox>
 #include <QCheckBox>
 #include <QCoreApplication>
-#include <QCursor>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QDockWidget>
 #include <QFileDialog>
 #include <QFileInfo>
-#include <QFont>
-#include <QFontMetricsF>
+#include <QEventLoop>
 #include <QFrame>
-#include <QGraphicsItem>
-#include <QGraphicsScene>
-#include <QGraphicsSimpleTextItem>
-#include <QGraphicsView>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QKeySequence>
-#include <QKeyEvent>
 #include <QLabel>
 #include <QMap>
 #include <QMessageBox>
-#include <QMouseEvent>
 #include <QPainter>
-#include <QPixmap>
 #include <QPointer>
 #include <QProgressDialog>
 #include <QSet>
@@ -54,62 +45,21 @@
 #include <QStandardPaths>
 #include <QStringList>
 #include <QStyle>
-#include <QStyleOptionGraphicsItem>
 #include <QTextDocument>
 #include <QTextBrowser>
 #include <QToolButton>
 #include <QTimer>
 #include <QVBoxLayout>
-#include <QWheelEvent>
 #include <algorithm>
-#include <cmath>
 #include <functional>
 #include <utility>
 
 namespace
 {
-enum ItemData
-{
-	RecordKind = Qt::UserRole,
-	RecordIndex
-};
-
-enum Kind
-{
-	RoomKind = 1,
-	DetailKind,
-	GridLabelKind
-};
-
-// AuAtom13.dll RenderSpacecraftGrid: 40 full grid cells either side of origin.
-constexpr int GridHalfCells = 40;
-constexpr double GridRadius = GridHalfCells * AuLegacyShip::GridSpacing;
 // DaDesignPlane::MoveUp/MoveDown reject destination decks >=42 / <=-42.
 // Grid movement is independent of the narrower spacecraft room-paint limits.
 constexpr int MinimumGridDeck = -41;
 constexpr int MaximumGridDeck = 41;
-
-QRectF GridBounds()
-{
-	return QRectF(-GridRadius, -GridRadius, GridRadius * 2.0, GridRadius * 2.0);
-}
-
-QString Hex(unsigned int value, int width = 2)
-{
-	return QStringLiteral("0x%1").arg(value, width, 16, QLatin1Char('0'));
-}
-
-QColor RecordColor(unsigned int value, int alpha = 255)
-{
-	QColor color = QColor::fromHsv(int((value * 137u + 31u) % 360u), 145, 230);
-	color.setAlpha(alpha);
-	return color;
-}
-
-QPointF ScenePoint(const QPointF& point)
-{
-	return QPointF(point.x(), -point.y());
-}
 
 struct RoomChoice
 {
@@ -195,15 +145,6 @@ const EquipmentChoice EquipmentChoices[] = {
 	{57, 133, "Motorbike", "c_MotorBike", 4, 11},
 	{57, 82, "SUV", "c_Suv", 4, 12}
 };
-
-const EquipmentChoice* EquipmentFor(int type, quint16 commodity)
-{
-	const int base = AuLegacyShip::CanonicalDetailType(type);
-	for (const EquipmentChoice& choice : EquipmentChoices)
-		if (choice.type == base && (base != 57 || choice.commodity == commodity))
-			return &choice;
-	return nullptr;
-}
 
 bool EquipmentUsesBrush(int type)
 {
@@ -298,416 +239,18 @@ QString RoomName(int type)
 	return QStringLiteral("Type %1").arg(type);
 }
 
-QColor RoomLabelColor(unsigned int type)
-{
-	// Original AuAtom13.dll RGB float table at 0x180a0e620, recovered as RGB8.
-	static const QRgb colors[] = {
-		0xff0000, 0x89a349, 0xffdd00, 0x707070, 0x2d0e93,
-		0xddc358, 0xa3e293, 0xb7ac80, 0xb7b7b7, 0xedfaff,
-		0xedeca8, 0xc9ffbc, 0xfffc5b, 0xff9a3d, 0xe50000,
-		0x807080, 0xff0087, 0x5de3f4, 0x69f4ca, 0xa50050,
-		0xba4cd3, 0x3258c9, 0xe74222, 0xe74222, 0xe74222
-	};
-	return type < sizeof(colors) / sizeof(colors[0])
-		? QColor::fromRgb(colors[type]) : RecordColor(type);
-}
-
-class RoomLabel : public QGraphicsItem
-{
-public:
-	RoomLabel(const QString& text, const QFont& font, const QColor& color)
-		: m_Text(text), m_Font(font), m_Color(color)
-	{
-		setFlag(QGraphicsItem::ItemIgnoresTransformations);
-		setAcceptedMouseButtons(Qt::NoButton);
-		setZValue(20.0);
-		const QRectF measured = QFontMetricsF(m_Font).boundingRect(QRectF(),
-			Qt::AlignLeft | Qt::AlignBottom | Qt::TextSingleLine, m_Text);
-		// The original colored pass is one screen pixel above/left of its shadow.
-		m_TextRect = QRectF(-1.0, -measured.height() - 1.0, measured.width(), measured.height());
-	}
-
-	QRectF boundingRect() const override
-	{
-		return m_TextRect.united(m_TextRect.translated(1.0, 1.0)).adjusted(-1.0, -1.0, 1.0, 1.0);
-	}
-
-	void paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*) override
-	{
-		painter->setRenderHint(QPainter::TextAntialiasing);
-		painter->setFont(m_Font);
-		const int flags = Qt::AlignLeft | Qt::AlignBottom | Qt::TextSingleLine;
-		painter->setPen(Qt::black);
-		painter->drawText(m_TextRect.translated(1.0, 1.0), flags, m_Text);
-		painter->setPen(m_Color);
-		painter->drawText(m_TextRect, flags, m_Text);
-	}
-
-private:
-	QString m_Text;
-	QFont m_Font;
-	QColor m_Color;
-	QRectF m_TextRect;
-};
-
-class DeckView : public QGraphicsView
-{
-public:
-	explicit DeckView(QGraphicsScene* scene, QWidget* parent)
-		: QGraphicsView(scene, parent)
-	{
-		setRenderHint(QPainter::Antialiasing);
-		setDragMode(QGraphicsView::ScrollHandDrag);
-		setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
-		setResizeAnchor(QGraphicsView::AnchorViewCenter);
-		setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-		setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-		setMouseTracking(true);
-		setBackgroundBrush(QColor(20, 27, 35));
-		setAccessibleName(QStringLiteral("Legacy spacecraft deck plan"));
-	}
-
-	bool gridVisible = true;
-	quint8 gridMask = 5;
-	bool editing = false;
-	bool erasing = false;
-	bool equipmentTool = false;
-	int equipmentBrushRadius = 0;
-	int equipmentRotation = 0;
-	QIcon equipmentIcon;
-	QRectF equipmentFootprint;
-	std::function<void(const QPointF&)> cellEntered;
-	std::function<void(int)> rotateEquipment;
-
-	void SetEditing(bool active, bool erase)
-	{
-		ResetEquipmentStroke();
-		editing = active;
-		erasing = erase;
-		setDragMode(active ? QGraphicsView::NoDrag : QGraphicsView::ScrollHandDrag);
-		viewport()->setCursor(active ? Qt::CrossCursor : Qt::ArrowCursor);
-		viewport()->update();
-	}
-
-	void ResetEquipmentStroke()
-	{
-		m_LastEquipmentPointKnown = false;
-	}
-
-protected:
-	void keyPressEvent(QKeyEvent* event) override
-	{
-		if (editing && equipmentTool && rotateEquipment
-			&& (event->key() == Qt::Key_Left || event->key() == Qt::Key_Right))
-		{
-			rotateEquipment(event->key() == Qt::Key_Left ? 1 : -1);
-			event->accept();
-			return;
-		}
-		QGraphicsView::keyPressEvent(event);
-	}
-
-	void wheelEvent(QWheelEvent* event) override
-	{
-		const int delta = event->angleDelta().y();
-		if (delta == 0)
-		{
-			event->ignore();
-			return;
-		}
-		const double currentScale = transform().m11();
-		const double requested = currentScale * std::pow(1.2, delta / 120.0);
-		const double bounded = std::max(0.05, std::min(200.0, requested));
-		if (currentScale > 0.0)
-			scale(bounded / currentScale, bounded / currentScale);
-		UpdateCursor(viewport()->mapFromGlobal(QCursor::pos()));
-		event->accept();
-	}
-
-	void mousePressEvent(QMouseEvent* event) override
-	{
-		UpdateCursor(event->pos());
-		if (event->button() == Qt::MiddleButton)
-		{
-			m_Panning = true;
-			m_PanPosition = event->pos();
-			viewport()->setCursor(Qt::ClosedHandCursor);
-			event->accept();
-			return;
-		}
-		if (editing && event->button() == Qt::LeftButton)
-		{
-			ResetEquipmentStroke();
-			EditCursor();
-			event->accept();
-			return;
-		}
-		QGraphicsView::mousePressEvent(event);
-	}
-
-	void mouseMoveEvent(QMouseEvent* event) override
-	{
-		if (m_Panning)
-		{
-			const QPoint delta = event->pos() - m_PanPosition;
-			m_PanPosition = event->pos();
-			horizontalScrollBar()->setValue(horizontalScrollBar()->value() - delta.x());
-			verticalScrollBar()->setValue(verticalScrollBar()->value() - delta.y());
-			UpdateCursor(event->pos());
-			event->accept();
-			return;
-		}
-		if (editing)
-		{
-			UpdateCursor(event->pos());
-			if (event->buttons() & Qt::LeftButton)
-				EditCursor();
-			event->accept();
-			return;
-		}
-		QGraphicsView::mouseMoveEvent(event);
-		UpdateCursor(event->pos());
-	}
-
-	void mouseReleaseEvent(QMouseEvent* event) override
-	{
-		if (event->button() == Qt::MiddleButton && m_Panning)
-		{
-			m_Panning = false;
-			viewport()->setCursor(editing ? Qt::CrossCursor : Qt::ArrowCursor);
-			UpdateCursor(event->pos());
-			event->accept();
-			return;
-		}
-		if (editing && event->button() == Qt::LeftButton)
-		{
-			ResetEquipmentStroke();
-			event->accept();
-			return;
-		}
-		QGraphicsView::mouseReleaseEvent(event);
-	}
-
-	void mouseDoubleClickEvent(QMouseEvent* event) override
-	{
-		if (editing)
-			event->accept();
-		else
-			QGraphicsView::mouseDoubleClickEvent(event);
-	}
-
-	void leaveEvent(QEvent* event) override
-	{
-		m_CursorKnown = false;
-		viewport()->update();
-		QGraphicsView::leaveEvent(event);
-	}
-
-	void drawBackground(QPainter* painter, const QRectF& rect) override
-	{
-		painter->fillRect(rect, backgroundBrush());
-		if (!gridVisible || !rect.intersects(GridBounds()))
-			return;
-
-		QPen pen(QColor::fromRgbF(0.1, 0.2, 0.3));
-		pen.setCosmetic(true);
-		painter->setPen(pen);
-		painter->setBrush(Qt::NoBrush);
-		painter->drawRect(GridBounds());
-		const auto line = [painter](double x1, double y1, double x2, double y2) {
-			painter->drawLine(ScenePoint(QPointF(x1, y1)), ScenePoint(QPointF(x2, y2)));
-		};
-		// Draw the original finite segments, with every tenth line in a brighter pass.
-		for (bool major : { false, true })
-		{
-			pen.setColor(major ? QColor::fromRgbF(0.2, 0.3, 0.4) : QColor::fromRgbF(0.1, 0.2, 0.3));
-			painter->setPen(pen);
-			for (int i = -GridHalfCells; i <= GridHalfCells; ++i)
-			{
-				if ((i % 10 == 0) != major)
-					continue;
-				const double position = i * AuLegacyShip::GridSpacing;
-				if (gridMask & 4)
-					line(position, GridRadius, position, -GridRadius);
-				if (gridMask & 1)
-					line(GridRadius, position, -GridRadius, position);
-				if (i == GridHalfCells)
-					continue;
-				if (gridMask & 2)
-				{
-					line(position, -GridRadius, GridRadius, -position);
-					if (i != -GridHalfCells)
-						line(-GridRadius, position, -position, GridRadius);
-				}
-				if (gridMask & 8)
-				{
-					line(position, GridRadius, GridRadius, position);
-					if (i != -GridHalfCells)
-						line(-GridRadius, -position, -position, -GridRadius);
-				}
-			}
-		}
-	}
-
-	void drawForeground(QPainter* painter, const QRectF& rect) override
-	{
-		QGraphicsView::drawForeground(painter, rect);
-		if (!editing || !m_CursorKnown)
-			return;
-		if (equipmentTool)
-		{
-			const double spacing = AuLegacyShip::CoordinateSpacing;
-			const QPointF point = ScenePoint(QPointF(std::round(m_Cursor.x() / spacing) * spacing,
-				std::round(m_Cursor.y() / spacing) * spacing));
-			painter->save();
-			painter->translate(point);
-			QPen pen(erasing ? QColor(255, 116, 110) : QColor(129, 218, 255), 1.5);
-			pen.setCosmetic(true);
-			painter->setPen(pen);
-			painter->setBrush(Qt::NoBrush);
-			if (!equipmentFootprint.isEmpty())
-			{
-				painter->save();
-				painter->rotate(-equipmentRotation * 45.0);
-				painter->drawRect(equipmentFootprint);
-				painter->restore();
-			}
-			else
-			{
-				const double radius = (equipmentBrushRadius + 0.5) * spacing;
-				painter->drawRect(QRectF(-radius, -radius, radius * 2, radius * 2));
-			}
-			painter->drawLine(QPointF(-spacing / 3, 0), QPointF(spacing / 3, 0));
-			painter->drawLine(QPointF(0, -spacing / 3), QPointF(0, spacing / 3));
-			const double pixelScale = std::max(0.05, transform().m11());
-			painter->scale(1.0 / pixelScale, 1.0 / pixelScale);
-			painter->rotate(-equipmentRotation * 45.0);
-			if (!equipmentIcon.isNull())
-				painter->drawPixmap(QRect(-12, -12, 24, 24), equipmentIcon.pixmap(24, 24));
-			painter->restore();
-			return;
-		}
-		QPolygonF cell = AuLegacyShip::Geometry::FillShape(gridMask, m_Cursor);
-		if (cell.isEmpty())
-			return;
-		for (QPointF& point : cell)
-			point = ScenePoint(point);
-		const QColor color = erasing ? QColor(255, 116, 110) : QColor(129, 218, 255);
-		QPen pen(color, 1.5);
-		pen.setCosmetic(true);
-		painter->setPen(pen);
-		QColor fill = color;
-		fill.setAlpha(55);
-		painter->setBrush(fill);
-		painter->drawPolygon(cell);
-	}
-
-private:
-	void EditCursor()
-	{
-		if (!cellEntered)
-			return;
-		if (equipmentTool)
-		{
-			const QPointF snapped(std::round(m_Cursor.x() / AuLegacyShip::CoordinateSpacing),
-				std::round(m_Cursor.y() / AuLegacyShip::CoordinateSpacing));
-			if (m_LastEquipmentPointKnown && snapped == m_LastEquipmentPoint)
-				return;
-			m_LastEquipmentPoint = snapped;
-			m_LastEquipmentPointKnown = true;
-		}
-		cellEntered(m_Cursor);
-	}
-
-	void UpdateCursor(const QPoint& pixel)
-	{
-		m_Cursor = ScenePoint(mapToScene(pixel));
-		m_CursorKnown = viewport()->rect().contains(pixel);
-		viewport()->update();
-	}
-
-	QPointF m_Cursor;
-	QPointF m_LastEquipmentPoint;
-	bool m_LastEquipmentPointKnown = false;
-	QPoint m_PanPosition;
-	bool m_CursorKnown = false;
-	bool m_Panning = false;
-};
-
-class DetailMarker : public QGraphicsItem
-{
-public:
-	explicit DetailMarker(const AuLegacyShip::Detail& detail)
-		: m_Color(RecordColor(detail.detailType)), m_Shape(detail.detailType % 3u)
-	{
-		setFlags(QGraphicsItem::ItemIgnoresTransformations);
-		setZValue(10.0);
-		const EquipmentChoice* choice = EquipmentFor(detail.detailType, detail.commodityIdNormalized);
-		if (choice)
-			m_Icon = AuLegacyShipIcon(QString::fromLatin1(choice->icon)).pixmap(16, 16);
-		m_Rotation = AuLegacyShip::DetailRotationStep(detail.detailType);
-	}
-
-	QRectF boundingRect() const override
-	{
-		return QRectF(-13.0, -13.0, 26.0, 26.0);
-	}
-
-	void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget*) override
-	{
-		const bool selected = (option->state & QStyle::State_Selected) != 0;
-		if (!m_Icon.isNull())
-		{
-			if (selected)
-			{
-				painter->setPen(QPen(Qt::white, 1.2));
-				painter->setBrush(QColor(32, 49, 72, 210));
-				painter->drawRoundedRect(QRectF(-11, -11, 22, 22), 3, 3);
-			}
-			painter->rotate(-45.0 * m_Rotation);
-			painter->drawPixmap(-8, -8, m_Icon);
-			return;
-		}
-		QPen pen(selected ? QColor(Qt::white) : m_Color, selected ? 2.0 : 1.2);
-		pen.setCosmetic(true);
-		painter->setPen(pen);
-		QColor fill = m_Color;
-		fill.setAlpha(selected ? 240 : 130);
-		painter->setBrush(fill);
-		if (m_Shape == 0)
-			painter->drawEllipse(QRectF(-3.0, -3.0, 6.0, 6.0));
-		else if (m_Shape == 1)
-			painter->drawRect(QRectF(-3.0, -3.0, 6.0, 6.0));
-		else
-		{
-			QPolygonF triangle;
-			triangle << QPointF(0.0, -3.5) << QPointF(3.5, 3.0) << QPointF(-3.5, 3.0);
-			painter->drawPolygon(triangle);
-		}
-	}
-
-private:
-	QColor m_Color;
-	unsigned int m_Shape;
-	QPixmap m_Icon;
-	int m_Rotation = 0;
-};
 }
 
 class AuLegacyShipViewer::Impl
 {
 public:
-	enum ToolMode { PaintMode, EraseMode, EquipmentMode, DeleteEquipmentMode, DeleteEquipmentAreaMode };
+	enum ToolMode { HandMode, PaintMode, EraseMode, EquipmentMode, DeleteEquipmentMode, DeleteEquipmentAreaMode };
 
 	explicit Impl(AuLegacyShipViewer* owner) : window(owner),
 		settings(QSettings::NativeFormat, QSettings::UserScope,
 			QStringLiteral("Hazeron Freehold"), QStringLiteral("Shores of Hazeron"))
 	{
-		scene = new QGraphicsScene(window);
-		view = new DeckView(scene, window);
 		renderView = new AuLegacyShipRender(window);
-		renderView->SetFloorPlan(view);
-		scene->setSceneRect(GridBounds());
 
 		QAction* newAction = MakeAction("New spacecraft", "dp_New", "Start a new spacecraft (Ctrl+N).");
 		newAction->setShortcut(QKeySequence::New);
@@ -718,7 +261,7 @@ public:
 		QAction* saveAction = MakeAction("Save spacecraft", "dp_Save", "Save spacecraft to a .ship file (Ctrl+S).");
 		saveAction->setShortcut(QKeySequence::Save);
 		QObject::connect(saveAction, &QAction::triggered, window, [this]() { SaveDesign(); });
-		QAction* fitAction = MakeAction("Fit view", "dp_ShowDesignPlane", "Fit the current floor plan in the view (F).");
+		QAction* fitAction = MakeAction("Show design plane", "dp_ShowDesignPlane", "Move the scene camera to view the current design plane (F).");
 		fitAction->setShortcut(QKeySequence(QStringLiteral("F")));
 		QObject::connect(fitAction, &QAction::triggered, window, [this]() { FitDeck(); });
 		renderAction = MakeAction("Render Mode", "dp_RenderMode",
@@ -739,20 +282,11 @@ public:
 			"Check paths from berths to stations, turrets and the outside.");
 		checkPathsAction->setEnabled(false);
 		QObject::connect(checkPathsAction, &QAction::triggered, window, [this]() { CheckPaths(); });
-		roomsAction = new QAction(QStringLiteral("Rooms"), window);
-		detailsAction = new QAction(QStringLiteral("Equipment markers"), window);
 		gridAction = MakeAction("Grid", "dp_ShowDesignPlane", "Show the selected grid line families.");
-		for (QAction* action : { roomsAction, detailsAction, gridAction })
-		{
-			action->setCheckable(true);
-			action->setChecked(true);
-		}
-		QObject::connect(roomsAction, &QAction::toggled, window, [this](bool visible) { SetLayerVisible(RoomKind, visible); });
-		QObject::connect(detailsAction, &QAction::toggled, window, [this](bool visible) { SetLayerVisible(DetailKind, visible); });
+		gridAction->setCheckable(true);
+		gridAction->setChecked(true);
 		QObject::connect(gridAction, &QAction::toggled, window, [this](bool visible) {
-			view->gridVisible = visible;
-			SetLayerVisible(GridLabelKind, visible);
-			view->viewport()->update();
+			renderView->SetGrid(visible, gridMask);
 		});
 
 		tools = new QActionGroup(window);
@@ -805,8 +339,9 @@ public:
 		backAction->setAutoRepeat(false);
 		window->addAction(backAction);
 		QObject::connect(backAction, &QAction::triggered, window, [this]() {
-			if(renderAction->isChecked()) renderAction->setChecked(false);
-			else closeAction->trigger();
+			SetToolMode(HandMode);
+			renderView->UseHandCursor();
+			renderView->setFocus();
 		});
 		QAction* interfaceAction = new QAction(QStringLiteral("Show or hide interface"), window);
 		interfaceAction->setShortcut(QKeySequence(Qt::SHIFT | Qt::Key_Escape));
@@ -817,7 +352,7 @@ public:
 			if(!interfaceVisible) toolsWereVisible = toolDock->isVisible();
 			renderView->SetInterfaceVisible(interfaceVisible);
 			toolDock->setVisible(interfaceVisible && toolsWereVisible);
-			if(!interfaceVisible) (renderAction->isChecked() ? static_cast<QWidget*>(renderView) : view)->setFocus();
+			if(!interfaceVisible) renderView->setFocus();
 		});
 		for (QAction* action : { newAction, openAction, saveAction, fitAction, closeAction })
 			window->addAction(action);
@@ -892,26 +427,27 @@ public:
 			"- Select equipment, then left click or drag to place it. Its tooltip lists the room restrictions.<br>"
 			"- Left/right arrow keys rotate berths, vehicles, hatches and stairs before placement.<br>"
 			"- The brush arrows resize machinery placement and Erase Equipment Area.<br>"
-			"- Middle drag pans; the mouse wheel zooms.<br>"
-			"- Render Mode enters the spacecraft scene. Returning to the floor plan preserves your position.<br>"
-			"- In the scene, W/A/S/D move, the mouse looks around, and Shift runs. Q toggles continuous forward movement.<br>"
-			"- Return or right-click switches between avatar input and the free hand cursor. Hold Ctrl to use the hand temporarily.<br>"
+			"- Fly around the design using your Avatar and Scene control bindings. Use the Scene camera bindings for overhead and other views.<br>"
+			"- F frames the active design plane; moving the grid between decks preserves your player position.<br>"
+			"- Render Mode switches between 3D wireframe and solid rendering at the same player position.<br>"
+			"- W/A/S/D move, the mouse looks around, and Shift runs. Q toggles continuous forward movement.<br>"
+			"- Return or right-click switches between avatar input and the free hand cursor. Hold Ctrl to use the hand temporarily. Use the hand to edit the active design plane in wireframe mode.<br>"
 			"- C/Z move up/down when flying, in a gravity well, or on a ladder. Space jumps or brakes in zero gravity.<br>"
 			"- E enters/exits a console or engages/releases a nearby ladder.<br>"
 			"- On ladders, W climbs toward your look direction (up/down); S reverses it. C/Z climb directly. Shift does not increase climb speed.<br>"
 			"- Hold Caps Lock to crouch; X toggles prone/standing. These use your Avatar bindings.<br>"
-			"- Escape returns to the floor plan, then exits the designer. Shift+Escape hides or shows the interface.<br>"
+			"- Escape clears the selected tool and returns to the hand cursor. Shift+Escape hides or shows the interface.<br>"
 			"- Use the hand to click a nearby door or hatch. Ctrl+P opens the nearest closed door; Ctrl+C closes the nearest open door.<br>"
 			"- Regular and crew doors open on approach. Hull and large doors require manual operation.<br>"
 			"- Gravity toggles the studio floor outside the ship. Ship interiors have their own gravity.<br>"
 			"- Home returns to a clear location on the selected deck if you get lost.<br><br>"
 			"<b>CURRENT EDITOR</b><br>"
-			"Rooms and equipment can be edited in the floor plan. Unavailable tools remain disabled.<br><br>"
+			"Rooms and equipment can be edited on the active plane in the 3D wireframe. Other decks remain visible and dimmed. Unavailable tools remain disabled.<br><br>"
 			"<b>WHEN FINISHED</b><br>"
-			"Use Exit Designer or Ctrl+W to exit. Escape exits from the floor plan.<br>"
+			"Use Exit Designer or Ctrl+W to exit.<br>"
 			"Use Save or Ctrl+S to save a .ship file. New, Open and Exit offer to save changes.<br>"
 			"The sidebar designer button or your Design Parts window binding hides or shows this panel. "
-			"Drag its title to dock it elsewhere or float it beside the deck view.");
+			"Drag its title to dock it elsewhere or float it beside the 3D view.");
 		statsBrowser->setMinimumHeight(130);
 		panelLayout->addWidget(statsBrowser, 1);
 		QScrollArea* panelScroll = new QScrollArea(toolDock);
@@ -932,12 +468,13 @@ public:
 		window->addAction(showTools);
 		RefreshControlLabels();
 
-		view->cellEntered = [this](const QPointF& point) { EditAt(point); };
-		view->rotateEquipment = [this](int steps) {
+		renderView->cellEntered = [this](const QPointF& point) { EditAt(point); };
+		renderView->rotateEquipment = [this](int steps) {
 			if (toolMode != EquipmentMode || !EquipmentCanRotate(selectedEquipmentType)) return;
 			selectedEquipmentType = AuLegacyShip::RotateDetailType(selectedEquipmentType, steps);
 			SetToolMode(EquipmentMode);
 		};
+		renderView->SetGrid(gridAction->isChecked(), gridMask);
 	}
 
 	~Impl()
@@ -945,9 +482,8 @@ public:
 		statsTimer->stop();
 		QObject::disconnect(statsTimer, nullptr, window, nullptr);
 		renderView->tipsChanged = {};
-		QObject::disconnect(scene, nullptr, window, nullptr);
-		view->cellEntered = std::function<void(const QPointF&)>();
-		view->rotateEquipment = std::function<void(int)>();
+		renderView->cellEntered = std::function<void(const QPointF&)>();
+		renderView->rotateEquipment = std::function<void(int)>();
 	}
 
 	void RefreshControlLabels()
@@ -1105,7 +641,7 @@ public:
 			if (loaded && bool(design.header.streamline) != enabled)
 			{
 				design.header.streamline = enabled ? 1 : 0;
-				HeaderChanged();
+				HeaderChanged(true);
 			}
 		});
 		outer->addWidget(streamline, 5, 5, 1, 7);
@@ -1118,7 +654,7 @@ public:
 			if (loaded && index >= 0 && design.header.minimumTechLevel != minimumTech->itemData(index).toInt())
 			{
 				design.header.minimumTechLevel = quint8(minimumTech->itemData(index).toInt());
-				HeaderChanged();
+				HeaderChanged(true);
 			}
 		});
 		outer->addWidget(minimumTech, 5, 12, 1, 2);
@@ -1159,8 +695,8 @@ public:
 	{
 		modified = true;
 		renderDirty = renderDirty || geometryChanged;
-		if (geometryChanged && renderAction->isChecked())
-			RefreshRendering();
+		if (geometryChanged)
+			SyncRenderDesign();
 		RefreshHeaderControls();
 		ScheduleStatsRefresh();
 		UpdateTitle();
@@ -1280,24 +816,11 @@ public:
 
 	void FitDeck()
 	{
-		if (renderAction->isChecked())
-			return;
-		view->fitInView(deckBounds, Qt::KeepAspectRatio);
-		// Leave screen-space room for labels centered on the grid's outer corners.
-		QFont labelFont = window->font();
-		labelFont.setPixelSize(16);
-		const QFontMetricsF metrics(labelFont);
-		const double horizontalPadding = metrics.boundingRect(QStringLiteral("Starboard Quarter")).width() * 0.5 + 12.0;
-		const double verticalPadding = metrics.height() * 0.5 + 12.0;
-		const double width = std::max(1, view->viewport()->width());
-		const double height = std::max(1, view->viewport()->height());
-		const double scale = std::max(0.1, std::min((width - horizontalPadding * 2.0) / width,
-			(height - verticalPadding * 2.0) / height));
-		view->scale(scale, scale);
-		view->centerOn(deckBounds.center());
+		if (loaded && !renderAction->isChecked())
+			renderView->FocusDesignPlane();
 	}
 
-	void RefreshRendering()
+	void SyncRenderDesign()
 	{
 		if (renderDirty)
 		{
@@ -1312,44 +835,75 @@ public:
 		if (!renderAction->isChecked())
 			return;
 		SetFeedback(QStringLiteral("Walkthrough uses your Avatar and Scene control bindings. Use hand input for the sidebar and door clicks.\n"
-			"Escape returns to the floor plan; Shift+Escape hides or shows the interface. Configured Scene camera bindings still work. Ctrl+W exits.\n"
+			"Escape clears the selected tool and returns to the hand cursor; Shift+Escape hides or shows the interface. Configured Scene camera bindings still work. Ctrl+W exits.\n"
 			"Settings changes apply here immediately. Legacy Ctrl+P/C opens/closes nearby doors unless rebound; Home returns to the selected deck unless rebound.\n"
-			"Studio gravity is %1; ship interiors retain their own gravity. Render Mode returns to the floor plan.")
+			"Studio gravity is %1; ship interiors retain their own gravity. Render Mode returns to the 3D wireframe at the same position.")
 			.arg(gravityAction->isChecked() ? QStringLiteral("on") : QStringLiteral("off")));
 	}
 
 	void SetRenderMode(bool solid)
 	{
+		if(solid) PrepareSkyForScene();
+		renderView->SetRenderSolid(solid);
+		editTool.active = loaded && !solid && toolMode != HandMode;
+		renderView->SetEditTool(editTool);
+		renderView->setFocus();
 		if (solid)
-			RefreshRendering();
-		renderView->SetWalkthrough(solid);
-		if (solid)
-		{
-			renderView->setFocus();
 			ShowRenderHelp();
-		}
 		else
-		{
-			view->setFocus();
 			SetToolMode(toolMode);
-		}
+	}
+
+	void PrepareSkyForScene()
+	{
+		if(!renderView->isVisible()) return;
+		renderView->repaint();
+		if(!renderView->SkyboxNeedsPreparation()) return;
+		QProgressDialog progress(QStringLiteral("Preparing designer skybox..."), QString(), 0, 0, window);
+		progress.setWindowTitle(QStringLiteral("Loading Designer Skybox"));
+		progress.setCancelButton(nullptr);
+		progress.setWindowModality(Qt::WindowModal);
+		progress.setMinimumDuration(0);
+		progress.setAutoClose(false);
+		progress.setAutoReset(false);
+		progress.show();
+		QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+		renderView->PrepareSkybox();
+		progress.hide();
 	}
 
 	void SetToolMode(ToolMode mode)
 	{
-		if (renderAction->isChecked())
+		if (mode != HandMode && renderAction->isChecked())
 			renderAction->setChecked(false);
 		toolMode = mode;
-		view->equipmentTool = mode == EquipmentMode || mode == DeleteEquipmentMode || mode == DeleteEquipmentAreaMode;
-		view->equipmentBrushRadius = mode == DeleteEquipmentAreaMode
+		if(mode == HandMode)
+		{
+			tools->setExclusive(false);
+			for(QAction* action : tools->actions()) action->setChecked(false);
+			tools->setExclusive(true);
+			selectedEquipment = nullptr;
+			selectedEquipmentAction = nullptr;
+			editTool = AuLegacyShipEditTool();
+			renderView->SetEditTool(editTool);
+			SetFeedback(QStringLiteral("Hand cursor: select a room or equipment button to edit the design."));
+			return;
+		}
+		editTool.active = loaded;
+		editTool.erasing = mode == EraseMode || mode == DeleteEquipmentMode || mode == DeleteEquipmentAreaMode;
+		editTool.equipment = mode == EquipmentMode || mode == DeleteEquipmentMode || mode == DeleteEquipmentAreaMode;
+		editTool.radius = mode == DeleteEquipmentAreaMode
 			|| (mode == EquipmentMode && EquipmentUsesBrush(selectedEquipmentType)) ? equipmentBrushRadius : 0;
-		view->equipmentIcon = mode == EquipmentMode && selectedEquipment
-			? AuLegacyShipIcon(QString::fromLatin1(selectedEquipment->icon)) : QIcon();
-		view->equipmentRotation = AuLegacyShip::DetailRotationStep(selectedEquipmentType);
-		view->equipmentFootprint = mode == EquipmentMode && selectedEquipment && selectedEquipment->commodity
+		if(mode == PaintMode) editTool.icon = roomActions.value(selectedRoomType)->icon();
+		else if(mode == EraseMode) editTool.icon = eraseAction->icon();
+		else if(mode == DeleteEquipmentMode) editTool.icon = deleteEquipmentAction->icon();
+		else if(mode == DeleteEquipmentAreaMode) editTool.icon = deleteEquipmentAreaAction->icon();
+		else editTool.icon = selectedEquipmentAction ? selectedEquipmentAction->icon() : QIcon();
+		editTool.rotation = AuLegacyShip::DetailRotationStep(selectedEquipmentType);
+		editTool.footprint = mode == EquipmentMode && selectedEquipment && selectedEquipment->commodity
 			? AuLegacyShip::Rendering::VehicleFootprint(selectedEquipment->commodity) : QRectF();
-		view->SetEditing(loaded,
-			mode == EraseMode || mode == DeleteEquipmentMode || mode == DeleteEquipmentAreaMode);
+		renderView->ResetEditStroke();
+		renderView->SetEditTool(editTool);
 		eraseAction->setChecked(mode == EraseMode);
 		deleteEquipmentAction->setChecked(mode == DeleteEquipmentMode);
 		deleteEquipmentAreaAction->setChecked(mode == DeleteEquipmentAreaMode);
@@ -1358,7 +912,7 @@ public:
 		if (mode == EquipmentMode && selectedEquipmentAction)
 			selectedEquipmentAction->setChecked(true);
 		roomNumber->setEnabled(loaded);
-		if (view->equipmentTool)
+		if (editTool.equipment)
 		{
 			QString text;
 			if (mode == EquipmentMode && selectedEquipment)
@@ -1373,12 +927,12 @@ public:
 				text = mode == DeleteEquipmentAreaMode
 					? QStringLiteral("Erase Equipment Area: click equipment to remove that type within the brush.")
 					: QStringLiteral("Erase Equipment: left click or drag over equipment.");
-			SetFeedback(text);
-			view->setFocus();
+			SetFeedback(text + QStringLiteral(" Use the hand cursor on the active design plane."));
+			renderView->setFocus();
 			return;
 		}
-		SetFeedback(mode == EraseMode ? QStringLiteral("Erase Room Cells: left click or drag.")
-				: QStringLiteral("Paint %1: left click or drag.").arg(RoomName(selectedRoomType)));
+		SetFeedback(mode == EraseMode ? QStringLiteral("Erase Room Cells: left click or drag with the hand cursor on the active design plane.")
+				: QStringLiteral("Paint %1: left click or drag with the hand cursor on the active design plane.").arg(RoomName(selectedRoomType)));
 	}
 
 	void ChangeEquipmentBrush(int delta)
@@ -1387,7 +941,7 @@ public:
 		brushSize->setText(QString::number(equipmentBrushRadius + 1));
 		brushUpAction->setEnabled(equipmentBrushRadius < 25);
 		brushDownAction->setEnabled(equipmentBrushRadius > 0);
-		if (view->equipmentTool)
+		if (editTool.equipment)
 			SetToolMode(toolMode);
 	}
 
@@ -1397,8 +951,8 @@ public:
 		for (int i = 0; i < 4; ++i)
 			if (lineActions[i]->isChecked())
 				mask |= quint8(1 << i);
-		view->gridMask = mask;
-		view->viewport()->update();
+		gridMask = mask;
+		renderView->SetGrid(gridAction->isChecked(), gridMask);
 		if (mask == 0 || mask == 1 || mask == 2 || mask == 4 || mask == 8)
 			SetFeedback(QStringLiteral("These grid lines do not form closed cells. Enable another direction to paint or erase."));
 		else
@@ -1407,16 +961,16 @@ public:
 
 	void EditAt(const QPointF& cursor)
 	{
-		if (!loaded || renderAction->isChecked())
+		if (!loaded || toolMode == HandMode || renderAction->isChecked())
 			return;
 		const int deck = currentDeck;
-		if (view->equipmentTool)
+		if (editTool.equipment)
 		{
 			if (toolMode == EquipmentMode && !selectedEquipment) return;
 			const AuLegacyShip::DetailEditResult result = toolMode == EquipmentMode
 				? AuLegacyShip::PlaceDetail(design, deck, cursor, selectedEquipmentType,
-					selectedEquipment->commodity, view->equipmentBrushRadius)
-				: AuLegacyShip::DeleteDetails(design, deck, cursor, view->equipmentBrushRadius);
+					selectedEquipment->commodity, editTool.radius)
+				: AuLegacyShip::DeleteDetails(design, deck, cursor, editTool.radius);
 			if (!result.accepted)
 			{
 				SetFeedback(result.error.isEmpty()
@@ -1429,7 +983,7 @@ public:
 				renderDirty = true;
 				IndexDecks();
 				UpdateTitle();
-				ShowDeck(deck, false);
+				ShowDeck(deck);
 			}
 			SetFeedback(result.error.isEmpty()
 				? (result.changed ? QStringLiteral("Equipment updated (%1 added, %2 removed). Press Ctrl+S to save.")
@@ -1438,7 +992,7 @@ public:
 		}
 		const int type = toolMode == EraseMode ? -1 : selectedRoomType;
 		const AuLegacyShip::CellEditResult result = AuLegacyShip::EditCell(design, deck, cursor,
-			view->gridMask, type, quint8(roomNumber->value() - 1));
+			gridMask, type, quint8(roomNumber->value() - 1));
 		if (!result.accepted)
 		{
 			SetFeedback(result.error.isEmpty()
@@ -1451,20 +1005,11 @@ public:
 			renderDirty = true;
 			IndexDecks();
 			UpdateTitle();
-			ShowDeck(deck, false);
+			ShowDeck(deck);
 		}
 		SetFeedback(result.error.isEmpty()
 			? (result.changed ? QStringLiteral("Cell updated. Press Ctrl+S to save.")
 				: QStringLiteral("No change at this cell.")) : result.error);
-	}
-
-	void SetLayerVisible(int kind, bool visible)
-	{
-		for (QGraphicsItem* item : scene->items())
-		{
-			if (item->data(RecordKind).toInt() == kind)
-				item->setVisible(visible);
-		}
 	}
 
 	QString DisplayName() const
@@ -1474,59 +1019,23 @@ public:
 		return fileName.isEmpty() ? QStringLiteral("Untitled spacecraft") : QFileInfo(fileName).completeBaseName();
 	}
 
-	void AddGridLabels(const QFont& font)
-	{
-		struct GridLabel { const char* text; int x; int y; };
-		static const GridLabel labels[] = {
-			{ "Fore", 0, 1 }, { "Aft", 0, -1 },
-			{ "Port", -1, 0 }, { "Starboard", 1, 0 },
-			{ "Port Quarter", -1, -1 }, { "Starboard Quarter", 1, -1 },
-			{ "Port Fore", -1, 1 }, { "Starboard Fore", 1, 1 }
-		};
-		for (const GridLabel& entry : labels)
-		{
-			QGraphicsSimpleTextItem* label = scene->addSimpleText(QString::fromLatin1(entry.text), font);
-			label->setFlag(QGraphicsItem::ItemIgnoresTransformations);
-			label->setAcceptedMouseButtons(Qt::NoButton);
-			label->setBrush(QColor::fromRgbF(0.3, 0.4, 0.5));
-			label->setZValue(30.0);
-			const QPointF center = label->boundingRect().center();
-			label->setTransform(QTransform::fromTranslate(-center.x(), -center.y()));
-			label->setPos(ScenePoint(QPointF(entry.x * GridRadius, entry.y * GridRadius)));
-			label->setData(RecordKind, GridLabelKind);
-			label->setVisible(view->gridVisible);
-		}
-	}
-
-	void ShowDeck(int deck, bool fit = true)
+	void ShowDeck(int deck)
 	{
 		deck = std::max(MinimumGridDeck, std::min(MaximumGridDeck, deck));
 		if (deck != currentDeck)
-			view->ResetEquipmentStroke();
+			renderView->ResetEditStroke();
 		currentDeck = deck;
-		if (renderAction->isChecked())
-			RefreshRendering();
+		SyncRenderDesign();
 		deckUpAction->setEnabled(loaded && deck < MaximumGridDeck);
 		deckDownAction->setEnabled(loaded && deck > MinimumGridDeck);
-		const QTransform previousTransform = view->transform();
-		const int previousHorizontal = view->horizontalScrollBar()->value();
-		const int previousVertical = view->verticalScrollBar()->value();
-		scene->clear();
 		geometryWarnings.clear();
-		QRectF bounds;
-		bool hasBounds = false;
 		int visibleRooms = 0;
 		int warningCount = 0;
-		QFont labelFont = window->font();
-		labelFont.setPixelSize(16);
-		AddGridLabels(labelFont);
 		for (int index : roomDecks.value(deck))
 		{
 			const AuLegacyShip::Room& room = design.rooms[index];
-			if (room.packedVertices.isEmpty())
-				continue;
 			QString error;
-			QPolygonF polygon = AuLegacyShip::RoomBoundary(room, &error);
+			const QPolygonF polygon = AuLegacyShip::RoomBoundary(room, &error);
 			if (polygon.size() < 3 || !error.isEmpty())
 			{
 				++warningCount;
@@ -1535,71 +1044,20 @@ public:
 						.arg(error.isEmpty() ? QStringLiteral("fewer than three boundary points") : error));
 				continue;
 			}
-			for (QPointF& point : polygon)
-				point = ScenePoint(point);
-			QPen pen(RecordColor(room.roomType));
-			pen.setCosmetic(true);
-			QGraphicsPolygonItem* item = scene->addPolygon(polygon, pen, QBrush(RecordColor(room.roomType, 70)));
-			item->setData(RecordKind, RoomKind);
-			item->setData(RecordIndex, index);
-			item->setToolTip(QStringLiteral("%1 %2 | record %3 | type %4 (%5) | deck %6")
-				.arg(RoomName(room.roomType)).arg(int(room.roomSubtype) + 1).arg(room.roomId)
-				.arg(room.roomType).arg(Hex(room.roomType)).arg(deck));
-			item->setVisible(roomsAction->isChecked());
-			RoomLabel* label = new RoomLabel(QStringLiteral("%1 %2")
-				.arg(RoomName(room.roomType)).arg(int(room.roomSubtype) + 1),
-				labelFont, RoomLabelColor(room.roomType));
-			// RenderDesign labels boundary[0], not the room's center or record ID.
-			label->setPos(polygon.first());
-			label->setData(RecordKind, RoomKind);
-			label->setVisible(roomsAction->isChecked());
-			scene->addItem(label);
-			bounds = hasBounds ? bounds.united(polygon.boundingRect()) : polygon.boundingRect();
-			hasBounds = true;
 			++visibleRooms;
-		}
-		for (int index : detailDecks.value(deck))
-		{
-			const AuLegacyShip::Detail& detail = design.details[index];
-			const QPointF point = ScenePoint(AuLegacyShip::DecodePoint(detail.packedXY));
-			DetailMarker* item = new DetailMarker(detail);
-			item->setPos(point);
-			item->setData(RecordKind, DetailKind);
-			item->setData(RecordIndex, index);
-			const EquipmentChoice* choice = EquipmentFor(detail.detailType, detail.commodityIdNormalized);
-			item->setToolTip(QStringLiteral("%1 | detail %2 | deck %3")
-				.arg(choice ? QString::fromLatin1(choice->name) : AuLegacyShip::DetailName(detail.detailType))
-				.arg(detail.detailId).arg(deck));
-			item->setVisible(detailsAction->isChecked());
-			scene->addItem(item);
-			const QRectF pointBounds(point - QPointF(0.1, 0.1), QSizeF(0.2, 0.2));
-			bounds = hasBounds ? bounds.united(pointBounds) : pointBounds;
-			hasBounds = true;
 		}
 		if (warningCount > geometryWarnings.size())
 			geometryWarnings.append(QStringLiteral("... and %1 more invalid boundaries").arg(warningCount - geometryWarnings.size()));
-		const double margin = AuLegacyShip::GridSpacing * 1.5;
-		deckBounds = (hasBounds ? GridBounds().united(bounds) : GridBounds()).adjusted(-margin, -margin, margin, margin);
-		const double extent = AuLegacyShip::GridSpacing * 66.0;
-		scene->setSceneRect(QRectF(-extent, -extent, extent * 2.0, extent * 2.0).united(deckBounds));
-		QString message = QStringLiteral("Deck %1 (Z %2 ft): %3 room boundaries, %4 details")
+		QString message = QStringLiteral("Deck %1 (Z %2 ft): %3 room boundaries, %4 details. Other decks remain visible and dimmed.")
 			.arg(deck).arg(deck * AuLegacyShip::DeckHeight).arg(visibleRooms).arg(detailDecks.value(deck).size());
-		if(!hasBounds) message += warningCount
-			? QStringLiteral("\nNo displayable geometry on this deck.")
-			: QStringLiteral("\nThis deck is empty. Select Paint to add room cells.");
+		if (!visibleRooms && detailDecks.value(deck).isEmpty())
+			message += warningCount ? QStringLiteral("\nNo displayable geometry on this deck.")
+				: QStringLiteral("\nThis deck is empty. Use the hand cursor to paint room cells on the active plane.");
 		if (warningCount)
 			message += QStringLiteral("; %1 geometry warnings").arg(warningCount);
-		if (!geometryWarnings.isEmpty()) message += QLatin1Char('\n') + geometryWarnings.join(QLatin1Char('\n'));
+		if (!geometryWarnings.isEmpty())
+			message += QLatin1Char('\n') + geometryWarnings.join(QLatin1Char('\n'));
 		SetFeedback(message);
-		if (fit && !renderAction->isChecked())
-			FitDeck();
-		else
-		{
-			view->setTransform(previousTransform);
-			view->horizontalScrollBar()->setValue(previousHorizontal);
-			view->verticalScrollBar()->setValue(previousVertical);
-		}
-		view->viewport()->update();
 		ShowRenderHelp();
 	}
 
@@ -1698,7 +1156,6 @@ public:
 			room.designId = workingDesignId;
 		for(AuLegacyShip::Detail& detail : incoming.details)
 			detail.designId = workingDesignId;
-		scene->clear();
 		AuLegacyShip::SortDetails(incoming.details);
 		design = std::move(incoming);
 		fileName = path.isEmpty() ? QString() : QFileInfo(path).absoluteFilePath();
@@ -1711,8 +1168,26 @@ public:
 		UpdateTitle();
 		editPanel->setEnabled(true);
 		RefreshHeaderControls();
-		SetToolMode(toolMode);
+		SetToolMode(HandMode);
+		renderView->UseHandCursor();
+		QProgressDialog progress(QStringLiteral("Preparing spacecraft design..."), QString(), 0, 0, window);
+		progress.setWindowTitle(QStringLiteral("Loading Spacecraft Design"));
+		progress.setCancelButton(nullptr);
+		progress.setWindowModality(Qt::WindowModal);
+		progress.setMinimumDuration(0);
+		progress.setAutoClose(false);
+		progress.setAutoReset(false);
+		progress.show();
+		QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 		ShowDeck(0);
+		renderView->repaint();
+		if(renderView->SkyboxNeedsPreparation())
+		{
+			progress.setLabelText(QStringLiteral("Preparing designer skybox..."));
+			QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+			renderView->PrepareSkybox();
+		}
+		progress.hide();
 		RefreshStats();
 		statsBrowser->verticalScrollBar()->setValue(0);
 	}
@@ -1720,8 +1195,6 @@ public:
 	AuLegacyShipViewer* window;
 	// Use the same preference store for embedded and standalone launches.
 	QSettings settings;
-	QGraphicsScene* scene;
-	DeckView* view;
 	AuLegacyShipRender* renderView;
 	QAction* showTools;
 	QSpinBox* roomNumber;
@@ -1732,8 +1205,6 @@ public:
 	QCheckBox* streamline;
 	QComboBox* minimumTech;
 	QLabel* brushSize;
-	QAction* roomsAction;
-	QAction* detailsAction;
 	QAction* gridAction;
 	QAction* renderAction;
 	QAction* gravityAction;
@@ -1764,8 +1235,9 @@ public:
 	QStringList geometryWarnings;
 	QMap<int, QVector<int> > roomDecks;
 	QMap<int, QVector<int> > detailDecks;
-	QRectF deckBounds = GridBounds();
-	ToolMode toolMode = PaintMode;
+	AuLegacyShipEditTool editTool;
+	quint8 gridMask = 5;
+	ToolMode toolMode = HandMode;
 	int selectedRoomType = 2;
 	const EquipmentChoice* selectedEquipment = nullptr;
 	int selectedEquipmentType = 0;
@@ -1774,7 +1246,6 @@ public:
 	int occupiedDeckCount = 0;
 	bool loaded = false;
 	bool modified = false;
-	bool fittedOnShow = false;
 	bool renderDirty = true;
 	bool pathsChecking = false;
 	bool interfaceVisible = true;
@@ -1815,11 +1286,7 @@ void AuLegacyShipViewer::ToggleTools()
 void AuLegacyShipViewer::showEvent(QShowEvent* event)
 {
 	QMainWindow::showEvent(event);
-	if (!m_Impl->fittedOnShow)
-	{
-		m_Impl->fittedOnShow = true;
-		QTimer::singleShot(0, this, [this]() { m_Impl->FitDeck(); });
-	}
+	QTimer::singleShot(0, this, [this]() { m_Impl->PrepareSkyForScene(); });
 }
 
 bool AuLegacyShipViewer::ConfirmDiscardChanges()

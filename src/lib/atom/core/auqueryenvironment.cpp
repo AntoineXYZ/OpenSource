@@ -7,7 +7,7 @@
 #include "auqueryenvironment.h"
 
 void AuQueryEnvironment::SetDesignScene(bool gravity, bool spacecraft, ROOMTYPE roomType, bool gravityWell, bool ladder,
-	double fallDistance, const AuPoint& up, ON_GROUND ground)
+	double fallDistance, const AuPoint& up, ON_GROUND ground, float airDensity)
 {
 	Init();
 	m_AtmType = ATMTYPE_Standard;
@@ -20,7 +20,7 @@ void AuQueryEnvironment::SetDesignScene(bool gravity, bool spacecraft, ROOMTYPE 
 	m_GravityNormal = up;
 	m_terNormal = up;
 	m_OnGround = ground;
-	m_fAirDensity = spacecraft ? .5f : 0.f;
+	m_fAirDensity = airDensity;
 	m_CapRoomType = roomType;
 }
 //

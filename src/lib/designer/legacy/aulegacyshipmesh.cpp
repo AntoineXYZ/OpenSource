@@ -3,6 +3,8 @@
 #include "aulegacyshipequipment.h"
 #include "aulegacyshipvehicles.h"
 #include "aulegacyshipstairs.h"
+#include "aulegacyshipdetails.h"
+#include "aupoint.h"
 
 #include <QHash>
 #include <QPoint>
@@ -952,6 +954,232 @@ Mesh BuildMesh(const Design& design)
 		builder.Warning(QStringLiteral("Equipment type %1 has no recovered 3D preview model.").arg(type));
 	}
 	return builder.mesh;
+}
+
+Wireframe BuildWireframe(const Design& design, int activeDeck, bool gridVisible, quint8 gridMask)
+{
+	Wireframe result;
+	// DaSpaceShip::RenderDesign, AuAtom13 18041a5b0. The original float
+	// table at 180a0e620 stores these 25 sRGB colors divided by 255.
+	static const quint8 roomColors[][3] = {
+		{255,0,0}, {137,163,73}, {255,221,0}, {112,112,112}, {45,14,147},
+		{221,195,88}, {163,226,147}, {183,172,128}, {183,183,183}, {237,250,255},
+		{237,236,168}, {201,255,188}, {255,252,91}, {255,154,61}, {229,0,0},
+		{128,112,128}, {255,0,135}, {93,227,244}, {105,244,202}, {165,0,80},
+		{186,76,211}, {50,88,201}, {231,66,34}, {231,66,34}, {231,66,34}
+	};
+	static const char* roomNames[] = {
+		"None", "Barracks", "Bridge", "Brig", "Officer Cabin", "Hold", "Hall", "Crew Cabin",
+		"Engine Room", "Fuel Cell", "Galley", "Gravity Well", "", "Vehicle Bay", "Lounge",
+		"Open to Deck Below", "Sensor Room", "Shield Room", "Sickbay", "Stateroom",
+		"Transporter Room", "Weapon Bay", "Roof, Gable", "Roof, Hip", "Roof, Round"
+	};
+	const auto line = [](QVector<WireframeVertex>& output, const QVector3D& a,
+		const QVector3D& b, const QVector4D& color)
+	{
+		if(output.size() > MaximumVertices - 2 || (a - b).lengthSquared() < 1e-10f) return;
+		output.append(WireframeVertex{a, color});
+		output.append(WireframeVertex{b, color});
+	};
+	for(const Room& room : design.rooms)
+	{
+		if(room.roomType >= sizeof(roomColors) / sizeof(roomColors[0])) continue;
+		const QPolygonF boundary = RoomBoundary(room);
+		if(boundary.size() < 3) continue;
+		bool finite = true;
+		for(const QPointF& point : boundary)
+			finite = finite && std::isfinite(point.x()) && std::isfinite(point.y());
+		if(!finite) continue;
+		const quint8* rgb = roomColors[room.roomType];
+		const float brightness = room.deck == activeDeck ? 1.f : 1.f / 3.f;
+		const QVector4D color(rgb[0] / 255.f * brightness, rgb[1] / 255.f * brightness,
+			rgb[2] / 255.f * brightness, 1);
+		const double floor = room.deck * DeckHeight;
+		if(room.deck == activeDeck)
+			result.labels.append(WireframeLabel{Position(boundary.first(),floor),
+				QStringLiteral("%1 %2").arg(QString::fromLatin1(roomNames[room.roomType]))
+					.arg(int(room.roomSubtype)+1),color,false});
+		const bool roof = room.roomType >= 22 && room.roomType <= 24;
+		for(int i = 0; i < boundary.size(); ++i)
+		{
+			const QPointF& a = boundary.at(i);
+			const QPointF& b = boundary.at((i + 1) % boundary.size());
+			line(result.vertices, Position(a, floor), Position(b, floor), color);
+			if(roof) continue;
+			// The deck immediately above contributes its floor contour later
+			// in RenderDesign; its ceiling contour is omitted from the first pass.
+			if(room.deck != activeDeck + 1)
+				line(result.vertices, Position(a, floor + DeckHeight), Position(b, floor + DeckHeight), color);
+			line(result.vertices, Position(a, floor), Position(a, floor + DeckHeight), color);
+		}
+		if(room.deck > activeDeck + 1 || boundary.size() > 65536) continue;
+		AuPointArray polygon;
+		for(const QPointF& point : boundary) polygon.append(AuPoint(point.x(), point.y(), floor));
+		if(!polygon.IsClockwise()) polygon.ReverseOrder();
+		AuPointArray triangles;
+		QVector<bool> edges;
+		polygon.TriangulateBoundary(triangles, edges);
+		const float fillBrightness = room.deck == activeDeck ? 1.f : .25f;
+		const float alpha = room.deck == activeDeck ? .8f : .2f;
+		const QVector4D fill(rgb[0] / 255.f * fillBrightness, rgb[1] / 255.f * fillBrightness,
+			rgb[2] / 255.f * fillBrightness, alpha);
+		if(triangles.size() > MaximumVertices - result.triangles.size()) continue;
+		for(const AuPoint& point : triangles)
+			result.triangles.append(WireframeVertex{QVector3D(float(point.x), float(point.y), float(point.z)), fill});
+	}
+	// RenderDesign queues stairs on the active deck for a separate gray 3D
+	// line pass. Reuse the recovered staircase dimensions and retain feature
+	// edges while suppressing each planar face's triangulation diagonals.
+	Design stairDesign;
+	for(const Detail& detail : design.details)
+		if(detail.deck == activeDeck && detail.detailType >= 101 && detail.detailType <= 140)
+		{
+			Detail visible = detail;
+			visible.hiddenRaw = 0;
+			stairDesign.details.append(visible);
+		}
+	Mesh stairMesh;
+	AppendStairGeometry(stairDesign, stairMesh);
+	struct StairEdge { QVector3D a, b, normal; int count = 0; bool corner = false; };
+	QHash<QString, StairEdge> stairEdges;
+	const auto pointKey = [](const QVector3D& point)
+	{
+		return QStringLiteral("%1,%2,%3").arg(qRound64(point.x()*100000.0))
+			.arg(qRound64(point.y()*100000.0)).arg(qRound64(point.z()*100000.0));
+	};
+	for(const Batch& batch : stairMesh.batches)
+		for(int i = 0; i + 2 < batch.vertices.size(); i += 3)
+		{
+			const QVector3D normal = QVector3D::crossProduct(batch.vertices.at(i+1).position-batch.vertices.at(i).position,
+				batch.vertices.at(i+2).position-batch.vertices.at(i).position).normalized();
+			for(int j = 0; j < 3; ++j)
+			{
+				const QVector3D a = batch.vertices.at(i+j).position, b = batch.vertices.at(i+(j+1)%3).position;
+				const QString ka = pointKey(a), kb = pointKey(b);
+				const QString key = ka < kb ? ka + QLatin1Char('/') + kb : kb + QLatin1Char('/') + ka;
+				StairEdge& edge = stairEdges[key];
+				if(!edge.count) { edge.a = a; edge.b = b; edge.normal = normal; }
+				else if(std::abs(QVector3D::dotProduct(edge.normal,normal)) < .999f) edge.corner = true;
+				++edge.count;
+			}
+		}
+	for(const StairEdge& edge : stairEdges)
+		if(edge.count == 1 || edge.corner)
+			line(result.vertices,edge.a,edge.b,QVector4D(.5f,.5f,.5f,1));
+	// Original DnDetail::DesignTextureCoords (AuData13 18002fb20) indexes
+	// 16-pixel tiles in txSpacecraftDesign.png; only the active deck has icons.
+	for(const Detail& detail : design.details)
+	{
+		const int type = detail.detailType;
+		if(detail.deck != activeDeck || type <= 0 || type > 142 || (type >= 101 && type <= 140)) continue;
+		static const float iconSizes[] = {
+			10.f,4.f,3.5f,2.f,4.f,2.f,4.f,4.f,4.f,2.f,2.8284271245f,3.5f,4.f,4.f,2.8284271245f,4.f,
+			2.8284271245f,4.f,2.8284271245f,4.f,2.8284271245f,2.f,4.f,2.8284271245f,2.8284271245f,
+			3.5f,3.5f,3.5f,3.5f,3.5f,3.5f,3.5f,2.8284271245f,4.f,2.f,2.f,2.f,2.f,2.f,2.f,2.f,
+			10.f,10.f,10.f,10.f,10.f,10.f,10.f,10.f,2.f,2.f,4.f,4.f,2.f,2.f,2.f,2.f,
+			35.f,35.f,35.f,35.f,35.f,35.f,35.f,35.f,3.5f,3.5f,3.5f,3.5f,3.5f,3.5f,3.5f,3.5f,
+			4.f,10.f,10.f,2.f,4.f,4.f,4.f,4.f,4.f,4.f,4.f,4.f,4.f,4.f,4.f,4.f,4.f,4.f,4.f,4.f,4.f,4.f,4.f,4.f,4.f,
+			6.f,5.f,3.f,
+			35.f,35.f,35.f,35.f,35.f,35.f,35.f,35.f,35.f,35.f,35.f,35.f,35.f,35.f,35.f,35.f,
+			35.f,35.f,35.f,35.f,35.f,35.f,35.f,35.f,35.f,35.f,35.f,35.f,35.f,35.f,35.f,35.f,
+			35.f,35.f,35.f,35.f,35.f,35.f,35.f,35.f,4.f,25.f
+		};
+		int tile = type - 1;
+		if(type >= 25 && type <= 31) tile = 1;
+		else if(type >= 65 && type <= 72) tile = 24;
+		else if(type == 73) tile = 25;
+		else if(type >= 77 && type <= 83) tile = 7;
+		else if(type >= 84 && type <= 90) tile = 50;
+		else if(type >= 91 && type <= 97) tile = 51;
+		else if(type == 74 || type == 75) tile = 27;
+		else if(type == 76) tile = 26;
+		else if(type >= 98 && type <= 100) tile = type - 70;
+		else if(type >= 101 && type <= 140) tile = 56 + (type - 101) / 8;
+		else if(type == 141) tile = 61;
+		else if(type == 142) tile = 62;
+		if(type >= 57 && type <= 64)
+		{
+			tile = 40;
+			switch(detail.commodityIdNormalized)
+			{
+			case 9: tile = 45; break;
+			case 82: tile = 43; break;
+			case 104: tile = 44; break;
+			case 133: tile = 42; break;
+			case 231: tile = 41; break;
+			}
+		}
+		const bool berth = type == 2 || (type >= 25 && type <= 31) || (type >= 65 && type <= 72);
+		const bool table = type == 74 || type == 75;
+		const bool vehicle = type >= 57 && type <= 64;
+		const double size = berth ? CoordinateSpacing : iconSizes[type];
+		const QPointF center = DecodePoint(detail.packedXY);
+		const bool rotated = berth || table || vehicle || IsHatch(type);
+		const double angle = rotated ? DetailRotationStep(type) * .7853981633974483 : 0;
+		const double c = std::cos(angle), s = std::sin(angle);
+		const QRectF footprint = vehicle ? VehicleFootprint(detail.commodityIdNormalized) : QRectF();
+		const double halfX = footprint.isEmpty() ? size/2 : footprint.width()/2;
+		const double halfY = footprint.isEmpty() ? size/2 : footprint.height()/2;
+		const QPointF local[4] = {{-halfX,-halfY}, {-halfX,halfY}, {halfX,halfY}, {halfX,-halfY}};
+		const QVector2D uv[4] = {{tile/64.f,0}, {tile/64.f,1}, {(tile*16+15)/1024.f,1}, {(tile*16+15)/1024.f,0}};
+		QVector3D positions[4];
+		for(int i = 0; i < 4; ++i)
+			positions[i] = Position(center + QPointF(local[i].x()*c-local[i].y()*s,
+				local[i].x()*s+local[i].y()*c), detail.deck*DeckHeight + (berth || table || vehicle ? .2 : .1));
+		const int indices[6] = {0,1,2,0,2,3};
+		if(result.sprites.size() > MaximumVertices - 6) break;
+		for(int index : indices) result.sprites.append(WireframeSpriteVertex{positions[index], uv[index]});
+	}
+	if(gridVisible)
+	{
+		// DaDesignPlane::RenderSpacecraftGrid, 180301980. Its frame is the
+		// original 80-cell spacecraft volume; grid lines lie on the design plane.
+		const double radius = 40 * GridSpacing;
+		const double height = activeDeck * DeckHeight;
+		const QVector4D minor(.1f, .2f, .3f, 1), major(.2f, .3f, .4f, 1);
+		struct GridLabel { const char* text; int x, y; };
+		static const GridLabel gridLabels[] = {
+			{"Fore",0,1}, {"Aft",0,-1}, {"Port",-1,0}, {"Starboard",1,0},
+			{"Port Quarter",-1,-1}, {"Starboard Quarter",1,-1},
+			{"Port Fore",-1,1}, {"Starboard Fore",1,1}
+		};
+		for(const GridLabel& label : gridLabels)
+			result.labels.append(WireframeLabel{QVector3D(float(label.x*radius),float(label.y*radius),float(height+6)),
+				QString::fromLatin1(label.text),QVector4D(.3f,.4f,.5f,1),true});
+		const QPointF corners[4] = {{radius,radius}, {radius,-radius}, {-radius,-radius}, {-radius,radius}};
+		for(int i = 0; i < 4; ++i)
+		{
+			const QPointF& a = corners[i];
+			const QPointF& b = corners[(i + 1) % 4];
+			line(result.gridVertices, Position(a, -224), Position(b, -224), minor);
+			line(result.gridVertices, Position(a, 224), Position(b, 224), minor);
+			line(result.gridVertices, Position(a, -224), Position(a, 224), minor);
+		}
+		for(int i = -40; i <= 40; ++i)
+		{
+			const double p = i * GridSpacing;
+			const QVector4D& color = i % 10 ? minor : major;
+			const auto gridLine = [&](double ax, double ay, double bx, double by)
+			{
+				line(result.gridVertices, QVector3D(float(ax),float(ay),float(height)),
+					QVector3D(float(bx),float(by),float(height)), color);
+			};
+			if(gridMask & 1) gridLine(radius,p,-radius,p);
+			if(gridMask & 4) gridLine(p,radius,p,-radius);
+			if(i == 40) continue;
+			if(gridMask & 2)
+			{
+				gridLine(p,-radius,radius,-p);
+				if(i != -40) gridLine(-radius,p,-p,radius);
+			}
+			if(gridMask & 8)
+			{
+				gridLine(p,radius,radius,p);
+				if(i != -40) gridLine(-radius,-p,-p,-radius);
+			}
+		}
+	}
+	return result;
 }
 }
 }

@@ -106,6 +106,43 @@ struct Mesh
 	QStringList warnings;
 };
 
+struct WireframeVertex
+{
+	QVector3D position;
+	QVector4D color;
+};
+
+struct WireframeSpriteVertex
+{
+	QVector3D position;
+	QVector2D uv;
+};
+
+struct WireframeLabel
+{
+	WireframeLabel() = default;
+	WireframeLabel(const QVector3D& point, const QString& label, const QVector4D& tint, bool center)
+		: position(point), text(label), color(tint), centered(center) {}
+
+	QVector3D position;
+	QString text;
+	QVector4D color;
+	bool centered = false;
+};
+
+struct Wireframe
+{
+	QVector<WireframeVertex> vertices;
+	QVector<WireframeVertex> triangles;
+	QVector<WireframeVertex> gridVertices;
+	QVector<WireframeSpriteVertex> sprites;
+	QVector<WireframeLabel> labels;
+};
+
+// The line drawing uses room boundaries and vertical corners, independently
+// of the tessellation/materials in the solid model. Coordinates remain feet.
+Wireframe BuildWireframe(const Design& design, int activeDeck, bool gridVisible, quint8 gridMask);
+
 // Positions retain the author's feet coordinates: x/y plan, z up. Triangle
 // winding and normals face the visible side of each exterior/interior surface.
 Mesh BuildMesh(const Design& design);
