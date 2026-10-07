@@ -271,6 +271,19 @@ public:
 			fitAction->setEnabled(!solid);
 			SetRenderMode(solid);
 		});
+		// Temporary testing control; the original lighting button was on the helm console.
+		lightingAction = new QAction(QIcon(QStringLiteral(":/data/pc_IntLightOn.bmp")),
+			QStringLiteral("Test interior lights: On"), window);
+		lightingAction->setToolTip(QStringLiteral("<b>Temporary lighting test</b><br>Cycle interior lights: On, Dim, Off."));
+		QObject::connect(lightingAction, &QAction::triggered, window, [this]() { renderView->CycleInteriorLight(); });
+		renderView->interiorLightChanged = [this](AuLegacyShipRender::InteriorLight state) {
+			const bool on = state == AuLegacyShipRender::InteriorLight::On;
+			const bool dim = state == AuLegacyShipRender::InteriorLight::Dim;
+			lightingAction->setText(on ? QStringLiteral("Test interior lights: On")
+				: dim ? QStringLiteral("Test interior lights: Dim") : QStringLiteral("Test interior lights: Off"));
+			lightingAction->setIcon(QIcon(on ? QStringLiteral(":/data/pc_IntLightOn.bmp")
+				: dim ? QStringLiteral(":/data/pc_IntLightRed.bmp") : QStringLiteral(":/data/pc_IntLightOff.bmp")));
+		};
 		gravityAction = MakeAction("Gravity", "dp_Gravity",
 			"Toggle gravity on the design plane outside the spacecraft. Ship interiors retain their own gravity; gravity wells and ladders allow vertical travel.");
 		gravityAction->setCheckable(true);
@@ -531,6 +544,7 @@ public:
 		AddButton(outer, saveAction, 0, 3);
 		AddButton(outer, renderAction, 1, 0);
 		AddButton(outer, gravityAction, 1, 1);
+		AddButton(outer, lightingAction, 1, 4);
 		AddButton(outer, checkPathsAction, 1, 2);
 		AddButton(outer, UnavailableAction("Burn design CD", "dp_BurnCD", "In-world design publishing is not available here."), 1, 3);
 		AddButton(outer, deckUpAction, 2, 0);
@@ -1207,6 +1221,7 @@ public:
 	QLabel* brushSize;
 	QAction* gridAction;
 	QAction* renderAction;
+	QAction* lightingAction;
 	QAction* gravityAction;
 	QAction* checkPathsAction;
 	QPointer<QDialog> pathReportDialog;

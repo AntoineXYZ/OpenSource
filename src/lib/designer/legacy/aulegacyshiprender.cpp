@@ -84,7 +84,7 @@ const float Pi = 3.14159265358979323846f;
 using namespace AuLegacyShip::Rendering;
 const qint64 DoorTickMilliseconds = qint64(DoorAnimationTickSeconds * 1000);
 
-enum SystemAction { PowerToggle, DriveToggle, DriveCycle, DriveHold };
+enum SystemAction { PowerToggle, DriveToggle, DriveCycle, DriveHold, InteriorLightCycle };
 
 bool IsStudioSurface(const Batch& batch)
 {
@@ -521,6 +521,7 @@ public:
 	QString targetName;
 	bool powerPlantOn = false;
 	int driveState = 0; // 2016 GD_Off, GD_On, GD_Hold.
+	InteriorLight interiorLight = InteriorLight::On;
 	DiControlInput handControl, toggleControl;
 	Qt::MouseButtons mouseButtons = Qt::NoButton;
 	Qt::MouseButtons pendingMouseButtons = Qt::NoButton;
@@ -530,6 +531,7 @@ public:
 	QVector<TransparentTriangle> transparentTriangles;
 	QVector<DrawBatch> transparentBatches;
 	QVector<BatchTexture> batchTextures;
+	QVector<QVector2D> atlasRepeat;
 	QVector<QMatrix4x4> transforms;
 	QMatrix4x4 cachedViewProjection;
 	quint32 cachedConsoleId = 0;
@@ -547,7 +549,7 @@ public:
 	QMap<QString, QOpenGLTexture*> textures;
 	QSet<QString> transparentTextures;
 	QOpenGLTexture* effectTexture = nullptr;
-	QImage atlas;
+	QImage litAtlas, unlitAtlas;
 	QElapsedTimer animationClock;
 	QTimer* animationTimer = nullptr;
 	QMetaObject::Connection contextConnection;
@@ -560,6 +562,18 @@ public:
 	bool running = false;
 	QString glError;
 	QStringList textureWarnings;
+
+	QVector3D InteriorAmbient() const
+	{
+		// AuAtom13.dll:1800cdcf0. The standalone lighting preview displays
+		// the powered states without simulating a spacecraft capacitor.
+		switch(interiorLight)
+		{
+		case InteriorLight::On: return QVector3D(0.47843137f, 0.5f, 0.49019608f);
+		case InteriorLight::Dim: return QVector3D(0.14352942f, 0.15f, 0.14705883f);
+		default: return QVector3D(0.014352942f, 0.015f, 0.014705883f);
+		}
+	}
 	float radius = 10.0f;
 	float azimuth = 90.0f;
 	float elevation = 0.0f;
@@ -831,7 +845,8 @@ public:
 		re.glDisable(GL_BLEND);
 		re.DisableSuns();
 		re.DisableLights();
-		re.SetAmbientLight(0.014352942f, 0.015f, 0.014705883f, 1);
+		const QVector3D ambient = InteriorAmbient();
+		re.SetAmbientLight(ambient.x(), ambient.y(), ambient.z(), 1);
 		for(int i = 0; i < std::min(3, studioSuns.size()); ++i)
 		{
 			AuGLSun sun = studioSuns[i];
@@ -965,6 +980,7 @@ public:
 		transparentBatches.clear();
 		batchTextures.clear();
 		batchTextures.resize(mesh.batches.size());
+		atlasRepeat = QVector<QVector2D>(mesh.batches.size());
 		transforms = QVector<QMatrix4x4>(mesh.batches.size());
 		visibilityValid = false;
 		transparentOrderDirty = true;
@@ -985,6 +1001,14 @@ public:
 			const auto& batch = mesh.batches[source];
 			if (batch.vertices.isEmpty())
 				continue;
+			QVector2D& repeat = atlasRepeat[source];
+			if(batch.uvVelocity.x() != 0) repeat.setX(1);
+			if(batch.uvVelocity.y() != 0) repeat.setY(1);
+			for(const Vertex& vertex : batch.vertices)
+			{
+				if(vertex.uv.x() < -0.0001f || vertex.uv.x() > 1.0001f) repeat.setX(1);
+				if(vertex.uv.y() < -0.0001f || vertex.uv.y() > 1.0001f) repeat.setY(1);
+			}
 			Texture(source);
 			hasAnimatedGeometry |= batch.degreesPerSecond != 0;
 			const bool transparent = !IsStudioSurface(batch)
@@ -1143,8 +1167,18 @@ public:
 		const auto& batch = mesh.batches[source];
 		if(batch.textureFile == QStringLiteral("legacy:pc_Console.bmp")
 			|| batch.textureFile == QStringLiteral(":/data/ec_Console.bmp"))
-			return QStringLiteral("%1:power%2:drive%3").arg(batch.textureFile).arg(powerPlantOn).arg(driveState);
-		return batch.textureFile.isEmpty() ? QStringLiteral("atlas:%1").arg(FrameMaterial(source)) : batch.textureFile;
+			return QStringLiteral("%1:power%2:drive%3:light%4").arg(batch.textureFile).arg(powerPlantOn).arg(driveState).arg(int(interiorLight));
+		return batch.textureFile.isEmpty() ? QStringLiteral("atlas:%1:lit%2").arg(FrameMaterial(source))
+			.arg(interiorLight != InteriorLight::Off) : batch.textureFile;
+	}
+
+	QImage AtlasTile(const QImage& image, int material) const
+	{
+		if(image.isNull()) return QImage();
+		const TextureRegion& region = ShipTextures[material];
+		return image.copy(region.x * image.width() / 128,
+			(4096 - region.y - region.height) * image.height() / 4096,
+			region.width * image.width() / 128, region.height * image.height() / 4096).mirrored();
 	}
 
 	QOpenGLTexture* Texture(int source)
@@ -1155,7 +1189,8 @@ public:
 		BatchTexture& cached = batchTextures[source];
 		const bool consoleTexture = batch.textureFile == QStringLiteral("legacy:pc_Console.bmp")
 			|| batch.textureFile == QStringLiteral(":/data/ec_Console.bmp");
-		const int variant = consoleTexture ? int(powerPlantOn) * 3 + driveState : 0;
+		const int variant = consoleTexture ? (int(powerPlantOn) * 3 + driveState) * 3 + int(interiorLight)
+			: IsStudioSurface(batch) ? int(interiorLight != InteriorLight::Off) : 0;
 		if(cached.texture && cached.material == material && cached.variant == variant) return cached.texture;
 		const QString key = TextureKey(source);
 		const auto remember = [&](QOpenGLTexture* texture) {
@@ -1183,19 +1218,14 @@ public:
 		}
 		else if (material >= 0 && material < int(sizeof(ShipTextures) / sizeof(ShipTextures[0])))
 		{
+			// AuAtom13.dll:1804243b0 selects Lit for both On and Dim.
+			QImage& atlas = interiorLight == InteriorLight::Off ? unlitAtlas : litAtlas;
 			if (atlas.isNull())
 			{
-				atlas.load(QStringLiteral(":/data/legacy_txSpacecraft0Lit.png"));
+				atlas.load(interiorLight == InteriorLight::Off ? QStringLiteral(":/data/legacy_txSpacecraft0.png")
+					: QStringLiteral(":/data/legacy_txSpacecraft0Lit.png"));
 			}
-			if (!atlas.isNull())
-			{
-				const TextureRegion& region = ShipTextures[material];
-				const int x = region.x * atlas.width() / 128;
-				const int y = (4096 - region.y - region.height) * atlas.height() / 4096;
-				const int width = region.width * atlas.width() / 128;
-				const int height = region.height * atlas.height() / 4096;
-				tile = atlas.copy(x, y, width, height).mirrored();
-			}
+			tile = AtlasTile(atlas, material);
 		}
 		if (tile.isNull())
 		{
@@ -1217,6 +1247,8 @@ public:
 			};
 			if(batch.textureFile == QStringLiteral("legacy:pc_Console.bmp"))
 			{
+				button(interiorLight == InteriorLight::On ? ":/data/pc_IntLightOn.bmp"
+					: interiorLight == InteriorLight::Dim ? ":/data/pc_IntLightRed.bmp" : ":/data/pc_IntLightOff.bmp", 164, 90);
 				button(powerPlantOn ? ":/data/pc_PowerPlantOn.bmp" : ":/data/pc_PowerPlantOff.bmp", 218, 90);
 				button(driveState == 1 ? ":/data/pc_ManeuverOn.bmp" : driveState == 2
 					? ":/data/pc_ManeuverPark.bmp" : ":/data/pc_ManeuverOff.bmp", 236, 90);
@@ -1244,9 +1276,13 @@ public:
 				}
 			}
 		}
-		QOpenGLTexture* texture = new QOpenGLTexture(tile);
-		texture->setWrapMode(QOpenGLTexture::Repeat);
-		texture->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
+		// AuAtom13.dll:1803dcb50 loads the procedural atlases with GL_LINEAR
+		// and no mipmaps. Averaging alpha changes their cutout coverage.
+		const bool studio = IsStudioSurface(batch);
+		QOpenGLTexture* texture = new QOpenGLTexture(tile, studio
+			? QOpenGLTexture::DontGenerateMipMaps : QOpenGLTexture::GenerateMipMaps);
+		texture->setWrapMode(studio ? QOpenGLTexture::ClampToEdge : QOpenGLTexture::Repeat);
+		texture->setMinificationFilter(studio ? QOpenGLTexture::Linear : QOpenGLTexture::LinearMipMapLinear);
 		texture->setMagnificationFilter(QOpenGLTexture::Linear);
 		textures.insert(key, texture);
 		return remember(texture);
@@ -1414,6 +1450,18 @@ void AuLegacyShipRender::SetRenderSolid(bool solid)
 		for(const auto& trail : m_Impl->contrails) trail->RestartParticleSystem();
 	m_Impl->sound.Stop();
 	UpdateMouseCapture();
+	update();
+}
+
+void AuLegacyShipRender::CycleInteriorLight()
+{
+	// DpConsolePilot::ProcessControlInput, AuAtom13.dll:18060e9ad.
+	m_Impl->interiorLight = m_Impl->interiorLight == InteriorLight::On ? InteriorLight::Dim
+		: m_Impl->interiorLight == InteriorLight::Dim ? InteriorLight::Off : InteriorLight::On;
+	m_Impl->interaction = m_Impl->interiorLight == InteriorLight::On ? tr("Interior lights on.")
+		: m_Impl->interiorLight == InteriorLight::Dim ? tr("Interior lights dim.") : tr("Interior lights off.");
+	m_Impl->interactionUntil = m_Impl->animationClock.elapsed() + 2500;
+	if(interiorLightChanged) interiorLightChanged(m_Impl->interiorLight);
 	update();
 }
 
@@ -1864,6 +1912,11 @@ void AuLegacyShipRender::UpdateTarget(qint64 now)
 void AuLegacyShipRender::OperateSystem(int action)
 {
 	if(!m_Impl->SystemBindingIndex()) return;
+	if(action == InteriorLightCycle)
+	{
+		CycleInteriorLight();
+		return;
+	}
 	if(action == PowerToggle)
 	{
 		if(!m_Impl->designStats.powerPlantUnits) return;
@@ -1966,6 +2019,16 @@ bool AuLegacyShipRender::UseConsole(const QPoint& screenPosition)
 	DiControlInputArray active;
 	if(m_Impl->character.consoleType == 12)
 	{
+		// The 2016 interior-light button was 16x16 at (164,90). Modern
+		// helm controls put two 16x7 strobe/beacon buttons in this space.
+		double panelWidth = 0, panelHeight = 0;
+		m_Impl->console.PanelDimensions(0, panelWidth, panelHeight);
+		if(panelWidth > 0 && panelHeight > 0 && QRect(164, 90, 16, 16).contains(
+			QPoint(int(panelLocation.x * 256 / panelWidth), int(panelLocation.y * 128 / panelHeight))))
+		{
+			OperateSystem(InteriorLightCycle);
+			return true;
+		}
 		DpConsoleHelm station;
 		station.SampleControlPanelInput(0, panelLocation, active, false);
 	}
@@ -2032,15 +2095,9 @@ void AuLegacyShipRender::initializeGL()
 	const bool es = context()->isOpenGLES();
 	const QByteArray version = es ? QByteArray("#version 100\nprecision highp float;\n")
 		: QByteArray("#version 150\n");
-	const QByteArray vertex = version + (es
-		? "#define IN attribute\n#define OUT varying\n"
-		: "#define IN in\n#define OUT out\n") + R"(
-IN vec3 a_position;
-IN vec3 a_normal;
-IN vec2 a_uv;
-uniform mat4 u_mvp;
-uniform mat4 u_model;
-uniform vec2 u_uvOffset;
+	// Verified 2016 Spacecraft/SpacecraftFog shaders use mesh vertex normals.
+	// AuAtom13:1803dcb50 and 1804243b0 load/bind only color and effect atlases.
+	const QByteArray studioLighting = R"(
 struct StudioSun
 {
 	vec3 position;
@@ -2050,10 +2107,6 @@ struct StudioSun
 };
 uniform StudioSun u_suns[3];
 uniform vec3 u_ambient;
-uniform bool u_twoSided;
-OUT vec3 v_light;
-OUT vec3 v_backLight;
-OUT vec2 v_uv;
 vec3 lighting(vec3 position, vec3 normal)
 {
 	// Original Spacecraft.v.glsl: spherical ambient plus three studio suns.
@@ -2074,6 +2127,20 @@ vec3 lighting(vec3 position, vec3 normal)
 	}
 	return clamp(color, 0.0, 1.0);
 }
+)";
+	const QByteArray vertex = version + (es
+		? "#define IN attribute\n#define OUT varying\n"
+		: "#define IN in\n#define OUT out\n") + studioLighting + R"(
+IN vec3 a_position;
+IN vec3 a_normal;
+IN vec2 a_uv;
+uniform mat4 u_mvp;
+uniform mat4 u_model;
+uniform vec2 u_uvOffset;
+uniform bool u_twoSided;
+OUT vec3 v_light;
+OUT vec3 v_backLight;
+OUT vec2 v_uv;
 void main()
 {
 	vec3 position = (u_model * vec4(a_position, 1.0)).xyz;
@@ -2096,20 +2163,27 @@ uniform bool u_hasEffect;
 uniform vec4 u_effectRect;
 uniform vec4 u_tint;
 uniform float u_selfIllumination;
-uniform bool u_atlas;
 uniform bool u_twoSided;
-uniform vec2 u_inset;
+uniform bool u_atlas;
+uniform vec2 u_tileInset;
+uniform vec2 u_tileRepeat;
 uniform bool u_translucentPass;
 uniform int u_studioSide;
+uniform float u_alphaCutoff;
 void main()
 {
-	vec2 uv = u_atlas ? mix(u_inset, vec2(1.0) - u_inset, fract(v_uv)) : v_uv;
+	// Individual tiles retain their distinct 0 and 1 edges. With MSAA,
+	// a covered sample can have its pixel center just outside the tile;
+	// clamp that extrapolation instead of wrapping to the opposite edge.
+	// Long walls and scrolling surfaces repeat only on the required axes.
+	vec2 tileUV = mix(clamp(v_uv, vec2(0.0), vec2(1.0)), fract(v_uv), u_tileRepeat);
+	vec2 uv = u_atlas ? mix(u_tileInset, vec2(1.0) - u_tileInset, tileUV) : v_uv;
 	vec4 texel = SAMPLE(u_texture, uv) * u_tint;
 	if (u_studioSide != 0)
 	{
 		// Original procedural surfaces use alpha testing, not blending:
-		// exterior cutoff 0, interior cutoff 0.1, with opaque depth writes.
-		if (texel.a <= (u_studioSide == 2 ? 0.1 : 0.0))
+		// On cutoff 0.2 on both sides; Dim/Off interior 0.1, exterior 0.
+		if (texel.a <= u_alphaCutoff)
 			discard;
 		texel.a = 1.0;
 	}
@@ -2145,11 +2219,12 @@ void main()
 	const char* names[] = { "a_position", "a_normal", "a_uv" };
 	const int offsets[] = { int(offsetof(RenderVertex, position)), int(offsetof(RenderVertex, normal)),
 		int(offsetof(RenderVertex, uv)) };
+	const int sizes[] = { 3, 3, 2 };
 	for (int i = 0; i < 3; ++i)
 	{
 		const int location = m_Impl->program->attributeLocation(names[i]);
 		m_Impl->program->enableAttributeArray(location);
-		m_Impl->program->setAttributeBuffer(location, GL_FLOAT, offsets[i], i == 2 ? 2 : 3,
+		m_Impl->program->setAttributeBuffer(location, GL_FLOAT, offsets[i], sizes[i],
 			int(sizeof(RenderVertex)));
 	}
 	m_Impl->vao.release();
@@ -2286,6 +2361,7 @@ void AuLegacyShipRender::CleanupGL()
 	qDeleteAll(m_Impl->textures);
 	m_Impl->textures.clear();
 	m_Impl->batchTextures.clear();
+	m_Impl->atlasRepeat.clear();
 	m_Impl->transparentTextures.clear();
 	delete m_Impl->effectTexture;
 	m_Impl->effectTexture = nullptr;
@@ -2580,17 +2656,24 @@ void AuLegacyShipRender::paintGL()
 				const bool atlas = batch.textureFile.isEmpty() && material >= 0
 					&& material < int(sizeof(ShipTextures) / sizeof(ShipTextures[0]));
 				m_Impl->program->setUniformValue("u_atlas", atlas);
-				m_Impl->program->setUniformValue("u_inset", atlas
+				m_Impl->program->setUniformValue("u_tileRepeat", m_Impl->atlasRepeat[source]);
+				m_Impl->program->setUniformValue("u_tileInset", atlas
 					? QVector2D(0.5f / ShipTextures[material].width, 0.5f / ShipTextures[material].height)
 					: QVector2D());
 				m_Impl->program->setUniformValue("u_model", m_Impl->transforms[source]);
 				m_Impl->program->setUniformValue("u_uvOffset", batch.uvVelocity * seconds);
 				m_Impl->program->setUniformValue("u_tint", batch.tint);
 				m_Impl->program->setUniformValue("u_ambient", batch.interior
-					? QVector3D(0.014352942f, 0.015f, 0.014705883f) : QVector3D(0.125f, 0.125f, 0.125f));
+					? m_Impl->InteriorAmbient() : QVector3D(0.125f, 0.125f, 0.125f));
 				m_Impl->program->setUniformValue("u_selfIllumination", batch.selfIllumination);
 				m_Impl->program->setUniformValue("u_twoSided", batch.twoSided);
 				m_Impl->program->setUniformValue("u_studioSide", IsStudioSurface(batch) ? (batch.interior ? 2 : 1) : 0);
+				// AuGL13.dll:180087f10 identifies this as discardAlpha;
+				// AuAtom13.dll:1804246df / 18042434f select the exterior
+				// cutoff; 180424a9e selects the interior cutoff. On opens
+				// the hull glass from outside as well as inside.
+				m_Impl->program->setUniformValue("u_alphaCutoff", m_Impl->interiorLight == InteriorLight::On
+					? 0.2f : batch.interior ? 0.1f : 0.f);
 				if (batch.twoSided)
 					gl->glDisable(GL_CULL_FACE);
 				else

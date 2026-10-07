@@ -223,5 +223,7 @@
 	<file>data/legacy_dp_WeaponEmitter.png</file>
 	<file>data/legacy_dp_WormholeDrive.png</file>
 	<file>data/legacy_txSpacecraftDesign.png</file>
+	<file>data/legacy_txSpacecraft0.png</file>
+	<file>data/legacy_txSpacecraft0N.png</file>
 </qresource>
 </RCC>

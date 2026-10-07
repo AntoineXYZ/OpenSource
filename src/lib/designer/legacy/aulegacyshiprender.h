@@ -31,6 +31,7 @@ struct AuLegacyShipEditTool
 class AuLegacyShipRender : public AuDesignerView
 {
 public:
+	enum class InteriorLight { Off = 0, On = 1, Dim = 2 };
 	explicit AuLegacyShipRender(QWidget* parent = nullptr);
 	~AuLegacyShipRender() override;
 
@@ -39,6 +40,7 @@ public:
 	void SetGravity(bool enabled);
 	void ResetCharacter();
 	void SetRenderSolid(bool solid);
+	void CycleInteriorLight();
 	void SetGrid(bool visible, quint8 mask);
 	void SetEditTool(const AuLegacyShipEditTool& tool);
 	void ResetEditStroke();
@@ -52,6 +54,7 @@ public:
 	std::function<void(const QString&)> tipsChanged;
 	std::function<void(const QPointF&)> cellEntered;
 	std::function<void(int)> rotateEquipment;
+	std::function<void(InteriorLight)> interiorLightChanged;
 
 protected:
 	void initializeGL() override;
