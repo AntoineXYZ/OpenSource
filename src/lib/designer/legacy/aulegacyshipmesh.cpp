@@ -722,18 +722,30 @@ void HullWalls(Builder& out, const QVector<Edge>& edges, int deck, int armor, co
 				const QVector<ProfilePoint> adjacent = WallProfile(Type(next.tag), armor);
 				const auto cap = [&](const QVector<ProfilePoint>& points, bool reverse)
 				{
+					// AuAtom13!RenderWallEndCap 18044e0f0: interior vertices
+					// with nonzero profile offsets subtract 1/48 ft radially
+					// and move 1/48 ft along the interior-facing cap normal.
+					// Baseline vertices remain shared with the exterior cap.
+					constexpr double inset = 1.0 / 48.0;
+					const QPointF interiorNormal = Unit(QPointF(-nb.y(), nb.x())) * (reverse ? -1 : 1);
+					const auto point = [&](const ProfilePoint& p, bool interior)
+					{
+						const QPointF location = interior && p.offset != 0
+							? b + nb * (p.offset - inset) + interiorNormal * inset
+							: b + nb * p.offset;
+						return Position(location, deck * DeckHeight + p.height);
+					};
 					for(int j = 1; j < points.size(); ++j)
 					{
 						const ProfilePoint p = points.at(j - 1), q = points.at(j);
 						if(p.height == q.height || (p.offset == 0 && q.offset == 0)) continue;
-						const QVector3D quad[4] = {Position(b, deck * DeckHeight + p.height),
-							Position(b + nb * p.offset, deck * DeckHeight + p.height),
-							Position(b + nb * q.offset, deck * DeckHeight + q.height),
-							Position(b, deck * DeckHeight + q.height)};
 						const QVector2D uv[4] = {{0, float(p.height / 8)}, {1, float(p.height / 8)},
 							{1, float(q.height / 8)}, {0, float(q.height / 8)}};
 						for(bool interior : {false, true})
 						{
+							const QVector3D quad[4] = {Position(b, deck * DeckHeight + p.height),
+								point(p, interior), point(q, interior),
+								Position(b, deck * DeckHeight + q.height)};
 							const int order[4] = {0, (reverse != interior) ? 3 : 1, 2, (reverse != interior) ? 1 : 3};
 							const Material material = interior ? Material::InteriorWallEndCap : Material::HullWall;
 							out.Triangle(material, deck, interior, quad[order[0]], quad[order[1]], quad[order[2]],
