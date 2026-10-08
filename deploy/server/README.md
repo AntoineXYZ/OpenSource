@@ -586,6 +586,44 @@ The production deployment archive includes
 `deploy/server/environments/production.ini`, which can be edited after extraction
 and before running `./start.sh`.
 
+### Legacy spacecraft storage
+
+Legacy designs are stored in `n_LegacyScDesign` in `auUniverse`. Scene servers
+load these records at startup, check their hashes, reparse the original bytes,
+and recompute geometry and statistics before publishing an immutable cache.
+Geometry diagnostics remain advisory at this stage.
+
+Original detail IDs and designer coordinates are preserved. Separate one-based
+32-bit record IDs follow the immutable file order. The server derives the hull
+center for later conversion to live ship coordinates.
+
+New databases include the legacy design schema. For an existing local database,
+apply the additive schema once before restarting the updated scene servers:
+
+```bash
+docker compose --env-file build/server/local/compose.env \
+  -f deploy/server/compose.yaml exec -T --user postgres postgres \
+  psql -X --username aumaster --dbname auUniverse --set=ON_ERROR_STOP=1 \
+  < deploy/server/postgres/schema/legacyspacecraft.sql
+```
+
+For production, use `build/server/production/compose.env` instead. The script is
+safe to rerun and preserves existing data. From an extracted release, use its
+`compose.env` and packaged schema path.
+
+To inspect stored identities without printing design blobs:
+
+```bash
+docker compose --env-file build/server/local/compose.env \
+  -f deploy/server/compose.yaml exec -T --user postgres postgres \
+  psql -X --username aumaster --dbname auUniverse --set=ON_ERROR_STOP=1 \
+  --command 'SELECT id, name, contentHash, octet_length(sourceData) AS bytes FROM n_LegacyScDesign ORDER BY id;'
+```
+
+Scene startup logs use the prefix `Legacy spacecraft catalog:`. Existing stored
+designs continue to load. Design acquisition will be implemented separately;
+server images do not package `.ship` files and startup does not scan directories.
+
 ## Logs and data
 
 `make server-logs` and `make server-prod-logs` use Docker Compose logs. Each service uses bounded Docker local logs: three files of up to 20 MiB.

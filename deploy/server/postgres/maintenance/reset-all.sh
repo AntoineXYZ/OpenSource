@@ -28,3 +28,4 @@ schema_dir="$script_dir/../schema"
 	createdb -T template0 -O aumaster auUniverse
 	psql auUniverse -U aumaster -f "$schema_dir/inituniverse.sql"
 	psql auUniverse -U aumaster -f "$schema_dir/initstatic.sql"
+	psql auUniverse -U aumaster -v ON_ERROR_STOP=1 -f "$schema_dir/legacyspacecraft.sql"

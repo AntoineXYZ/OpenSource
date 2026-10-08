@@ -17,6 +17,7 @@
 #include "auitdesign.h"
 #include "auitem.h"
 #include "auknownpatents.h"
+#include "aulegacyscdesign.h"
 #include "auscdesign.h"
 #include "auscdesignexchange.h"
 #include "auscreport.h"
@@ -27,6 +28,7 @@
 #include <QIcon>
 #include <QPixmap>
 #include <QStringList>
+#include <algorithm>
 
 #define GAME_DATA_VER					0x08					// GD file version.
 #define SOLO_INIT_VER					0x01					// GS file version.
@@ -106,6 +108,7 @@ DgData::DgData(const DgData& c) :
 	m_BdExchange = new AuBdDesignExchange(*c.m_BdExchange);
 	m_ItDesigns = new AuItDesignHash(*c.m_ItDesigns);
 	m_ScDesigns = new AuScDesignHash(*c.m_ScDesigns);
+	m_LegacyScDesigns = c.m_LegacyScDesigns;
 	m_ScExchange = new AuScDesignExchange(*c.m_ScExchange);
 }
 
@@ -126,6 +129,23 @@ void DgData::Load()
 
 	// Calculate values used to determine base hit points per level of all industries.
 	CalcIndustryHitPointValues();
+}
+
+QSharedPointer<const AuLegacyScDesign> DgData::LegacyScDesign(quint32 designId) const
+{
+	return m_LegacyScDesigns.value(designId);
+}
+
+QList<quint32> DgData::LegacyScDesignIds() const
+{
+	QList<quint32> ids = m_LegacyScDesigns.keys();
+	std::sort(ids.begin(), ids.end());
+	return ids;
+}
+
+void DgData::LegacyScDesignsReplace(const QHash<quint32, QSharedPointer<const AuLegacyScDesign>>& designs)
+{
+	m_LegacyScDesigns = designs;
 }
 
 float DgData::ManufacturingCost(COMMODITYID idCommodity) const

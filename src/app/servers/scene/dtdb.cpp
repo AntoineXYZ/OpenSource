@@ -13,6 +13,7 @@
 #include "aucity.h"
 #include "audbglobal.h"
 #include "auitdesign.h"
+#include "aulegacyspacecraftcatalog.h"
 #include "auscdesign.h"
 #include "auscdesignexchange.h"
 #include "ausceneserverapp.h"
@@ -120,6 +121,7 @@ void DtDb::run()
 					UpdateEmpires(gd, db);		// Validate people data in empire records.
 				}
 				g_Au.UnlockData();
+				LoadLegacySpacecraftCatalog(db);
 
 				// Load active stories.
 				if(g_Au.IsSceneWorker())

@@ -28,6 +28,8 @@ psql --username aumaster --dbname auUniverse --set=ON_ERROR_STOP=1 \
     --file /opt/openshores/sql/inituniverse.sql
 psql --username aumaster --dbname auUniverse --set=ON_ERROR_STOP=1 \
     --file /opt/openshores/sql/initstatic.sql
+psql --username aumaster --dbname auUniverse --set=ON_ERROR_STOP=1 \
+    --file /opt/openshores/sql/legacyspacecraft.sql
 
 # Keep the checked-in server accounts, but do not carry historical personal
 # accounts into newly initialized deployments.

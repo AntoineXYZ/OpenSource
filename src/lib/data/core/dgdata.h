@@ -18,6 +18,8 @@
 #include "dgempire.h"
 #include "dzspecies.h"
 #include <QIcon>
+#include <QHash>
+#include <QSharedPointer>
 #include <QVariant>
 
 using namespace std;
@@ -35,6 +37,7 @@ class AuItDesign;
 class AuItDesignHash;
 class AuItemHash;
 class AuKnownPatents;
+class AuLegacyScDesign;
 class AuPointArray;
 class AuScDesign;
 class AuScDesignHash;
@@ -794,6 +797,13 @@ public:
 	// Returns AuDesign::STATE of 'designId'.
 	quint8 ScDesignState(quint32 designId) const;
 
+	// Legacy designs have a separate database and ID namespace. Use the existing
+	// LockScDesignsForRead/Write guards. Returned immutable records retain their
+	// lifetime if the cache is replaced by the database thread.
+	QSharedPointer<const AuLegacyScDesign> LegacyScDesign(quint32 designId) const;
+	QList<quint32> LegacyScDesignIds() const;
+	void LegacyScDesignsReplace(const QHash<quint32, QSharedPointer<const AuLegacyScDesign>>& designs);
+
 	//-------------------
 
 public:
@@ -1172,6 +1182,9 @@ public:
 	AuExchangeBlueprintRatings*			m_ScExchangeRatings;
 
 private:
+	// Guarded by AuGlobal::LockScDesigns, including on servers before any login.
+	QHash<quint32, QSharedPointer<const AuLegacyScDesign>> m_LegacyScDesigns;
+
 	// REMAINING VALUES ARE ONLY VALID AFTER SUCCESSFUL LOGIN TO THE LOGIN SERVER
 	AuTime								m_AccountExpiry;
 	ACCOUNT								m_AccountType;
