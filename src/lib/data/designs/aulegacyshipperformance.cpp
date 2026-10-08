@@ -2,6 +2,8 @@
 
 #include "aulegacyshipsave.h"
 #include "auscdesign.h"
+#include "aulegacyshipcommoditydata.h"
+#include "aupoint.h"
 #include <QObject>
 #include <QSet>
 #include <algorithm>
@@ -84,6 +86,225 @@ void ModuleTechLevel(const Design& design, const Stats& stats, Performance& resu
 		else if(result.shieldModule == 0xf2) RequireModule(result, result.shieldModule, 27);
 	}
 }
+
+int MaterialTechLevel(quint16 commodity)
+{
+	switch(commodity)
+	{
+	case 0x10c: return 21;
+	case 0xe3: return 3;
+	case 0x108: case 0x92: return 9;
+	case 0x109: case 0x91: return 18;
+	case 0xe4: return 6;
+	case 0x10f: case 0x10d: return 23;
+	case 0x10a: return 12;
+	default: return -1;
+	}
+}
+
+void AddMaterial(Manufacturing& result, quint16 commodity, quint64 quantity)
+{
+	for(MaterialRequirement& material : result.materials)
+		if(material.commodity == commodity)
+		{
+			material.quantity += quantity;
+			return;
+		}
+	MaterialRequirement material;
+	material.commodity = commodity;
+	material.quantity = quantity;
+	material.minimumTechLevel = MaterialTechLevel(commodity);
+	result.materials.append(material);
+}
+
+void SubtractMaterial(Manufacturing& result, quint16 commodity, quint64 quantity)
+{
+	for(int i = 0; i < result.materials.size(); ++i)
+		if(result.materials[i].commodity == commodity)
+		{
+			if(result.materials[i].quantity > quantity) result.materials[i].quantity -= quantity;
+			else result.materials.removeAt(i);
+			return;
+		}
+}
+
+bool HasMaterial(const Manufacturing& result, quint16 commodity)
+{
+	for(const MaterialRequirement& material : result.materials)
+		if(material.commodity == commodity) return true;
+	return false;
+}
+
+ArmorFactors Absorption(quint16 module, int techLevel, int units, bool energy)
+{
+	ArmorFactors result;
+	const LegacyCommodity::Data* data = LegacyCommodity::Get(module);
+	if(!data) return result;
+	const float boost = float(LegacyTechBoost(techLevel));
+	const float effect = float(energy ? data->absorbEnergy : data->absorbKinetic) / 200.f;
+	result.absorbedFraction = (effect + float(data->absorbContact) / 200.f) * boost;
+	result.blockedDamage = (float(energy ? data->blockEnergy : data->blockKinetic)
+		+ float(data->blockContact)) * boost * float(units);
+	return result;
+}
+}
+
+AuLegacyShip::WeaponExample AuLegacyShip::ExampleWeapon(quint16 ammunition, int techLevel)
+{
+	WeaponExample result;
+	const LegacyCommodity::Data* data = LegacyCommodity::Get(ammunition);
+	if(!data) return result;
+	result.ammunition = ammunition;
+	result.techLevel = techLevel & 31;
+	result.quality = quint8(techLevel * 8 + 4);
+	// AuItemAmmo::Damage1/DamageMod1, AuData13.dll 0x18002ecd0/0x18002f1c0.
+	// Energy lenses (category 1) omit the TL boost. Quality adjusts the base
+	// value by whole percentage steps, with integer truncation at each stage.
+	const auto damage = [&](int base, int minimum) -> quint64 {
+		int value = base;
+		if(data->category != 1) value += result.techLevel * base * 5 / 100;
+		value += ((result.quality - 123) / 10) * base / 100;
+		return std::max(minimum, std::min(65535, value));
+	};
+	result.damage = data->damage ? damage(data->damage, 1) : 0;
+	result.damageModifier = damage(data->damageMod, 0);
+	result.radiusFeet = data->radius;
+	if(data->category != 1) result.radiusFeet += result.techLevel * data->radius * 5 / 100;
+	return result;
+}
+
+AuLegacyShip::Manufacturing AuLegacyShip::CalculateManufacturing(const Design& design, int techLevel)
+{
+	Manufacturing result;
+	result.techLevel = techLevel;
+	const quint16 hull = ScalarModule(design, 2);
+	const quint16 metal = hull == 0x118 ? 0x92 : hull == 0x119 ? 0x91 : 0x33;
+	QMap<quint16, const Room*> rooms;
+	for(const Room& room : design.rooms)
+	{
+		if(room.hasWorkingBoundary ? room.workingBoundary.isEmpty() : room.packedVertices.isEmpty()) continue;
+		if(!rooms.contains(room.roomId)) rooms.insert(room.roomId, &room);
+		const QPolygonF boundary = RoomBoundary(room, &result.error);
+		if(!result.error.isEmpty()) { result.valid = false; return result; }
+		AuPointArray polygon;
+		for(const QPointF& vertex : boundary) polygon.append(AuPoint(vertex.x(), vertex.y(), 0));
+		float armor = float(design.header.armor + 1);
+		if(design.header.streamline) armor *= 1.1f;
+		// DnRoom::ListComponents, AuData13.dll 0x180173510. Truncate the
+		// surface requirement before integer division, independently per room.
+		const double surface = double(armor) * (polygon.Perimeter() * 8. + polygon.Area() * 2.);
+		if(!std::isfinite(surface) || surface > 2147483647.)
+		{
+			result.valid = false;
+			result.error = QStringLiteral("Room manufacturing requirements exceed the legacy range.");
+			return result;
+		}
+		const quint64 quantity = quint64(std::max(1, int(surface) / 48));
+		AddMaterial(result, metal, quantity);
+		AddMaterial(result, 27, 1);
+		AddMaterial(result, 50, 1);
+		AddMaterial(result, 63, quantity > 2 ? 2 : 1);
+	}
+	for(const Detail& detail : design.details)
+	{
+		const int type = detail.detailType;
+		const auto add = [&](quint16 cid, quint64 quantity) { AddMaterial(result, cid, quantity); };
+		// DnDetail::ListComponents, AuData13.dll 0x180160220.
+		if(type == 1 || type == 4 || type == 6 || type == 7 || type == 12 || type == 13
+			|| type == 15 || type == 17 || type == 19 || type == 73)
+		{ add(2, 1); add(27, 2); add(50, 1); add(63, 1); add(79, 1); }
+		else if(type == 2 || (type >= 25 && type <= 31)) { add(51, 1); add(79, 2); }
+		else if(type == 3 || type == 53 || type == 54) { add(50, 2); add(51, 2); }
+		else if(type == 5 || type == 8 || (type >= 49 && type <= 52)
+			|| (type >= 57 && type <= 64) || (type >= 77 && type <= 97)) { add(50, 1); add(51, 1); }
+		else if(type == 9) { add(27, 1); add(228, 1); SubtractMaterial(result, metal, 2); }
+		else if(type == 10) { add(27, 1); add(ScalarModule(design, 4) == 0xec ? 64 : 226, 1); add(50, 3); add(51, 3); add(63, 1); }
+		else if(type == 11)
+		{
+			add(27, 2);
+			if(detail.commodityIdNormalized == 0xf5) { add(268, 4); add(50, 2); add(51, 1); add(63, 2); }
+			else if(detail.commodityIdNormalized == 0xf4) { add(50, 2); add(51, 1); add(266, 4); add(63, 2); }
+			else { add(50, 2); add(51, 1); add(63, 2); add(79, 4); }
+		}
+		else if(type == 14) { add(27, 4); add(51, 2); add(50, 2); add(63, 1); }
+		else if(type == 16) { add(27, 3); add(50, 1); add(63, 1); }
+		else if(type == 18)
+		{
+			const quint16 shield = ScalarModule(design, 7);
+			if(shield == 0xf1) { add(27, 5); add(228, 1); add(264, 1); add(63, 1); }
+			else if(shield == 0xf2) { add(27, 5); add(228, 1); add(63, 1); add(269, 1); add(265, 1); }
+			else { add(227, 1); add(27, 5); add(63, 1); }
+		}
+		else if(type == 20 || type == 23)
+		{
+			const Room* room = rooms.value(detail.roomId, nullptr);
+			if(!room) continue;
+			if(type == 20)
+			{
+				const quint16 key = quint16(quint16(quint8(room->deck)) << 8) | room->roomSubtype;
+				if(MappedModule(design.header.secondPairs, key, 0xf6) == 0xf7)
+				{ add(27, 6); add(228, 2); add(264, 2); add(63, 2); }
+				else { add(27, 3); add(228, 1); add(63, 1); }
+			}
+			else
+			{
+				const quint16 module = MappedModule(design.header.firstPairs, room->roomSubtype, 0x105);
+				if(module == 0x102) { add(227, 1); add(27, 2); add(228, 2); add(51, 2); add(50, 2); }
+				else if(module == 0x100 || module == 0x101 || module == 0x121 || module == 0x123)
+				{ add(27, 2); add(51, 2); add(50, 2); }
+				else if(module == 0x11b) { add(27, 2); add(51, 2); add(50, 2); add(269, 1); }
+				else { add(27, 1); add(102, 1); add(51, 2); add(50, 2); }
+			}
+		}
+		else if(type == 21 || type == 22 || (type >= 33 && type <= 40))
+		{ add(27, 1); add(102, 1); add(50, 2); add(51, 1); add(63, 1); add(79, 1); }
+		else if(type == 24)
+		{
+			if(ScalarModule(design, 1) == 0x104) { add(271, 2); add(27, 6); }
+			else { add(27, 6); add(111, 1); }
+			add(51, 1); add(63, 2);
+		}
+		else if(type == 32) { add(5, 10); add(27, 1); add(50, 1); add(51, 1); add(63, 1); add(79, 1); }
+		else if(type == 55 || type == 56) SubtractMaterial(result, metal, type == 55 ? 2 : 1);
+		else if(type >= 65 && type <= 72) { add(51, 1); add(79, 1); }
+		else if(type == 74 || type == 75) { add(2, 4); add(27, 4); add(50, 4); add(63, 4); add(79, 4); }
+		else if(type >= 101 && type <= 140) add(51, type <= 108 ? 2 : type <= 124 ? 3 : 4);
+	}
+	// DeManufacturingProcess::InitSpacecraft, AuData13.dll 0x180126fb0.
+	AddMaterial(result, 3, 0);
+	const quint16 materials[] = {5, 2, 268, 227, 264, 265, 27, 226, 64, 102, 228, 111,
+		271, 146, 51, 145, 50, 63, 79, 266, 269};
+	const quint16 tools[] = {123, 125, 125, 229, 229, 229, 127, 135, 135, 136, 230, 128,
+		128, 4, 4, 4, 129, 124, 126, 267, 270};
+	for(unsigned int i = 0; i < sizeof(materials) / sizeof(materials[0]); ++i)
+		if(HasMaterial(result, materials[i]))
+		{
+			result.techLevel = std::max(result.techLevel, MaterialTechLevel(materials[i]));
+			AddMaterial(result, tools[i], 0);
+		}
+	result.componentQuality = std::max(192, int(quint8(techLevel * 8)));
+	for(const MaterialRequirement& material : result.materials)
+	{
+		if(!material.quantity) continue;
+		const LegacyCommodity::Data* data = LegacyCommodity::Get(material.commodity);
+		if(!data)
+		{
+			result.valid = false;
+			result.error = QStringLiteral("Manufacturing commodity %1 is absent from the recovered 2016 table.").arg(material.commodity);
+			return result;
+		}
+		float price = data->baseCost;
+		if(material.commodity != 3)
+		{
+			price *= float(result.techLevel) / 10.f + 1.f;
+			if(material.commodity != 286 && !(material.commodity >= 158 && material.commodity <= 225)
+				&& material.commodity != 348) price *= float(result.componentQuality) * .0078125f;
+		}
+		price = std::max(1.f, price);
+		result.estimatedCost += (price + 1.f) * float(material.quantity);
+	}
+	result.estimatedCost = std::round(result.estimatedCost / 1000.f) * 1000.f;
+	return result;
 }
 
 double AuLegacyShip::LegacyTechBoost(int techLevel)
@@ -220,6 +441,10 @@ AuLegacyShip::Performance AuLegacyShip::CalculatePerformance(const Design& desig
 	result.minimumTechLevel = std::max({result.armorTechLevel, result.massTechLevel,
 		result.moduleTechLevel, stats.equipmentTechLevel});
 	result.techLevelUsed = std::max(result.minimumTechLevel, std::max(0, std::min(255, techLevel)));
+	result.manufacturing = CalculateManufacturing(design, result.techLevelUsed);
+	result.minimumTechLevel = std::max(result.minimumTechLevel, result.manufacturing.techLevel);
+	result.techLevelUsed = std::max(result.techLevelUsed, result.manufacturing.techLevel);
+	if(!result.manufacturing.valid) result.diagnostics.append(result.manufacturing.error);
 	const float boost = float(LegacyTechBoost(result.techLevelUsed));
 
 	// Preserve integer truncation in the original capacity and berth equations.
@@ -274,6 +499,29 @@ AuLegacyShip::Performance AuLegacyShip::CalculatePerformance(const Design& desig
 		+ stats.transporterPads + stats.lifeSupportUnits + stats.maneuverUnits + stats.ftlUnits
 		+ stats.powerPlantUnits + stats.sensorUnits + stats.shieldUnits + stats.weaponUnits) * 10;
 	result.totalHitPoints = result.structureHitPoints + result.equipmentHitPoints;
+	const auto roomHits = [hitFactor](quint64 volume) -> quint64 {
+		return volume ? std::max<quint64>(1, quint64(hitFactor * float(volume) * .00390625f)) * 10 : 0;
+	};
+	result.systemHitPoints[1] = roomHits(fuelVolume);
+	result.systemHitPoints[3] = roomHits(holdVolume);
+	result.systemHitPoints[5] = roomHits(stats.roomVolumes[13]);
+	const quint64 compartmentHits = result.systemHitPoints[1] + result.systemHitPoints[3] + result.systemHitPoints[5];
+	result.systemHitPoints[4] = result.structureHitPoints > compartmentHits ? result.structureHitPoints - compartmentHits : 0;
+	result.systemHitPoints[0] = quint64(stats.consoles) * 10;
+	result.systemHitPoints[2] = quint64(stats.maneuverUnits) * 10;
+	result.systemHitPoints[6] = quint64(stats.lifeSupportUnits) * 10;
+	result.systemHitPoints[7] = quint64(stats.powerPlantUnits) * 10;
+	result.systemHitPoints[8] = quint64(stats.sensorUnits) * 10;
+	result.systemHitPoints[9] = quint64(stats.shieldUnits) * 10;
+	result.systemHitPoints[10] = quint64(stats.surgeries) * 10;
+	result.systemHitPoints[11] = quint64(stats.transporterPads) * 10;
+	result.systemHitPoints[12] = quint64(stats.turrets) * 10;
+	result.systemHitPoints[13] = quint64(stats.weaponUnits) * 10;
+	result.systemHitPoints[14] = quint64(stats.ftlUnits) * 10;
+	result.hullKinetic = Absorption(hullModule, result.techLevelUsed, design.header.armor + 1, false);
+	result.hullEnergy = Absorption(hullModule, result.techLevelUsed, design.header.armor + 1, true);
+	result.shieldKinetic = Absorption(result.shieldModule, result.techLevelUsed, stats.shieldUnits, false);
+	result.shieldEnergy = Absorption(result.shieldModule, result.techLevelUsed, stats.shieldUnits, true);
 
 	if(stats.hullVolume)
 	{
@@ -329,6 +577,7 @@ AuLegacyShip::Performance AuLegacyShip::CalculatePerformance(const Design& desig
 		{
 		case 0xfc:
 			bay.rangeFeet = boost * 85000.f;
+			bay.example = ExampleWeapon(0x137, result.techLevelUsed);
 			if(bay.projectors) bay.capacitorShots = int(result.capacitorPower) / bay.projectors;
 			if(bay.projectors && !bay.capacitorShots)
 				result.diagnostics.append(QStringLiteral("Weapon bay %1 has inadequate capacitor power to fire its energy weapons at full power.")
@@ -336,9 +585,12 @@ AuLegacyShip::Performance AuLegacyShip::CalculatePerformance(const Design& desig
 			break;
 		case 0xfe: case 0x105: case 0x13f:
 			bay.rangeFeet = boost * 85000.f;
+			bay.example = ExampleWeapon(bay.module == 0xfe ? 0x44 : bay.module == 0x105 ? 0xb : 0xc,
+				result.techLevelUsed);
 			break;
 		case 0x100: case 0x101: case 0x11b: case 0x121: case 0x123:
 			bay.rangeFeet = float(std::sqrt(float(units * 10))) * 100.f * 3.28084f * boost;
+			bay.harvestQuantity = int(std::round(float(units * 10) * boost * .5f) / 10.f);
 			if(units) bay.capacitorShots = int(result.capacitorPower) / units;
 			if(!units)
 				result.diagnostics.append(QStringLiteral("Weapon bay %1 needs weapon units to fire its harvesting system.").arg(int(it.key()) + 1));

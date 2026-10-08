@@ -5,6 +5,39 @@
 
 namespace AuLegacyShip
 {
+struct ArmorFactors
+{
+	float absorbedFraction = 0;
+	float blockedDamage = 0;
+};
+
+struct WeaponExample
+{
+	quint16 ammunition = 0;
+	int techLevel = 0;
+	int quality = 0;
+	quint64 damage = 0;
+	quint64 damageModifier = 0;
+	float radiusFeet = 0;
+};
+
+struct MaterialRequirement
+{
+	quint16 commodity = 0;
+	quint64 quantity = 0;
+	int minimumTechLevel = -1;
+};
+
+struct Manufacturing
+{
+	QVector<MaterialRequirement> materials;
+	int techLevel = 0;
+	int componentQuality = 192;
+	float estimatedCost = 0;
+	bool valid = true;
+	QString error;
+};
+
 struct WeaponBayPerformance
 {
 	quint16 module = 0;
@@ -15,6 +48,8 @@ struct WeaponBayPerformance
 	int launchers = 0;
 	int projectors = 0;
 	int capacitorShots = 0;
+	int harvestQuantity = 0;
+	WeaponExample example;
 };
 
 struct Performance
@@ -41,6 +76,9 @@ struct Performance
 	quint64 structureHitPoints = 0;
 	quint64 equipmentHitPoints = 0;
 	quint64 totalHitPoints = 0;
+	std::array<quint64, 15> systemHitPoints{};
+	ArmorFactors hullKinetic, hullEnergy, shieldKinetic, shieldEnergy;
+	Manufacturing manufacturing;
 	int lifeSupportRequired = 1;
 	double maneuverAccelerationFeetPerSecondSquared = 0;
 	double verticalAccelerationFeetPerSecondSquared = 0;
@@ -84,6 +122,8 @@ struct TargetHealth
 
 TargetHealth DesignTargetHealth(const Design& design, const Stats& stats,
 	const Performance& performance, quint32 detailId);
+WeaponExample ExampleWeapon(quint16 ammunition, int techLevel);
+Manufacturing CalculateManufacturing(const Design& design, int techLevel);
 // Pure calculation from current records; techLevel is an internal zero-based TL.
 Performance CalculatePerformance(const Design& design, const Stats& stats, int techLevel);
 }
