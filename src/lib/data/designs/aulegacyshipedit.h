@@ -20,6 +20,15 @@ struct CellEditResult
 // The input file is never written. Room Number is the saved subtype byte.
 CellEditResult EditCell(Design& design, int deck, const QPointF& cursor,
 	quint8 gridMask, int roomType, quint8 roomNumber);
+
+// DnRoomArray::InsideRoom: first room containing the point, excluding walls.
+// Returns -1 when no room is selected or the geometry cannot be read.
+int RoomAtPoint(const Design& design, int deck, const QPointF& cursor,
+	QString* error = nullptr);
+
+// Whole-room/deck erasure revalidates equipment before committing the edit.
+CellEditResult DeleteRoomAt(Design& design, int deck, const QPointF& cursor);
+CellEditResult DeleteDeck(Design& design, int deck);
 }
 
 #endif // AuLegacyShipEdit_H

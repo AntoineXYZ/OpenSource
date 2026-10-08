@@ -1,6 +1,7 @@
 #include "aulegacyshipedit.h"
 #include "aulegacyshipdetails.h"
 #include "aulegacyshipgeometry.h"
+#include "aupoint.h"
 
 #include <QSet>
 #include <cmath>
@@ -232,5 +233,82 @@ AuLegacyShip::CellEditResult AuLegacyShip::EditCell(Design& design, int deck,
 	result.changed = changed || !SameDetails(design.details, candidate.details);
 	if(result.changed)
 		design = std::move(candidate);
+	return result;
+}
+
+int AuLegacyShip::RoomAtPoint(const Design& design, int deck, const QPointF& cursor,
+	QString* error)
+{
+	if(error) error->clear();
+	if(deck < -128 || deck > 127 || !std::isfinite(cursor.x()) || !std::isfinite(cursor.y()))
+	{
+		if(error) *error = QStringLiteral("The room position is outside the legacy coordinate range.");
+		return -1;
+	}
+	const AuPoint location(cursor.x(), cursor.y(), deck * DeckHeight);
+	for(int i = 0; i < design.rooms.size(); ++i)
+	{
+		const Room& room = design.rooms[i];
+		if(int(room.deck) != deck || !HasBoundary(room)) continue;
+		QString geometryError;
+		const QPolygonF boundary = RoomBoundary(room, &geometryError);
+		if(!geometryError.isEmpty())
+		{
+			if(error) *error = geometryError;
+			return -1;
+		}
+		AuPointArray polygon;
+		for(const QPointF& vertex : boundary)
+			polygon.append(AuPoint(vertex.x(), vertex.y(), deck * DeckHeight));
+		if(polygon.PointInBoundary(location)) return i;
+	}
+	return -1;
+}
+
+AuLegacyShip::CellEditResult AuLegacyShip::DeleteRoomAt(Design& design, int deck,
+	const QPointF& cursor)
+{
+	CellEditResult result;
+	// DaSpaceShip::DesignDeleteRoom / DgData::SpaceShipDesignDeleteRoom,
+	// AuAtom13.dll 0x1803e3d80 / AuData13.dll 0x180145a30.
+	const int index = RoomAtPoint(design, deck, cursor, &result.error);
+	if(!result.error.isEmpty()) return result;
+	result.accepted = true;
+	if(index < 0 || !design.rooms[index].roomId) return result;
+	Design candidate = design;
+	candidate.rooms.removeAt(index);
+	if(!ReconcileDetails(candidate, result.error))
+	{
+		result.accepted = false;
+		return result;
+	}
+	design = std::move(candidate);
+	result.changed = true;
+	return result;
+}
+
+AuLegacyShip::CellEditResult AuLegacyShip::DeleteDeck(Design& design, int deck)
+{
+	CellEditResult result;
+	if(deck < -128 || deck > 127)
+	{
+		result.error = QStringLiteral("The deck is outside the legacy deck range.");
+		return result;
+	}
+	// DgData::SpaceShipDesignDeleteDeck, AuData13.dll 0x180145140:
+	// remove details and rooms on this deck, then verify the remaining details.
+	Design candidate = design;
+	for(int i = candidate.details.size() - 1; i >= 0; --i)
+		if(int(candidate.details[i].deck) == deck) candidate.details.removeAt(i);
+	for(int i = candidate.rooms.size() - 1; i >= 0; --i)
+		if(int(candidate.rooms[i].deck) == deck) candidate.rooms.removeAt(i);
+	if(candidate.rooms.size() == design.rooms.size() && candidate.details.size() == design.details.size())
+	{
+		result.accepted = true;
+		return result;
+	}
+	if(!ReconcileDetails(candidate, result.error)) return result;
+	design = std::move(candidate);
+	result.accepted = result.changed = true;
 	return result;
 }

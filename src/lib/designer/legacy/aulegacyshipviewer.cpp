@@ -245,7 +245,7 @@ QString RoomName(int type)
 class AuLegacyShipViewer::Impl
 {
 public:
-	enum ToolMode { HandMode, PaintMode, EraseMode, EquipmentMode, DeleteEquipmentMode, DeleteEquipmentAreaMode };
+	enum ToolMode { HandMode, PaintMode, EraseMode, DeleteRoomMode, EquipmentMode, DeleteEquipmentMode, DeleteEquipmentAreaMode };
 
 	explicit Impl(AuLegacyShipViewer* owner) : window(owner),
 		settings(QSettings::NativeFormat, QSettings::UserScope,
@@ -272,19 +272,6 @@ public:
 			fitAction->setEnabled(!solid);
 			SetRenderMode(solid);
 		});
-		// Temporary testing control; the original lighting button was on the helm console.
-		lightingAction = new QAction(QIcon(QStringLiteral(":/data/pc_IntLightOn.bmp")),
-			QStringLiteral("Test interior lights: On"), window);
-		lightingAction->setToolTip(QStringLiteral("<b>Temporary lighting test</b><br>Cycle interior lights: On, Dim, Off."));
-		QObject::connect(lightingAction, &QAction::triggered, window, [this]() { renderView->CycleInteriorLight(); });
-		renderView->interiorLightChanged = [this](AuLegacyShipRender::InteriorLight state) {
-			const bool on = state == AuLegacyShipRender::InteriorLight::On;
-			const bool dim = state == AuLegacyShipRender::InteriorLight::Dim;
-			lightingAction->setText(on ? QStringLiteral("Test interior lights: On")
-				: dim ? QStringLiteral("Test interior lights: Dim") : QStringLiteral("Test interior lights: Off"));
-			lightingAction->setIcon(QIcon(on ? QStringLiteral(":/data/pc_IntLightOn.bmp")
-				: dim ? QStringLiteral(":/data/pc_IntLightRed.bmp") : QStringLiteral(":/data/pc_IntLightOff.bmp")));
-		};
 		gravityAction = MakeAction("Gravity", "dp_Gravity",
 			"Toggle gravity on the design plane outside the spacecraft. Ship interiors retain their own gravity; gravity wells and ladders allow vertical travel.");
 		gravityAction->setCheckable(true);
@@ -309,6 +296,12 @@ public:
 		eraseAction->setCheckable(true);
 		tools->addAction(eraseAction);
 		QObject::connect(eraseAction, &QAction::triggered, window, [this]() { SetToolMode(EraseMode); });
+		deleteRoomAction = MakeAction("Erase room", "dp_DelRoom", "Erase the whole room under the cursor on the current deck.");
+		deleteRoomAction->setCheckable(true);
+		tools->addAction(deleteRoomAction);
+		QObject::connect(deleteRoomAction, &QAction::triggered, window, [this]() { SetToolMode(DeleteRoomMode); });
+		deleteDeckAction = MakeAction("Erase current deck", "dp_DelDeck", "Erase all rooms and equipment on the current deck.");
+		QObject::connect(deleteDeckAction, &QAction::triggered, window, [this]() { DeleteCurrentDeck(); });
 		for (const RoomChoice& choice : RoomChoices)
 		{
 			QAction* action = MakeAction(choice.name, choice.icon,
@@ -438,6 +431,7 @@ public:
 			"- Combine the four grid directions to change the cell shape.<br>"
 			"- Room Number distinguishes rooms of the same type on the same deck. Change it before painting a separate room.<br>"
 			"- Left click or drag to paint. Select Erase Room Cells to erase.<br>"
+			"- Erase Room removes the whole room under the cursor; Erase Current Deck removes all rooms and equipment on the selected deck.<br>"
 			"- Select equipment, then left click or drag to place it. Its tooltip lists the room restrictions.<br>"
 			"- Left/right arrow keys rotate berths, vehicles, hatches and stairs before placement.<br>"
 			"- The brush arrows resize machinery placement and Erase Equipment Area.<br>"
@@ -545,13 +539,11 @@ public:
 		AddButton(outer, saveAction, 0, 3);
 		AddButton(outer, renderAction, 1, 0);
 		AddButton(outer, gravityAction, 1, 1);
-		AddButton(outer, lightingAction, 1, 4);
 		AddButton(outer, checkPathsAction, 1, 2);
-		AddButton(outer, UnavailableAction("Burn design CD", "dp_BurnCD", "In-world design publishing is not available here."), 1, 3);
 		AddButton(outer, deckUpAction, 2, 0);
 		AddButton(outer, lineActions[2], 2, 1);
 		AddButton(outer, lineActions[0], 2, 2);
-		AddButton(outer, UnavailableAction("Erase current deck", "dp_DelDeck", "Whole-deck erasure is not available yet. Use Erase Room Cells."), 2, 4);
+		AddButton(outer, deleteDeckAction, 2, 4);
 		AddButton(outer, deckDownAction, 3, 0);
 		AddButton(outer, lineActions[1], 3, 1);
 		AddButton(outer, lineActions[3], 3, 2);
@@ -568,7 +560,7 @@ public:
 		QObject::connect(drawMode, &QAction::triggered, window, [this]() { SetToolMode(PaintMode); });
 		AddButton(rooms, drawMode, 0, 0);
 		AddButton(rooms, eraseAction, 1, 0);
-		AddButton(rooms, UnavailableAction("Erase room", "dp_DelRoom", "Whole-room erasure is not available yet. Use Erase Room Cells."), 2, 0);
+		AddButton(rooms, deleteRoomAction, 2, 0);
 		const int roomTypes[3][7] = { {1, 2, 3, 7, 8, 13, 9}, {10, 11, 6, 5, 4, 15, 14}, {16, 17, 18, 19, 20, 21, 0} };
 		for (int row = 0; row < 3; ++row)
 			for (int column = 0; column < 7; ++column)
@@ -916,12 +908,14 @@ public:
 			return;
 		}
 		editTool.active = loaded;
-		editTool.erasing = mode == EraseMode || mode == DeleteEquipmentMode || mode == DeleteEquipmentAreaMode;
+		editTool.erasing = mode == EraseMode || mode == DeleteRoomMode || mode == DeleteEquipmentMode || mode == DeleteEquipmentAreaMode;
+		editTool.wholeRoom = mode == DeleteRoomMode;
 		editTool.equipment = mode == EquipmentMode || mode == DeleteEquipmentMode || mode == DeleteEquipmentAreaMode;
 		editTool.radius = mode == DeleteEquipmentAreaMode
 			|| (mode == EquipmentMode && EquipmentUsesBrush(selectedEquipmentType)) ? equipmentBrushRadius : 0;
 		if(mode == PaintMode) editTool.icon = roomActions.value(selectedRoomType)->icon();
 		else if(mode == EraseMode) editTool.icon = eraseAction->icon();
+		else if(mode == DeleteRoomMode) editTool.icon = deleteRoomAction->icon();
 		else if(mode == DeleteEquipmentMode) editTool.icon = deleteEquipmentAction->icon();
 		else if(mode == DeleteEquipmentAreaMode) editTool.icon = deleteEquipmentAreaAction->icon();
 		else editTool.icon = selectedEquipmentAction ? selectedEquipmentAction->icon() : QIcon();
@@ -931,6 +925,7 @@ public:
 		renderView->ResetEditStroke();
 		renderView->SetEditTool(editTool);
 		eraseAction->setChecked(mode == EraseMode);
+		deleteRoomAction->setChecked(mode == DeleteRoomMode);
 		deleteEquipmentAction->setChecked(mode == DeleteEquipmentMode);
 		deleteEquipmentAreaAction->setChecked(mode == DeleteEquipmentAreaMode);
 		if (mode == PaintMode)
@@ -957,7 +952,8 @@ public:
 			renderView->setFocus();
 			return;
 		}
-		SetFeedback(mode == EraseMode ? QStringLiteral("Erase Room Cells: left click or drag with the hand cursor on the active design plane.")
+		SetFeedback(mode == DeleteRoomMode ? QStringLiteral("Erase Room: click inside a room on the active design plane to erase the whole room.")
+				: mode == EraseMode ? QStringLiteral("Erase Room Cells: left click or drag with the hand cursor on the active design plane.")
 				: QStringLiteral("Paint %1: left click or drag with the hand cursor on the active design plane.").arg(RoomName(selectedRoomType)));
 	}
 
@@ -1017,8 +1013,9 @@ public:
 			return;
 		}
 		const int type = toolMode == EraseMode ? -1 : selectedRoomType;
-		const AuLegacyShip::CellEditResult result = AuLegacyShip::EditCell(design, deck, cursor,
-			gridMask, type, quint8(roomNumber->value() - 1));
+		const AuLegacyShip::CellEditResult result = toolMode == DeleteRoomMode
+			? AuLegacyShip::DeleteRoomAt(design, deck, cursor)
+			: AuLegacyShip::EditCell(design, deck, cursor, gridMask, type, quint8(roomNumber->value() - 1));
 		if (!result.accepted)
 		{
 			SetFeedback(result.error.isEmpty()
@@ -1034,8 +1031,31 @@ public:
 			ShowDeck(deck);
 		}
 		SetFeedback(result.error.isEmpty()
-			? (result.changed ? QStringLiteral("Cell updated. Press Ctrl+S to save.")
-				: QStringLiteral("No change at this cell.")) : result.error);
+			? (toolMode == DeleteRoomMode
+				? (result.changed ? QStringLiteral("Room erased. Press Ctrl+S to save.") : QStringLiteral("No room inside this point."))
+				: (result.changed ? QStringLiteral("Cell updated. Press Ctrl+S to save.") : QStringLiteral("No change at this cell."))) : result.error);
+	}
+
+	void DeleteCurrentDeck()
+	{
+		if(!loaded) return;
+		const AuLegacyShip::CellEditResult result = AuLegacyShip::DeleteDeck(design, currentDeck);
+		if(!result.accepted)
+		{
+			SetFeedback(result.error);
+			return;
+		}
+		if(result.changed)
+		{
+			modified = true;
+			renderDirty = true;
+			renderView->ResetEditStroke();
+			IndexDecks();
+			UpdateTitle();
+			ShowDeck(currentDeck);
+		}
+		SetFeedback(result.changed ? QStringLiteral("Deck erased, including its equipment. Press Ctrl+S to save.")
+			: QStringLiteral("This deck is already empty."));
 	}
 
 	QString DisplayName() const
@@ -1217,12 +1237,13 @@ public:
 	QLabel* brushSize;
 	QAction* gridAction;
 	QAction* renderAction;
-	QAction* lightingAction;
 	QAction* gravityAction;
 	QAction* checkPathsAction;
 	QPointer<QDialog> pathReportDialog;
 	QAction* closeAction;
 	QAction* eraseAction;
+	QAction* deleteRoomAction;
+	QAction* deleteDeckAction;
 	QAction* deleteEquipmentAction;
 	QAction* deleteEquipmentAreaAction;
 	QAction* brushUpAction;

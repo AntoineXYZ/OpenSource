@@ -21,6 +21,7 @@ struct AuLegacyShipEditTool
 {
 	bool active = false;
 	bool erasing = false;
+	bool wholeRoom = false;
 	bool equipment = false;
 	int radius = 0;
 	int rotation = 0;

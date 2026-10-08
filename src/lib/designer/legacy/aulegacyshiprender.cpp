@@ -2,6 +2,7 @@
 #include "aulegacyship.h"
 #include "aulegacyshipmesh.h"
 #include "aulegacyshipgeometry.h"
+#include "aulegacyshipedit.h"
 #include "aulegacyshipicons.h"
 #include "aulegacyshipequipment.h"
 #include "aulegacyshipwalk.h"
@@ -1539,6 +1540,7 @@ void AuLegacyShipRender::SetEditTool(const AuLegacyShipEditTool& tool)
 {
 	const auto& previous = m_Impl->editTool;
 	if(previous.active == tool.active && previous.erasing == tool.erasing
+		&& previous.wholeRoom == tool.wholeRoom
 		&& previous.equipment == tool.equipment && previous.radius == tool.radius
 		&& previous.rotation == tool.rotation && previous.icon.cacheKey() == tool.icon.cacheKey()
 		&& previous.footprint == tool.footprint) return;
@@ -3005,6 +3007,11 @@ void AuLegacyShipRender::RenderWireframe(const QMatrix4x4& viewProjection)
 			for(const QPointF& corner : {footprint.topLeft(), footprint.topRight(), footprint.bottomRight(), footprint.bottomLeft()})
 				polygon.append(center + QPointF(corner.x() * std::cos(angle) - corner.y() * std::sin(angle),
 					corner.x() * std::sin(angle) + corner.y() * std::cos(angle)));
+		}
+		else if(m_Impl->editTool.wholeRoom)
+		{
+			const int room = AuLegacyShip::RoomAtPoint(m_Impl->design, m_Impl->deck, m_Impl->editCursor);
+			if(room >= 0) polygon = AuLegacyShip::RoomBoundary(m_Impl->design.rooms[room]);
 		}
 		else polygon = AuLegacyShip::Geometry::FillShape(m_Impl->gridMask, m_Impl->editCursor);
 		QVector<WireframeVertex> vertices;
