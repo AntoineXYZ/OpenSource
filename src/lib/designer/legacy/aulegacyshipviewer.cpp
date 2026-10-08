@@ -32,6 +32,7 @@
 #include <QKeySequence>
 #include <QLabel>
 #include <QMap>
+#include <QMargins>
 #include <QMessageBox>
 #include <QPainter>
 #include <QPointer>
@@ -868,22 +869,33 @@ public:
 			SetToolMode(toolMode);
 	}
 
+	void BeginStartup()
+	{
+		startupStarted = true;
+		startingDesigner = true;
+		loadingToolsVisible = !toolDock->isHidden();
+		loadingMargins = window->centralWidget()->layout()->contentsMargins();
+		renderView->SetLoadingScreen(true);
+		toolDock->hide();
+		window->centralWidget()->layout()->setContentsMargins(0, 0, 0, 0);
+		renderView->setFocus();
+	}
+
+	void EndStartup()
+	{
+		window->centralWidget()->layout()->setContentsMargins(loadingMargins);
+		toolDock->setVisible(loadingToolsVisible);
+		renderView->SetLoadingScreen(false);
+		startingDesigner = false;
+		if(window->isVisible()) renderView->repaint();
+	}
+
 	void PrepareSkyForScene()
 	{
-		if(!renderView->isVisible()) return;
-		renderView->repaint();
-		if(!renderView->SkyboxNeedsPreparation()) return;
-		QProgressDialog progress(QStringLiteral("Preparing designer skybox..."), QString(), 0, 0, window);
-		progress.setWindowTitle(QStringLiteral("Loading Designer Skybox"));
-		progress.setCancelButton(nullptr);
-		progress.setWindowModality(Qt::WindowModal);
-		progress.setMinimumDuration(0);
-		progress.setAutoClose(false);
-		progress.setAutoReset(false);
-		progress.show();
-		QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+		if(startingDesigner || !renderView->isVisible()) return;
+		if(renderView->isValid() && !renderView->SkyboxNeedsPreparation()) return;
+		renderView->PrepareDesign();
 		renderView->PrepareSkybox();
-		progress.hide();
 	}
 
 	void SetToolMode(ToolMode mode)
@@ -1184,24 +1196,8 @@ public:
 		RefreshHeaderControls();
 		SetToolMode(HandMode);
 		renderView->UseHandCursor();
-		QProgressDialog progress(QStringLiteral("Preparing spacecraft design..."), QString(), 0, 0, window);
-		progress.setWindowTitle(QStringLiteral("Loading Spacecraft Design"));
-		progress.setCancelButton(nullptr);
-		progress.setWindowModality(Qt::WindowModal);
-		progress.setMinimumDuration(0);
-		progress.setAutoClose(false);
-		progress.setAutoReset(false);
-		progress.show();
-		QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 		ShowDeck(0);
-		renderView->repaint();
-		if(renderView->SkyboxNeedsPreparation())
-		{
-			progress.setLabelText(QStringLiteral("Preparing designer skybox..."));
-			QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
-			renderView->PrepareSkybox();
-		}
-		progress.hide();
+		renderView->PrepareDesign();
 		RefreshStats();
 		statsBrowser->verticalScrollBar()->setValue(0);
 	}
@@ -1265,6 +1261,10 @@ public:
 	bool pathsChecking = false;
 	bool interfaceVisible = true;
 	bool toolsWereVisible = true;
+	bool startupStarted = false;
+	bool startingDesigner = false;
+	bool loadingToolsVisible = true;
+	QMargins loadingMargins;
 };
 
 AuLegacyShipViewer::AuLegacyShipViewer(QWidget* parent)
@@ -1300,8 +1300,17 @@ void AuLegacyShipViewer::ToggleTools()
 
 void AuLegacyShipViewer::showEvent(QShowEvent* event)
 {
+	const bool startLoading = !m_Impl->startupStarted;
+	if(startLoading) m_Impl->BeginStartup();
 	QMainWindow::showEvent(event);
-	QTimer::singleShot(0, this, [this]() { m_Impl->PrepareSkyForScene(); });
+	if(startLoading)
+		QTimer::singleShot(0, this, [this]() {
+			// Prepare whichever design was selected before the first frame.
+			m_Impl->renderView->repaint();
+			m_Impl->renderView->PrepareDesign();
+			m_Impl->renderView->PrepareSkybox();
+			m_Impl->EndStartup();
+		});
 }
 
 bool AuLegacyShipViewer::ConfirmDiscardChanges()
@@ -1342,7 +1351,7 @@ bool AuLegacyShipViewer::OpenFile(const QString& fileName)
 		return false;
 	AuLegacyShip::Design incoming;
 	QString error;
-	if (!AuLegacyShip::Load(fileName, incoming, error))
+	if(!AuLegacyShip::Load(fileName, incoming, error))
 	{
 		QMessageBox::warning(this, QStringLiteral("Could not open legacy spacecraft"),
 			QStringLiteral("%1\n\n%2").arg(fileName, error));

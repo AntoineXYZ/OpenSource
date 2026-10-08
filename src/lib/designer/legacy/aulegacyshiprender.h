@@ -48,6 +48,8 @@ public:
 	void UseHandCursor();
 	bool SkyboxNeedsPreparation() const;
 	void PrepareSkybox();
+	void SetLoadingScreen(bool loading);
+	void PrepareDesign();
 	void SetInterfaceVisible(bool visible);
 	void ControlsChanged();
 	QStringList Warnings() const;
@@ -79,6 +81,7 @@ private:
 	void CleanupGL();
 	void PrepareSky();
 	void RenderSky();
+	void PrepareWireframe();
 	void Tick();
 	float FieldOfView() const;
 	void UpdateTarget(qint64 now);

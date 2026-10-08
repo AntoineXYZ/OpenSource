@@ -3652,6 +3652,22 @@ void AuDesignerView::StepServerHandoffWait(bool first)
 	m_WaitBeamAngle += (float)(WaitRandom(7) - 3);
 }
 
+void AuDesignerView::RenderClassicLoadingScreen()
+{
+	AuGLEffects& re = *m_RenderInfo->re;
+	if(!m_texWaitSpaceOld)
+		m_texWaitSpaceOld = re.CreateTextureFromBitmap(STATIC_TEXTURE_ID, "WormholeSpaceOld",
+			":data/WormholeSpaceOld.png", GL_LINEAR, GL_LINEAR, false, 2);
+	if(!m_texWaitStarsOld)
+		m_texWaitStarsOld = re.CreateTextureFromBitmap(STATIC_TEXTURE_ID, "WaitIndOld",
+			":data/ServerHandoff.png", GL_LINEAR, GL_LINEAR, false, 2);
+	re.glDisable(GL_CULL_FACE);
+	re.glDisable(GL_SCISSOR_TEST);
+	re.glDepthMask(GL_FALSE);
+	ShowServerHandoffWait();
+	re.glDepthMask(GL_TRUE);
+}
+
 void AuDesignerView::ShowServerHandoffWait()
 {
 	AuGLEffects& re = *m_RenderInfo->re;

@@ -727,7 +727,10 @@ void HullWalls(Builder& out, const QVector<Edge>& edges, int deck, int armor, co
 					// and move 1/48 ft along the interior-facing cap normal.
 					// Baseline vertices remain shared with the exterior cap.
 					constexpr double inset = 1.0 / 48.0;
-					const QPointF interiorNormal = Unit(QPointF(-nb.y(), nb.x())) * (reverse ? -1 : 1);
+					// The current span ends here; its exterior cap faces along
+					// the span, while the adjacent span's start cap faces back.
+					// Move interior caps toward their own room, not the neighbor.
+					const QPointF interiorNormal = Unit(QPointF(nb.y(), -nb.x())) * (reverse ? -1 : 1);
 					const auto point = [&](const ProfilePoint& p, bool interior)
 					{
 						const QPointF location = interior && p.offset != 0
@@ -746,7 +749,7 @@ void HullWalls(Builder& out, const QVector<Edge>& edges, int deck, int armor, co
 							const QVector3D quad[4] = {Position(b, deck * DeckHeight + p.height),
 								point(p, interior), point(q, interior),
 								Position(b, deck * DeckHeight + q.height)};
-							const int order[4] = {0, (reverse != interior) ? 3 : 1, 2, (reverse != interior) ? 1 : 3};
+							const int order[4] = {0, (reverse == interior) ? 3 : 1, 2, (reverse == interior) ? 1 : 3};
 							const Material material = interior ? Material::InteriorWallEndCap : Material::HullWall;
 							out.Triangle(material, deck, interior, quad[order[0]], quad[order[1]], quad[order[2]],
 								uv[order[0]], uv[order[1]], uv[order[2]]);

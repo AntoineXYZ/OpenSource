@@ -1300,6 +1300,7 @@ protected:
 	AuAtomRenderInfo& SceneRenderInfo() { return *m_RenderInfo; }
 	void RenderSceneCommunications();
 	void ShowViewButtonTip();
+	void RenderClassicLoadingScreen();
 
 	virtual void initializeGL();
 	virtual void paintGL();

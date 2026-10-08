@@ -153,15 +153,22 @@ public:
 
 	void run() override
 	{
+		QElapsedTimer clock;
+		clock.start();
+		qint64 contextMs = 0, shaderMs = 0, generationMs = 0;
 		QString error;
 		if(!job->cancelled && glContext->makeCurrent(surface))
 		{
+			contextMs = clock.elapsed();
 			{
 				AuGLEffects re;
 				if(re.initializeOpenGLFunctions())
 				{
-					if(re.GLSL().InitializeSkyBox(re)) Generate(re, error);
+					const bool shadersReady = re.GLSL().InitializeSkyBox(re);
+					shaderMs = clock.elapsed() - contextMs;
+					if(shadersReady) Generate(re, error);
 					else error = QStringLiteral("Unable to initialize preview skybox shaders.");
+					generationMs = clock.elapsed() - contextMs - shaderMs;
 					re.GLSL().DeleteSkyBox();
 				}
 				else error = QStringLiteral("Unable to initialize preview skybox OpenGL functions.");
@@ -170,6 +177,9 @@ public:
 		}
 		else if(!job->cancelled) error = QStringLiteral("Unable to activate the preview skybox context.");
 		delete glContext;
+		if(qEnvironmentVariableIsSet("HAZERON_LEGACY_STARTUP_STATS"))
+			qInfo() << "Legacy designer sky worker: context" << contextMs << "ms, shaders"
+				<< shaderMs << "ms, generation" << generationMs << "ms, total" << clock.elapsed() << "ms";
 		std::lock_guard<std::mutex> lock(job->mutex);
 		job->error = error;
 		job->done = true;
@@ -177,22 +187,45 @@ public:
 
 	void Generate(AuGLEffects& re, QString& error)
 	{
+		QElapsedTimer clock;
+		clock.start();
 		DaGalaxy galaxy(ShoresOfHazeron);
 		AuDice dice;
-		dice.Seed(2016);
+		dice.TimeSeed();
+		const quint32 seed = dice.Random();
 		AuPoint sector;
-		for(int attempt = 0; attempt < 128; ++attempt)
+		const int galaxyRadius = int(galaxy.Radius() / 10);
+		for(int attempt = 0; attempt < 64; ++attempt)
 		{
-			const int radius = dice.Roll(1, int(galaxy.Radius() / 10));
+			const int radius = dice.RandomMinMax(galaxyRadius * .8f, galaxyRadius * .95f);
 			sector = AuPoint(radius, 0).RotateZ(dice.RandomMinMax(0, 2 * Pi));
 			sector.Round(1);
-			if(galaxy.StarDensity(sector * 10) >= .2) break;
+			if(galaxy.StarDensity(sector * 10) > 0) break;
 		}
+		const AuPoint system = sector + AuPoint(dice.RandomMinMax(-.45f, .45f),
+			dice.RandomMinMax(-.45f, .45f), dice.RandomMinMax(-.45f, .45f));
 		auNebula sky(0, 0, -2.9924924f, .38151205f, -1.8401746f, -1.8524430f,
-			30, 0, false, AuPoint(), 2016, 0, galaxy.Color());
-		const int radius = int(galaxy.Radius() / 10);
-		for(int x = -radius; x <= radius && !job->cancelled;)
-			x = sky.AppendGalacticStarFieldSlice(galaxy, sector, dice, x);
+			30, 0, false, AuPoint(), seed, 0, galaxy.Color());
+		// The designer only needs a sparse outer-system sky. Sample its nearby
+		// 50-parsec neighborhood; scanning the entire galaxy adds millions of
+		// density queries and cloud quads to a cosmetic loading step.
+		const int nearbyRadius = 5;
+		for(int x = -nearbyRadius; x <= nearbyRadius && !job->cancelled; ++x)
+			for(int y = -nearbyRadius; y <= nearbyRadius; ++y)
+				for(int z = -nearbyRadius; z <= nearbyRadius; ++z)
+				{
+					const AuPoint neighbor = sector + AuPoint(x, y, z);
+					const float density = galaxy.StarDensity(neighbor * 10);
+					const double distance = (neighbor - system).Length() + 1;
+					const int stars = int(std::ceil(density * 50 / (distance * 8)));
+					for(int star = 0; star < stars; ++star)
+					{
+						const AuPoint offset(dice.RandomMinMax(-1, 1), dice.RandomMinMax(-1, 1),
+							dice.RandomMinMax(-1, 1));
+						sky.m_vStars.append(galParticle{neighbor + offset - system});
+					}
+				}
+		const qint64 samplingMs = clock.elapsed();
 		re.glDisable(GL_DEPTH_TEST);
 		re.glDisable(GL_CULL_FACE);
 		re.glDisable(GL_SCISSOR_TEST);
@@ -200,12 +233,13 @@ public:
 		int face = 0;
 		for(; face < 6 && !job->cancelled; ++face)
 		{
-			if(!sky.CreateSkyBoxFace(re, sector, paneSize, mipMap, face))
+			if(!sky.CreateSkyBoxFace(re, system, paneSize, mipMap, face))
 			{
 				error = QStringLiteral("Unable to create the spacecraft preview skybox.");
 				break;
 			}
 		}
+		const qint64 facesMs = clock.elapsed() - samplingMs;
 		if(face == 6 && !job->cancelled)
 		{
 			// Finish here before publishing; painting never waits for the worker.
@@ -217,6 +251,10 @@ public:
 				sky.m_img = 0;
 			}
 		}
+		if(qEnvironmentVariableIsSet("HAZERON_LEGACY_STARTUP_STATS"))
+			qInfo() << "Legacy designer sky generation: sampling" << samplingMs << "ms, faces"
+				<< facesMs << "ms, GPU completion" << clock.elapsed() - samplingMs - facesMs
+				<< "ms, stars" << sky.m_vStars.size() << ", pane" << paneSize << ", mipmaps" << mipMap;
 		sky.DeleteDeviceObjects(re);
 		// AuGLTexture's destructor intentionally does not delete GL names.
 		// These caches belong only to this worker, even in the shared group.
@@ -583,6 +621,7 @@ public:
 	bool gravity = false;
 	bool haveDesign = false;
 	bool preparingSky = false;
+	bool loadingScreen = false;
 	qint64 lastTick = 0;
 	qint64 lastDoorTick = 0;
 	qint64 lastTargetTick = 0;
@@ -1428,6 +1467,27 @@ void AuLegacyShipRender::SetInterfaceVisible(bool visible)
 	update();
 }
 
+void AuLegacyShipRender::SetLoadingScreen(bool loading)
+{
+	m_Impl->loadingScreen = loading;
+	m_Impl->StopMovement();
+	m_Impl->lastTick = m_Impl->animationClock.elapsed();
+	UpdateMouseCapture();
+	update();
+}
+
+void AuLegacyShipRender::PrepareDesign()
+{
+	if(!m_Impl->ready || !context() || !context()->isValid()) return;
+	makeCurrent();
+	m_Impl->console.CreateDeviceObjects(SceneRenderInfo(), AuId(STATIC_TEXTURE_ID), false);
+	m_Impl->InitializeCharacter();
+	m_Impl->SyncCharacter();
+	if(m_Impl->dirty) m_Impl->Upload();
+	PrepareWireframe();
+	doneCurrent();
+}
+
 void AuLegacyShipRender::SetRenderSolid(bool solid)
 {
 	if(m_Impl->solid == solid) return;
@@ -1661,7 +1721,12 @@ void AuLegacyShipRender::Tick()
 	const qint64 now = m_Impl->animationClock.elapsed();
 	const float seconds = std::min(0.05f, float(now - m_Impl->lastTick) / 1000.0f);
 	m_Impl->lastTick = now;
-	if (!isVisible() || m_Impl->preparingSky) return;
+	if (!isVisible()) return;
+	if(m_Impl->preparingSky || m_Impl->loadingScreen)
+	{
+		update();
+		return;
+	}
 	AuApp* app = qobject_cast<AuApp*>(qApp);
 	m_Impl->sound.SetAudio(app ? app->Sound() : nullptr);
 	m_Impl->InitializeCharacter();
@@ -2588,7 +2653,11 @@ void AuLegacyShipRender::paintGL()
 	gl->glClearColor(0, 0, 0, 1);
 	gl->glDepthMask(GL_TRUE);
 	gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	if(m_Impl->preparingSky) return;
+	if(m_Impl->loadingScreen)
+	{
+		RenderClassicLoadingScreen();
+		return;
+	}
 	if(m_Impl->ready)
 	{
 		m_Impl->console.CreateDeviceObjects(SceneRenderInfo(), AuId(STATIC_TEXTURE_ID), false);
@@ -2848,9 +2917,8 @@ void AuLegacyShipRender::EditCursor()
 	cellEntered(m_Impl->editCursor);
 }
 
-void AuLegacyShipRender::RenderWireframe(const QMatrix4x4& viewProjection)
+void AuLegacyShipRender::PrepareWireframe()
 {
-	QOpenGLFunctions* gl = context()->functions();
 	if(m_Impl->wireframeDirty)
 	{
 		m_Impl->wireframe = BuildWireframe(m_Impl->design, m_Impl->deck, m_Impl->gridVisible, m_Impl->gridMask);
@@ -2875,6 +2943,12 @@ void AuLegacyShipRender::RenderWireframe(const QMatrix4x4& viewProjection)
 		m_Impl->wireframeSpriteBuffer.release();
 		m_Impl->wireframeDirty = false;
 	}
+}
+
+void AuLegacyShipRender::RenderWireframe(const QMatrix4x4& viewProjection)
+{
+	QOpenGLFunctions* gl = context()->functions();
+	PrepareWireframe();
 	gl->glEnable(GL_DEPTH_TEST);
 	gl->glDepthFunc(GL_LEQUAL);
 	gl->glDepthMask(GL_TRUE);
@@ -3001,6 +3075,7 @@ void AuLegacyShipRender::UpdateMouseCapture()
 	}
 	const bool wanted = isVisible() && hasFocus() && isActiveWindow()
 		&& !m_Impl->preparingSky
+		&& !m_Impl->loadingScreen
 		&& !m_Impl->freeMouse && !m_Impl->temporaryHand
 		&& !QApplication::activeModalWidget() && !QApplication::activePopupWidget()
 		&& (!QWidget::mouseGrabber() || QWidget::mouseGrabber() == this);
