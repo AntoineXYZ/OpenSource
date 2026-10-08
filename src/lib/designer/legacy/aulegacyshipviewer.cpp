@@ -11,6 +11,7 @@
 #include "aulegacyshipstatsreport.h"
 #include "aulegacyshipvehicles.h"
 #include "auapp.h"
+#include "audialog.h"
 #include "audesignerframe.h"
 
 #include <QAction>
@@ -37,6 +38,8 @@
 #include <QPainter>
 #include <QPointer>
 #include <QProgressDialog>
+#include <QPushButton>
+#include <QRadioButton>
 #include <QSet>
 #include <QSettings>
 #include <QScrollBar>
@@ -547,7 +550,10 @@ public:
 		AddButton(outer, deckDownAction, 3, 0);
 		AddButton(outer, lineActions[1], 3, 1);
 		AddButton(outer, lineActions[3], 3, 2);
-		AddButton(outer, UnavailableAction("Move or copy", "dp_Move", "Moving and copying rooms is not available yet."), 3, 4);
+		QAction* moveAction = MakeAction("Move/Copy Rooms And Equipment", "dp_Move",
+			"<b>Move/Copy Rooms And Equipment</b><br>Moves rooms and equipment of the entire design or the current deck.<br>Copies rooms and equipment of the current deck.");
+		QObject::connect(moveAction, &QAction::triggered, window, [this]() { MoveCopyDesign(); });
+		AddButton(outer, moveAction, 3, 4);
 
 		PaletteGroups* roomPalette = new PaletteGroups(parent);
 		roomPalette->groups << QRect(0, 0, 8, 3) << QRect(9, 0, 1, 3);
@@ -673,6 +679,128 @@ public:
 		const int next = currentDeck + delta;
 		if (next >= MinimumGridDeck && next <= MaximumGridDeck)
 			ShowDeck(next);
+	}
+
+	void MoveCopyDesign()
+	{
+		if(!loaded) return;
+		AuDialog dialog(window);
+		dialog.setAuDlgTitle(QStringLiteral("Move/Copy Spacecraft Design"));
+		dialog.setAuDlgIcon(AuLegacyShipIcon(QStringLiteral("dp_Move")));
+		QGridLayout* layout = new QGridLayout;
+		QRadioButton* entire = new QRadioButton(QStringLiteral("Move Entire Design"), &dialog);
+		QRadioButton* deck = new QRadioButton(QStringLiteral("Move Current Deck"), &dialog);
+		QRadioButton* copy = new QRadioButton(QStringLiteral("Copy Current Deck"), &dialog);
+		entire->setToolTip(QStringLiteral("<html>All rooms and equipment in the design will be moved.<br>"
+			"\u00b7 No room or equipment may be moved beyond internal limits.<br>"
+			"\u00b7 The rooms and equipment must fit within the design grid extents and deck limits to be valid for burning a CD.</html>"));
+		deck->setToolTip(QStringLiteral("<html>Only rooms and equipment on the current deck will be moved.<br>"
+			"\u00b7 No room or equipment may be moved beyond internal limits.<br>"
+			"\u00b7 The rooms and equipment must fit within the design grid extents and deck limits to be valid for burning a CD.<br>"
+			"\u00b7 A deck cannot be moved to a deck that already contains any of the design.</html>"));
+		copy->setToolTip(QStringLiteral("<html>Only rooms and equipment on the current deck will be copied.<br>"
+			"\u00b7 No room or equipment may be copied beyond internal limits.<br>"
+			"\u00b7 The rooms and equipment must fit within the design grid extents and deck limits to be valid for burning a CD.<br>"
+			"\u00b7 A deck cannot be copied to a deck that already contains any of the design.</html>"));
+		layout->addWidget(entire, 0, 0, 1, 2);
+		layout->addWidget(deck, 1, 0, 1, 2);
+		layout->addWidget(copy, 2, 0, 1, 2);
+		QSpinBox* lateral = new QSpinBox(&dialog);
+		QSpinBox* longitudinal = new QSpinBox(&dialog);
+		QSpinBox* vertical = new QSpinBox(&dialog);
+		QSpinBox* count = new QSpinBox(&dialog);
+		lateral->setRange(-80, 80);
+		longitudinal->setRange(-80, 80);
+		vertical->setRange(-84, 84);
+		count->setRange(1, 84);
+		lateral->setToolTip(QStringLiteral("<html>Amount to move or copy the design laterally, in grid squares.<br>"
+			"\u00b7 Positive moves the design starboard.<br>\u00b7 Negative moves the design port.</html>"));
+		longitudinal->setToolTip(QStringLiteral("<html>Amount to move or copy the design longitudinally, in grid squares.<br>"
+			"\u00b7 Positive moves the design fore.<br>\u00b7 Negative moves the design aft.</html>"));
+		vertical->setToolTip(QStringLiteral("<html>Amount to move or copy the design vertically, in whole decks.<br>"
+			"\u00b7 Positive moves the design aloft.<br>\u00b7 Negative moves the design below.</html>"));
+		count->setToolTip(QStringLiteral("<html>Number of duplicates when copying. Each successive duplicate is offset "
+			"from the last using the values entered. This can be used to make multiple copies of the current deck.</html>"));
+		const QString labels[] = { QStringLiteral("Lateral Distance"), QStringLiteral("Longitudinal Distance"),
+			QStringLiteral("Vertical Distance"), QStringLiteral("Copy Count") };
+		QSpinBox* fields[] = { lateral, longitudinal, vertical, count };
+		for(int i = 0; i < 4; ++i)
+		{
+			QLabel* label = new QLabel(labels[i], &dialog);
+			label->setBuddy(fields[i]);
+			fields[i]->setAccessibleName(labels[i]);
+			layout->addWidget(label, i + 3, 0);
+			layout->addWidget(fields[i], i + 3, 1);
+		}
+		QPushButton* apply = new QPushButton(QStringLiteral("Move/Copy Design"), &dialog);
+		layout->addWidget(apply, 7, 1);
+		dialog.setAuDlgLayout(layout);
+		const int operation = settings.value(QStringLiteral("Widget/DesignMoveCopy/DoWhat"), 0).toInt();
+		entire->setChecked(operation != 1 && operation != 2);
+		deck->setChecked(operation == 1);
+		copy->setChecked(operation == 2);
+		lateral->setValue(settings.value(QStringLiteral("Widget/DesignMoveCopy/XDelta"), 0).toInt());
+		longitudinal->setValue(settings.value(QStringLiteral("Widget/DesignMoveCopy/YDelta"), 0).toInt());
+		vertical->setValue(settings.value(QStringLiteral("Widget/DesignMoveCopy/ZDelta"), 0).toInt());
+		count->setValue(settings.value(QStringLiteral("Widget/DesignMoveCopy/RepeatCount"), 1).toInt());
+		const auto request = [this, copy, deck, lateral, longitudinal, vertical, count]() {
+			AuLegacyShip::MoveCopyRequest value;
+			value.mode = copy->isChecked() ? AuLegacyShip::MoveCopyMode::CopyCurrentDeck
+				: deck->isChecked() ? AuLegacyShip::MoveCopyMode::MoveCurrentDeck
+				: AuLegacyShip::MoveCopyMode::MoveEntireDesign;
+			value.deck = currentDeck;
+			value.lateral = lateral->value();
+			value.longitudinal = longitudinal->value();
+			value.vertical = vertical->value();
+			value.copies = count->value();
+			return value;
+		};
+		const auto enableControls = [this, copy, deck, count, apply, request]() {
+			const QString error = AuLegacyShip::MoveCopyError(design, request());
+			count->setEnabled(copy->isChecked());
+			apply->setEnabled(error.isEmpty());
+			apply->setToolTip(error.isEmpty()
+				? (copy->isChecked() ? QStringLiteral("<html>Copy the rooms and equipment on the current deck.</html>")
+					: deck->isChecked() ? QStringLiteral("<html>Move the rooms and equipment on the current deck.</html>")
+					: QStringLiteral("<html>Move all rooms and equipment in the design.</html>"))
+				: QStringLiteral("<html>Move/Copy is disabled.<br><b>Reason</b><br>%1</html>").arg(error.toHtmlEscaped()));
+		};
+		for(QRadioButton* option : { entire, deck, copy })
+			QObject::connect(option, &QRadioButton::toggled, &dialog, enableControls);
+		for(QSpinBox* field : fields)
+			QObject::connect(field, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), &dialog, enableControls);
+		QObject::connect(apply, &QPushButton::clicked, &dialog, &QDialog::accept);
+		enableControls();
+		const bool accepted = dialog.exec() == QDialog::Accepted;
+		const AuLegacyShip::MoveCopyRequest value = request();
+		settings.setValue(QStringLiteral("Widget/DesignMoveCopy/DoWhat"), int(value.mode));
+		settings.setValue(QStringLiteral("Widget/DesignMoveCopy/XDelta"), value.lateral);
+		settings.setValue(QStringLiteral("Widget/DesignMoveCopy/YDelta"), value.longitudinal);
+		settings.setValue(QStringLiteral("Widget/DesignMoveCopy/ZDelta"), value.vertical);
+		settings.setValue(QStringLiteral("Widget/DesignMoveCopy/RepeatCount"), value.copies);
+		if(!accepted) return;
+		const AuLegacyShip::MoveCopyResult result = AuLegacyShip::MoveCopy(design, value);
+		if(!result.accepted)
+		{
+			SetFeedback(result.error);
+			return;
+		}
+		if(result.changed)
+		{
+			modified = true;
+			renderDirty = true;
+			renderView->ResetEditStroke();
+			IndexDecks();
+			UpdateTitle();
+			ShowDeck(currentDeck);
+		}
+		QString message = result.changed
+			? (value.mode == AuLegacyShip::MoveCopyMode::CopyCurrentDeck
+				? QStringLiteral("%1 deck copies made. Press Ctrl+S to save.").arg(result.copiesMade)
+				: QStringLiteral("Rooms and equipment moved. Press Ctrl+S to save."))
+			: QStringLiteral("No rooms or equipment changed.");
+		if(!result.error.isEmpty()) message += QLatin1Char('\n') + result.error;
+		SetFeedback(message);
 	}
 
 	void ChangeArmor(int delta)

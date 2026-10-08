@@ -29,6 +29,28 @@ int RoomAtPoint(const Design& design, int deck, const QPointF& cursor,
 // Whole-room/deck erasure revalidates equipment before committing the edit.
 CellEditResult DeleteRoomAt(Design& design, int deck, const QPointF& cursor);
 CellEditResult DeleteDeck(Design& design, int deck);
+
+enum class MoveCopyMode { MoveEntireDesign, MoveCurrentDeck, CopyCurrentDeck };
+
+struct MoveCopyRequest
+{
+	MoveCopyMode mode = MoveCopyMode::MoveEntireDesign;
+	int deck = 0;
+	int lateral = 0;
+	int longitudinal = 0;
+	int vertical = 0;
+	int copies = 1;
+};
+
+struct MoveCopyResult : CellEditResult
+{
+	int copiesMade = 0;
+};
+
+// The dialog validates the first displacement. Repeats preserve the recovered
+// copy quirks; a packed-coordinate or record-limit stop retains complete copies.
+QString MoveCopyError(const Design& design, const MoveCopyRequest& request);
+MoveCopyResult MoveCopy(Design& design, const MoveCopyRequest& request);
 }
 
 #endif // AuLegacyShipEdit_H

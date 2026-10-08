@@ -2,6 +2,7 @@
 #include "aulegacyshipdetails.h"
 #include "aulegacyshipgeometry.h"
 #include "aupoint.h"
+#include "aulegacyshipsave.h"
 
 #include <QSet>
 #include <cmath>
@@ -310,5 +311,238 @@ AuLegacyShip::CellEditResult AuLegacyShip::DeleteDeck(Design& design, int deck)
 	if(!ReconcileDetails(candidate, result.error)) return result;
 	design = std::move(candidate);
 	result.accepted = result.changed = true;
+	return result;
+}
+
+namespace
+{
+constexpr int MoveCopyDeckLimit = 42;
+constexpr double MoveCopyCoordinateLimit = 339.41125494;
+
+bool TranslateRoom(Room& room, int lateral, int longitudinal, int vertical, QString& error)
+{
+	if(int(room.deck) + vertical < -128 || int(room.deck) + vertical > 127)
+	{
+		error = QStringLiteral("A room would exceed the stored deck range.");
+		return false;
+	}
+	if(room.hasWorkingBoundary)
+	{
+		QPolygonF boundary = room.workingBoundary;
+		boundary.translate(lateral * GridSpacing, longitudinal * GridSpacing);
+		if(!SetBoundary(room, boundary, error)) return false;
+	}
+	else
+	{
+		// Translate stored controls directly, including the three ellipse controls.
+		// One whole grid square is exactly two packed coordinate steps.
+		for(quint16& packed : room.packedVertices)
+		{
+			const int x = qint8(packed >> 8) + lateral * 2;
+			const int y = qint8(packed & 255) + longitudinal * 2;
+			if(x < -128 || x > 127 || y < -128 || y > 127)
+			{
+				error = QStringLiteral("A room would exceed the stored grid coordinate range.");
+				return false;
+			}
+			packed = quint16(((x & 255) << 8) | (y & 255));
+		}
+	}
+	room.deck = qint8(int(room.deck) + vertical);
+	return true;
+}
+
+bool TranslateDetail(Detail& detail, int lateral, int longitudinal, int vertical, QString& error)
+{
+	const int x = qint8(detail.packedXY >> 8) + lateral * 2;
+	const int y = qint8(detail.packedXY & 255) + longitudinal * 2;
+	const int deck = int(detail.deck) + vertical;
+	if(x < -128 || x > 127 || y < -128 || y > 127 || deck < -128 || deck > 127)
+	{
+		error = QStringLiteral("Equipment would exceed the stored coordinate range.");
+		return false;
+	}
+	detail.packedXY = quint16(((x & 255) << 8) | (y & 255));
+	detail.deck = qint8(deck);
+	return true;
+}
+
+void InsertRoom(QVector<Room>& rooms, Room&& room)
+{
+	int at = 0;
+	for(; at < rooms.size(); ++at)
+	{
+		const Room& other = rooms[at];
+		if(room.deck < other.deck || (room.deck == other.deck
+			&& (room.roomType < other.roomType || (room.roomType == other.roomType
+				&& room.roomSubtype < other.roomSubtype)))) break;
+	}
+	rooms.insert(at, std::move(room));
+}
+}
+
+QString AuLegacyShip::MoveCopyError(const Design& design, const MoveCopyRequest& request)
+{
+	// SpaceShipDesignTestMove/TestCopy, AuData13 18014a8c0 / 18014a2c0.
+	const bool entire = request.mode == MoveCopyMode::MoveEntireDesign;
+	const bool copy = request.mode == MoveCopyMode::CopyCurrentDeck;
+	if(request.lateral == 0 && request.longitudinal == 0 && request.vertical == 0)
+		return QStringLiteral("No movement has been specified.");
+	if(copy && request.vertical == 0)
+		return QStringLiteral("Cannot copy to current deck.");
+	if(request.deck < -128 || request.deck > 127 || request.lateral < -80 || request.lateral > 80
+		|| request.longitudinal < -80 || request.longitudinal > 80
+		|| request.vertical < -84 || request.vertical > 84 || request.copies < 1 || request.copies > 84)
+		return QStringLiteral("The move/copy settings are outside the 2016 dialog ranges.");
+	const bool differentDeck = !entire && request.vertical != 0;
+	const int destination = request.deck + request.vertical;
+	const QPointF offset(request.lateral * GridSpacing, request.longitudinal * GridSpacing);
+	for(const Detail& detail : design.details)
+	{
+		if(differentDeck && int(detail.deck) == destination)
+			return QStringLiteral("Equipment on destination deck blocks the operation.");
+		if(!entire && int(detail.deck) != request.deck) continue;
+		if((entire || differentDeck) && std::abs(int(detail.deck) + request.vertical) > MoveCopyDeckLimit)
+			return QStringLiteral("Equipment would exceed the deck limit.");
+		const QPointF point = DecodePoint(detail.packedXY) + offset;
+		if(std::abs(point.x()) - MoveCopyCoordinateLimit > 1e-5
+			|| std::abs(point.y()) - MoveCopyCoordinateLimit > 1e-5)
+			return QStringLiteral("Equipment would exceed the grid coordinates limit.");
+	}
+	for(const Room& room : design.rooms)
+	{
+		if(!HasBoundary(room)) continue;
+		if(differentDeck && int(room.deck) == destination)
+			return QStringLiteral("A room on destination deck blocks the operation.");
+		if(!entire && int(room.deck) != request.deck) continue;
+		if((entire || differentDeck) && std::abs(int(room.deck) + request.vertical) > MoveCopyDeckLimit)
+			return QStringLiteral("A room would exceed the deck limit.");
+		QString error;
+		const QPolygonF boundary = RoomBoundary(room, &error);
+		if(!error.isEmpty()) return error;
+		for(const QPointF& point : boundary)
+			if(std::abs(point.x() + offset.x()) - MoveCopyCoordinateLimit > 1e-5
+				|| std::abs(point.y() + offset.y()) - MoveCopyCoordinateLimit > 1e-5)
+				return QStringLiteral("A room would exceed the grid coordinates limit.");
+	}
+	return QString();
+}
+
+AuLegacyShip::MoveCopyResult AuLegacyShip::MoveCopy(Design& design, const MoveCopyRequest& request)
+{
+	MoveCopyResult result;
+	result.error = MoveCopyError(design, request);
+	if(!result.error.isEmpty()) return result;
+	const bool entire = request.mode == MoveCopyMode::MoveEntireDesign;
+	const bool copy = request.mode == MoveCopyMode::CopyCurrentDeck;
+	Design candidate = design;
+	if(!copy)
+	{
+		bool changed = false;
+		for(Detail& detail : candidate.details)
+		{
+			if(!entire && int(detail.deck) != request.deck) continue;
+			if(!TranslateDetail(detail, request.lateral, request.longitudinal, request.vertical, result.error)) return result;
+			changed = true;
+		}
+		if(entire)
+		{
+			for(Room& room : candidate.rooms)
+			{
+				if(!HasBoundary(room)) continue;
+				if(!TranslateRoom(room, request.lateral, request.longitudinal, request.vertical, result.error)) return result;
+				changed = true;
+			}
+		}
+		else
+		{
+			// The original removes and reinserts each source room with the next
+			// free ID, even for a purely horizontal current-deck move.
+			QVector<quint16> ids;
+			for(const Room& room : candidate.rooms)
+				if(HasBoundary(room) && int(room.deck) == request.deck) ids.append(room.roomId);
+			for(quint16 id : ids)
+				for(int i = 0; i < candidate.rooms.size(); ++i)
+				{
+					if(candidate.rooms[i].roomId != id || !HasBoundary(candidate.rooms[i])) continue;
+					Room room = candidate.rooms.takeAt(i);
+					room.roomId = NextRoomId(candidate);
+					if(!TranslateRoom(room, request.lateral, request.longitudinal, request.vertical, result.error)) return result;
+					InsertRoom(candidate.rooms, std::move(room));
+					changed = true;
+					break;
+				}
+		}
+		if(!ReconcileDetails(candidate, result.error)) return result;
+		result.changed = changed || !SameDetails(design.details, candidate.details);
+	}
+	else
+	{
+		QVector<Room> rooms;
+		QVector<Detail> details;
+		QSet<quint16> roomIds;
+		QSet<quint32> detailIds;
+		for(const Room& room : design.rooms)
+			if(HasBoundary(room))
+			{
+				roomIds.insert(room.roomId);
+				if(int(room.deck) == request.deck) rooms.append(room);
+			}
+		for(const Detail& detail : design.details)
+		{
+			detailIds.insert(detail.detailId);
+			if(int(detail.deck) == request.deck) details.append(detail);
+		}
+		quint32 nextRoomId = 1;
+		quint32 nextDetailId = 1;
+		for(int repeat = 1; repeat <= request.copies; ++repeat)
+		{
+			// Only the first destination uses spacecraft validation in 2016.
+			// The repeat loop calls BuildingDesignTestCopy (180145025), which
+			// finds no building for an offline spacecraft's working design ID.
+			// Keep that quirk; stop before overflowing this adapter's packed records.
+			QVector<Room> newRooms = rooms;
+			QVector<Detail> newDetails = details;
+			if(qint64(candidate.rooms.size()) + candidate.details.size() + newRooms.size()
+				+ newDetails.size() + candidate.header.firstPairs.size()
+				+ candidate.header.secondPairs.size() > MaximumRecords)
+			{
+				result.error = QStringLiteral("The design exceeds the legacy record safety limit.");
+				break;
+			}
+			for(Room& room : newRooms)
+				if(!TranslateRoom(room, request.lateral * repeat, request.longitudinal * repeat,
+					request.vertical * repeat, result.error)) break;
+			if(!result.error.isEmpty()) break;
+			for(Detail& detail : newDetails)
+				if(!TranslateDetail(detail, request.lateral * repeat, request.longitudinal * repeat,
+					request.vertical * repeat, result.error)) break;
+			if(!result.error.isEmpty()) break;
+			for(Detail& detail : newDetails)
+			{
+				while(nextDetailId && detailIds.contains(nextDetailId)) ++nextDetailId;
+				detail.detailId = nextDetailId;
+				detailIds.insert(nextDetailId);
+				detail.streamOffset = -1;
+				candidate.details.append(detail);
+			}
+			for(Room& room : newRooms)
+			{
+				while(nextRoomId <= 0xffff && roomIds.contains(quint16(nextRoomId))) ++nextRoomId;
+				room.roomId = nextRoomId <= 0xffff ? quint16(nextRoomId) : 0;
+				roomIds.insert(room.roomId);
+				room.streamOffset = -1;
+				InsertRoom(candidate.rooms, std::move(room));
+			}
+			++result.copiesMade;
+		}
+		// SpaceShipDesignCopy does not call SpaceShipDesignVerifyDetails:
+		// copied equipment retains its original room ID until a later room edit.
+		result.changed = candidate.rooms.size() != design.rooms.size()
+			|| candidate.details.size() != design.details.size();
+		if(result.changed) SortDetails(candidate.details);
+	}
+	result.accepted = !copy || result.copiesMade > 0;
+	if(result.accepted && result.changed) design = std::move(candidate);
 	return result;
 }
