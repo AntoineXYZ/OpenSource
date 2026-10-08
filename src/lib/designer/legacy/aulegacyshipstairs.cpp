@@ -197,5 +197,37 @@ void AppendStairGeometry(const Design& design, Mesh& mesh)
 		stairs.DetailGeometry(detail);
 	}
 }
+
+void AppendStairWalkingSurfaces(const Design& design, Mesh& mesh)
+{
+	// The original TestStairs ramps follow the casing planes. Keep this
+	// derivation out of the render generator used by wireframe/placement.
+	Mesh rendered;
+	AppendStairGeometry(design, rendered);
+	for(const Batch& batch : rendered.batches)
+	{
+		if(batch.material != Material::StairCasing) continue;
+		Batch support;
+		support.material = Material::StairTread;
+		support.deck = batch.deck;
+		support.interior = true;
+		support.equipment = true;
+		for(int i = 0; i + 2 < batch.vertices.size(); i += 3)
+		{
+			Vertex a = batch.vertices.at(i), b = batch.vertices.at(i + 1), c = batch.vertices.at(i + 2);
+			const QVector3D normal = -QVector3D::crossProduct(b.position - a.position, c.position - a.position).normalized();
+			if(normal.z() <= 0) continue;
+			if(std::abs(normal.x()) < 1e-6f && std::abs(normal.y()) < 1e-6f)
+			{
+				// The flat casing is the landing underside, one riser below its top.
+				const QVector3D rise(0, 0, float(Rise / 14));
+				a.position += rise; b.position += rise; c.position += rise;
+			}
+			a.normal = b.normal = c.normal = normal;
+			support.vertices.append(a); support.vertices.append(c); support.vertices.append(b);
+		}
+		if(!support.vertices.isEmpty()) mesh.batches.append(support);
+	}
+}
 }
 }

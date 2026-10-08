@@ -911,6 +911,7 @@ public:
 		editTool.erasing = mode == EraseMode || mode == DeleteRoomMode || mode == DeleteEquipmentMode || mode == DeleteEquipmentAreaMode;
 		editTool.wholeRoom = mode == DeleteRoomMode;
 		editTool.equipment = mode == EquipmentMode || mode == DeleteEquipmentMode || mode == DeleteEquipmentAreaMode;
+		editTool.detailType = mode == EquipmentMode ? selectedEquipmentType : 0;
 		editTool.radius = mode == DeleteEquipmentAreaMode
 			|| (mode == EquipmentMode && EquipmentUsesBrush(selectedEquipmentType)) ? equipmentBrushRadius : 0;
 		if(mode == PaintMode) editTool.icon = roomActions.value(selectedRoomType)->icon();

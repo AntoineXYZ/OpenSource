@@ -89,7 +89,8 @@ private:
 public:
 	// Supply an offline design scene's geometry query to the native controller.
 	void SetDesignScene(bool gravity, bool spacecraft, ROOMTYPE roomType, bool gravityWell, bool ladder,
-		double fallDistance, const AuPoint& up, ON_GROUND ground, float airDensity);
+		double fallDistance, const AuPoint& up, ON_GROUND ground, float airDensity,
+		const AuPoint& stairNormal = AuPoint(0, 0, 0));
 
 	inline AuQueryEnvironment()
 	{

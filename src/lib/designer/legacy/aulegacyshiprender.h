@@ -23,6 +23,7 @@ struct AuLegacyShipEditTool
 	bool erasing = false;
 	bool wholeRoom = false;
 	bool equipment = false;
+	int detailType = 0;
 	int radius = 0;
 	int rotation = 0;
 	QIcon icon;

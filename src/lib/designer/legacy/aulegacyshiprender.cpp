@@ -541,6 +541,8 @@ public:
 	bool editCursorKnown = false;
 	bool lastEquipmentPointKnown = false;
 	bool editingStroke = false;
+	int cursorStairType = 0;
+	QVector<WireframeVertex> cursorStairVertices;
 	Wireframe wireframe;
 	bool wireframeDirty = true;
 	QOpenGLBuffer wireframeBuffer;
@@ -766,7 +768,8 @@ public:
 			result.SetDesignScene(sample.gravity, sample.inShip, ROOMTYPE(sample.roomType), sample.gravityWell,
 				solid && (character.ladderEngaged || sample.aboveOpenHatch),
 				sample.fallDistance, atom->Transform().UnProjectVector(AuPoint(0, 0, 1)), ground,
-				!solid || sample.inShip ? .5f : 0.f);
+				!solid || sample.inShip ? .5f : 0.f,
+				atom->Transform().UnProjectVector(Point3(sample.stairNormal)));
 		};
 		environment->move = [this](DaAtom* atom, const AuPoint& delta, int milliseconds) {
 			auto* creature = static_cast<DaPerson*>(atom);
@@ -1595,7 +1598,7 @@ void AuLegacyShipRender::SetEditTool(const AuLegacyShipEditTool& tool)
 	const auto& previous = m_Impl->editTool;
 	if(previous.active == tool.active && previous.erasing == tool.erasing
 		&& previous.wholeRoom == tool.wholeRoom
-		&& previous.equipment == tool.equipment && previous.radius == tool.radius
+		&& previous.equipment == tool.equipment && previous.detailType == tool.detailType && previous.radius == tool.radius
 		&& previous.rotation == tool.rotation && previous.icon.cacheKey() == tool.icon.cacheKey()
 		&& previous.footprint == tool.footprint) return;
 	m_Impl->editTool = tool;
@@ -3128,7 +3131,29 @@ void AuLegacyShipRender::RenderWireframe(const QMatrix4x4& viewProjection)
 		QVector<WireframeVertex> vertices;
 		const QVector4D color = m_Impl->editTool.erasing ? QVector4D(1, .45f, .43f, 1) : QVector4D(.5f, .85f, 1, 1);
 		const float z = float(m_Impl->deck * AuLegacyShip::DeckHeight) + .01f;
-		for(int i = 0; i < polygon.size(); ++i)
+		if(m_Impl->editTool.equipment && m_Impl->editTool.detailType >= 101 && m_Impl->editTool.detailType <= 140)
+		{
+			if(m_Impl->cursorStairType != m_Impl->editTool.detailType)
+			{
+				AuLegacyShip::Design preview;
+				AuLegacyShip::Detail stair;
+				stair.detailType = m_Impl->editTool.detailType;
+				preview.details.append(stair);
+				// Use the same feature edges as a placed stair, including rotation.
+				m_Impl->cursorStairVertices = BuildWireframe(preview, 0, false, 0).vertices;
+				m_Impl->cursorStairType = m_Impl->editTool.detailType;
+			}
+			const double spacing = AuLegacyShip::CoordinateSpacing;
+			const QVector3D offset(float(std::round(m_Impl->editCursor.x() / spacing) * spacing),
+				float(std::round(m_Impl->editCursor.y() / spacing) * spacing), z);
+			vertices = m_Impl->cursorStairVertices;
+			for(WireframeVertex& vertex : vertices)
+			{
+				vertex.position += offset;
+				vertex.color = color;
+			}
+		}
+		else for(int i = 0; i < polygon.size(); ++i)
 		{
 			const QPointF& a = polygon[i];
 			const QPointF& b = polygon[(i + 1) % polygon.size()];

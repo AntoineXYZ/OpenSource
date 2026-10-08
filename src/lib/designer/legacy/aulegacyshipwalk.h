@@ -52,6 +52,7 @@ struct WalkEnvironment
 	bool gravity = false;
 	bool gravityWell = false;
 	bool aboveOpenHatch = false;
+	QVector3D stairNormal;
 	float fallDistance = 1000000;
 };
 

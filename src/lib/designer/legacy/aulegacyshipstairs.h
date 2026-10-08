@@ -10,6 +10,8 @@ namespace Rendering
 // Original straight, quarter-turn and U-turn stairs, including all eight
 // encoded orientations. Floor openings come from authored open-below rooms.
 void AppendStairGeometry(const Design& design, Mesh& mesh);
+// Smooth ramp/landing support surfaces; the render/placement path stays separate.
+void AppendStairWalkingSurfaces(const Design& design, Mesh& mesh);
 }
 }
 

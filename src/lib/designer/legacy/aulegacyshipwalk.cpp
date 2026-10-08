@@ -2,6 +2,7 @@
 #include "aulegacyshipgeometry.h"
 #include "aulegacyshipequipment.h"
 #include "aulegacyshipdetails.h"
+#include "aulegacyshipstairs.h"
 
 #include <QHash>
 #include <QMatrix4x4>
@@ -64,6 +65,7 @@ struct Triangle
 	int obstacle;
 	bool blocksMovement;
 	bool sightVisible = true;
+	bool stairSurface = false;
 	Triangle() : doorId(0), obstacle(-1), blocksMovement(true) {}
 	Triangle(const QVector3D& p, const QVector3D& q, const QVector3D& r, quint32 door, int cell = -1)
 		: a(p), b(q), c(r), normal(QVector3D::crossProduct(q - p, r - p).normalized()),
@@ -122,8 +124,7 @@ bool StructuralBatch(const Batch& batch)
 {
 	// Imported models, berths and other display equipment are not a collision
 	// source. Actual obstacles are authored path cells added separately below.
-	return !batch.equipment || batch.doorId != 0 || batch.material == Material::StairCasing
-		|| batch.material == Material::StairRiser || batch.material == Material::StairTread;
+	return !batch.equipment || batch.doorId != 0;
 }
 
 bool InsideTriangle(const QVector3D& p, const Triangle& t)
@@ -132,6 +133,14 @@ bool InsideTriangle(const QVector3D& p, const Triangle& t)
 	return QVector3D::dotProduct(QVector3D::crossProduct(t.b - t.a, p - t.a), t.normal) >= e
 		&& QVector3D::dotProduct(QVector3D::crossProduct(t.c - t.b, p - t.b), t.normal) >= e
 		&& QVector3D::dotProduct(QVector3D::crossProduct(t.a - t.c, p - t.c), t.normal) >= e;
+}
+
+bool StairFloor(const QVector3D& feet, const Triangle& triangle, float& height)
+{
+	if(!triangle.stairSurface || triangle.normal.z() < WalkableNormal) return false;
+	height = triangle.a.z() - (triangle.normal.x() * (feet.x() - triangle.a.x())
+		+ triangle.normal.y() * (feet.y() - triangle.a.y())) / triangle.normal.z();
+	return InsideTriangle(QVector3D(feet.x(), feet.y(), height), triangle);
 }
 
 QVector3D ClosestPoint(const QVector3D& p, const Triangle& t)
@@ -243,7 +252,7 @@ public:
 					// Detailed equipment meshes remain targets, but never enter
 					// character contact or floor-query candidate lists.
 					if(triangle.blocksMovement) movementCells[key].append(index);
-					if(triangle.obstacle < 0) sightCells[key].append(index);
+					if(triangle.obstacle < 0 && !triangle.stairSurface) sightCells[key].append(index);
 				}
 	}
 
@@ -421,7 +430,7 @@ public:
 		return false;
 	}
 
-	Contact Resolve(QVector3D& feet, const QVector3D& previous, bool groundPlane) const
+	Contact Resolve(QVector3D& feet, const QVector3D& previous, bool groundPlane, bool followStairs = false) const
 	{
 		Contact contact;
 		for(int iteration = 0; iteration < 8; ++iteration)
@@ -432,6 +441,25 @@ public:
 				const Triangle& triangle = triangles.at(index);
 				if(!triangle.blocksMovement) continue;
 				if(triangle.doorId && openDoors.contains(triangle.doorId)) continue;
+				if(triangle.stairSurface)
+				{
+					float height;
+					if(!StairFloor(feet, triangle, height)) continue;
+					const float gap = feet.z() - height;
+					// FloorHt support lifts along gravity, preserving horizontal
+					// movement. Capsule separation along the ramp normal adds drag.
+					if(height <= previous.z() + settings.stepHeight
+						&& (gap <= ContactTolerance || (followStairs && gap <= settings.stepHeight)))
+					{
+						if((gap < Skin || followStairs) && std::abs(gap - Skin) > 1e-6f)
+						{
+							feet.setZ(height + Skin);
+							moved = true;
+						}
+						contact.Add(QVector3D(0, 0, 1));
+					}
+					continue;
+				}
 				if(InsideObstacle(feet, triangle.obstacle))
 				{
 					// A closed volume must also reject a character initially inside it,
@@ -488,6 +516,13 @@ public:
 			const Triangle& triangle = triangles.at(index);
 			if(!triangle.blocksMovement) continue;
 			if(triangle.doorId && openDoors.contains(triangle.doorId)) continue;
+			if(triangle.stairSurface)
+			{
+				float height;
+				if(StairFloor(feet, triangle, height) && feet.z() < height - Skin
+					&& height < feet.z() + settings.radius) return false;
+				continue;
+			}
 			if(InsideObstacle(feet, triangle.obstacle)) return false;
 			QVector3D spine, surface;
 			if(CapsuleDistance(feet, settings, triangle, spine, surface) < settings.radius - Skin) return false;
@@ -610,6 +645,20 @@ void WalkWorld::SetMesh(const Mesh& mesh, const Design& design)
 			world.AddTriangle(triangle);
 		}
 	}
+	// FloorHt/TestStairs use ramps, not the render model's individual risers.
+	// Keep the visible triangles for hand rays and index walking surfaces only
+	// for collision and floor queries.
+	Mesh stairMesh;
+	AppendStairWalkingSurfaces(design, stairMesh);
+	for(const Batch& batch : stairMesh.batches)
+		for(int i = 0; i + 2 < batch.vertices.size(); i += 3)
+		{
+			Triangle triangle(batch.vertices.at(i).position, batch.vertices.at(i + 1).position,
+				batch.vertices.at(i + 2).position, 0);
+			if(!Finite(triangle.normal) || triangle.normal.isNull()) continue;
+			triangle.stairSurface = true;
+			world.AddTriangle(triangle);
+		}
 	QSet<quint32> occupied;
 	for(const Detail& detail : design.details)
 	{
@@ -817,8 +866,11 @@ WalkEnvironment WalkWorld::Environment(const QVector3D& feet, bool studioGravity
 			|| (triangle.doorId && m_Impl->openDoors.contains(triangle.doorId))) continue;
 		const float distance = QVector3D::dotProduct(triangle.a - origin, triangle.normal) / -triangle.normal.z();
 		if(distance < 0 || distance > 256) continue;
-		if(InsideTriangle(origin - QVector3D(0, 0, distance), triangle))
-			environment.fallDistance = std::min(environment.fallDistance, distance - probeHeight);
+		if(InsideTriangle(origin - QVector3D(0, 0, distance), triangle) && distance - probeHeight < environment.fallDistance)
+		{
+			environment.fallDistance = distance - probeHeight;
+			environment.stairNormal = triangle.stairSurface ? triangle.normal : QVector3D();
+		}
 	}
 	if(studioGravity && !environment.inShip)
 		environment.fallDistance = std::min(environment.fallDistance, feet.z() - m_Impl->plane);
@@ -854,7 +906,8 @@ void WalkWorld::MoveDisplacement(WalkState& state, const QVector3D& displacement
 	{
 		const QVector3D previous = state.feet;
 		state.feet += step;
-		const Contact contact = world.Resolve(state.feet, previous, groundPlane);
+		const Contact contact = world.Resolve(state.feet, previous, groundPlane,
+			state.grounded && state.gravityActive && !state.ladderEngaged && step.z() <= Skin);
 		contacts(contact, step.z() < 0);
 		if(state.ladderEngaged)
 		{
