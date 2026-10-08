@@ -85,7 +85,23 @@ const float Pi = 3.14159265358979323846f;
 using namespace AuLegacyShip::Rendering;
 const qint64 DoorTickMilliseconds = qint64(DoorAnimationTickSeconds * 1000);
 
-enum SystemAction { PowerToggle, DriveToggle, DriveCycle, DriveHold, InteriorLightCycle };
+enum SystemAction { PowerToggle, DriveToggle, DriveCycle, DriveHold, InteriorLightCycle, CloseHullDoors };
+
+using ConsoleAdjustment = void (*)(const AuId&);
+
+ConsoleAdjustment ConsoleAdjustmentFor(int id)
+{
+	switch(id)
+	{
+	case DaPerson::CI_ConsoleRaise: return DpConsole::Raise;
+	case DaPerson::CI_ConsoleLower: return DpConsole::Lower;
+	case DaPerson::CI_ConsoleMoveFarther: return DpConsole::MoveFarther;
+	case DaPerson::CI_ConsoleMoveCloser: return DpConsole::MoveCloser;
+	case DaPerson::CI_ConsoleRotateAway: return DpConsole::RotateAway;
+	case DaPerson::CI_ConsoleRotateToward: return DpConsole::RotateToward;
+	default: return nullptr;
+	}
+}
 
 bool IsStudioSurface(const Batch& batch)
 {
@@ -101,13 +117,14 @@ struct SystemBindings
 };
 
 template<class Station>
-SystemBindings LoadSystemBindings(const Station& station)
+SystemBindings LoadSystemBindings(const Station& station, int closeHullDoorsId = -1)
 {
 	SystemBindings result;
 	result.actions.insert(Station::CI_PowerPlantOnOff, PowerToggle);
 	result.actions.insert(Station::CI_GravityDriveOnOff, DriveToggle);
 	result.actions.insert(Station::CI_GravityDriveOnOffHold, DriveCycle);
 	result.actions.insert(Station::CI_GravityDriveHold, DriveHold);
+	if(closeHullDoorsId >= 0) result.actions.insert(closeHullDoorsId, CloseHullDoors);
 	DiControlInputArray configured;
 	station.EnumControlInputs(configured);
 	for(const DiControlInput& control : configured)
@@ -538,6 +555,8 @@ public:
 	LegacyDesignEnvironment* environment = nullptr;
 	AuElapsedTimer personClock;
 	DpConsole console;
+	// Share the modern offline designer's saved adjustments across sessions.
+	const AuId consoleSettingsId = AuId::Silverwill();
 	QHash<quint32, int> consoleScreens;
 	SoundSession sound;
 	QList<AuGLSun> studioSuns;
@@ -560,7 +579,10 @@ public:
 	QString targetName;
 	bool powerPlantOn = false;
 	int driveState = 0; // 2016 GD_Off, GD_On, GD_Hold.
-	InteriorLight interiorLight = InteriorLight::On;
+	float capacitorCharge = 0; // The offline spacecraft has no fuel or stored charge.
+	// DaSpaceShip constructor (AuAtom13:1803c1ec0) defaults to Off;
+	// SetNotNew (1804622f0) leaves this mode unchanged.
+	InteriorLight interiorLight = InteriorLight::Off;
 	DiControlInput handControl, toggleControl;
 	Qt::MouseButtons mouseButtons = Qt::NoButton;
 	Qt::MouseButtons pendingMouseButtons = Qt::NoButton;
@@ -602,11 +624,15 @@ public:
 	QString glError;
 	QStringList textureWarnings;
 
+	InteriorLight EffectiveInteriorLight() const
+	{
+		return capacitorCharge != 0 ? interiorLight : InteriorLight::Off;
+	}
+
 	QVector3D InteriorAmbient() const
 	{
-		// AuAtom13.dll:1800cdcf0. The standalone lighting preview displays
-		// the powered states without simulating a spacecraft capacitor.
-		switch(interiorLight)
+		// AuAtom13.dll:1800cdcf0 requires capacitor charge for On and Dim.
+		switch(EffectiveInteriorLight())
 		{
 		case InteriorLight::On: return QVector3D(0.47843137f, 0.5f, 0.49019608f);
 		case InteriorLight::Dim: return QVector3D(0.14352942f, 0.15f, 0.14705883f);
@@ -1209,7 +1235,7 @@ public:
 			|| batch.textureFile == QStringLiteral(":/data/ec_Console.bmp"))
 			return QStringLiteral("%1:power%2:drive%3:light%4").arg(batch.textureFile).arg(powerPlantOn).arg(driveState).arg(int(interiorLight));
 		return batch.textureFile.isEmpty() ? QStringLiteral("atlas:%1:lit%2").arg(FrameMaterial(source))
-			.arg(interiorLight != InteriorLight::Off) : batch.textureFile;
+			.arg(EffectiveInteriorLight() != InteriorLight::Off) : batch.textureFile;
 	}
 
 	QImage AtlasTile(const QImage& image, int material) const
@@ -1230,7 +1256,7 @@ public:
 		const bool consoleTexture = batch.textureFile == QStringLiteral("legacy:pc_Console.bmp")
 			|| batch.textureFile == QStringLiteral(":/data/ec_Console.bmp");
 		const int variant = consoleTexture ? (int(powerPlantOn) * 3 + driveState) * 3 + int(interiorLight)
-			: IsStudioSurface(batch) ? int(interiorLight != InteriorLight::Off) : 0;
+			: IsStudioSurface(batch) ? int(EffectiveInteriorLight() != InteriorLight::Off) : 0;
 		if(cached.texture && cached.material == material && cached.variant == variant) return cached.texture;
 		const QString key = TextureKey(source);
 		const auto remember = [&](QOpenGLTexture* texture) {
@@ -1259,10 +1285,10 @@ public:
 		else if (material >= 0 && material < int(sizeof(ShipTextures) / sizeof(ShipTextures[0])))
 		{
 			// AuAtom13.dll:1804243b0 selects Lit for both On and Dim.
-			QImage& atlas = interiorLight == InteriorLight::Off ? unlitAtlas : litAtlas;
+			QImage& atlas = EffectiveInteriorLight() == InteriorLight::Off ? unlitAtlas : litAtlas;
 			if (atlas.isNull())
 			{
-				atlas.load(interiorLight == InteriorLight::Off ? QStringLiteral(":/data/legacy_txSpacecraft0.png")
+				atlas.load(EffectiveInteriorLight() == InteriorLight::Off ? QStringLiteral(":/data/legacy_txSpacecraft0.png")
 					: QStringLiteral(":/data/legacy_txSpacecraft0Lit.png"));
 			}
 			tile = AtlasTile(atlas, material);
@@ -1388,6 +1414,7 @@ AuLegacyShipRender::AuLegacyShipRender(QWidget* parent)
 	setFocusPolicy(Qt::StrongFocus);
 	setMouseTracking(true);
 	qApp->installEventFilter(this);
+	DpConsole::RestoreAdjustments(m_Impl->consoleSettingsId);
 	ControlsChanged();
 	setAccessibleName(QStringLiteral("Legacy spacecraft 3D designer"));
 	setMinimumSize(160, 120);
@@ -1418,7 +1445,7 @@ void AuLegacyShipRender::ControlsChanged()
 	m_Impl->controls.clear();
 	m_Impl->sceneControls.clear();
 	m_Impl->pendingSceneControls.clear();
-	m_Impl->systemBindings[1] = LoadSystemBindings(DpConsoleHelm());
+	m_Impl->systemBindings[1] = LoadSystemBindings(DpConsoleHelm(), DpConsoleHelm::CI_CloseHullDoors);
 	m_Impl->systemBindings[2] = LoadSystemBindings(DpConsoleEngineer(0));
 	DaPerson person;
 	DiControlInputArray configured;
@@ -1435,6 +1462,9 @@ void AuLegacyShipRender::ControlsChanged()
 		case DaPerson::CI_BrakeOrJump: case DaPerson::CI_Brake: case DaPerson::CI_Jump:
 		case DaPerson::CI_EnterExit: case DaPerson::CI_DoorOpen:
 		case DaPerson::CI_Crouch: case DaPerson::CI_ProneStandToggle: case DaPerson::CI_Stand:
+		case DaPerson::CI_ConsoleRaise: case DaPerson::CI_ConsoleLower:
+		case DaPerson::CI_ConsoleMoveFarther: case DaPerson::CI_ConsoleMoveCloser:
+		case DaPerson::CI_ConsoleRotateAway: case DaPerson::CI_ConsoleRotateToward:
 			m_Impl->controls.append(control);
 			break;
 		default: break;
@@ -1516,7 +1546,8 @@ void AuLegacyShipRender::SetRenderSolid(bool solid)
 
 void AuLegacyShipRender::CycleInteriorLight()
 {
-	// DpConsolePilot::ProcessControlInput, AuAtom13.dll:18060e9ad.
+	// DpConsolePilot::ProcessControlInput, AuAtom13.dll:18060e130 case 0xd.
+	if(m_Impl->shipNew) return;
 	m_Impl->interiorLight = m_Impl->interiorLight == InteriorLight::On ? InteriorLight::Dim
 		: m_Impl->interiorLight == InteriorLight::Dim ? InteriorLight::Off : InteriorLight::On;
 	m_Impl->interaction = m_Impl->interiorLight == InteriorLight::On ? tr("Interior lights on.")
@@ -1601,6 +1632,8 @@ void AuLegacyShipRender::SetDesign(const AuLegacyShip::Design& design)
 		m_Impl->shipNew = true;
 		m_Impl->powerPlantOn = false;
 		m_Impl->driveState = 0;
+		m_Impl->capacitorCharge = 0;
+		m_Impl->interiorLight = InteriorLight::Off;
 	}
 	m_Impl->targetName = QStringLiteral("%1 %2")
 		.arg(AuLegacyShip::LegacyStructureName(m_Impl->performance.structure), m_Impl->shipName);
@@ -1862,12 +1895,17 @@ void AuLegacyShipRender::Tick()
 	m_Impl->lastDoorTick = tick;
 	if(hasFocus() && seconds > 0)
 	{
+		if(m_Impl->solid && m_Impl->character.consoleType && m_Impl->character.consoleType != 73
+			&& isActiveWindow() && !QApplication::activeModalWidget() && !QApplication::activePopupWidget())
+			for(const DiControlInput& control : active)
+				if(ConsoleAdjustment adjustment = ConsoleAdjustmentFor(control.GetId()))
+					adjustment(m_Impl->consoleSettingsId);
 		DiControlInputArray nativeControls;
 		if(m_Impl->mouseCaptured)
 			for(const DiControlInput& control : active)
 			{
 				const int id = control.GetId();
-				if(id == DaPerson::CI_EnterExit || id == DaPerson::CI_DoorOpen) continue;
+				if(id == DaPerson::CI_EnterExit || id == DaPerson::CI_DoorOpen || ConsoleAdjustmentFor(id)) continue;
 				if(m_Impl->solid && m_Impl->character.consoleType && id != DaPerson::CI_LookUp && id != DaPerson::CI_LookDown
 					&& id != DaPerson::CI_TurnLeft && id != DaPerson::CI_TurnRight) continue;
 				if(m_Impl->solid && m_Impl->character.ladderEngaged && (id == DaPerson::CI_Crouch || id == DaPerson::CI_ProneStandToggle
@@ -1979,6 +2017,16 @@ void AuLegacyShipRender::UpdateTarget(qint64 now)
 void AuLegacyShipRender::OperateSystem(int action)
 {
 	if(!m_Impl->SystemBindingIndex()) return;
+	if(action == CloseHullDoors)
+	{
+		// AuOpening::IsHullDoor (AuData13:180073cb0) and
+		// DaSpaceShip::CloseAllHullDoors (AuAtom13:1803d0470).
+		for(const DoorDefinition& door : m_Impl->doors)
+			if((door.type == 3 || door.type == 50 || door.type == 52 || (door.type >= 91 && door.type <= 97))
+				&& m_Impl->doorStates.value(door.id).open)
+				OperateDoor(door.id, false);
+		return;
+	}
 	if(action == InteriorLightCycle)
 	{
 		CycleInteriorLight();
@@ -2743,7 +2791,7 @@ void AuLegacyShipRender::paintGL()
 				// AuAtom13.dll:1804246df / 18042434f select the exterior
 				// cutoff; 180424a9e selects the interior cutoff. On opens
 				// the hull glass from outside as well as inside.
-				m_Impl->program->setUniformValue("u_alphaCutoff", m_Impl->interiorLight == InteriorLight::On
+				m_Impl->program->setUniformValue("u_alphaCutoff", m_Impl->EffectiveInteriorLight() == InteriorLight::On
 					? 0.2f : batch.interior ? 0.1f : 0.f);
 				if (batch.twoSided)
 					gl->glDisable(GL_CULL_FACE);
@@ -3281,7 +3329,8 @@ void AuLegacyShipRender::keyPressEvent(QKeyEvent* event)
 		return;
 	}
 	for(const DiControlInput& control : m_Impl->controls)
-		if(control.Key() == key && (m_Impl->mouseCaptured || control.GetId() == DaPerson::CI_DoorOpen))
+		if(control.Key() == key && (m_Impl->mouseCaptured || control.GetId() == DaPerson::CI_DoorOpen
+			|| (ConsoleAdjustmentFor(control.GetId()) && m_Impl->MatchesKey(control, event))))
 		{
 			if(!event->isAutoRepeat())
 			{

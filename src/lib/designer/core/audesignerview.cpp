@@ -7287,6 +7287,8 @@ void AuDesignerView::RenderOverlayText()
 void AuDesignerView::RenderSceneCommunications()
 {
 	// Local renderers do not run AnimateScene's world/message upkeep.
+	// They also bypass its fade-in; notification tones need normal volume.
+	m_Fade = 1;
 	m_MessageLock.lock();
 	for(auto it = m_Messages.begin(); it != m_Messages.end();)
 		if(it->DecayMessage()) it = m_Messages.erase(it);
