@@ -29,6 +29,7 @@
 #include "dpconsoleengineer.h"
 #include "dasc.h"
 #include "aucommpacket.h"
+#include "ausound.h"
 #include "auquad.h"
 #include "audice.h"
 #include "auid.h"
@@ -85,7 +86,13 @@ const float Pi = 3.14159265358979323846f;
 using namespace AuLegacyShip::Rendering;
 const qint64 DoorTickMilliseconds = qint64(DoorAnimationTickSeconds * 1000);
 
-enum SystemAction { PowerToggle, DriveToggle, DriveCycle, DriveHold, InteriorLightCycle, CloseHullDoors };
+enum SystemAction { PowerToggle, DriveToggle, DriveCycle, DriveHold, InteriorLightCycle, CloseHullDoors, MooringsToggle };
+
+bool IsHullDoorDetail(int type)
+{
+	// AuOpening::IsHullDoor, AuData13:180073cb0.
+	return type == 3 || type == 50 || type == 52 || (type >= 91 && type <= 97);
+}
 
 using ConsoleAdjustment = void (*)(const AuId&);
 
@@ -117,7 +124,7 @@ struct SystemBindings
 };
 
 template<class Station>
-SystemBindings LoadSystemBindings(const Station& station, int closeHullDoorsId = -1)
+SystemBindings LoadSystemBindings(const Station& station, int closeHullDoorsId = -1, int mooringsId = -1)
 {
 	SystemBindings result;
 	result.actions.insert(Station::CI_PowerPlantOnOff, PowerToggle);
@@ -125,6 +132,7 @@ SystemBindings LoadSystemBindings(const Station& station, int closeHullDoorsId =
 	result.actions.insert(Station::CI_GravityDriveOnOffHold, DriveCycle);
 	result.actions.insert(Station::CI_GravityDriveHold, DriveHold);
 	if(closeHullDoorsId >= 0) result.actions.insert(closeHullDoorsId, CloseHullDoors);
+	if(mooringsId >= 0) result.actions.insert(mooringsId, MooringsToggle);
 	DiControlInputArray configured;
 	station.EnumControlInputs(configured);
 	for(const DiControlInput& control : configured)
@@ -574,6 +582,7 @@ public:
 	DiControlInputArray controls, pendingControls, sceneControls, pendingSceneControls;
 	SystemBindings systemBindings[3]; // No station, helm, engineering.
 	bool shipNew = true;
+	bool moored = true; // DaSpaceShip constructor, AuAtom13:1803c1ec0.
 	AuId shipId;
 	QString shipName;
 	QString targetName;
@@ -623,6 +632,13 @@ public:
 	bool running = false;
 	QString glError;
 	QStringList textureWarnings;
+
+	bool AnyHullDoorOpen() const
+	{
+		for(const DoorDefinition& door : doors)
+			if(IsHullDoorDetail(door.type) && doorStates.value(door.id).open) return true;
+		return false;
+	}
 
 	InteriorLight EffectiveInteriorLight() const
 	{
@@ -1233,7 +1249,8 @@ public:
 		const auto& batch = mesh.batches[source];
 		if(batch.textureFile == QStringLiteral("legacy:pc_Console.bmp")
 			|| batch.textureFile == QStringLiteral(":/data/ec_Console.bmp"))
-			return QStringLiteral("%1:power%2:drive%3:light%4").arg(batch.textureFile).arg(powerPlantOn).arg(driveState).arg(int(interiorLight));
+			return QStringLiteral("%1:power%2:drive%3:light%4:moored%5:doorsOpen%6").arg(batch.textureFile)
+				.arg(powerPlantOn).arg(driveState).arg(int(interiorLight)).arg(moored).arg(AnyHullDoorOpen());
 		return batch.textureFile.isEmpty() ? QStringLiteral("atlas:%1:lit%2").arg(FrameMaterial(source))
 			.arg(EffectiveInteriorLight() != InteriorLight::Off) : batch.textureFile;
 	}
@@ -1255,7 +1272,8 @@ public:
 		BatchTexture& cached = batchTextures[source];
 		const bool consoleTexture = batch.textureFile == QStringLiteral("legacy:pc_Console.bmp")
 			|| batch.textureFile == QStringLiteral(":/data/ec_Console.bmp");
-		const int variant = consoleTexture ? (int(powerPlantOn) * 3 + driveState) * 3 + int(interiorLight)
+		const int variant = consoleTexture ? (((int(powerPlantOn) * 3 + driveState) * 3 + int(interiorLight)) * 2
+			+ int(moored)) * 2 + int(AnyHullDoorOpen())
 			: IsStudioSurface(batch) ? int(EffectiveInteriorLight() != InteriorLight::Off) : 0;
 		if(cached.texture && cached.material == material && cached.variant == variant) return cached.texture;
 		const QString key = TextureKey(source);
@@ -1318,6 +1336,10 @@ public:
 				button(powerPlantOn ? ":/data/pc_PowerPlantOn.bmp" : ":/data/pc_PowerPlantOff.bmp", 218, 90);
 				button(driveState == 1 ? ":/data/pc_ManeuverOn.bmp" : driveState == 2
 					? ":/data/pc_ManeuverPark.bmp" : ":/data/pc_ManeuverOff.bmp", 236, 90);
+				button(moored ? ":/data/pc_Moored.bmp" : ":/data/pc_Unmoored.bmp", 236, 108);
+				// DpConsolePilot::AnimateDeviceObjects, AuAtom13:18060b0d0.
+				button(AnyHullDoorOpen() ? ":/data/pc_HullDoorsUnlockedO.png"
+					: ":/data/pc_HullDoorsUnlocked.png", 200, 90);
 			}
 			else
 			{
@@ -1445,7 +1467,8 @@ void AuLegacyShipRender::ControlsChanged()
 	m_Impl->controls.clear();
 	m_Impl->sceneControls.clear();
 	m_Impl->pendingSceneControls.clear();
-	m_Impl->systemBindings[1] = LoadSystemBindings(DpConsoleHelm(), DpConsoleHelm::CI_CloseHullDoors);
+	m_Impl->systemBindings[1] = LoadSystemBindings(DpConsoleHelm(), DpConsoleHelm::CI_CloseHullDoors,
+		DpConsoleHelm::CI_MooringsOnOff);
 	m_Impl->systemBindings[2] = LoadSystemBindings(DpConsoleEngineer(0));
 	DaPerson person;
 	DiControlInputArray configured;
@@ -1630,6 +1653,7 @@ void AuLegacyShipRender::SetDesign(const AuLegacyShip::Design& design)
 		while(m_Impl->shipId < AuId::FirstUnreserved());
 		m_Impl->shipName = m_Impl->shipId.StringId();
 		m_Impl->shipNew = true;
+		m_Impl->moored = true;
 		m_Impl->powerPlantOn = false;
 		m_Impl->driveState = 0;
 		m_Impl->capacitorCharge = 0;
@@ -2014,16 +2038,50 @@ void AuLegacyShipRender::UpdateTarget(qint64 now)
 	}
 }
 
+void AuLegacyShipRender::CompleteSystemInitialization()
+{
+	if(!m_Impl->shipNew) return;
+	m_Impl->shipNew = false;
+	AuCommChat message(DaSc::SystemInitializationMessage(), AuCommStdChannel::IntercomChannelName(),
+		m_Impl->shipId, m_Impl->shipName, AuId(0), ShoresOfHazeron, AuCommStdChannel::Close, AuCommStdChannel::Intercom);
+	ChatReceived(&message);
+}
+
 void AuLegacyShipRender::OperateSystem(int action)
 {
 	if(!m_Impl->SystemBindingIndex()) return;
+	if(action == MooringsToggle)
+	{
+		// DpConsolePilot case 0x36, AuAtom13:18060e130; modern
+		// DpStationHelm uses the same repair check and Unmoor transition.
+		// Offline designs have no damage repairs or spacecraft motion.
+		if(m_Impl->moored)
+		{
+			CompleteSystemInitialization();
+			m_Impl->moored = false;
+			m_Impl->interaction = tr("Moorings cast off.");
+			AuCommChat message(m_Impl->interaction, AuCommStdChannel::IntercomChannelName(),
+				m_Impl->shipId, m_Impl->shipName, AuId(0), ShoresOfHazeron, AuCommStdChannel::Close, AuCommStdChannel::Intercom);
+			ChatReceived(&message);
+		}
+		else
+		{
+			// Moor (AuAtom13:180407ff0) requires a carrier floor, planet
+			// surface or friendly station in trade range. This preview has none.
+			m_Impl->interaction = tr("No station in range to secure moorings.");
+		}
+		if(AuApp* app = qobject_cast<AuApp*>(qApp))
+			app->PlayClientSound(SOUND_Bleep6, 1, m_Impl->moored ? 1.f : .90f);
+		m_Impl->interactionUntil = m_Impl->animationClock.elapsed() + 2500;
+		update();
+		return;
+	}
 	if(action == CloseHullDoors)
 	{
 		// AuOpening::IsHullDoor (AuData13:180073cb0) and
 		// DaSpaceShip::CloseAllHullDoors (AuAtom13:1803d0470).
 		for(const DoorDefinition& door : m_Impl->doors)
-			if((door.type == 3 || door.type == 50 || door.type == 52 || (door.type >= 91 && door.type <= 97))
-				&& m_Impl->doorStates.value(door.id).open)
+			if(IsHullDoorDetail(door.type) && m_Impl->doorStates.value(door.id).open)
 				OperateDoor(door.id, false);
 		return;
 	}
@@ -2058,13 +2116,7 @@ void AuLegacyShipRender::OperateSystem(int action)
 		// The original SetGravityDriveState calls SetNotNew once, regardless
 		// of fuel or capacitor charge. Use the surviving announcement text
 		// and native local message path; no world/sector or network is needed.
-		if(m_Impl->shipNew)
-		{
-			m_Impl->shipNew = false;
-			AuCommChat message(DaSc::SystemInitializationMessage(), AuCommStdChannel::IntercomChannelName(),
-				m_Impl->shipId, m_Impl->shipName, AuId(0), ShoresOfHazeron, AuCommStdChannel::Close, AuCommStdChannel::Intercom);
-			ChatReceived(&message);
-		}
+		CompleteSystemInitialization();
 		m_Impl->interaction = !state ? tr("Maneuver drive off.")
 			: state == 1 ? tr("Maneuver drive on.") : tr("Maneuver drive holding.");
 	}
@@ -2138,14 +2190,25 @@ bool AuLegacyShipRender::UseConsole(const QPoint& screenPosition)
 		// helm controls put two 16x7 strobe/beacon buttons in this space.
 		double panelWidth = 0, panelHeight = 0;
 		m_Impl->console.PanelDimensions(0, panelWidth, panelHeight);
-		if(panelWidth > 0 && panelHeight > 0 && QRect(164, 90, 16, 16).contains(
-			QPoint(int(panelLocation.x * 256 / panelWidth), int(panelLocation.y * 128 / panelHeight))))
+		if(panelWidth > 0 && panelHeight > 0)
 		{
-			OperateSystem(InteriorLightCycle);
-			return true;
+			const QPoint pixel(int(panelLocation.x * 256 / panelWidth), int(panelLocation.y * 128 / panelHeight));
+			if(QRect(164, 90, 16, 16).contains(pixel))
+			{
+				OperateSystem(InteriorLightCycle);
+				return true;
+			}
+			// DpConsolePilot::SampleControlPanelInput, AuAtom13:18060fc50.
+			if(QRect(200, 83, 16, 7).contains(pixel))
+			{
+				OperateSystem(CloseHullDoors);
+				return true;
+			}
 		}
 		DpConsoleHelm station;
 		station.SampleControlPanelInput(0, panelLocation, active, false);
+		// The modern (182,90) close-button slot was the 2016 crew-door lock.
+		active.RemoveId(DpConsoleHelm::CI_CloseHullDoors);
 	}
 	else
 	{
