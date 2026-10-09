@@ -15,12 +15,16 @@ public:
 	// diagnostics remain advisory until online semantic validation is added.
 	// Failure leaves output unchanged.
 	static bool Read(const QByteArray& source, AuLegacyScDesign& output, QString& error);
+	// Online intake adds limits on file size, decks and analysis work.
+	static bool ReadUpload(const QByteArray& source, AuLegacyScDesign& output, QString& error);
 
 	quint32 Id() const { return m_Id; }
 	void SetId(quint32 id) { m_Id = id; }
 	const QByteArray& SourceData() const { return m_SourceData; }
 	const QByteArray& ContentHash() const { return m_ContentHash; }
-	const QString& Name() const { return m_SourceDesign.header.name; }
+	// Display name is database metadata; SourceDesign retains the embedded name.
+	const QString& Name() const { return m_Name; }
+	void SetName(const QString& name) { m_Name = name; }
 	const AuLegacyShip::Design& SourceDesign() const { return m_SourceDesign; }
 	const AuLegacyShip::Stats& Stats() const { return m_Stats; }
 
@@ -37,7 +41,9 @@ public:
 	const AuLegacyShip::Detail* DetailRecord(quint32 recordId) const;
 
 private:
+	static bool ReadSource(const QByteArray& source, AuLegacyScDesign& output, QString& error, bool upload);
 	quint32 m_Id = 0;
+	QString m_Name;
 	QByteArray m_SourceData;
 	QByteArray m_ContentHash;
 	AuLegacyShip::Design m_SourceDesign;

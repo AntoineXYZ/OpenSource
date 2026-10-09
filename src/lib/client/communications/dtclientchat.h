@@ -113,6 +113,7 @@ signals:
 	void ScExchangeBlueprintRating(quint32 designId, QString designName, AuExchangeBlueprintRating rating);
 	void ScExchangeUpdated();
 	void ScLibraryUpdated();
+	void LegacyScReplyReceived(QByteArray payload);
 
 	void TransporterPlace(AuTransporterTarget tt);
 	void TransporterShip(AuId id, QString name, QString desc);

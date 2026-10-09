@@ -802,6 +802,7 @@ public:
 	// lifetime if the cache is replaced by the database thread.
 	QSharedPointer<const AuLegacyScDesign> LegacyScDesign(quint32 designId) const;
 	QList<quint32> LegacyScDesignIds() const;
+	void LegacyScDesignAdd(const QSharedPointer<const AuLegacyScDesign>& design);
 	void LegacyScDesignsReplace(const QHash<quint32, QSharedPointer<const AuLegacyScDesign>>& designs);
 
 	//-------------------

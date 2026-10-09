@@ -422,6 +422,8 @@ private:
 	void QueryJobs(const QList<AuJob::TYPE>& filterTypes, int maxSectorsAway);
 
 	void ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket);
+	bool LegacyScAuthorized(bool requirePowers);
+	void ReadLegacyScPacket(const QByteArray& payload);
 
 	void RxData(QTcpSocket& tcpSocket);
 
@@ -496,6 +498,8 @@ private:
 	unsigned int						m_BytesTx;				// Total bytes sent to client
 	bool								m_Disconnect;			// true when time to disconnect.
 	quint32								m_PacketSize;			// Data packet size
+	AuElapsedTimer m_LastLegacyScUpload;
+	AuElapsedTimer m_LastLegacyScCatalogQuery;
 	int									m_PacketSizeBytesLeft;	// Number of packet size bytes we are expecting.
 	int									m_socketDescriptor;		// Provided in the constructor.
 	AuTime								m_tmConnect;			// Time connection is established.

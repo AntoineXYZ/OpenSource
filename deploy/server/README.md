@@ -591,7 +591,8 @@ and before running `./start.sh`.
 Legacy designs are stored in `n_LegacyScDesign` in `auUniverse`. Scene servers
 load these records at startup, check their hashes, reparse the original bytes,
 and recompute geometry and statistics before publishing an immutable cache.
-Geometry diagnostics remain advisory at this stage.
+Geometry diagnostics remain advisory at this stage. Online uploads also have
+limits on file size and geometry analysis work.
 
 Original detail IDs and designer coordinates are preserved. Separate one-based
 32-bit record IDs follow the immutable file order. The server derives the hull
@@ -608,7 +609,10 @@ docker compose --env-file build/server/local/compose.env \
 ```
 
 For production, use `build/server/production/compose.env` instead. The script is
-safe to rerun and preserves existing data. From an extracted release, use its
+safe to rerun and preserves existing data. Run it again after updating to the
+architect upload feature: the application now needs permission to update the
+design's name. Its original bytes and hash remain immutable. From an extracted
+release, use its
 `compose.env` and packaged schema path.
 
 To inspect stored identities without printing design blobs:
@@ -620,9 +624,37 @@ docker compose --env-file build/server/local/compose.env \
   --command 'SELECT id, name, contentHash, octet_length(sourceData) AS bytes FROM n_LegacyScDesign ORDER BY id;'
 ```
 
-Scene startup logs use the prefix `Legacy spacecraft catalog:`. Existing stored
-designs continue to load. Design acquisition will be implemented separately;
-server images do not package `.ship` files and startup does not scan directories.
+In the architect menu (Shift+F11), open the Design tab and use the Legacy
+spacecraft controls. Enable architect powers, browse for a `.ship` file, enter a
+name, and click Upload design. The name defaults to the filename without its
+extension. Names must contain 1 to 128 characters. Uploads are limited to 8 MiB,
+512 rooms, 1,024 stored vertices per room, the historical deck range, and a
+bounded estimate of boundary-comparison work. The server checks these limits
+and parses the original bytes independently of the client.
+
+Uploading identical bytes retains the database ID and updates the chosen name.
+Naming does not rewrite the `.ship` bytes or its original IDs. The active worker
+adds the accepted design to its cache immediately. Refresh reads the database
+catalog, including designs uploaded through other workers. Existing designs
+whose stored names are empty are displayed using their source filenames.
+
+Spawn nearby is present but disabled until the live vessel implementation is
+ready. Both client and server need the updated protocol; build them manually.
+No Docker `.ship` packaging or directory scans are used.
+
+Manual checks after your build:
+
+1. Upload a known design with a custom name; verify it appears and is selected.
+2. Upload the same file with another name; confirm the ID is unchanged and the
+   name updates, including after a server restart.
+3. Refresh from another architect client and verify the stored name and ID.
+4. Try a truncated file, an empty name, and an oversized file; confirm rejection
+   leaves existing designs intact.
+5. Turn architect powers off and try an upload; verify the server refuses it.
+6. Confirm Spawn nearby stays disabled and ordinary accounts cannot manage the
+   catalog.
+
+Scene startup and upload logs use the prefix `Legacy spacecraft catalog:`.
 
 ## Logs and data
 

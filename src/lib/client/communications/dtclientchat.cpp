@@ -11,6 +11,7 @@
 #include "auclientglobal.h"
 #include "auglobal.h"
 #include "auitreport.h"
+#include "aulegacyscprotocol.h"
 #include "aumission.h"
 #include "auscreport.h"
 #include "ausensorblip.h"
@@ -206,6 +207,15 @@ bool DtClientChat::ReadPacket(const QByteArray& ba, QTcpSocket& /*tcpSocket*/)
 	// This cast generates a handy warning when an enum value is forgotten.
 	switch((DtChatChannelPacket::PACKET)ptype)
 	{
+	case DtChatChannelPacket::PD_LegacySc:
+		{
+			AuLegacyScProtocol::Reply reply;
+			const QByteArray payload = ba.mid(1);
+			if(!AuLegacyScProtocol::DecodeReply(payload, reply))
+				return false;
+			emit LegacyScReplyReceived(payload);
+		}
+		break;
 	case DtChatChannelPacket::PZ_QueryAvatars:
 		{
 			AuId unitIds[6];

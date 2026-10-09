@@ -148,6 +148,12 @@ void DgData::LegacyScDesignsReplace(const QHash<quint32, QSharedPointer<const Au
 	m_LegacyScDesigns = designs;
 }
 
+void DgData::LegacyScDesignAdd(const QSharedPointer<const AuLegacyScDesign>& design)
+{
+	if(design && design->Id())
+		m_LegacyScDesigns.insert(design->Id(), design);
+}
+
 float DgData::ManufacturingCost(COMMODITYID idCommodity) const
 {
 	float cost = m_bManufacturingProcessArray.Cost(idCommodity, *this);

@@ -13,6 +13,8 @@
 #include "auitdesign.h"
 #include "auitreport.h"
 #include "aujoboffer.h"
+#include "aulegacyscprotocol.h"
+#include "aulegacyspacecraftcatalog.h"
 #include "aulogincomm.h"
 #include "auplayeronlinestatus.h"
 #include "auscdesign.h"
@@ -213,6 +215,7 @@ void DtChatChannel::run()
 	// to our socket from the main thread while we are accessing it from
 	// DtChatChannel::run().
 	QTcpSocket tcpSocket;
+	tcpSocket.setReadBufferSize(64 * 1024);
 	if(!tcpSocket.setSocketDescriptor(m_socketDescriptor))
 	{
 		emit error(tcpSocket.error());
@@ -229,7 +232,7 @@ void DtChatChannel::run()
 	// the login server.
 	const int loginCheckInterval = 20 * 60;	// seconds between login checks
 	AuElapsedTimer tmLoginCheck;
-	while(tcpSocket.state() == QAbstractSocket::ConnectedState && !tcpSocket.waitForDisconnected(20))
+	while(tcpSocket.state() == QAbstractSocket::ConnectedState)
 	{
 		// Still connected so check to see if we have anything to send.
 		m_muTxBuffer.lock();
@@ -284,6 +287,11 @@ void DtChatChannel::run()
 			if(tcpSocket.state() == QAbstractSocket::ConnectedState)
 				tcpSocket.waitForDisconnected(10000);
 		}
+
+		// Drain received data before waiting again. Waiting for disconnection can
+		// stall when the bounded read buffer fills while the peer is still sending.
+		if(tcpSocket.state() == QAbstractSocket::ConnectedState)
+			tcpSocket.waitForReadyRead(20);
 	}
 
 	//qDebug("DtChatChannel::run - Player %d disconnected.", m_idPlayer);
@@ -305,12 +313,31 @@ void DtChatChannel::RxData(QTcpSocket& tcpSocket)
 			m_BytesRx += packetSizeBytesRead;
 		}
 
+		if(!m_PacketSize)
+		{
+			tcpSocket.abort();
+			Disconnect();
+			return;
+		}
+		// Reject new legacy requests before buffering their entire upload.
+		const QByteArray packetType = tcpSocket.peek(1);
+		if(!packetType.isEmpty() && quint8(packetType.at(0)) == DtChatChannelPacket::PD_LegacySc
+			&& (m_PacketSize > AuLegacyScProtocol::MaximumPacketBytes || !LegacyScAuthorized(false)))
+		{
+			tcpSocket.abort();
+			Disconnect();
+			return;
+		}
+		if(!packetType.isEmpty())
+			tcpSocket.setReadBufferSize(quint8(packetType.at(0)) == DtChatChannelPacket::PD_LegacySc ? m_PacketSize : 0);
+
 		// Wait until all of the bytes arrive.
 		if(tcpSocket.bytesAvailable() < m_PacketSize)
 			break;
 
 		// It is now safe to read our data packet from the socket buffer.
 		QByteArray block = tcpSocket.read(m_PacketSize);
+		tcpSocket.setReadBufferSize(64 * 1024);
 		m_BytesRx += m_PacketSize;
 		m_PacketSize = 0;
 		ReadPacket(block, tcpSocket);	// Read the contents of the packet.
@@ -330,6 +357,9 @@ void DtChatChannel::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 	block >> type;
 	switch((DtChatChannelPacket::PACKET)type)	// Generate warning when enum forgotten.
 	{
+	case DtChatChannelPacket::PD_LegacySc:
+		ReadLegacyScPacket(ba.mid(1));
+		break;
 	case DtChatChannelPacket::PI_TurboLift:
 		{
 			quint8 doWhat;
@@ -6317,6 +6347,69 @@ void DtChatChannel::DesignOpen(quint32 designId, int designMode)
 	}
 }
 
+bool DtChatChannel::LegacyScAuthorized(bool requirePowers)
+{
+	if(!g_Au.IsSceneWorker() || !m_idPlayer || !m_confirmNum || UnitId().IsNull())
+		return false;
+	AuId units[6];
+	ACCOUNT account;
+	AuTime expiry;
+	if(!g_Au.IsPlayerLoggedIn(m_idPlayer, m_confirmNum, units, account, expiry) || !AcctIsProgrammer(account))
+		return false;
+	bool ownsAvatar = false;
+	for(const AuId& unit : units)
+		if(unit == UnitId()) ownsAvatar = true;
+	if(!ownsAvatar)
+		return false;
+	if(!requirePowers)
+		return true;
+	DaPerson* person = m_I->LockAvatar();
+	const bool allowed = person && (person->HasArchitectPower() || person->HasProgrammerPower());
+	m_I->UnlockAvatar();
+	return allowed;
+}
+
+void DtChatChannel::ReadLegacyScPacket(const QByteArray& payload)
+{
+	using namespace AuLegacyScProtocol;
+	if(!LegacyScAuthorized(false))
+	{
+		Disconnect();
+		return;
+	}
+	Request request;
+	QString error;
+	if(!DecodeRequest(payload, request, error))
+	{
+		Disconnect();
+		return;
+	}
+	Reply reply;
+	reply.token = request.token;
+	reply.action = request.action == UploadRequest ? UploadReply : CatalogReply;
+	if(!LegacyScAuthorized(true))
+		reply.message = tr("Enable architect powers before managing legacy designs.");
+	else if(request.action == UploadRequest && m_LastLegacyScUpload.isValid() && m_LastLegacyScUpload.elapsed() < 2000)
+		reply.message = tr("Wait two seconds before uploading another design.");
+	else if(request.action == CatalogRequest && m_LastLegacyScCatalogQuery.isValid() && m_LastLegacyScCatalogQuery.elapsed() < 200)
+		reply.message = tr("Wait a moment before refreshing the catalog again.");
+	else
+	{
+		if(request.action == UploadRequest)
+			m_LastLegacyScUpload.restart();
+		else
+			m_LastLegacyScCatalogQuery.restart();
+		ProcessLegacySpacecraftRequest(request, reply);
+	}
+	const QByteArray response = EncodeReply(reply);
+	if(!response.isEmpty())
+	{
+		QByteArray packet(1, char(DtChatChannelPacket::PD_LegacySc));
+		packet.append(response);
+		SendPacket(packet);
+	}
+}
+
 void DtChatChannel::CheckLoginStatus()
 {
 	// The confirmation number is never zero after a player has successfully logged in to this server by sending a PL_Login packet.
@@ -8796,4 +8889,3 @@ void DtChatChannel::TransferListCitizens(const AuId& shipId)
 		SendPacket(ba);
 	}
 }
-

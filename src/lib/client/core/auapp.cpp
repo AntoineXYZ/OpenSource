@@ -5,6 +5,7 @@
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
 #include "auapp.h"
+#include "aulegacyscprotocol.h"
 //
 #include "auatommanager.h"
 #include "auclientglobal.h"
@@ -1776,6 +1777,7 @@ void AuApp::ConnectUdp()
 
 void AuApp::ConnectChat()
 {
+	emit LegacyScTransportReset();
 	// Disconnect chat channel from previous scene server.
 	if(m_tChatChannel)
 	{
@@ -1853,6 +1855,8 @@ void AuApp::ConnectChat()
 			connect(m_tChatChannel, SIGNAL(ItDesignNeeded(quint32, quint8)), SLOT(ItDesignNeeded(quint32, quint8)));
 
 			connect(m_tChatChannel, SIGNAL(ScDesign(AuScDesign)), SLOT(ScDesign(AuScDesign)));
+			connect(m_tChatChannel, SIGNAL(LegacyScReplyReceived(QByteArray)),
+					SIGNAL(LegacyScReplyReceived(QByteArray)), Qt::QueuedConnection);
 			connect(m_tChatChannel, SIGNAL(ScDesignDelete(quint32)), SLOT(ScDesignDelete(quint32)));
 			connect(m_tChatChannel, SIGNAL(ScDesignNeeded(quint32, quint8)), SLOT(ScDesignNeeded(quint32, quint8)));
 
@@ -3822,6 +3826,48 @@ void AuApp::DesignOpen(quint32 designId, int designMode)
 		out << (quint8)designMode;
 		QueueChatPacket(ba);
 	}
+}
+
+quint32 AuApp::RequestLegacyScCatalog(quint32 afterId, quint32 token)
+{
+	if(IsSingleUserMode() || !m_tChatChannel || !m_tChatChannel->IsConnected())
+		return 0;
+	if(!token)
+	{
+		if(++m_LegacyScNextToken == 0) ++m_LegacyScNextToken;
+		token = m_LegacyScNextToken;
+	}
+	AuLegacyScProtocol::Request request;
+	request.action = AuLegacyScProtocol::CatalogRequest;
+	request.token = token;
+	request.afterId = afterId;
+	const QByteArray payload = AuLegacyScProtocol::EncodeRequest(request);
+	if(payload.isEmpty())
+		return 0;
+	QByteArray packet(1, char(DtChatChannelPacket::PD_LegacySc));
+	packet.append(payload);
+	QueueChatPacket(packet);
+	return token;
+}
+
+quint32 AuApp::UploadLegacyScDesign(const QString& sourceName, const QString& name, const QByteArray& source)
+{
+	if(IsSingleUserMode() || !m_tChatChannel || !m_tChatChannel->IsConnected())
+		return 0;
+	if(++m_LegacyScNextToken == 0) ++m_LegacyScNextToken;
+	AuLegacyScProtocol::Request request;
+	request.action = AuLegacyScProtocol::UploadRequest;
+	request.token = m_LegacyScNextToken;
+	request.sourceName = sourceName;
+	request.name = name;
+	request.source = source;
+	const QByteArray payload = AuLegacyScProtocol::EncodeRequest(request);
+	if(payload.isEmpty())
+		return 0;
+	QByteArray packet(1, char(DtChatChannelPacket::PD_LegacySc));
+	packet.append(payload);
+	QueueChatPacket(packet);
+	return request.token;
 }
 
 bool AuApp::DesignIsGravityOn() const

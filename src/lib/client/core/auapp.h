@@ -98,6 +98,7 @@ private:
 	QByteArray							m_SceneTcpBuffer;		// Scene outgoing tcp stream buffer.
 	QUdpSocket 							m_SceneUdpSocket;		// Scene outgoing udp datagram socket.
 	quint16								m_UdpSequence;			// Helps the server discard bad packets.
+	quint32 m_LegacyScNextToken = 0;
 	bool								m_wasConnected;			// true if we are ever connected to the server
 
 	// EstFirstEmpire data that must be resent when deferred.
@@ -555,6 +556,8 @@ public:
 
 	// 'designMode' is a DaDesignBase::DESIGNMODE
 	void DesignOpen(quint32 designId, int designMode);
+	quint32 RequestLegacyScCatalog(quint32 afterId = 0, quint32 token = 0);
+	quint32 UploadLegacyScDesign(const QString& sourceName, const QString& name, const QByteArray& source);
 
 	void EmpireChangeEmperor(quint32 empireId, const AuId& avatarId, const QString& avatarName);
 
@@ -1788,6 +1791,8 @@ signals:
 	void ScExchangeUpdated();
 
 	void ScLibraryUpdated();
+	void LegacyScReplyReceived(QByteArray payload);
+	void LegacyScTransportReset();
 
 	void ServerConnected();
 

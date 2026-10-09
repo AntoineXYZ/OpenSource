@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS n_LegacyScDesign
 );
 
 GRANT SELECT, INSERT ON n_LegacyScDesign TO audog;
+GRANT UPDATE (name) ON n_LegacyScDesign TO audog;
 GRANT USAGE, SELECT ON SEQUENCE n_legacyscdesign_id_seq TO audog;
 
 COMMIT;
