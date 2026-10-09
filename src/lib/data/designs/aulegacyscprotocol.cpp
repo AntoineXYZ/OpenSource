@@ -38,6 +38,12 @@ QByteArray AuLegacyScProtocol::EncodeRequest(const Request& request)
 	out << quint8(request.action) << request.token;
 	if(request.action == CatalogRequest)
 		out << request.afterId;
+	else if(request.action == SpawnRequest)
+	{
+		if(!request.designId)
+			return QByteArray();
+		out << request.designId;
+	}
 	else if(request.action == UploadRequest)
 	{
 		if(request.source.isEmpty() || request.source.size() > MaximumUploadBytes
@@ -65,6 +71,13 @@ bool AuLegacyScProtocol::DecodeRequest(const QByteArray& payload, Request& reque
 	{
 		request.action = CatalogRequest;
 		in >> request.afterId;
+	}
+	else if(action == SpawnRequest)
+	{
+		request.action = SpawnRequest;
+		in >> request.designId;
+		if(!request.designId)
+			return false;
 	}
 	else if(action == UploadRequest)
 	{
@@ -113,6 +126,12 @@ QByteArray AuLegacyScProtocol::EncodeReply(const Reply& reply)
 		if(!WriteText(out, reply.name))
 			return QByteArray();
 	}
+	else if(reply.action == SpawnReply)
+	{
+		out << reply.designId << reply.shipId;
+		if(!WriteText(out, reply.name))
+			return QByteArray();
+	}
 	else
 		return QByteArray();
 	return out.status() == QDataStream::Ok ? payload : QByteArray();
@@ -154,6 +173,13 @@ bool AuLegacyScProtocol::DecodeReply(const QByteArray& payload, Reply& reply)
 		reply.action = UploadReply;
 		in >> reply.designId;
 		if(!ReadText(in, reply.name))
+			return false;
+	}
+	else if(action == SpawnReply)
+	{
+		reply.action = SpawnReply;
+		in >> reply.designId >> reply.shipId;
+		if(!ReadText(in, reply.name) || (reply.shipId && !reply.designId))
 			return false;
 	}
 	else

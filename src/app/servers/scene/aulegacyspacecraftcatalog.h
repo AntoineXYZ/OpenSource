@@ -4,6 +4,8 @@
 class QSqlDatabase;
 class QString;
 class AuLegacyScDesign;
+class AuId;
+class AuScReport;
 namespace AuLegacyScProtocol { struct Request; struct Reply; }
 
 #include <QtGlobal>
@@ -20,5 +22,10 @@ bool LoadLegacySpacecraftCatalog(QSqlDatabase& db);
 // Called on the authenticated chat thread, using its own SQL connection.
 void ProcessLegacySpacecraftRequest(const AuLegacyScProtocol::Request& request,
 	AuLegacyScProtocol::Reply& reply);
+
+// Creates or loads the persisted modern geometry derived from authoritative
+// legacy bytes. The caller must authorize the architect before calling.
+bool PrepareLegacySpacecraftSpawn(quint32 legacyId, const AuId& architectId,
+	const QString& architectName, AuScReport& report, QString& error);
 
 #endif // AuLegacySpacecraftCatalog_H

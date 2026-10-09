@@ -61,6 +61,7 @@ class DaSolarSystem;
 class DaVessel;
 class DiControlInputArray;
 class DpBody;
+namespace AuLegacyScProtocol { struct Reply; }
 
 class DtChatChannel : public QThread
 {
@@ -424,6 +425,7 @@ private:
 	void ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket);
 	bool LegacyScAuthorized(bool requirePowers);
 	void ReadLegacyScPacket(const QByteArray& payload);
+	void SpawnLegacySc(quint32 designId, AuLegacyScProtocol::Reply& reply);
 
 	void RxData(QTcpSocket& tcpSocket);
 
@@ -500,6 +502,7 @@ private:
 	quint32								m_PacketSize;			// Data packet size
 	AuElapsedTimer m_LastLegacyScUpload;
 	AuElapsedTimer m_LastLegacyScCatalogQuery;
+	AuElapsedTimer m_LastLegacyScSpawn;
 	int									m_PacketSizeBytesLeft;	// Number of packet size bytes we are expecting.
 	int									m_socketDescriptor;		// Provided in the constructor.
 	AuTime								m_tmConnect;			// Time connection is established.

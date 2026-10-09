@@ -69,9 +69,8 @@ AuAgentDesign::AuAgentDesign(QWidget* parent) : QWidget(parent)
 	m_LegacyUpload = new QPushButton(tr("Upload design"), legacy);
 	m_LegacyDesigns = new QComboBox(legacy);
 	m_LegacyRefresh = new QPushButton(tr("Refresh"), legacy);
-	QPushButton* spawn = new QPushButton(tr("Spawn nearby"), legacy);
-	spawn->setEnabled(false);
-	spawn->setToolTip(tr("Spawning legacy spacecraft will be available in a later stage."));
+	m_LegacySpawn = new QPushButton(tr("Spawn nearby"), legacy);
+	m_LegacySpawn->setToolTip(tr("Create the selected legacy spacecraft near your avatar."));
 	m_LegacyStatus = new QLabel(legacy);
 	m_LegacyStatus->setTextFormat(Qt::PlainText);
 	m_LegacyStatus->setWordWrap(true);
@@ -81,6 +80,7 @@ AuAgentDesign::AuAgentDesign(QWidget* parent) : QWidget(parent)
 	connect(m_LegacyBrowse, SIGNAL(clicked()), SLOT(BrowseLegacyScDesign()));
 	connect(m_LegacyUpload, SIGNAL(clicked()), SLOT(UploadLegacyScDesign()));
 	connect(m_LegacyRefresh, SIGNAL(clicked()), SLOT(RefreshLegacyScDesigns()));
+	connect(m_LegacySpawn, SIGNAL(clicked()), SLOT(SpawnLegacyScDesign()));
 	connect(m_LegacyName, SIGNAL(textChanged(QString)), SLOT(UpdateLegacyControls()));
 	connect(m_LegacyDesigns, SIGNAL(currentIndexChanged(int)), SLOT(LegacyScSelectionChanged()));
 	connect(m_LegacyTimeout, SIGNAL(timeout()), SLOT(LegacyScTimedOut()));
@@ -96,7 +96,7 @@ AuAgentDesign::AuAgentDesign(QWidget* parent) : QWidget(parent)
 	legacyLayout->addWidget(new QLabel(tr("Stored design:"), legacy), 2, 0);
 	legacyLayout->addWidget(m_LegacyDesigns, 2, 1);
 	legacyLayout->addWidget(m_LegacyRefresh, 2, 2);
-	legacyLayout->addWidget(spawn, 3, 1, 1, 2);
+	legacyLayout->addWidget(m_LegacySpawn, 3, 1, 1, 2);
 	legacyLayout->addWidget(m_LegacyStatus, 4, 0, 1, 3);
 	legacyLayout->setColumnStretch(1, 1);
 	UpdateLegacyControls();
@@ -173,11 +173,13 @@ void AuAgentDesign::EnterDesigner()
 void AuAgentDesign::UpdateLegacyControls()
 {
 	const bool online = m_LegacyAllowed && !auApp->IsSingleUserMode() && auApp->IsSceneConnected();
-	const bool idle = !m_LegacyUploadToken && !m_LegacyCatalogToken;
+	const bool idle = !m_LegacyUploadToken && !m_LegacyCatalogToken && !m_LegacySpawnToken;
 	m_LegacyBrowse->setEnabled(online && idle);
 	m_LegacyName->setEnabled(online && idle);
 	m_LegacyUpload->setEnabled(online && idle && !m_LegacyFile.isEmpty() && !m_LegacyName->text().trimmed().isEmpty());
 	m_LegacyRefresh->setEnabled(online && idle);
+	m_LegacyDesigns->setEnabled(online && idle);
+	m_LegacySpawn->setEnabled(online && idle && m_LegacyDesigns->currentData().toUInt());
 	if(!online)
 		m_LegacyStatus->setText(tr("Connect to an online scene server to manage legacy designs."));
 }
@@ -201,7 +203,7 @@ void AuAgentDesign::BrowseLegacyScDesign()
 
 void AuAgentDesign::UploadLegacyScDesign()
 {
-	if(m_LegacyUploadToken || m_LegacyCatalogToken)
+	if(m_LegacyUploadToken || m_LegacyCatalogToken || m_LegacySpawnToken)
 		return;
 	QFile file(m_LegacyFile);
 	if(!file.open(QIODevice::ReadOnly))
@@ -228,7 +230,7 @@ void AuAgentDesign::UploadLegacyScDesign()
 
 void AuAgentDesign::RefreshLegacyScDesigns()
 {
-	if(m_LegacyUploadToken || m_LegacyCatalogToken)
+	if(m_LegacyUploadToken || m_LegacyCatalogToken || m_LegacySpawnToken)
 		return;
 	if(!m_LegacyWantedId)
 		m_LegacyWantedId = m_LegacyDesigns->currentData().toUInt();
@@ -242,12 +244,40 @@ void AuAgentDesign::RefreshLegacyScDesigns()
 	UpdateLegacyControls();
 }
 
+void AuAgentDesign::SpawnLegacyScDesign()
+{
+	if(m_LegacyUploadToken || m_LegacyCatalogToken || m_LegacySpawnToken)
+		return;
+	const quint32 designId = m_LegacyDesigns->currentData().toUInt();
+	if(!designId)
+		return;
+	m_LegacySpawnToken = auApp->SpawnLegacyScDesign(designId);
+	if(!m_LegacySpawnToken)
+	{
+		m_LegacyStatus->setText(tr("Unable to send the spawn request. Check your connection."));
+		return;
+	}
+	m_LegacyTimeout->start();
+	m_LegacyStatus->setText(tr("Spawning spacecraft..."));
+	UpdateLegacyControls();
+}
+
 void AuAgentDesign::LegacyScReply(QByteArray payload)
 {
 	using namespace AuLegacyScProtocol;
 	Reply reply;
 	if(!DecodeReply(payload, reply))
 		return;
+	if(reply.action == SpawnReply)
+	{
+		if(reply.token != m_LegacySpawnToken)
+			return;
+		m_LegacySpawnToken = 0;
+		m_LegacyTimeout->stop();
+		m_LegacyStatus->setText(reply.message);
+		UpdateLegacyControls();
+		return;
+	}
 	if(reply.action == UploadReply)
 	{
 		if(reply.token != m_LegacyUploadToken)
@@ -263,7 +293,7 @@ void AuAgentDesign::LegacyScReply(QByteArray payload)
 		UpdateLegacyControls();
 		return;
 	}
-	if(reply.token != m_LegacyCatalogToken)
+	if(reply.action != CatalogReply || reply.token != m_LegacyCatalogToken)
 		return;
 	if(!reply.message.isEmpty())
 	{
@@ -310,21 +340,26 @@ void AuAgentDesign::LegacyScReply(QByteArray payload)
 void AuAgentDesign::LegacyScSelectionChanged()
 {
 	m_LegacyWantedId = m_LegacyDesigns->currentData().toUInt();
+	UpdateLegacyControls();
 }
 
 void AuAgentDesign::LegacyScDisconnected()
 {
-	const bool pending = m_LegacyUploadToken || m_LegacyCatalogToken;
-	m_LegacyUploadToken = m_LegacyCatalogToken = 0;
+	const bool spawning = m_LegacySpawnToken != 0;
+	const bool pending = m_LegacyUploadToken || m_LegacyCatalogToken || spawning;
+	m_LegacyUploadToken = m_LegacyCatalogToken = m_LegacySpawnToken = 0;
 	m_LegacyTimeout->stop();
 	if(pending)
-		m_LegacyStatus->setText(tr("Connection changed. Refresh to check which designs were stored."));
+		m_LegacyStatus->setText(spawning ? tr("Connection changed. Check the scene before spawning another spacecraft.")
+			: tr("Connection changed. Refresh to check which designs were stored."));
 	UpdateLegacyControls();
 }
 
 void AuAgentDesign::LegacyScTimedOut()
 {
-	m_LegacyUploadToken = m_LegacyCatalogToken = 0;
-	m_LegacyStatus->setText(tr("No server response. Refresh to check whether the design was stored."));
+	const bool spawning = m_LegacySpawnToken != 0;
+	m_LegacyUploadToken = m_LegacyCatalogToken = m_LegacySpawnToken = 0;
+	m_LegacyStatus->setText(spawning ? tr("No server response. Check the scene before spawning another spacecraft.")
+		: tr("No server response. Refresh to check whether the design was stored."));
 	UpdateLegacyControls();
 }

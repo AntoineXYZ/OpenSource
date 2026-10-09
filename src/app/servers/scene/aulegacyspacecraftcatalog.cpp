@@ -1,11 +1,16 @@
 #include "aulegacyspacecraftcatalog.h"
 
 #include "auglobal.h"
+#include "audbglobal.h"
 #include "aulegacyscdesign.h"
+#include "aulegacyscgeometry.h"
 #include "aulegacyscprotocol.h"
+#include "auscdesign.h"
+#include "auscreport.h"
 #include "dgdata.h"
 #include <QCryptographicHash>
 #include <QDebug>
+#include <QFileInfo>
 #include <QHash>
 #include <QSharedPointer>
 #include <QSqlDatabase>
@@ -159,6 +164,32 @@ private:
 	QString name;
 };
 
+class CatalogTransaction
+{
+public:
+	explicit CatalogTransaction(QSqlDatabase& database) : db(database) {}
+	~CatalogTransaction() { if(active) db.rollback(); }
+	bool Begin()
+	{
+		active = db.transaction();
+		if(!active)
+			return false;
+		QSqlQuery limits(db);
+		return limits.exec("SET LOCAL lock_timeout = '5s'")
+			&& limits.exec("SET LOCAL statement_timeout = '30s'");
+	}
+	bool Commit()
+	{
+		if(!db.commit())
+			return false;
+		active = false;
+		return true;
+	}
+private:
+	QSqlDatabase& db;
+	bool active = false;
+};
+
 bool HasControlCharacters(const QString& text)
 {
 	for(QChar character : text)
@@ -180,11 +211,156 @@ QString CatalogText(const QString& text)
 }
 }
 
+bool PrepareLegacySpacecraftSpawn(quint32 legacyId, const AuId& architectId,
+	const QString& architectName, AuScReport& report, QString& error)
+{
+	error.clear();
+	if(!legacyId || architectId.IsNull())
+	{
+		error = QStringLiteral("Select a stored legacy design while controlling an architect avatar.");
+		return false;
+	}
+	CatalogConnection connection;
+	if(!connection.Open())
+	{
+		error = QStringLiteral("The legacy design database is unavailable.");
+		return false;
+	}
+	CatalogTransaction transaction(connection.db);
+	if(!transaction.Begin())
+	{
+		error = QStringLiteral("Unable to start the legacy spawn transaction.");
+		qWarning() << "Legacy spacecraft catalog:" << error << connection.db.lastError().text();
+		return false;
+	}
+	QSqlQuery sourceQuery(connection.db);
+	if(!sourceQuery.prepare("SELECT contentHash, name, runtimeDesignId, octet_length(sourceData), sourceName, "
+			"CASE WHEN octet_length(sourceData) <= ? THEN sourceData END "
+			"FROM n_LegacyScDesign WHERE id = ? FOR UPDATE"))
+	{
+		error = QStringLiteral("Legacy spawn storage is unavailable. Apply legacyspacecraft.sql and check the server logs.");
+		qWarning() << "Legacy spacecraft catalog:" << error << sourceQuery.lastError().text();
+		return false;
+	}
+	sourceQuery.addBindValue(AuLegacyScProtocol::MaximumUploadBytes);
+	sourceQuery.addBindValue(qulonglong(legacyId));
+	if(!sourceQuery.exec())
+	{
+		error = QStringLiteral("Unable to read the stored design for spawning. Check the database schema and server logs.");
+		qWarning() << "Legacy spacecraft catalog:" << error << sourceQuery.lastError().text();
+		return false;
+	}
+	if(!sourceQuery.next())
+	{
+		error = QStringLiteral("That legacy design no longer exists in the catalog.");
+		return false;
+	}
+	QString name = CatalogText(sourceQuery.value(1).toString());
+	if(name.isEmpty())
+		name = CatalogText(QFileInfo(sourceQuery.value(4).toString()).completeBaseName());
+	if(name.isEmpty())
+		name = QStringLiteral("Legacy design %1").arg(legacyId);
+	const QByteArray source = sourceQuery.value(5).toByteArray();
+	if(sourceQuery.value(3).toLongLong() <= 0
+		|| sourceQuery.value(3).toLongLong() > AuLegacyScProtocol::MaximumUploadBytes
+		|| source.isEmpty()
+		|| sourceQuery.value(0).toString().toLatin1() != QCryptographicHash::hash(source, QCryptographicHash::Sha256).toHex())
+	{
+		error = QStringLiteral("The stored legacy design has invalid bytes, an invalid hash, or exceeds the online size limit.");
+		return false;
+	}
+	quint32 runtimeId = 0;
+	const bool derived = !sourceQuery.value(2).isNull();
+	if(derived && !ReadCatalogId(sourceQuery.value(2), runtimeId))
+	{
+		error = QStringLiteral("The stored legacy design has an invalid runtime blueprint ID.");
+		return false;
+	}
+	sourceQuery.finish();
+	AuScDesign runtimeDesign;
+	AuScReport preparedReport;
+	if(derived)
+	{
+		runtimeDesign.Load(runtimeId, connection.db);
+		if(runtimeDesign.Id() != runtimeId || runtimeDesign.IsDeleted())
+		{
+			error = QStringLiteral("The stored runtime blueprint is unavailable or deleted. Check the server logs.");
+			return false;
+		}
+		// Catalog naming is presentation metadata; the original file stays intact.
+		runtimeDesign.SetName(name);
+		runtimeDesign.ReportDesign(preparedReport);
+	}
+	else
+	{
+		AuLegacyScDesign legacyDesign;
+		if(!AuLegacyScDesign::ReadUpload(source, legacyDesign, error))
+			return false;
+		legacyDesign.SetId(legacyId);
+		legacyDesign.SetName(name);
+		if(!g_AuDb.HasSpaceShipDesignIds())
+		{
+			error = QStringLiteral("The server is restocking spacecraft blueprint IDs. Try spawning again shortly.");
+			return false;
+		}
+		runtimeId = g_Au.NextSpaceShipDesignId();
+		if(!runtimeId)
+		{
+			error = QStringLiteral("The server cannot allocate a runtime spacecraft blueprint ID yet.");
+			return false;
+		}
+		if(!AuLegacyScGeometry::Build(legacyDesign, runtimeId, architectId, architectName,
+				runtimeDesign, preparedReport, error))
+			return false;
+		runtimeDesign.Insert(connection.db);
+		QSqlQuery verify(connection.db);
+		verify.prepare("SELECT id FROM n_ScDesign WHERE id = ?");
+		verify.addBindValue(qulonglong(runtimeId));
+		if(!verify.exec() || !verify.next())
+		{
+			error = QStringLiteral("Unable to store the runtime spacecraft blueprint. Check the server logs.");
+			qWarning() << "Legacy spacecraft catalog:" << error << verify.lastError().text();
+			return false;
+		}
+		verify.finish();
+		QSqlQuery link(connection.db);
+		link.prepare("UPDATE n_LegacyScDesign SET runtimeDesignId = ? WHERE id = ? AND runtimeDesignId IS NULL");
+		link.addBindValue(qulonglong(runtimeId));
+		link.addBindValue(qulonglong(legacyId));
+		if(!link.exec() || link.numRowsAffected() != 1)
+		{
+			error = QStringLiteral("Unable to link the runtime blueprint to its legacy design. Apply legacyspacecraft.sql.");
+			qWarning() << "Legacy spacecraft catalog:" << error << link.lastError().text();
+			return false;
+		}
+	}
+	preparedReport.SetLegacyDebug(true);
+	if(!transaction.Commit())
+	{
+		error = QStringLiteral("Unable to commit the runtime spacecraft blueprint. Check the server logs.");
+		qWarning() << "Legacy spacecraft catalog:" << error << connection.db.lastError().text();
+		return false;
+	}
+	DgData& data = g_Au.LockScDesignsForWrite();
+	data.ScDesignAdd(runtimeDesign);
+	g_Au.UnlockScDesigns();
+	report = preparedReport;
+	qInfo() << "Legacy spacecraft catalog:" << "prepared legacy design" << legacyId
+		<< "as runtime blueprint" << runtimeId << (derived ? "(existing)" : "(created)");
+	return true;
+}
+
 void ProcessLegacySpacecraftRequest(const AuLegacyScProtocol::Request& request, AuLegacyScProtocol::Reply& reply)
 {
 	using namespace AuLegacyScProtocol;
 	reply.token = request.token;
-	reply.action = request.action == UploadRequest ? UploadReply : CatalogReply;
+	reply.action = request.action == UploadRequest ? UploadReply
+		: request.action == SpawnRequest ? SpawnReply : CatalogReply;
+	if(request.action != UploadRequest && request.action != CatalogRequest)
+	{
+		reply.message = QStringLiteral("That operation must use the live spacecraft spawn handler.");
+		return;
+	}
 	if(request.action == UploadRequest)
 	{
 		const QString name = request.name.trimmed();

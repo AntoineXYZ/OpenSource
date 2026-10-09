@@ -18451,9 +18451,33 @@ public:
 
 class AUGL_DLL AuGLSLScBase : public AuGLSLProgram
 {
+	mutable GLuint m_LegacyUniformProgram;
+	mutable GLint m_LegacySurfaceMode;
+	mutable GLint m_LegacyTextureInset;
+	mutable GLint m_LegacySurfaceOpacity;
 public:
-	AuGLSLScBase()
+	AuGLSLScBase() : m_LegacyUniformProgram(0), m_LegacySurfaceMode(-1), m_LegacyTextureInset(-1), m_LegacySurfaceOpacity(-1)
 	{
+	}
+	virtual void Build(AuOpenGLFunctions& gl, const AuGLSLProgramOpt& options)
+	{
+		AuGLSLProgram::Build(gl, options);
+		m_LegacyUniformProgram = 0;
+	}
+
+	// 0: modern surfaces, 1: legacy cutout, 2/3: opaque/translucent texels.
+	void SetLegacySurface(int mode, float insetX = 0, float insetY = 0, float opacity = 1) const
+	{
+		if(m_LegacyUniformProgram != m_Program)
+		{
+			m_LegacySurfaceMode = GetUniformLoc(QStringLiteral("legacySurfaceMode"));
+			m_LegacyTextureInset = GetUniformLoc(QStringLiteral("legacyTextureInset"));
+			m_LegacySurfaceOpacity = GetUniformLoc(QStringLiteral("legacySurfaceOpacity"));
+			m_LegacyUniformProgram = m_Program;
+		}
+		m_GLf->glUniform1i(m_LegacySurfaceMode, mode);
+		m_GLf->glUniform2f(m_LegacyTextureInset, insetX, insetY);
+		m_GLf->glUniform1f(m_LegacySurfaceOpacity, opacity);
 	}
 
 public:

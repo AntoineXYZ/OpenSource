@@ -32,12 +32,14 @@ private:
 	QPushButton* m_LegacyBrowse;
 	QPushButton* m_LegacyUpload;
 	QPushButton* m_LegacyRefresh;
+	QPushButton* m_LegacySpawn;
 	QLabel* m_LegacyStatus;
 	QTimer* m_LegacyTimeout;
 	QString m_LegacyFile;
 	bool m_LegacyAllowed = false;
 	quint32 m_LegacyUploadToken = 0;
 	quint32 m_LegacyCatalogToken = 0;
+	quint32 m_LegacySpawnToken = 0;
 	quint32 m_LegacyAfterId = 0;
 	quint32 m_LegacyWantedId = 0;
 
@@ -55,6 +57,7 @@ protected slots:
 	void BrowseLegacyScDesign();
 	void UploadLegacyScDesign();
 	void RefreshLegacyScDesigns();
+	void SpawnLegacyScDesign();
 	void LegacyScReply(QByteArray payload);
 	void LegacyScDisconnected();
 	void LegacyScTimedOut();

@@ -2,4 +2,12 @@
 <qresource>
 	<file>glsl.har</file>
 </qresource>
+<qresource prefix="/legacy-surface-shaders">
+	<file alias="Sc.f.glsl">shaders/Sc.f.glsl</file>
+	<file alias="ScFog.f.glsl">shaders/ScFog.f.glsl</file>
+	<file alias="ScGlobe.f.glsl">shaders/ScGlobe.f.glsl</file>
+	<file alias="ScGlobeFog.f.glsl">shaders/ScGlobeFog.f.glsl</file>
+	<file alias="ScRingworld.f.glsl">shaders/ScRingworld.f.glsl</file>
+	<file alias="ScRingworldFog.f.glsl">shaders/ScRingworldFog.f.glsl</file>
+</qresource>
 </RCC>

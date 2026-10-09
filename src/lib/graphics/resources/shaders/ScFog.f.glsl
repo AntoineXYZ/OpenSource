@@ -20,40 +20,54 @@ flat in vec2							vertTexIndex;			// Surface texture index(x), effect(y) 0=no, 
 
 out vec4								fragColor;				// Outgoing fragment color.
 
+uniform int legacySurfaceMode;
+uniform vec2 legacyTextureInset;
+uniform float legacySurfaceOpacity;
+
 void main()
 {
+	vec2 surfaceUV = legacySurfaceMode == 0 ? vertTexCoordFog.xy
+		: mix(legacyTextureInset, vec2(1.0) - legacyTextureInset, clamp(vertTexCoordFog.xy, vec2(0.0), vec2(1.0)));
 	if(vertTexIndex.x == 0)
-		fragColor = texture(texSurface[0], vertTexCoordFog.xy);
+		fragColor = texture(texSurface[0], surfaceUV);
 	else if(vertTexIndex.x == 1)
-		fragColor = texture(texSurface[1], vertTexCoordFog.xy);
+		fragColor = texture(texSurface[1], surfaceUV);
 	else if(vertTexIndex.x == 2)
-		fragColor = texture(texSurface[2], vertTexCoordFog.xy);
+		fragColor = texture(texSurface[2], surfaceUV);
 	else if(vertTexIndex.x == 3)
-		fragColor = texture(texSurface[3], vertTexCoordFog.xy);
+		fragColor = texture(texSurface[3], surfaceUV);
 	else if(vertTexIndex.x == 4)
-		fragColor = texture(texSurface[4], vertTexCoordFog.xy);
+		fragColor = texture(texSurface[4], surfaceUV);
 	else if(vertTexIndex.x == 5)
-		fragColor = texture(texSurface[5], vertTexCoordFog.xy);
+		fragColor = texture(texSurface[5], surfaceUV);
 	else if(vertTexIndex.x == 6)
-		fragColor = texture(texSurface[6], vertTexCoordFog.xy);
+		fragColor = texture(texSurface[6], surfaceUV);
 	else if(vertTexIndex.x == 7)
-		fragColor = texture(texSurface[7], vertTexCoordFog.xy);
+		fragColor = texture(texSurface[7], surfaceUV);
 	else if(vertTexIndex.x == 8)
-		fragColor = texture(texSurface[8], vertTexCoordFog.xy);
+		fragColor = texture(texSurface[8], surfaceUV);
 	else if(vertTexIndex.x == 9)
-		fragColor = texture(texSurface[9], vertTexCoordFog.xy);
+		fragColor = texture(texSurface[9], surfaceUV);
 	else if(vertTexIndex.x == 10)
-		fragColor = texture(texSurface[10], vertTexCoordFog.xy);
+		fragColor = texture(texSurface[10], surfaceUV);
 	else if(vertTexIndex.x == 11)
-		fragColor = texture(texSurface[11], vertTexCoordFog.xy);
+		fragColor = texture(texSurface[11], surfaceUV);
 	else if(vertTexIndex.x == 12)
-		fragColor = texture(texSurface[12], vertTexCoordFog.xy);
+		fragColor = texture(texSurface[12], surfaceUV);
 	else if(vertTexIndex.x == 13)
-		fragColor = texture(texSurface[13], vertTexCoordFog.xy);
+		fragColor = texture(texSurface[13], surfaceUV);
 	else
-		fragColor = texture(texSurface[14], vertTexCoordFog.xy);
+		fragColor = texture(texSurface[14], surfaceUV);
 
+	if(legacySurfaceMode != 0)
+		fragColor.a *= legacySurfaceOpacity;
 	if(fragColor.a <= glowDiscard.a)
+		discard;
+	if(legacySurfaceMode == 1)
+		fragColor.a = 1.0;
+	else if(legacySurfaceMode == 2 && fragColor.a < .999)
+		discard;
+	else if(legacySurfaceMode == 3 && fragColor.a >= .999)
 		discard;
 
 	// Apply paint.

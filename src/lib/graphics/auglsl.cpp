@@ -17,6 +17,19 @@ const bool s_DebugGLSL = false;									// Set true to see debug messages genera
 // Compressed source loaded from glsl.har. Only contains data during Initialize.
 thread_local QHash<QString, QByteArray>	s_GLSLProgramSrc;
 
+static void LoadLegacySurfaceShaders()
+{
+	// Compile these source files into Qt resources so ordinary client builds
+	// update the legacy surface modes without manually repacking glsl.har.
+	const char* names[] = {"Sc", "ScFog", "ScGlobe", "ScGlobeFog", "ScRingworld", "ScRingworldFog"};
+	for(const char* name : names)
+	{
+		const QString fileName = QStringLiteral("%1.f.glsl").arg(QString::fromLatin1(name));
+		QFile source(QStringLiteral(":/legacy-surface-shaders/") + fileName);
+		if(source.open(QIODevice::ReadOnly)) s_GLSLProgramSrc.insert(fileName, qCompress(source.readAll()));
+	}
+}
+
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
 void AuGLVAO::CreateForLines(AuOpenGLFunctions& GLf, const AuPointArray& verts, bool closeBoundary, GLenum usage)
@@ -1085,6 +1098,7 @@ void AuGLSL::Initialize(AuOpenGLFunctions& GLf, unsigned int maxLights)
 	// Load program source from our compressed hash archive. This is not due to the size of the source code, which is not large. 
 	// The source code is compressed so it is not easily visible in the final executable to the idly curious.
 	Hashpack::ReadFiles(":glsl.har", s_GLSLProgramSrc);
+	LoadLegacySurfaceShaders();
 	if(s_DebugGLSL)
 		qDebug() << "GLSL shader source loaded from hash archive" << s_GLSLProgramSrc.size() << "files";
 	if(s_GLSLProgramSrc.empty())

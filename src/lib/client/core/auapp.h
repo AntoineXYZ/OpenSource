@@ -558,6 +558,7 @@ public:
 	void DesignOpen(quint32 designId, int designMode);
 	quint32 RequestLegacyScCatalog(quint32 afterId = 0, quint32 token = 0);
 	quint32 UploadLegacyScDesign(const QString& sourceName, const QString& name, const QByteArray& source);
+	quint32 SpawnLegacyScDesign(quint32 designId);
 
 	void EmpireChangeEmperor(quint32 empireId, const AuId& avatarId, const QString& avatarName);
 

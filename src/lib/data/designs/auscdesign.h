@@ -67,6 +67,8 @@ private:
 	quint32								m_Shields;				// In cubic meters.
 	quint32								m_Skeleton;				// In cubic meters.
 
+	QByteArray m_LegacyTextureMap;
+
 public:	// Constructors
 	AuScDesign(unsigned int idDesign, const AuId& idArchitect, const QString& architect);
 	AuScDesign();
@@ -387,6 +389,18 @@ public:	// Methods
 		return m_HullVolume;
 	}
 
+	// The recovered legacy analysis supplies this volume in cubic meters.
+	// Its mesh bridge must not run the modern voxel-based volume analysis.
+	inline void SetLegacyHullVolume(quint32 volume)
+	{
+		m_HullVolume = volume;
+	}
+	// Material identifiers and packed-UV rectangles; original pixels are bundled.
+	const QByteArray& LegacyTextureMap() const { return m_LegacyTextureMap; }
+	void SetLegacyTextureMap(const QByteArray& map) { m_LegacyTextureMap = map; }
+	void LoadLegacyTextureMap(QSqlDatabase& db);
+	bool NeedsLegacyTextureMap() const;
+
 	inline double HullVolumeCuFt() const
 	{
 		return m_HullVolume * CubicFeetPerCubicMeter();
@@ -442,6 +456,7 @@ public:	// Methods
 	virtual void ListComponents(DeProcessComponentArray& pc) const;
 
 	void Load(quint32 idDesign);
+	void Load(quint32 idDesign, QSqlDatabase& db);
 
 	// Returns acceleration in ft/sec/sec.
 	// 1000 ft/sec/sec is pretty good.

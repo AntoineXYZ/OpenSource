@@ -14,13 +14,18 @@ constexpr int MaximumNameCharacters = 128;
 constexpr int CatalogPageSize = 64;
 constexpr int MaximumPacketBytes = MaximumUploadBytes + 2 * MaximumTextBytes + 16;
 
-enum Action : quint8 { CatalogRequest = 0, UploadRequest = 1, CatalogReply = 2, UploadReply = 3 };
+enum Action : quint8
+{
+	CatalogRequest = 0, UploadRequest = 1, CatalogReply = 2, UploadReply = 3,
+	SpawnRequest = 4, SpawnReply = 5
+};
 
 struct Request
 {
 	Action action = CatalogRequest;
 	quint32 token = 0;
 	quint32 afterId = 0;
+	quint32 designId = 0;
 	QString sourceName;
 	QString name;
 	QByteArray source;
@@ -38,6 +43,7 @@ struct Reply
 	Action action = CatalogReply;
 	quint32 token = 0;
 	quint32 designId = 0;
+	quint32 shipId = 0;
 	quint32 nextAfterId = 0;
 	QString name;
 	QString message;

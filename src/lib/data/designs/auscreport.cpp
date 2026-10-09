@@ -14,7 +14,7 @@
 #include "auscroute.h"
 #include "dgdata.h"
 
-#define REPORT_SERIALIZE_VER			0x12
+#define REPORT_SERIALIZE_VER			0x13
 
 AuScReport::AuScReport()
 {
@@ -23,6 +23,7 @@ AuScReport::AuScReport()
 	//m_ArchitectName;
 	//m_DesignDesc;
 	m_DesignId = 0;
+	SetLegacyDebug(false);
 	//m_DesignName;
 	//m_PartArchitects;
 
@@ -140,6 +141,7 @@ AuScReport::AuScReport(const AuScReport& c) : m_PartArchitects(c.m_PartArchitect
 	m_DesignDesc = c.m_DesignDesc;
 	m_DesignId = c.m_DesignId;
 	m_DesignName = c.m_DesignName;
+	SetLegacyDebug(c.IsLegacyDebug());
 
 	// Structure
 	m_LandingOrient = c.m_LandingOrient;
@@ -222,6 +224,7 @@ const AuScReport& AuScReport::operator=(const AuScReport& c)
 	m_DesignDesc = c.m_DesignDesc;
 	m_DesignId = c.m_DesignId;
 	m_DesignName = c.m_DesignName;
+	SetLegacyDebug(c.IsLegacyDebug());
 	m_PartArchitects = c.m_PartArchitects;
 
 	// Structure
@@ -3366,6 +3369,7 @@ void AuScReport::operator>>(QDataStream& out) const
 	out << m_SensorRange;
 	out << m_TriangleCount;
 	out << m_TurnRate;
+	out << IsLegacyDebug();
 }
 
 void AuScReport::operator<<(QDataStream& in)
@@ -3551,6 +3555,10 @@ void AuScReport::operator<<(QDataStream& in)
 	if(ver >= 0x0b)
 		in >> m_TriangleCount;
 	in >> m_TurnRate;
+	bool legacyDebug = false;
+	if(ver >= 0x13)
+		in >> legacyDebug;
+	SetLegacyDebug(legacyDebug);
 }
 
 bool AuScReport::operator==(const AuScReport& c) const
@@ -3565,6 +3573,8 @@ bool AuScReport::operator==(const AuScReport& c) const
 	if(m_DesignId != c.m_DesignId)
 		return false;
 	if(m_DesignName != c.m_DesignName)
+		return false;
+	if(IsLegacyDebug() != c.IsLegacyDebug())
 		return false;
 	if(m_PartArchitects != c.m_PartArchitects)
 		return false;

@@ -2461,7 +2461,8 @@ void AuApp::ScDesignNeeded(quint32 designId)
 {
 	// Test to see if we have the design.
 	const DgData& sdd = g_Au.LockScDesignsForRead();
-	bool hasDesign = sdd.ScDesignIsLoaded(designId);
+	const auto cached = sdd.m_ScDesigns->find(designId);
+	bool hasDesign = cached != sdd.m_ScDesigns->cend() && !cached->second.NeedsLegacyTextureMap();
 	g_Au.UnlockScDesigns();
 	if(hasDesign)
 		return;													// We have the design now.
@@ -2476,12 +2477,13 @@ void AuApp::ScDesignNeeded(quint32 designId)
 		//qDebug() << "AuApp::ScDesignNeeded" << designId << "File loaded" << cacheFileName << !rooms.isEmpty()
 			//<< design.m_id << design.m_name;
 		AuScDesign* scd = dynamic_cast<AuScDesign*>(d);
-		if(scd)
+		if(scd && !scd->NeedsLegacyTextureMap())
 		{
 			// We appear to have loaded the proper type of design.
 			// Insure no other thread slipped it into the data somehow.
 			DgData& sdd = g_Au.LockScDesignsForWrite();
-			if(!sdd.ScDesignIsLoaded(designId))
+			const auto existing = sdd.m_ScDesigns->find(designId);
+			if(existing == sdd.m_ScDesigns->cend() || existing->second.NeedsLegacyTextureMap())
 				sdd.ScDesignAdd(*scd);							// Add the design to our local data.
 			g_Au.UnlockScDesigns();
 			//qDebug() << "AuApp::ScDesignNeeded" << designId << "done";
@@ -2516,7 +2518,8 @@ void AuApp::ScDesignNeeded(quint32 designId, quint8 designState)
 {
 	// Test to see if we have the design.
 	const DgData& sdd = g_Au.LockScDesignsForRead();
-	bool hasDesign = sdd.ScDesignIsLoaded(designId);
+	const auto cached = sdd.m_ScDesigns->find(designId);
+	bool hasDesign = cached != sdd.m_ScDesigns->cend() && !cached->second.NeedsLegacyTextureMap();
 	quint8 hasState = sdd.ScDesignState(designId);
 	g_Au.UnlockScDesigns();
 
@@ -2532,12 +2535,13 @@ void AuApp::ScDesignNeeded(quint32 designId, quint8 designState)
 			//qDebug() << "AuApp::ScDesignNeeded" << designId << "File loaded" << cacheFileName << !rooms.isEmpty()
 				//<< design.m_id << design.m_name;
 			AuScDesign* scd = dynamic_cast<AuScDesign*>(d);
-			if(scd && scd->State() == (AuDesign::STATE)designState)
+			if(scd && scd->State() == (AuDesign::STATE)designState && !scd->NeedsLegacyTextureMap())
 			{
 				// We appear to have loaded the design and the state is correct.
 				// Insure no other thread slipped it into the data somehow.
 				DgData& sdd = g_Au.LockScDesignsForWrite();
-				if(!sdd.ScDesignIsLoaded(designId))
+				const auto existing = sdd.m_ScDesigns->find(designId);
+				if(existing == sdd.m_ScDesigns->cend() || existing->second.NeedsLegacyTextureMap())
 					sdd.ScDesignAdd(*scd);						// Add the design to our local data.
 				g_Au.UnlockScDesigns();
 				//qDebug() << "AuApp::ScDesignNeeded" << designId << "done";
@@ -3861,6 +3865,24 @@ quint32 AuApp::UploadLegacyScDesign(const QString& sourceName, const QString& na
 	request.sourceName = sourceName;
 	request.name = name;
 	request.source = source;
+	const QByteArray payload = AuLegacyScProtocol::EncodeRequest(request);
+	if(payload.isEmpty())
+		return 0;
+	QByteArray packet(1, char(DtChatChannelPacket::PD_LegacySc));
+	packet.append(payload);
+	QueueChatPacket(packet);
+	return request.token;
+}
+
+quint32 AuApp::SpawnLegacyScDesign(quint32 designId)
+{
+	if(!designId || IsSingleUserMode() || !m_tChatChannel || !m_tChatChannel->IsConnected())
+		return 0;
+	if(++m_LegacyScNextToken == 0) ++m_LegacyScNextToken;
+	AuLegacyScProtocol::Request request;
+	request.action = AuLegacyScProtocol::SpawnRequest;
+	request.token = m_LegacyScNextToken;
+	request.designId = designId;
 	const QByteArray payload = AuLegacyScProtocol::EncodeRequest(request);
 	if(payload.isEmpty())
 		return 0;

@@ -10,6 +10,8 @@
 #include "aubox.h"
 #include "aucommpacket.h"
 #include "augame.h"
+#include "aulegacyscgeometry.h"
+#include <cmath>
 #include "auscdesign.h"
 #include "auscparts.h"
 #include "auscroute.h"
@@ -863,6 +865,8 @@ bool DaSc::ActiveTransporterPadLocation(quint16 which, AuPoint& padLoc) const
 
 float DaSc::AirPressure(const QString& roomName) const
 {
+	if(IsLegacyDebug())
+		return .5f;
 	float p = 0;
 	m_AirLock.lockForRead();
 	if(p != 0)
@@ -1493,7 +1497,7 @@ bool DaSc::CanGrabLadder(const DaAtom& who, const AuPoint& loc, AuMatrix4x4& mLa
 
 bool DaSc::CanSetInMotion() const
 {
-	return DaVessel::CanSetInMotion();
+	return !IsLegacyDebug() && DaVessel::CanSetInMotion();
 }
 
 float DaSc::CapacitorMax() const
@@ -2264,6 +2268,8 @@ void DaSc::CombatArmorEffectiveness(WEAPONMODE mode, WEAPONEFFECT effect, bool h
 void DaSc::CombatApplyDamage(const AuCombatAttacker& attacker, const AuCombatWeapon& weapon, const AuPoint& wpnLoc,
 		const AuPoint& hitLoc, AuCombatResult& result)
 {
+	if(IsLegacyDebug())
+		return;
 	DaVessel::CombatApplyDamage(attacker, weapon, wpnLoc, hitLoc, result);
 	if(InDesignEnvironment())
 		return;
@@ -2721,10 +2727,187 @@ bool DaSc::ConstrainCamera(const DaAtom* subatom, AuMatrix4x4& camera) const
 	return DaVessel::ConstrainCamera(subatom, camera);
 }
 
+bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
+{
+	const AuScDesign* design = LockDesign();
+	if(!design)
+	{
+		UnlockDesign();
+		return false;
+	}
+	if(design->LegacyTextureMap().isEmpty())
+	{
+		UnlockDesign();
+		if(!m_LegacyTextureRequested)
+		{
+			m_LegacyTextureRequested = true;
+			g_Au.ScDesignNeeded(DesignId());
+		}
+		return false;
+	}
+	QVector<LegacyTextureDraw> draws;
+	QString error;
+	const auto build = [&]() {
+		QVector<AuLegacyScGeometry::TextureBinding> bindings;
+		if(!AuLegacyScGeometry::ReadTextureMap(design->LegacyTextureMap(), bindings, error)) return false;
+		const int side = bindings.first().packedTile.width();
+		QHash<quint32, int> tiles;
+		QVector<QMap<float, AuScTriRenderList>> triangles(bindings.size());
+		for(int index = 0; index < bindings.size(); ++index)
+		{
+			const auto& binding = bindings[index];
+			const quint32 key = (quint32(binding.paletteIndex) << 16)
+				| (quint32(binding.packedTile.x()) << 8) | quint32(binding.packedTile.y());
+			tiles.insert(key, index);
+		}
+		QColor colors[AuScFace::THEME_Count];
+		for(QColor& color : colors) color = Qt::white;
+		int count = 0;
+		for(const AuScPart* part : design->Parts())
+		{
+			if(part->IsOmitted() || !part->IsVisibleInFinalModel()) continue;
+			AuScTriRenderList opaque, transparent;
+			part->RenderTriangles(opaque, transparent, colors);
+			opaque.Insert(transparent);
+			for(const AuScTriRender& original : opaque)
+			{
+				if(++count > 1000000)
+				{
+					error = QStringLiteral("Legacy render geometry exceeds its triangle limit.");
+					return false;
+				}
+				const float u = (original.V0().m_Tx + original.V1().m_Tx + original.V2().m_Tx) / 3;
+				const float v = (original.V0().m_Ty + original.V1().m_Ty + original.V2().m_Ty) / 3;
+				if(!std::isfinite(u) || !std::isfinite(v) || u < 0 || u >= 1 || v <= 0 || v > 1)
+				{
+					error = QStringLiteral("Legacy mesh has invalid texture coordinates.");
+					return false;
+				}
+				const int x = int(std::floor(u * 256 / side)) * side;
+				const int y = int(std::floor((1 - v) * 256 / side)) * side;
+				const quint32 key = (quint32(original.TextureIndex()) << 16) | (quint32(x) << 8) | quint32(y);
+				const auto tile = tiles.constFind(key);
+				if(tile == tiles.constEnd())
+				{
+					error = QStringLiteral("Legacy mesh texture coordinates do not match its material map.");
+					return false;
+				}
+				const auto& binding = bindings.at(tile.value());
+				float opacity = original.Opacity();
+				// The palette adapter forced partly transparent images into the
+				// blend pass. Direct sampling classifies each texel instead.
+				if(opacity == .999f && binding.tint.w() == 1) opacity = 1;
+				if(!std::isfinite(opacity) || opacity < 0 || opacity > 1)
+				{
+					error = QStringLiteral("Legacy mesh has invalid surface opacity.");
+					return false;
+				}
+				const auto vertex = [&](const AuScPoint& point) {
+					AuScPoint result(point);
+					result.m_Tx = (point.m_Tx * 256 - binding.packedTile.x() - .5f) / (side - 1);
+					result.m_Ty = 1 - ((1 - point.m_Ty) * 256 - binding.packedTile.y() - .5f) / (side - 1);
+					return result;
+				};
+				AuScTri triangle(vertex(original.V0()), vertex(original.V1()), vertex(original.V2()));
+				AuScTriRender rendered(triangle, 0, QColor(0, 0, 0, 0), original.Reflectivity(), original.Shine(),
+					original.SelfIllumination(), 1, EFF_None);
+				triangles[tile.value()][opacity].insert(EFF_None, rendered);
+			}
+		}
+		for(int index = 0; index < bindings.size(); ++index)
+		{
+			if(triangles[index].isEmpty()) continue;
+			const auto& binding = bindings[index];
+			const QImage image = AuLegacyScGeometry::OriginalTexture(binding);
+			if(image.isNull())
+			{
+				error = QStringLiteral("A bundled legacy texture is unavailable: %1.").arg(binding.resource);
+				return false;
+			}
+			bool transparentTexture = false;
+			for(int y = 0; y < image.height() && !transparentTexture; ++y)
+			{
+				const QRgb* pixels = reinterpret_cast<const QRgb*>(image.constScanLine(y));
+				for(int x = 0; x < image.width(); ++x)
+					if(qAlpha(pixels[x]) < 255) { transparentTexture = true; break; }
+			}
+			const QString key = QStringLiteral("LegacyOriginal/Lit/%1/%2/%3/%4/%5/%6")
+				.arg(binding.material).arg(binding.resource).arg(binding.tint.x()).arg(binding.tint.y())
+				.arg(binding.tint.z()).arg(int(binding.cutout));
+			const GLuint texture = ari.re->CreateTextureFromBitmap(STATIC_TEXTURE_ID, key, image, GL_LINEAR, GL_LINEAR,
+				!binding.cutout, binding.cutout ? 1 : 0);
+			if(!texture)
+			{
+				error = QStringLiteral("Unable to create a legacy surface texture.");
+				return false;
+			}
+			for(auto group = triangles[index].cbegin(); group != triangles[index].cend(); ++group)
+			{
+				LegacyTextureDraw draw;
+				draw.textureInset = binding.textureInset;
+				draw.cutout = binding.cutout;
+				draw.opacity = group.key();
+				draw.translucent = draw.opacity < .999f || transparentTexture;
+				draw.texture = texture;
+				draw.vao.Create(*ari.re, group.value(), GL_STATIC_DRAW);
+				if(!draw.vao.VAO())
+				{
+					draw.vao.DeleteGL();
+					error = QStringLiteral("Unable to create legacy render geometry.");
+					return false;
+				}
+				draws.append(draw);
+			}
+		}
+		return !draws.isEmpty();
+	};
+	const bool success = build();
+	UnlockDesign();
+	if(!success)
+	{
+		for(LegacyTextureDraw& draw : draws) draw.vao.DeleteGL();
+		qWarning() << "Legacy rendering:" << Id() << error;
+		return false;
+	}
+	for(LegacyTextureDraw& draw : m_LegacyTextureDraws) draw.vao.DeleteGL();
+	m_LegacyTextureDraws = draws;
+	m_VAOsCreated = true;
+	return true;
+}
+
+void DaSc::RenderLegacyTextures(const AuGLSLScBase& shader, AuAtomRenderInfo& ari, bool transparent)
+{
+	const GLuint effects[EFF_Count] = {};
+	shader.SetEffectTexture(0, 0);
+	if(transparent)
+	{
+		ari.re->glEnable(GL_BLEND);
+		ari.re->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	}
+	for(LegacyTextureDraw& draw : m_LegacyTextureDraws)
+	{
+		if(transparent && (draw.cutout || !draw.translucent)) continue;
+		if(!transparent && !draw.cutout && draw.opacity < .999f) continue;
+		shader.SetSurfaceTexture(0, draw.texture);
+		shader.SetGlowDiscard(0, 0, 0, draw.cutout ? .2f : .01f);
+		shader.SetLegacySurface(draw.cutout ? 1 : transparent ? 3 : 2,
+			draw.textureInset.x(), draw.textureInset.y(), draw.opacity);
+		draw.vao.DrawSc(shader, effects, 0);
+	}
+	shader.SetLegacySurface(0);
+	shader.SetGlowDiscard(0, 0, 0, .01f);
+	if(transparent) ari.re->glDisable(GL_BLEND);
+}
+
 void DaSc::CreateDeviceObjects(AuAtomRenderInfo& ari)
 {
 	//qDebug() << "DaSc::CreateDeviceObjects" << Id() << Name();
 	DaVessel::CreateDeviceObjects(ari);
+	if(IsLegacyDebug())
+	{
+		if(!m_VAOsCreated) CreateLegacyDeviceObjects(ari);
+		return;
+	}
 
 	if(!m_CmdEmpty.HasDeviceObjects())
 	{
@@ -4027,6 +4210,8 @@ void DaSc::CycleFTLDrive()
 
 void DaSc::DamageAndDestroy(const QString& reason)
 {
+	if(IsLegacyDebug())
+		return;
 	// Pirates can be removed quietly if they are not in any scene and if no person is aboard, whether or not they are on line.
 	if(!IsInAnyScene() && IsPirateWithFreeWill() && !FindPersonRecursive())
 	{
@@ -4074,6 +4259,8 @@ void DaSc::DamageAndDestroy(const QString& reason)
 void DaSc::DeleteDeviceObjects(AuAtomRenderInfo& ari)
 {
 	DaVessel::DeleteDeviceObjects(ari);
+	for(LegacyTextureDraw& draw : m_LegacyTextureDraws) draw.vao.DeleteGL();
+	m_LegacyTextureDraws.clear();
 
 	m_AlertGreen = 0;
 	m_AlertRedBright = 0;
@@ -4848,6 +5035,8 @@ quint32 DaSc::FuelCapacity() const
 // Returns the force of gravity in ft/sec/sec projected by this atom on another atom that is 'cgDistance' feet away.
 double DaSc::Gravity(double cgDistance) const
 {
+	if(IsLegacyDebug())
+		return GravityStandard();
 	// Ship interior gravity functions when the gravity drive is working or inside atmosphere range of a planet.
 	if(IsInAtmosphere())
 		return GravityStandard();
@@ -6018,7 +6207,7 @@ void DaSc::InteriorAmbientLight(const QString& roomName, float& ambientR, float&
 {
 	// Calculate ambient lighting from interior lights, if any.
 	INTERIOR_LIGHT interiorLight;
-	if(CapacitorLevel())
+	if(CapacitorLevel() || IsLegacyDebug())
 	{
 		interiorLight = InteriorLight(roomName);
 		if(interiorLight == INTLIGHT_Bright)
@@ -6295,7 +6484,7 @@ bool DaSc::IsCommandConsoleAt(const AuPoint& loc) const
 bool DaSc::IsControl(const DaAtom* sceneAtom) const
 {
 	Q_UNUSED(sceneAtom);
-	return true;
+	return !IsLegacyDebug();
 }
 
 bool DaSc::IsDesignDataCacheValid() const
@@ -6452,6 +6641,8 @@ bool DaSc::IsInScene(const DaPerson* sceneAtom, const AuPoint& cameraEnvLoc) con
 
 bool DaSc::IsInsideAirBreathable() const
 {
+	if(IsLegacyDebug())
+		return true;
 	// Check air pressure in all rooms. Any breathable air and the answer is yes.
 	// NOTE: The 15%-85% pressure range matches the atmosphere density requirement in DaWorld::HasBreathableAtmosphere.
 	bool anyAir = false;
@@ -6469,6 +6660,22 @@ bool DaSc::IsInsideAirBreathable() const
 bool DaSc::IsNew() const
 {
 	return m_New;
+}
+
+bool DaSc::IsLegacyDebug() const
+{
+	// Rendering also asks this while the design lock is already held.
+	return m_Design.IsLegacyDebug();
+}
+
+bool DaSc::LifeSupportWorking() const
+{
+	return IsLegacyDebug() || DaVessel::LifeSupportWorking();
+}
+
+bool DaSc::StartMoving()
+{
+	return !IsLegacyDebug() && DaVessel::StartMoving();
 }
 
 bool DaSc::IsEthereal() const
@@ -7604,6 +7811,8 @@ float DaSc::PowerPlantUnits() const
 void DaSc::ProcessControlInput(const DiControlInputArray& aActiveControls, DaPerson* sceneAtom, const AuGearPos& gearPos,
 		qint8 chSelValue, CONTROL_CONTEXT cc, int msElapsed)
 {
+	if(IsLegacyDebug())
+		return;
 	Q_UNUSED(gearPos);
 	Q_UNUSED(chSelValue);
 	Q_UNUSED(msElapsed);
@@ -7794,7 +8003,9 @@ void DaSc::RenderBodyStats(float left, float bottom, float wid, float ht, bool i
 
 			int nx = rcClient.width()/2 + (int)(nameleft * (float)rcClient.width()/2.f);
 			int ny = rcClient.height()/2 - (int)(namebot * (float)rcClient.height()/2.f);
-			if(sysId.System() == SYS_Hull)
+			if(IsLegacyDebug())
+				ari.RenderText(nx, ny, Name(), col, Qt::AlignHCenter|Qt::AlignTop);
+			else if(sysId.System() == SYS_Hull)
 				ari.RenderText(nx, ny, NameWithEmpire(), col, Qt::AlignHCenter|Qt::AlignTop);
 			else if(sysId.System() == SYS_LifeSupport && sysId.Which() != 0)
 			{
@@ -10472,6 +10683,20 @@ void DaSc::TickOnClient(const AuElapsedTimer& last)
 	DecayMoveActions();
 }
 
+void DaSc::Tick(const AuElapsedTimer& last, const AuElapsedTimer& now)
+{
+	if(IsLegacyDebug())
+		DaCapsule::Tick(last, now);
+	else
+		DaVessel::Tick(last, now);
+}
+
+void DaSc::TickMovement(const AuElapsedTimer& last)
+{
+	if(!IsLegacyDebug())
+		DaVessel::TickMovement(last);
+}
+
 unsigned int DaSc::IsTocker() const
 {
 	unsigned int ms = DaVessel::IsTocker();
@@ -10517,6 +10742,18 @@ void DaSc::Tock(const AuTime& last, const AuTime& now, const AuScripts& scripts,
 	// Tocking depends on this ship's design geometry. It will be delayed until the database thread has loaded the design.
 	if(!IsDesignDataCacheValid())
 		return;	// My design is not valid yet.
+
+	if(IsLegacyDebug())
+	{
+		if(!m_Tocked)
+		{
+			InvalidateEnvironmentRecursive();
+			m_Tocked = true;
+		}
+		// Keep ordinary atom and occupant processing without running ship systems.
+		DaCapsule::Tock(last, now, scripts, tockTrans);
+		return;
+	}
 
 	if(!m_Tocked)
 	{
@@ -11989,6 +12226,8 @@ void DaSc::RecalcSystemsHealthMax()
 
 void DaSc::InitSystems(quint8 quality)
 {
+	if(IsLegacyDebug())
+		return;
 	Q_ASSERT(quality);
 	if(g_Au.m_LogMessages & LOG_AtomCreate)
 		qDebug("DaSc::InitSystems %d quality %d", Id().GetID(), quality);
@@ -12028,6 +12267,8 @@ void DaSc::GatherSystemsDataSystemsAndDesignLocked(quint8 quality)
 
 void DaSc::ReconcileSystems()
 {
+	if(IsLegacyDebug())
+		return;
 	m_DesignLock.lockForWrite();
 	if(m_ssaShipSystems.Reconcile(m_Design))
 	{
@@ -12044,7 +12285,11 @@ void DaSc::RenderDesign(const AuMatrix4x4& model, AuAtomRenderInfo& ari, const D
 	//qDebug() << "DaSc::RenderDesign" << Id() << Name();
 
 	// Don't continue if we have nothing to draw in this pass.
-	if(transparentPass)
+	if(IsLegacyDebug())
+	{
+		if(m_LegacyTextureDraws.isEmpty()) return;
+	}
+	else if(transparentPass)
 	{
 		if(m_TransparentVAOs.empty() &&
 				m_RoomTransparentVAOs.empty() &&
@@ -16505,11 +16750,23 @@ void DaSc::RenderScRingworldFog(AuAtomRenderInfo& ari, AuModelMatrixHash& rmod, 
 
 void DaSc::RenderScShader(AuGLSLScBase* shader, AuAtomRenderInfo& ari, const AuMatrix4x4& model, const DaPerson* sceneAtom)
 {
+	// Recovered mesh batches retain the offline renderer's counterclockwise
+	// winding. Modern ship meshes use clockwise front faces.
+	const bool legacyFrontFaces = IsLegacyDebug();
+	if(legacyFrontFaces)
+		ari.re->glFrontFace(GL_CCW);
 	shader->SetModelView(model);
 	shader->SetSurfaceTextures(m_SurfaceTex);
 	shader->SetGlowDiscard(0,0,0, .01f);
 	shader->SetVertAlpha(1);
 	shader->SetAmbientLight(m_AmbientR, m_AmbientG, m_AmbientB);
+	if(legacyFrontFaces)
+	{
+		shader->SetAmbientLightUp(m_AmbientUp);
+		RenderLegacyTextures(*shader, ari, false);
+		ari.re->glFrontFace(GL_CW);
+		return;
+	}
 
 	if(m_InsideVisible)
 	{
@@ -16652,16 +16909,28 @@ void DaSc::RenderScShader(AuGLSLScBase* shader, AuAtomRenderInfo& ari, const AuM
 		ari.re->glDepthFunc(GL_LESS);
 		ari.re->glDisable(GL_POLYGON_OFFSET_FILL);
 	}
+	if(legacyFrontFaces)
+		ari.re->glFrontFace(GL_CW);
 }
 
 void DaSc::RenderScShaderBlend(AuGLSLScBase* shader, AuAtomRenderInfo& ari, const AuMatrix4x4& model,
 		const DaPerson* sceneAtom)
 {
+	const bool legacyFrontFaces = IsLegacyDebug();
+	if(legacyFrontFaces)
+		ari.re->glFrontFace(GL_CCW);
 	shader->SetModelView(model);
 	shader->SetSurfaceTextures(m_SurfaceTex);
 	shader->SetGlowDiscard(0,0,0, .01f);
 	shader->SetVertAlpha(1);
 	shader->SetAmbientLight(m_AmbientR, m_AmbientG, m_AmbientB);
+	if(legacyFrontFaces)
+	{
+		shader->SetAmbientLightUp(m_AmbientUp);
+		RenderLegacyTextures(*shader, ari, true);
+		ari.re->glFrontFace(GL_CW);
+		return;
+	}
 
 	if(m_InsideVisible)
 	{
@@ -16803,6 +17072,8 @@ void DaSc::RenderScShaderBlend(AuGLSLScBase* shader, AuAtomRenderInfo& ari, cons
 		ari.re->glDisable(GL_POLYGON_OFFSET_FILL);
 	}
 	ari.re->glDisable(GL_BLEND);
+	if(legacyFrontFaces)
+		ari.re->glFrontFace(GL_CW);
 }
 
 quint64 DaSc::MemoryUsage() const

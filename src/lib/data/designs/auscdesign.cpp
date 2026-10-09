@@ -9,13 +9,45 @@
 #include "aucombat.h"
 #include "auglobal.h"
 #include "auitem.h"
+#include "aulegacyscdesign.h"
+#include "aulegacyscgeometry.h"
+#include "aulegacyscprotocol.h"
 #include "auscparts.h"
 #include "auscreport.h"
 #include "hashpack.h"
 #include <QProgressDialog>
 #include <QSqlQuery>
+#include <QCryptographicHash>
 
-#define SCDESIGN_SERIALIZE_VER			0x06					// At present, this must fit into a nibble.
+#define SCDESIGN_SERIALIZE_VER			0x07					// At present, this must fit into a nibble.
+
+namespace
+{
+void WriteLegacyTextureMap(QDataStream& out, const QByteArray& map)
+{
+	out << quint32(map.size());
+	out.writeRawData(map.constData(), map.size());
+}
+
+void ReadLegacyTextureMap(QDataStream& in, QByteArray& map)
+{
+	map.clear();
+	quint32 size = 0;
+	in >> size;
+	if(in.status() != QDataStream::Ok || size > quint32(AuLegacyScGeometry::MaximumTextureMapBytes)
+		|| !in.device() || size > quint64(in.device()->bytesAvailable()))
+	{
+		in.setStatus(QDataStream::ReadCorruptData);
+		return;
+	}
+	map.resize(int(size));
+	if(in.readRawData(map.data(), int(size)) != int(size))
+	{
+		map.clear();
+		in.setStatus(QDataStream::ReadCorruptData);
+	}
+}
+}
 
 static int s_AuScDesignMetaType = qRegisterMetaType<AuScDesign>();
 
@@ -41,6 +73,7 @@ void AuScDesignHash::LoadArchitect(const AuId& idArchitect)
 	{
 		int qv=0;
 		ob.SetId(qry.value(qv++).toUInt());
+		ob.SetLegacyTextureMap(QByteArray());
 		ob.SetName(qry.value(qv++).toString());
 		ob.SetArchitectId(idArchitect);
 		ob.SetArchitectName(qry.value(qv++).toString());
@@ -61,6 +94,7 @@ void AuScDesignHash::LoadArchitect(const AuId& idArchitect)
 			QImage th;
 			in >> th;
 			ob.SetThumbnail(th);
+			if(in.device()->bytesAvailable()) ReadLegacyTextureMap(in, ob.m_LegacyTextureMap);
 		}
 
 		// Parts
@@ -155,6 +189,7 @@ void AuScDesignHash::LoadArchitect(const AuId& idArchitect)
 
 		// Factors gleaned by design analysis
 		ob.m_HullVolume = qry.value(qv++).toUInt();
+		ob.LoadLegacyTextureMap(db);
 		//qDebug() << "AuScDesignHash::LoadArchitect arch" << idArchitect << "loaded" << ob.Name() << ob.DescriptionOneLine();
 
 		// Insert/update the data in this hash.
@@ -475,6 +510,7 @@ AuScDesign::~AuScDesign()
 AuScDesign::AuScDesign(const AuScDesign& c) : AuDesign(c), m_Modules(c.m_Modules), m_Bays(c.m_Bays),
 	m_FTLDrives(c.m_FTLDrives)
 {
+	m_LegacyTextureMap = c.m_LegacyTextureMap;
 	m_HullVolume = c.m_HullVolume;
 	m_LandingOrient = c.m_LandingOrient;
 	m_Parts = new AuScParts(*c.m_Parts);
@@ -499,6 +535,7 @@ AuScDesign::AuScDesign(const AuScDesign& c) : AuDesign(c), m_Modules(c.m_Modules
 AuScDesign& AuScDesign::operator=(const AuScDesign& c)
 {
 	AuDesign::operator=(c);
+	m_LegacyTextureMap = c.m_LegacyTextureMap;
 
 	m_HullVolume = c.m_HullVolume;
 	m_LandingOrient = c.m_LandingOrient;
@@ -534,6 +571,12 @@ AuDesign* AuScDesign::Clone() const
 void AuScDesign::Load(quint32 idDesign)
 {
 	QSqlDatabase db = QSqlDatabase::database("AuUniverse", false);
+	Load(idDesign, db);
+}
+
+void AuScDesign::Load(quint32 idDesign, QSqlDatabase& db)
+{
+	m_LegacyTextureMap.clear();
 	if(!db.isOpen())
 		return;
 
@@ -569,6 +612,7 @@ void AuScDesign::Load(quint32 idDesign)
 			QImage th;
 			in >> th;
 			SetThumbnail(th);
+			if(in.device()->bytesAvailable()) ReadLegacyTextureMap(in, m_LegacyTextureMap);
 		}
 
 		// Parts
@@ -663,6 +707,7 @@ void AuScDesign::Load(quint32 idDesign)
 
 		// Factors gleaned by design analysis
 		m_HullVolume = qry.value(qv++).toUInt();
+		LoadLegacyTextureMap(db);
 	}
 	else
 	{
@@ -674,6 +719,35 @@ void AuScDesign::Load(quint32 idDesign)
 const AuScParts& AuScDesign::Parts() const
 {
 	return *m_Parts;
+}
+
+void AuScDesign::LoadLegacyTextureMap(QSqlDatabase& db)
+{
+	if(!NeedsLegacyTextureMap()) return;
+	// Upgrade older derived blueprints in memory. The original ship stays on
+	// the server; only its compact material map goes through blueprint transfer.
+	QSqlQuery query(db);
+	query.prepare("SELECT contentHash, CASE WHEN octet_length(sourceData) <= ? THEN sourceData END "
+		"FROM n_LegacyScDesign WHERE runtimeDesignId = ?");
+	query.addBindValue(AuLegacyScProtocol::MaximumUploadBytes);
+	query.addBindValue(qulonglong(Id()));
+	if(!query.exec() || !query.next()) return;
+	const QByteArray source = query.value(1).toByteArray();
+	if(source.isEmpty() || query.value(0).toString().toLatin1()
+		!= QCryptographicHash::hash(source, QCryptographicHash::Sha256).toHex()) return;
+	AuLegacyScDesign accepted;
+	QString error;
+	if(!AuLegacyScDesign::ReadUpload(source, accepted, error)
+		|| !AuLegacyScGeometry::TextureMap(accepted, m_LegacyTextureMap, error))
+		qWarning() << "Legacy texture map:" << Id() << error;
+}
+
+bool AuScDesign::NeedsLegacyTextureMap() const
+{
+	if(!m_LegacyTextureMap.isEmpty()) return false;
+	for(const AuScPart* part : *m_Parts)
+		if(part->GroupName() == QStringLiteral("legacy/debug/static/v1")) return true;
+	return false;
 }
 
 AuScParts& AuScDesign::Parts()
@@ -693,6 +767,7 @@ void AuScDesign::DesignLoaded(const AuDesign& design)
 	try
 	{
 		const AuScDesign& c = dynamic_cast<const AuScDesign&>(design);
+		m_LegacyTextureMap = c.m_LegacyTextureMap;
 		m_HullVolume = c.m_HullVolume;
 		m_LandingOrient = c.m_LandingOrient;
 		m_Modules = c.m_Modules;
@@ -760,10 +835,12 @@ void AuScDesign::operator>>(QDataStream& out) const
 	out << m_Sensors;
 	out << m_Shields;
 	out << m_Skeleton;
+	WriteLegacyTextureMap(out, m_LegacyTextureMap);
 }
 
 void AuScDesign::operator<<(QDataStream& in)
 {
+	m_LegacyTextureMap.clear();
 	AuDesign::operator<<(in);
 
 	quint8 ver;
@@ -883,6 +960,7 @@ void AuScDesign::operator<<(QDataStream& in)
 		else
 			m_Skeleton = 0;
 	}
+	if(ver >= 0x07) ReadLegacyTextureMap(in, m_LegacyTextureMap);
 }
 
 void AuScDesign::Insert(QSqlDatabase& db) const
@@ -913,6 +991,7 @@ void AuScDesign::Insert(QSqlDatabase& db) const
 
 		WriteTextures(out);
 		out << Thumbnail();
+		WriteLegacyTextureMap(out, m_LegacyTextureMap);
 
 		qa.addBindValue(ba);
 	}
@@ -1013,6 +1092,7 @@ void AuScDesign::Update(QSqlDatabase& db) const
 
 		WriteTextures(out);
 		out << Thumbnail();
+		WriteLegacyTextureMap(out, m_LegacyTextureMap);
 
 		qa.addBindValue(ba);
 	}
@@ -1135,11 +1215,13 @@ void AuScDesign::Tx(QDataStream& out) const
 	out << m_Sensors;
 	out << m_Shields;
 	out << m_Skeleton;
+	WriteLegacyTextureMap(out, m_LegacyTextureMap);
 }
 
 // NOTE: This function is also used when loading from a file.
 void AuScDesign::Rx(QDataStream& in)
 {
+	m_LegacyTextureMap.clear();
 	AuDesign::Rx(in);
 
 	quint8 ver;
@@ -1272,6 +1354,7 @@ void AuScDesign::Rx(QDataStream& in)
 		else
 			m_Skeleton = 0;
 	}
+	if(ver >= 0x07) ReadLegacyTextureMap(in, m_LegacyTextureMap);
 }
 
 void AuScDesign::SetArmorVolume(quint32 armor)
@@ -1956,6 +2039,7 @@ double AuScDesign::FTLDriveVolumeCuFt(quint16 which) const
 
 void AuScDesign::ReportDesign(AuScReport& report) const
 {
+	report.SetLegacyDebug(false);
 	// Design
 	{
 		report.m_ArchitectId = ArchitectId();
@@ -3088,6 +3172,7 @@ void AuScDesign::ContrailEmitters(QMap<AuPoint, float>& contrails) const
 quint64 AuScDesign::MemoryUsage() const
 {
 	quint64 mem = AuDesign::MemoryUsage();
+	mem += m_LegacyTextureMap.size();
 	mem += sizeof(m_HullVolume);
 	mem += sizeof(m_LandingOrient);
 	mem += sizeof(m_Modules);

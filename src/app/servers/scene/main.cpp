@@ -22,6 +22,8 @@ void SignalHandler(int value)
 
 int main(int argc, char** argv)
 {
+	// The legacy geometry adapter embeds these textures in generated blueprints.
+	Q_INIT_RESOURCE(AuShipTex0);
 	int returnValue = 0;
 	{
 		// Install signal handler(s).

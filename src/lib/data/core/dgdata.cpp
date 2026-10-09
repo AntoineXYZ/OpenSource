@@ -2541,6 +2541,8 @@ void DgData::SetEmpireThemeColors(quint32 empireId, const QColor themeColors[AuS
 
 int DgData::ScDesignSave(AuScDesign& design, quint32 designId)
 {
+	// Ordinary design uploads cannot supply authoritative legacy bindings.
+	design.SetLegacyTextureMap(QByteArray());
 	if(designId)
 	{
 		// 'designId' can be specified by an agent to assign a specific id. Existing design is replaced, if any.

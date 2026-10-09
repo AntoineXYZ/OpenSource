@@ -12,6 +12,7 @@
 #include "autime.h"
 #include "davessel.h"
 #include "dpconsoleempty.h"
+#include <QVector2D>
 
 class AuQuad;
 class AuRefitMaterials;
@@ -24,6 +25,19 @@ class PsLaunchSystem;
 
 class AUATOM_DLL DaSc : public DaVessel
 {
+	struct LegacyTextureDraw
+	{
+		AuScVAO vao;
+		GLuint texture = 0;
+		QVector2D textureInset;
+		float opacity = 1;
+		bool cutout = false;
+		bool translucent = false;
+	};
+	QVector<LegacyTextureDraw> m_LegacyTextureDraws;
+	bool m_LegacyTextureRequested = false;
+	bool CreateLegacyDeviceObjects(AuAtomRenderInfo& ari);
+	void RenderLegacyTextures(const AuGLSLScBase& shader, AuAtomRenderInfo& ari, bool transparent);
 protected:
 	enum AUDIO_SOURCE
 	{
@@ -649,6 +663,8 @@ public:	// Methods
 
 	virtual bool IsInsideAirBreathable() const;
 
+	bool IsLegacyDebug() const;
+
 	virtual bool IsLandingGearExtended() const;
 
 	virtual bool IsNavLightOn() const;
@@ -716,6 +732,8 @@ public:	// Methods
 	virtual void LockLiftContents(quint16 liftId, DaAtomList& atomsInLift);
 
 	virtual int LowestDeck() const;
+
+	virtual bool LifeSupportWorking() const;
 
 	virtual float ManeuverAcceleration() const;
 
@@ -926,6 +944,8 @@ public:	// Methods
 
 	virtual SPACECRAFT_STRUCTURE Structure() const;
 
+	virtual bool StartMoving();
+
 	virtual quint32 SystemHits(const AuSysId& sysId) const;
 
 	virtual quint32 SystemHitsRemainingSystemsLocked(const AuSysId& sysId) const;
@@ -941,6 +961,10 @@ public:	// Methods
 	virtual bool TestTransportLocation(const AuPoint& loc) const;
 
 	virtual void TickOnClient(const AuElapsedTimer& last);
+
+	virtual void Tick(const AuElapsedTimer& last, const AuElapsedTimer& now);
+
+	virtual void TickMovement(const AuElapsedTimer& last);
 
 	virtual unsigned int IsTocker() const;
 

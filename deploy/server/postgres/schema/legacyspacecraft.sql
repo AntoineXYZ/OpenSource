@@ -15,8 +15,13 @@ CREATE TABLE IF NOT EXISTS n_LegacyScDesign
   timeCreate  timestamp with time zone NOT NULL DEFAULT now()
 );
 
+ALTER TABLE n_LegacyScDesign
+  ADD COLUMN IF NOT EXISTS runtimeDesignId bigint UNIQUE
+  REFERENCES n_ScDesign (id)
+  CHECK (runtimeDesignId > 0 AND runtimeDesignId <= 4294967295);
+
 GRANT SELECT, INSERT ON n_LegacyScDesign TO audog;
-GRANT UPDATE (name) ON n_LegacyScDesign TO audog;
+GRANT UPDATE (name, runtimeDesignId) ON n_LegacyScDesign TO audog;
 GRANT USAGE, SELECT ON SEQUENCE n_legacyscdesign_id_seq TO audog;
 
 COMMIT;

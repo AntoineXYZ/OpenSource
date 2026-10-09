@@ -24,14 +24,17 @@
 #include "auserverinterface.h"
 #include "autransportertarget.h"
 #include "daanimal.h"
+#include "auether.h"
 #include "daarena.h"
 #include "daatomlist.h"
 #include "dabd.h"
 #include "dadesignbase.h"
 #include "dagalaxy.h"
 #include "daperson.h"
+#include "dasc.h"
 #include "dasector.h"
 #include "dasolarsystem.h"
+#include "dastar.h"
 #include "davehicle.h"
 #include "davessel.h"
 #include "daworldll.h"
@@ -41,6 +44,8 @@
 #include <QDataStream>
 #include <QUdpSocket>
 #include <QVariant>
+#include <cmath>
+#include <memory>
 
 DtChatChannel::DtChatChannel(int socketDesc, QObject* parent) : QThread(parent)//, m_semAlive(1)
 {
@@ -6386,13 +6391,21 @@ void DtChatChannel::ReadLegacyScPacket(const QByteArray& payload)
 	}
 	Reply reply;
 	reply.token = request.token;
-	reply.action = request.action == UploadRequest ? UploadReply : CatalogReply;
+	reply.action = request.action == UploadRequest ? UploadReply
+		: request.action == SpawnRequest ? SpawnReply : CatalogReply;
 	if(!LegacyScAuthorized(true))
 		reply.message = tr("Enable architect powers before managing legacy designs.");
 	else if(request.action == UploadRequest && m_LastLegacyScUpload.isValid() && m_LastLegacyScUpload.elapsed() < 2000)
 		reply.message = tr("Wait two seconds before uploading another design.");
 	else if(request.action == CatalogRequest && m_LastLegacyScCatalogQuery.isValid() && m_LastLegacyScCatalogQuery.elapsed() < 200)
 		reply.message = tr("Wait a moment before refreshing the catalog again.");
+	else if(request.action == SpawnRequest && m_LastLegacyScSpawn.isValid() && m_LastLegacyScSpawn.elapsed() < 5000)
+		reply.message = tr("Wait five seconds before spawning another design.");
+	else if(request.action == SpawnRequest)
+	{
+		m_LastLegacyScSpawn.restart();
+		SpawnLegacySc(request.designId, reply);
+	}
 	else
 	{
 		if(request.action == UploadRequest)
@@ -6408,6 +6421,175 @@ void DtChatChannel::ReadLegacyScPacket(const QByteArray& payload)
 		packet.append(response);
 		SendPacket(packet);
 	}
+}
+
+void DtChatChannel::SpawnLegacySc(quint32 designId, AuLegacyScProtocol::Reply& reply)
+{
+	AuId architectId;
+	QString architectName;
+	DaPerson* person = m_I->LockAvatar();
+	if(person && (person->HasArchitectPower() || person->HasProgrammerPower()))
+	{
+		architectId = person->Id();
+		architectName = person->Name();
+	}
+	m_I->UnlockAvatar();
+	if(architectId.IsNull())
+	{
+		reply.message = tr("Enable architect powers before spawning legacy designs.");
+		return;
+	}
+
+	// SQL and geometry preparation do not hold the scene's deletion lock.
+	AuScReport report;
+	if(!PrepareLegacySpacecraftSpawn(designId, architectId, architectName, report, reply.message))
+		return;
+	if(!LegacyScAuthorized(false))
+	{
+		reply.message = tr("Your session changed while preparing the design.");
+		return;
+	}
+
+	person = m_I->LockAvatar();
+	if(!person || person->Id() != architectId || !(person->HasArchitectPower() || person->HasProgrammerPower()))
+	{
+		m_I->UnlockAvatar();
+		reply.message = tr("Your avatar or architect powers changed while preparing the design.");
+		return;
+	}
+	DaSolarSystem* system = person->FindParentSolarSystemInEnv();
+	DaWorld* world = person->FindParentPlanetInEnv();
+	DaStar* star = person->FindParentStarInEnv();
+	DaAtom* parent = world ? static_cast<DaAtom*>(world)
+		: star ? static_cast<DaAtom*>(star) : static_cast<DaAtom*>(system);
+	AuEther* ether = person->Ether();
+	AuMatrix4x4 personTransform;
+	if(!system || !parent || !ether || !person->GetTransformRelativeToParent(personTransform, parent))
+	{
+		m_I->UnlockAvatar();
+		reply.message = tr("Move into a live solar system before spawning a legacy ship.");
+		return;
+	}
+	if(parent == system && personTransform.Translation().Length2() < FeetPerSolarSystem()/2 * FeetPerSolarSystem()/2)
+	{
+		// A stationary ship will not run the movement step that normally reparents
+		// it into the primary star's space, where boarding is permitted.
+		parent = system->FindPrimaryStar();
+		if(!parent || !person->GetTransformRelativeToParent(personTransform, parent))
+		{
+			m_I->UnlockAvatar();
+			reply.message = tr("The local star environment is not ready. Try again shortly.");
+			return;
+		}
+	}
+	AuPoint minimum, maximum;
+	report.Extents(minimum, maximum);
+	const double radius = report.RoughHullRadius();
+	if(!std::isfinite(radius) || radius <= 0 || minimum.IsNaN() || maximum.IsNaN())
+	{
+		m_I->UnlockAvatar();
+		reply.message = tr("The design has no usable hull bounds.");
+		return;
+	}
+	const AuPoint origin = personTransform.Project(0, 0, 0);
+	AuPoint up = world ? -world->GravityDir(origin) : personTransform.ProjectVector(AuPoint(0, 0, 1));
+	up.Unit();
+	AuPoint right = personTransform.ProjectVector(AuPoint(1, 0, 0));
+	right -= up * right.Dot(up);
+	if(right.IsZero())
+		up.ArbitraryAxis(right);
+	right.Unit();
+	const AuPoint forward = up.Cross(right);
+	double distance = radius + 30;
+	const DaVessel* aboard = person->FindParentVesselInEnv();
+	if(aboard)
+		distance += aboard->RoughRadius();
+
+	std::unique_ptr<DaSc> candidate;
+	DaWorldLL* terrain = dynamic_cast<DaWorldLL*>(world);
+	bool placed = false;
+	// Try a bounded ring of positions around the current avatar. On the ground,
+	// raise the hull above the local terrain; in space, retain the avatar's up.
+	for(int attempt = 0; attempt < 16 && !placed; ++attempt)
+	{
+		const double angle = (attempt % 8) * 0.7853981633974483;
+		AuPoint location = origin + (right * std::cos(angle) + forward * std::sin(angle)) * distance;
+		AuPoint spawnUp = up;
+		if(world)
+		{
+			spawnUp = -world->GravityDir(location);
+			spawnUp.Unit();
+		}
+		if(terrain)
+		{
+			const AuPoint ground = terrain->GroundLoc(location);
+			const double clearance = -minimum.z + 4;
+			if((location - ground).Dot(spawnUp) < clearance)
+				location = ground + spawnUp * clearance;
+		}
+		if(attempt >= 8)
+			location += spawnUp * (radius + 30);
+		if(terrain && terrain->IsSpawnAreaObstructed(location, radius + 4))
+			continue;
+		if(!g_AuDb.HasAtomIds())
+		{
+			m_I->UnlockAvatar();
+			reply.message = tr("The server is restocking ship IDs. Try again shortly.");
+			return;
+		}
+		candidate.reset(new DaSc);
+		candidate->ConnectSignals();
+		candidate->Create();
+		if(candidate->Id().IsNull())
+		{
+			m_I->UnlockAvatar();
+			reply.message = tr("The server could not allocate a ship ID.");
+			return;
+		}
+		AuMatrix4x4 transform;
+		transform.Translate(location);
+		transform *= AuPoint(0, 0, 1).GetAlignmentTransform(spawnUp);
+		candidate->SetPosAndOrient(AuAtomPos(parent->Id(), transform));
+		ether->AddAtom(candidate.get());
+		candidate->SetDesign(report);
+		DaAtom* hit = nullptr;
+		AuPoint hitLocation, hitNormal;
+		placed = candidate->CheckCollision(location, location + spawnUp, hit, hitLocation, hitNormal) == DaAtom::CT_Miss;
+		if(!placed)
+		{
+			// No AtomAdded notification has been sent, so no ship row exists yet.
+			parent->TrashSubatom(candidate->Id());
+			candidate.release();
+		}
+	}
+	if(!placed)
+	{
+		m_I->UnlockAvatar();
+		reply.message = tr("No clear spawn position was found nearby. Move to an open area and try again.");
+		return;
+	}
+
+	DaSc* ship = candidate.release();
+	ship->InitSystems(report.Quality());
+	ship->SetEmpireId(person->EmpireId());
+	ship->SetName(report.DesignName());
+	ship->SetAccessPolicy(ACCESS_Enemy);
+	ship->SetGravityDriveState(DaVessel::GD_Hold);
+	// Preserve the tested orientation instead of the vessel terrain-settling step.
+	ship->DaAtom::SetAtRest();
+	ship->SetWhereMade(tr("Legacy debug spawn by %1").arg(architectName));
+	ship->SetNotNew();
+	ship->SetModified();
+	g_Au.AtomAdded(ship->Id());
+	ship->SetNormal();
+	ship->TickTock();
+	g_AuDb.PostCriticalUpdates();
+	reply.designId = designId;
+	reply.shipId = ship->Id().GetID();
+	reply.name = ship->Name();
+	reply.message = tr("Spawned stationary legacy ship %1 nearby.").arg(reply.shipId);
+	qInfo() << "Legacy spacecraft spawn:" << "design" << designId << "ship" << reply.shipId << "by" << architectId;
+	m_I->UnlockAvatar();
 }
 
 void DtChatChannel::CheckLoginStatus()

@@ -7,6 +7,8 @@
 #ifndef AuScReport_H
 #define AuScReport_H
 
+#include <QAtomicInt>
+
 #include "audata.h"
 #include "auscreporthelpers.h"
 #include "demanufacturingprocess.h"
@@ -22,6 +24,7 @@ friend class AuScDesign;
 	QString								m_DesignDesc;
 	quint32								m_DesignId;
 	QString								m_DesignName;
+	QAtomicInt							m_LegacyDebug;
 	AuPartArchitectHash					m_PartArchitects;		// Architects of parts that differ from the architect of the design.
 
 	// Structure
@@ -132,6 +135,17 @@ public:	// Operators
 	}
 
 public:	// Methods
+	inline bool IsLegacyDebug() const
+	{
+		return m_LegacyDebug.loadAcquire() != 0;
+	}
+
+	// Set only by the server's authorized legacy debug spawn path.
+	inline void SetLegacyDebug(bool legacyDebug)
+	{
+		m_LegacyDebug.storeRelease(legacyDebug ? 1 : 0);
+	}
+
 	inline const AuId& ArchitectId() const
 	{
 		return m_ArchitectId;

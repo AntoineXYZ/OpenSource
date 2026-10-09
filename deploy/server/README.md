@@ -596,7 +596,10 @@ limits on file size and geometry analysis work.
 
 Original detail IDs and designer coordinates are preserved. Separate one-based
 32-bit record IDs follow the immutable file order. The server derives the hull
-center for later conversion to live ship coordinates.
+center for conversion to live ship coordinates. On the first spawn, the server
+stores the derived runtime geometry as an ordinary `n_ScDesign` blueprint and
+links it through `n_LegacyScDesign.runtimeDesignId`. Repeated spawns reuse that
+blueprint. The original legacy bytes, hash, IDs, and coordinates remain intact.
 
 New databases include the legacy design schema. For an existing local database,
 apply the additive schema once before restarting the updated scene servers:
@@ -610,8 +613,8 @@ docker compose --env-file build/server/local/compose.env \
 
 For production, use `build/server/production/compose.env` instead. The script is
 safe to rerun and preserves existing data. Run it again after updating to the
-architect upload feature: the application now needs permission to update the
-design's name. Its original bytes and hash remain immutable. From an extracted
+architect spawn feature: it adds the runtime blueprint link and its update
+permission. Its original bytes and hash remain immutable. From an extracted
 release, use its
 `compose.env` and packaged schema path.
 
@@ -621,7 +624,7 @@ To inspect stored identities without printing design blobs:
 docker compose --env-file build/server/local/compose.env \
   -f deploy/server/compose.yaml exec -T --user postgres postgres \
   psql -X --username aumaster --dbname auUniverse --set=ON_ERROR_STOP=1 \
-  --command 'SELECT id, name, contentHash, octet_length(sourceData) AS bytes FROM n_LegacyScDesign ORDER BY id;'
+  --command 'SELECT id, name, runtimeDesignId, contentHash, octet_length(sourceData) AS bytes FROM n_LegacyScDesign ORDER BY id;'
 ```
 
 In the architect menu (Shift+F11), open the Design tab and use the Legacy
@@ -638,9 +641,31 @@ adds the accepted design to its cache immediately. Refresh reads the database
 catalog, including designs uploaded through other workers. Existing designs
 whose stored names are empty are displayed using their source filenames.
 
-Spawn nearby is present but disabled until the live vessel implementation is
-ready. Both client and server need the updated protocol; build them manually.
-No Docker `.ship` packaging or directory scans are used.
+Select a stored design and click Spawn nearby to create a stationary debug
+spacecraft near your avatar. The client sends only the catalog ID; the server
+checks architect powers, loads the stored bytes, derives or loads the runtime
+blueprint, and chooses the placement. NPC navigation, subsystem mechanics, and
+console controls are deferred. Both client and server need the updated protocol;
+build them manually. No Docker `.ship` packaging or directory scans are used.
+
+The first spawn stores a derived `n_ScDesign` blueprint and links it through
+`n_LegacyScDesign.runtimeDesignId`. Subsequent ships reuse it; live instances
+persist through the existing `a_Sc` table. Generated geometry subtracts the
+legacy author center, while the source bytes retain their original coordinates.
+Legacy detail identities remain source-index-plus-one; generated modern mesh
+parts use a separate 16-bit ID space. These are geometry adapters, with open
+doors and hatches and static equipment. The server includes a compact material
+map with the runtime blueprint; clients recover the original UVs and draw their
+bundled legacy textures at full resolution. Procedural hull, glass, and equipment
+surfaces use linear filtering without mipmaps and the recovered alpha test.
+Resource models retain their original texture filtering and transparency.
+The original `.ship` bytes stay on the server. Existing derived blueprints gain
+their material map when loaded, and clients refresh older cached copies; no
+schema update or respawn is needed for this rendering change. The fragment
+shaders are included in Qt resources by an ordinary client build.
+Their persisted debug flag supplies air, gravity, and
+lighting and disables movement, subsystem processing, and damage. It is set by
+the authorized server spawn path, independently of editable blueprint metadata.
 
 Manual checks after your build:
 
@@ -650,9 +675,19 @@ Manual checks after your build:
 3. Refresh from another architect client and verify the stored name and ID.
 4. Try a truncated file, an empty name, and an oversized file; confirm rejection
    leaves existing designs intact.
-5. Turn architect powers off and try an upload; verify the server refuses it.
-6. Confirm Spawn nearby stays disabled and ordinary accounts cannot manage the
-   catalog.
+5. Select a stored design and spawn it; verify it appears nearby, remains
+   stationary, and can be boarded. Begin with a small design, then `Station.ship`.
+   Try walking through its rooms and openings, climbing stairs, and descending
+   through open hatches. Architect flight may be needed to reach elevated ships.
+6. Spawn the same design again; verify a second ship appears and `runtimeDesignId`
+   stays the same. Restart the scene server and check both ships load again.
+7. Turn architect powers off and try uploading or spawning; verify the server
+   refuses both operations. Ordinary accounts cannot manage the catalog.
+8. Compare hull glass, equipment, and consoles with the offline designer. Check
+   glass from outside and inside, including in space, and verify the drive skins
+   remain visible. Reconnect after restarting the updated server and verify
+   existing ships use the original textures. Check an ordinary modern ship for
+   rendering regressions as well.
 
 Scene startup and upload logs use the prefix `Legacy spacecraft catalog:`.
 
