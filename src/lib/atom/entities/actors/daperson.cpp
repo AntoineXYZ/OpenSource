@@ -10613,10 +10613,11 @@ void DaPerson::Insert(QSqlDatabase& db) const
 		m_GearLock.lockForRead();
 		m_Gear >> out;
 		m_ArenaExitInv >> out;
-		quint8 ver = 0x01;
+		quint8 ver = 0x02;
 		out << ver;
 		out << m_PowerMoveMax;
 		out << m_PowerJump;
+		out << m_InitScenario;
 		m_GearLock.unlock();
 		qa.addBindValue(ba);
 	}
@@ -10922,10 +10923,11 @@ void DaPerson::Update(QSqlDatabase& db) const
 		m_GearLock.lockForRead();
 		m_Gear >> out;
 		m_ArenaExitInv >> out;
-		quint8 ver = 0x01;
+		quint8 ver = 0x02;
 		out << ver;
 		out << m_PowerMoveMax;
 		out << m_PowerJump;
+		out << m_InitScenario;
 		m_GearLock.unlock();
 		qa.addBindValue(ba);
 	}
@@ -11269,6 +11271,9 @@ DaPerson* DaPerson::LoadSubatoms(AuEther& ether, QSqlDatabase& db, const AuId& p
 			pnu->m_SpawnShipName = qa.value(qv++).toString();
 			pnu->m_BerthType = (AuRosterEntry::TYPE)qa.value(qv++).toInt();
 
+			// Older database records did not store the scenario. Do not assume they chose the tutorial.
+			pnu->m_InitScenario = SCENARIO_Count;
+
 			// Load my gear.
 			qvi = qv++;
 			if(!qa.value(qvi).isNull())
@@ -11278,7 +11283,7 @@ DaPerson* DaPerson::LoadSubatoms(AuEther& ether, QSqlDatabase& db, const AuId& p
 				in.setVersion(QDataStream::Qt_4_1);
 				in >> pnu->m_Gear;
 				in >> pnu->m_ArenaExitInv;
-				quint8 ver;
+				quint8 ver = 0;
 				in >> ver;
 				if(ver >= 0x01)
 				{
@@ -11290,6 +11295,13 @@ DaPerson* DaPerson::LoadSubatoms(AuEther& ether, QSqlDatabase& db, const AuId& p
 					// Init new move and jump values to their maximums.
 					pnu->m_PowerMoveMax = 15;
 					pnu->m_PowerJump = 15;
+				}
+				if(ver >= 0x02)
+				{
+					quint8 scenario = SCENARIO_Count;
+					in >> scenario;
+					if(in.status() == QDataStream::Ok && scenario < SCENARIO_Count)
+						pnu->m_InitScenario = scenario;
 				}
 				pnu->m_WeightCarried = pnu->GearWeight();
 			}
