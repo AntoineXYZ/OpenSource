@@ -27,6 +27,8 @@ public:
 	~CollisionWorld();
 	bool IsValid() const;
 	int TriangleCount() const;
+	// Include exterior landings in the peer collision broad phase.
+	void ExpandExtents(AuPoint& minimum, AuPoint& maximum) const;
 
 	// Body corners are offsets from the moving atom origin in ship coordinates.
 	// Use the stable movement core, including growth and gravity alignment.
@@ -35,12 +37,14 @@ public:
 	// Packet validation compares the previous authorized body and the proposed
 	// body, retaining existing contact while rejecting deeper overlap.
 	// Slide replay is limited to short updates in the same parent frame.
+	// Doorway steps also validate an upward leg followed by a forward leg.
 	bool IsBodyTransitionBlocked(const AuPoint& from, const AuPoint& to, const AuBox& oldOffsets,
 		const AuBox& newOffsets, AuPoint& hitLoc, AuPoint& hitNormal, bool allowSlideReplay = false,
 		QString* diagnostic = nullptr) const;
 	// Native movement supplies ground state and the creature's CG-to-feet height.
 	// Ground adjustment is limited to nearby recovered ramps, then every segment
 	// is swept against the same collision geometry used for server validation.
+	// Exterior walking can step up at most 3/4 ft onto a hull-door landing.
 	AuPoint ResolveDestination(const AuPoint& from, const AuPoint& to, const AuBox& bodyOffsets,
 		const AuPoint& gravityUp, double standingHeight, bool allowGroundSnap, AuPoint& hitNormal,
 		bool preserveGroundHeight = false) const;
@@ -50,6 +54,8 @@ public:
 	double HeightAboveFloor(const AuPoint& loc, const AuPoint& gravityUp, AuPoint& floorNormal) const;
 	double HeightOfCeiling(const AuPoint& loc, const AuPoint& gravityUp) const;
 	bool AboveOpenHatch(const AuPoint& loc) const;
+	// An exterior landing can support walking before the actor joins the ship.
+	bool IsOnBoardingStep(const AuPoint& loc, const AuPoint& gravityUp, double standingHeight) const;
 
 private:
 	Q_DISABLE_COPY(CollisionWorld)

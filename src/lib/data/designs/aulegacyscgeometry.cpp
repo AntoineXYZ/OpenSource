@@ -462,7 +462,7 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 	{
 		AuScHull hull;
 		hull.SetFaces(exteriorFaces);
-		hull.SetGroupName(QStringLiteral("legacy/debug/static/v4"));
+		hull.SetGroupName(QStringLiteral("legacy/debug/static/v5"));
 		if(!AddPart(generated, hull))
 		{
 			error = QStringLiteral("The selected legacy design has too many generated hull parts.");
@@ -524,6 +524,7 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 	}
 	// Open panel apertures need voids through the hull's conservative silhouette;
 	// otherwise its collision margin can stop a player before entering a room.
+	AuScFaceList boardingSteps;
 	for(const HullOpening& aperture : mesh.hullOpenings)
 	{
 		const QPointF direction = aperture.b - aperture.a;
@@ -541,6 +542,29 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 		if(!AddPart(generated, opening))
 		{
 			error = QStringLiteral("The selected legacy design has too many generated opening parts.");
+			return false;
+		}
+		// Hull spans run with the exterior on their right. Retain the exact
+		// aperture width and add a small, invisible landing outside its sill.
+		const QPointF outward(direction.y() / length * 2, -direction.x() / length * 2);
+		const auto point = [&](const QPointF& position) {
+			return AuScPoint(legacy.AuthorToShip(AuPoint(position.x(), position.y(),
+				aperture.deck * AuLegacyShip::DeckHeight)), 0, 0, AuPoint(0, 0, 1));
+		};
+		if(!chargeTriangles(2)) return false;
+		const AuScPoint a = point(aperture.a), b = point(aperture.b);
+		const AuScPoint outsideA = point(aperture.a + outward), outsideB = point(aperture.b + outward);
+		boardingSteps.AddFace(AuScFaceTri(a, outsideB, b));
+		boardingSteps.AddFace(AuScFaceTri(a, outsideA, outsideB));
+	}
+	if(!boardingSteps.isEmpty())
+	{
+		AuScBarrier barrier;
+		barrier.SetFaces(boardingSteps);
+		barrier.SetGroupName(QStringLiteral("legacy/boarding-step"));
+		if(!AddPart(generated, barrier))
+		{
+			error = QStringLiteral("The selected legacy design has too many generated boarding step parts.");
 			return false;
 		}
 	}

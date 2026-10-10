@@ -4985,9 +4985,10 @@ void DaSc::FilterDestinationLoc(DaAtom* moveAtom, const AuPoint& oldLoc, AuPoint
 		if(LegacyBodyOffsets(*creature, offsets) && GetRelativeTransform(*creature, bodyToShip))
 		{
 			const AuPoint gravityUp = bodyToShip.ProjectVector(creature->GravityNormal());
-			const bool grounded = creature->IsTouchingGround() && !creature->IsJumping()
+			const bool walking = !creature->IsJumping()
 				&& !creature->IsFlying() && !creature->IsLadderPose() && !creature->InLadderWell()
 				&& !creature->IsInGravityWell();
+			const bool grounded = walking && creature->IsTouchingGround();
 			const bool aboard = creature->Parent() == this;
 			const bool followGround = aboard && grounded;
 			m_DesignLock.lockForRead();
@@ -4999,8 +5000,21 @@ void DaSc::FilterDestinationLoc(DaAtom* moveAtom, const AuPoint& oldLoc, AuPoint
 			{
 				const AuPoint requested = nuLoc;
 				AuPoint contactNormal;
+				const double standingHeight = creature->GroundHeightAboveCG();
+				const bool boardingGround = !aboard && walking && (grounded
+					|| world->IsOnBoardingStep(oldLoc, gravityUp, standingHeight));
 				nuLoc = world->ResolveDestination(oldLoc, nuLoc, offsets, gravityUp,
-					creature->GroundHeightAboveCG(), followGround, contactNormal, !aboard && grounded);
+					standingHeight, followGround, contactNormal, boardingGround);
+				if(boardingGround && world->IsOnBoardingStep(nuLoc, gravityUp, standingHeight))
+				{
+					// The world remains the parent until the doorway is crossed.
+					// Its gravity must not accumulate falling speed on the landing,
+					// including while sliding against a door jamb.
+					AuPoint localUp = bodyToShip.UnProjectVector(gravityUp); localUp.Unit();
+					const AuPoint velocity = moveAtom->Vector();
+					const double falling = velocity.Dot(localUp);
+					if(falling < 0) moveAtom->SetVector(velocity - localUp * falling);
+				}
 				if(!contactNormal.IsZero())
 				{
 					const AuPoint localNormal = bodyToShip.UnProjectVector(contactNormal);
@@ -9454,6 +9468,13 @@ bool DaSc::RoughExtents(AuBox &fExt) const
 	AuPoint min,max;
 	m_DesignLock.lockForRead();
 	m_Design.Extents(min, max);
+	if(IsLegacyDebug())
+	{
+		const AuScDesign* design = LockDesign();
+		const auto world = design ? LegacyCollision(*design) : QSharedPointer<const AuLegacyScGeometry::CollisionWorld>();
+		UnlockDesign();
+		if(world) world->ExpandExtents(min, max);
+	}
 	m_DesignLock.unlock();
 	fExt.SetFromMinMax(min, max);
 

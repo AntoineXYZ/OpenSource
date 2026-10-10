@@ -21,6 +21,7 @@ constexpr double GroundTolerance = 1.0 / 12;
 constexpr double MaximumFall = 1000000;
 constexpr int MaximumCollisionTriangles = 1000000;
 constexpr double MaximumReplayDistance = 6.561679790026246;
+constexpr double MaximumBoardingStep = .75;
 constexpr double CoplanarNormalTolerance = 1e-8;
 constexpr double CoplanarPlaneTolerance = 1e-5;
 
@@ -93,12 +94,14 @@ struct Triangle
 	AuPoint a, b, c, normal;
 	Bounds bounds;
 	bool stair = false;
+	bool boardingStep = false;
 	int obstacle = -1;
 	int patch = -1;
 	QString group;
 	Triangle(const AuScTri& triangle, bool stairSurface, const QString& sourceGroup)
 		: a(triangle.V0()), b(triangle.V1()), c(triangle.V2()),
-		  normal((b - a).Cross(c - a)), bounds(a), stair(stairSurface), group(sourceGroup)
+		  normal((b - a).Cross(c - a)), bounds(a), stair(stairSurface),
+		  boardingStep(sourceGroup == QStringLiteral("legacy/boarding-step")), group(sourceGroup)
 	{
 		normal.Unit(); bounds.Include(b); bounds.Include(c);
 	}
@@ -364,6 +367,8 @@ public:
 	struct PatchContact { AuPoint normal; double depth; };
 	QVector<Patch> patches;
 	bool valid = false;
+	Bounds boardingBounds;
+	bool hasBoardingBounds = false;
 
 	void BuildPatches()
 	{
@@ -394,6 +399,9 @@ public:
 					// retain separate planes, and different cells retain their own
 					// solid-volume identities even when adjacent faces share edges.
 					if(triangle.obstacle != triangles[other].obstacle) continue;
+					// A landing must not authorize existing overlap with the real
+					// deck floor when the actor's feet are still below the sill.
+					if(triangle.boardingStep != triangles[other].boardingStep) continue;
 					const int firstRoot = root(index), secondRoot = root(other);
 					if(firstRoot != secondRoot && Coplanar(triangle, triangles[other])
 						&& Coplanar(triangles[firstRoot], triangles[secondRoot])) parents[secondRoot] = firstRoot;
@@ -633,7 +641,7 @@ public:
 	}
 
 	void RayNode(int id, const AuPoint& origin, const AuPoint& direction, double& distance,
-		AuPoint& normal, bool& stair) const
+		AuPoint& normal, bool& stair, bool* boardingStep = nullptr) const
 	{
 		const Node& node = nodes[id];
 		if(!node.bounds.IntersectsRay(origin, direction, distance)) return;
@@ -648,18 +656,46 @@ public:
 				if(candidate < -Skin || candidate > distance) continue;
 				if(!triangle.Contains(origin + direction * candidate)) continue;
 				distance = std::max(0.0, candidate); normal = divisor < 0 ? triangle.normal : -triangle.normal; stair = triangle.stair;
+				if(boardingStep) *boardingStep = triangle.boardingStep;
 			}
 			return;
 		}
-		RayNode(node.left, origin, direction, distance, normal, stair);
-		RayNode(node.right, origin, direction, distance, normal, stair);
+		RayNode(node.left, origin, direction, distance, normal, stair, boardingStep);
+		RayNode(node.right, origin, direction, distance, normal, stair, boardingStep);
 	}
 
-	double Floor(const AuPoint& origin, const AuPoint& up, AuPoint& normal, bool& stair) const
+	double Floor(const AuPoint& origin, const AuPoint& up, AuPoint& normal, bool& stair, bool* boardingStep = nullptr) const
 	{
 		double distance = MaximumFall; normal = AuPoint(0, 0, 0); stair = false;
-		RayNode(0, origin, -up, distance, normal, stair);
+		if(boardingStep) *boardingStep = false;
+		RayNode(0, origin, -up, distance, normal, stair, boardingStep);
 		return distance;
+	}
+
+	bool BoardingFloor(const AuPoint& from, const AuPoint& to, const Body& body, const AuPoint& up,
+		double& distance, AuPoint& normal) const
+	{
+		AuPoint forward = to - from;
+		forward -= up * forward.Dot(up);
+		if(forward.Length2() < 1e-16) forward = AuPoint(0, 0, 0);
+		else forward.Unit();
+		double reach = 0;
+		for(const AuPoint& corner : body.corners) reach = std::max(reach, corner.Dot(forward));
+		// Probe the leading footprint before it hits the landing's outside edge.
+		// Each query still has to hit an authored doorway landing, never a wall.
+		const AuPoint probes[] = {to, from, to + forward * reach, from + forward * reach,
+			from + (to - from) * .25, from + (to - from) * .5, from + (to - from) * .75};
+		for(const AuPoint& probe : probes)
+		{
+			bool stair, boardingStep;
+			const AuPoint origin = probe + up * MaximumBoardingStep;
+			const double floor = Floor(origin, up, normal, stair, &boardingStep);
+			if(!boardingStep || normal.Dot(up) < .55) continue;
+			const AuPoint floorPoint = origin - up * floor;
+			distance = (to - floorPoint).Dot(normal) / normal.Dot(up);
+			return true;
+		}
+		return false;
 	}
 };
 
@@ -668,7 +704,8 @@ bool IsCollisionDesign(const AuScDesign& design)
 	for(auto part = design.Parts().cbegin(); part != design.Parts().cend(); ++part)
 		if((*part)->IsHullMesh() && ((*part)->GroupName() == QStringLiteral("legacy/debug/static/v2")
 			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v3")
-			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v4"))) return true;
+			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v4")
+			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v5"))) return true;
 	return false;
 }
 
@@ -725,6 +762,16 @@ CollisionWorld::CollisionWorld(const AuScDesign& design) : m_Impl(new Impl)
 				triangle.obstacle = firstObstacle + index / 12;
 				triangle.bounds = m_Impl->obstacles[triangle.obstacle];
 			}
+			if(triangle.boardingStep)
+			{
+				if(!m_Impl->hasBoardingBounds) m_Impl->boardingBounds = triangle.bounds;
+				else
+				{
+					m_Impl->boardingBounds.Include(triangle.bounds.minimum);
+					m_Impl->boardingBounds.Include(triangle.bounds.maximum);
+				}
+				m_Impl->hasBoardingBounds = true;
+			}
 			m_Impl->triangles.append(triangle);
 		}
 	}
@@ -736,6 +783,13 @@ CollisionWorld::CollisionWorld(const AuScDesign& design) : m_Impl(new Impl)
 CollisionWorld::~CollisionWorld() {}
 bool CollisionWorld::IsValid() const { return m_Impl->valid; }
 int CollisionWorld::TriangleCount() const { return m_Impl->triangles.size(); }
+
+void CollisionWorld::ExpandExtents(AuPoint& minimum, AuPoint& maximum) const
+{
+	if(!IsValid() || !m_Impl->hasBoardingBounds) return;
+	minimum = minimum.Min(m_Impl->boardingBounds.minimum);
+	maximum = maximum.Max(m_Impl->boardingBounds.maximum);
+}
 
 bool CollisionWorld::IsBodyPathBlocked(const AuPoint& from, const AuPoint& to, const AuBox& bodyOffsets,
 	AuPoint& hitLoc, AuPoint& hitNormal) const
@@ -787,6 +841,22 @@ bool CollisionWorld::IsBodyTransitionBlocked(const AuPoint& from, const AuPoint&
 	const bool newBlocked = m_Impl->Sweep(newStart, to, newSweep, newFraction, newNormal, &newTriangle);
 	if(!oldBlocked || !newBlocked) return false;
 	const AuPoint displacement = oldTarget - from;
+	if(oldBody.SameShape(newBody) && displacement.Length2() <= MaximumReplayDistance * MaximumReplayDistance)
+	{
+		AuPoint up = oldBody.edges[2]; up.Unit();
+		const double rise = displacement.Dot(up);
+		double floor; AuPoint floorNormal;
+		if(rise > 1e-8 && rise <= MaximumBoardingStep + 1e-8
+			&& m_Impl->BoardingFloor(from, oldTarget, oldBody, up, floor, floorNormal))
+		{
+			// A boarding packet can span the upward step and the parent change.
+			// Validate both legs continuously, including lintels and equipment.
+			const AuPoint raised = from + up * rise;
+			double fraction; AuPoint normal;
+			if(!m_Impl->Sweep(from, raised, oldSweep, fraction, normal)
+				&& !m_Impl->Sweep(raised, oldTarget, oldSweep, fraction, normal)) return false;
+		}
+	}
 	if(allowSlideReplay && displacement.Length2() <= MaximumReplayDistance * MaximumReplayDistance
 		&& std::abs(displacement.z) <= .75)
 	{
@@ -826,6 +896,30 @@ AuPoint CollisionWorld::ResolveDestination(const AuPoint& from, const AuPoint& t
 	AuPoint up = gravityUp; up.Unit();
 	if(up.IsZero()) return from;
 	AuPoint target = to;
+	if(preserveGroundHeight && std::isfinite(standingHeight) && standingHeight > 0)
+	{
+		double floor; AuPoint normal;
+		if(m_Impl->BoardingFloor(from, to, body, up, floor, normal))
+		{
+			const double adjustment = standingHeight + GroundTolerance - floor;
+			if(adjustment > 0 && adjustment <= MaximumBoardingStep)
+			{
+				// Step up before translating into the sill. Raising diagonally
+				// can hit the deck edge before the feet have enough clearance.
+				const AuPoint candidate = to + up * adjustment;
+				const double rise = std::max(0.0, (candidate - from).Dot(up));
+				const AuPoint raised = from + up * rise;
+				double fraction; AuPoint obstructionNormal;
+				if(rise <= MaximumBoardingStep && !m_Impl->Sweep(from, raised, body, fraction, obstructionNormal))
+				{
+					target = candidate;
+					const AuPoint accepted = m_Impl->Slide(raised, target, body, up, hitNormal, true);
+					if(hitNormal.IsZero()) hitNormal = normal;
+					return accepted;
+				}
+			}
+		}
+	}
 	if(allowGroundSnap && std::isfinite(standingHeight) && standingHeight > 0)
 	{
 		AuPoint oldNormal, newNormal; bool oldStair, newStair;
@@ -852,6 +946,16 @@ double CollisionWorld::HeightAboveFloor(const AuPoint& loc, const AuPoint& gravi
 	if(up.IsZero()) return MaximumFall;
 	bool stair;
 	return m_Impl->Floor(loc, up, floorNormal, stair);
+}
+
+bool CollisionWorld::IsOnBoardingStep(const AuPoint& loc, const AuPoint& gravityUp, double standingHeight) const
+{
+	if(!IsValid() || !Finite(loc) || !Finite(gravityUp) || !std::isfinite(standingHeight)) return false;
+	AuPoint up = gravityUp; up.Unit();
+	if(up.IsZero()) return false;
+	AuPoint normal; bool stair, boardingStep;
+	const double floor = m_Impl->Floor(loc, up, normal, stair, &boardingStep);
+	return boardingStep && normal.Dot(up) >= .55 && std::abs(floor - standingHeight) <= .25;
 }
 
 double CollisionWorld::HeightOfCeiling(const AuPoint& loc, const AuPoint& gravityUp) const
