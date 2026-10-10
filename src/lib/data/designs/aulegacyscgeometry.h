@@ -31,7 +31,9 @@ struct TextureBinding
 };
 
 // Compact material/UV bindings only. Texture pixels come from client resources.
-AUDATA_DLL bool TextureMap(const AuLegacyScDesign& legacy, QByteArray& output, QString& error);
+// Older blueprints omitted hatch panels; retain their original palette order.
+AUDATA_DLL bool TextureMap(const AuLegacyScDesign& legacy, QByteArray& output, QString& error,
+	bool includeOpenHatches = false);
 AUDATA_DLL bool ReadTextureMap(const QByteArray& bytes, QVector<TextureBinding>& output, QString& error);
 AUDATA_DLL QImage OriginalTexture(const TextureBinding& binding);
 

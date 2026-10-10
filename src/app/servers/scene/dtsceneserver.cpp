@@ -7,15 +7,19 @@
 #include "dtsceneserver.h"
 //
 #include "auatominterface.h"
+#include "aubox.h"
 #include "audbglobal.h"
 #include "aulogincomm.h"
+#include "aulegacysccollision.h"
 #include "auplayeronlinestatus.h"
 #include "ausceneserverapp.h"
 #include "austarmapdata.h"
+#include "ausynccontroller.h"
 #include "daasteroid.h"
 #include "daatomlist.h"
 #include "dagalaxy.h"
 #include "daperson.h"
+#include "dasc.h"
 #include "dasector.h"
 #include "dasolarsystem.h"
 #include "dastar.h"
@@ -28,8 +32,264 @@
 #include "dicontrolinput.h"
 #include "dtsspacket.h"
 #include <QDataStream>
+#include <QScopedPointer>
+#include <QSet>
 #include <QUdpSocket>
 #include <QVariant>
+#include <cmath>
+
+namespace
+{
+DaSc* LegacyShipAncestor(DaAtom* atom)
+{
+	for(; atom; atom = atom->Parent())
+	{
+		DaSc* ship = dynamic_cast<DaSc*>(atom);
+		if(ship && ship->IsLegacyDebug()) return ship;
+	}
+	return 0;
+}
+
+bool FiniteLegacyPoint(const AuPoint& point)
+{
+	return std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z);
+}
+
+bool ClientPosesMayApply(const DaCreature& creature, const AuPose poses[DpBody::PS_Count])
+{
+	if(creature.IsBodyDyingOrDead() || creature.NeedsInit()) return false;
+	for(int part = 0; part < DpBody::PS_Count; ++part)
+	{
+		const AuPose pose = poses[part];
+		if(pose == AuPose::Init || pose == AuPose::WritheFaceDown || pose == AuPose::WritheFaceLeft
+			|| pose == AuPose::WritheFaceRight || pose == AuPose::WritheFaceUp || pose == AuPose::DeadFaceDown
+			|| pose == AuPose::DeadFaceLeft || pose == AuPose::DeadFaceRight || pose == AuPose::DeadFaceUp) return false;
+	}
+	return true;
+}
+
+struct LegacyMovementCheck
+{
+	QString reason;
+	QString diagnostic;
+	DaSc* ship = 0;
+	AuPoint from, to, hit, normal;
+	double oldBottom = 0, oldTop = 0, newBottom = 0, newTop = 0;
+	AuPoint oldMinimum, oldMaximum, newMinimum, newMaximum;
+	int oldPose = 0, newPose = 0;
+	bool hasItemInHand = false;
+};
+
+struct LegacyClientFrame
+{
+	DaAtom* atom = 0;
+	DaAtom* parent = 0;
+	AuAtomPos position;
+};
+
+LegacyMovementCheck CheckLegacyClientMovement(DaAtom& actor, DaAtom* requestedParent, const AuAtomPos& proposed,
+		const AuPose requestedPoses[DpBody::PS_Count], quint16 stationId, quint16 controlId, const AuPoint& vector,
+		const LegacyClientFrame* movingFrame = 0)
+{
+	LegacyMovementCheck result;
+	DaAtom* parent = actor.Parent();
+	const bool movesWithParent = movingFrame && requestedParent == movingFrame->atom;
+	DaAtom* destinationFrameParent = movesWithParent ? movingFrame->parent : requestedParent;
+	DaSc* oldShip = LegacyShipAncestor(parent);
+	DaSc* newShip = LegacyShipAncestor(destinationFrameParent);
+	QSet<DaSc*> ships;
+	if(oldShip) ships.insert(oldShip);
+	if(newShip) ships.insert(newShip);
+	const auto addPeers = [&](DaAtom* peerParent) {
+		if(!peerParent) return;
+		DaAtomList peers;
+		peerParent->ListNormalSubatoms(peers);
+		for(DaAtom* peer : peers)
+		{
+			DaSc* ship = dynamic_cast<DaSc*>(peer);
+			if(ship && ship != &actor && ship->IsLegacyDebug()) ships.insert(ship);
+		}
+	};
+	addPeers(parent);
+	if(movesWithParent && parent) addPeers(parent->Parent());
+	if(destinationFrameParent != parent) addPeers(destinationFrameParent);
+	DaSc* movingShip = dynamic_cast<DaSc*>(&actor);
+	if(movingShip && movingShip->IsLegacyDebug())
+	{
+		result.ship = movingShip;
+		AuAtomPos currentPosition(actor.Pos());
+		if(currentPosition != proposed || !vector.IsZero()) result.reason = QStringLiteral("stationary legacy ship");
+		return result;
+	}
+	if(ships.isEmpty()) return result;
+	result.ship = oldShip ? oldShip : newShip;
+	if(!requestedParent || !destinationFrameParent)
+	{
+		result.reason = QStringLiteral("unknown parent");
+		return result;
+	}
+	bool finite = FiniteLegacyPoint(vector);
+	const AuMatrix4x4 proposedTransform = proposed.Transform();
+	for(int component = 0; component < 16; ++component) finite = finite && std::isfinite(proposedTransform[component]);
+	if(!finite)
+	{
+		result.reason = QStringLiteral("nonfinite movement");
+		return result;
+	}
+	AuBox oldBody, candidateBody;
+	DaCreature* creature = dynamic_cast<DaCreature*>(&actor);
+	if(creature ? !creature->LegacyCollisionExtents(oldBody) : !actor.RoughExtents(oldBody))
+	{
+		result.reason = QStringLiteral("missing body bounds");
+		return result;
+	}
+	candidateBody = oldBody;
+	bool changedPose = false;
+	AuPose candidateGeneralPose;
+	if(creature)
+	{
+		candidateGeneralPose = creature->CurrentGeneralPose();
+		result.oldPose = int(candidateGeneralPose.Pose());
+		result.hasItemInHand = creature->HasItemInHand();
+		const bool legalPoses = ClientPosesMayApply(*creature, requestedPoses);
+		AuPose currentPoses[DpBody::PS_Count];
+		for(int part = 0; part < DpBody::PS_Count; ++part)
+			currentPoses[part] = AuPose::Init;
+		if(creature->HasDNA3()) creature->CurrentPoses3(currentPoses);
+		else creature->CurrentPoses4(currentPoses);
+		if(legalPoses)
+			for(int part = 0; part < DpBody::PS_Count; ++part)
+				if(currentPoses[part] != requestedPoses[part]) changedPose = true;
+		if(changedPose)
+		{
+			// A detached copy prevents station posing or reparenting from changing live atoms during validation.
+			QScopedPointer<DaAtom> copy(actor.Clone());
+			if(!copy)
+			{
+				result.reason = QStringLiteral("missing pose bounds");
+				return result;
+			}
+			copy->SetEther(0);
+			copy->SetPosAndOrient(proposed);
+			DaCreature* candidate = dynamic_cast<DaCreature*>(copy.data());
+			if(!candidate)
+			{
+				result.reason = QStringLiteral("missing pose bounds");
+				return result;
+			}
+			if(candidate->HasDNA3()) candidate->SetPoses3(requestedPoses, stationId, controlId);
+			else candidate->SetPoses4(requestedPoses, stationId, controlId);
+			// Creature copies omit the item in hand; preserve its arm animation when deriving the candidate body.
+			candidate->AnimatePose(creature->HasItemInHand(), creature->MovementSpeedMod());
+			// Bounds need the destination parent's vehicle/seat origin convention. This read does not alter the ether tree.
+			copy->SetEther(actor.Ether());
+			const bool haveCandidateBounds = candidate->LegacyCollisionExtents(candidateBody, creature->HasItemInHand());
+			copy->SetEther(0);
+			if(!haveCandidateBounds)
+			{
+				result.reason = QStringLiteral("missing pose bounds");
+				return result;
+			}
+			candidateGeneralPose = candidate->CurrentGeneralPose();
+		}
+		result.newPose = int(candidateGeneralPose.Pose());
+	}
+	for(DaSc* ship : ships)
+	{
+		AuMatrix4x4 oldTransform, newParentTransform;
+		if(!ship->GetRelativeTransform(actor, oldTransform)
+				|| !ship->GetRelativeTransform(*destinationFrameParent, newParentTransform))
+		{
+			if(ship != oldShip && ship != newShip) continue;
+			result.ship = ship;
+			result.reason = QStringLiteral("unrelated movement frames");
+			return result;
+		}
+		if(movesWithParent) newParentTransform *= movingFrame->position.Transform();
+		const AuMatrix4x4 newTransform = newParentTransform * proposedTransform;
+		AuBox oldOffsets(oldBody), newOffsets(candidateBody);
+		if(creature)
+		{
+			// Both states share the physical gravity frame. Camera rotation is
+			// accepted independently of translation through the ship geometry.
+			const AuPoint gravityUp = oldTransform.ProjectVector(creature->GravityNormal());
+			oldOffsets = AuLegacyScGeometry::MovementBodyOffsets(oldBody, gravityUp);
+			newOffsets = AuLegacyScGeometry::MovementBodyOffsets(candidateBody, gravityUp);
+		}
+		else
+			for(int corner = 0; corner < 8; ++corner)
+			{
+				oldOffsets.m_fCorners[corner] = oldTransform.ProjectVector(oldOffsets.m_fCorners[corner]);
+				newOffsets.m_fCorners[corner] = newTransform.ProjectVector(newOffsets.m_fCorners[corner]);
+			}
+		const AuPoint from = oldTransform.Translation();
+		AuPoint to = newTransform.Translation();
+		// Equivalent parent-to-ship matrix compositions can round an unchanged
+		// actor origin differently. A pure turn must remain a stationary query.
+		if(parent == requestedParent && !movesWithParent && actor.Location() == proposedTransform.Translation())
+			to = from;
+		if(ship != oldShip && ship != newShip)
+		{
+			// A distant peer with an unavailable design must not prevent movement elsewhere in the system.
+			AuBox hull;
+			if(!ship->RoughExtents(hull)) continue;
+			AuPoint hullMinimum, hullMaximum, oldMinimum, oldMaximum, newMinimum, newMaximum;
+			hull.GetMinMax(hullMinimum, hullMaximum);
+			oldOffsets.GetMinMax(oldMinimum, oldMaximum);
+			newOffsets.GetMinMax(newMinimum, newMaximum);
+			const AuPoint sweepMinimum = (from + oldMinimum).Min(to + newMinimum);
+			const AuPoint sweepMaximum = (from + oldMaximum).Max(to + newMaximum);
+			if(sweepMaximum.x < hullMinimum.x || sweepMinimum.x > hullMaximum.x
+					|| sweepMaximum.y < hullMinimum.y || sweepMinimum.y > hullMaximum.y
+					|| sweepMaximum.z < hullMinimum.z || sweepMinimum.z > hullMaximum.z) continue;
+		}
+		result.ship = ship;
+		result.from = from;
+		result.to = to;
+		AuPoint oldMinimum, oldMaximum, newMinimum, newMaximum;
+		oldOffsets.GetMinMax(oldMinimum, oldMaximum);
+		newOffsets.GetMinMax(newMinimum, newMaximum);
+		result.oldBottom = oldMinimum.z; result.oldTop = oldMaximum.z;
+		result.newBottom = newMinimum.z; result.newTop = newMaximum.z;
+		result.oldMinimum = oldMinimum; result.oldMaximum = oldMaximum;
+		result.newMinimum = newMinimum; result.newMaximum = newMaximum;
+		if(!ship->IsDesignDataCacheValid())
+			result.reason = QStringLiteral("legacy design unavailable");
+		else
+		{
+			// Reports can span several native slide/ground-contact steps. Compare the previous authorized body with the
+			// candidate body, and replay a bounded local slide for unchanged-parent reports, including exterior hull peers.
+			const bool unchangedFrame = !movesWithParent || movingFrame->position.ParentId() == movingFrame->atom->ParentId();
+			const bool allowSlideReplay = parent == requestedParent && unchangedFrame;
+			if(ship->IsLegacyBodyTransitionBlocked(from, to, oldOffsets, newOffsets, result.hit, result.normal, allowSlideReplay,
+				&result.diagnostic))
+				result.reason = QStringLiteral("legacy body path blocked");
+			else if(!movesWithParent && ship == oldShip && ship != newShip && !ship->CheckChildExit(from, to, &actor))
+				result.reason = QStringLiteral("legacy exit remains inside hull");
+			else if(!movesWithParent && ship == newShip && ship != oldShip)
+			{
+				DaAtom* shipParent = ship->Parent();
+				AuMatrix4x4 parentTransform;
+				// Geometry was already validated with both body states. A previous report may have reached the room before
+				// the predicted parent change arrived, so existing room membership is also a valid boarding source.
+				bool validBoarding = shipParent && parent && shipParent->GetRelativeTransform(actor, parentTransform)
+					&& (parent == shipParent || parent->Parent() == shipParent) && ship->IsInOrOnHull(to);
+				if(dynamic_cast<DaSolarSystem*>(shipParent)
+					&& ship->Location().Length2() < FeetPerSolarSystem()/2 * FeetPerSolarSystem()/2) validBoarding = false;
+				if(!validBoarding)
+					result.reason = QStringLiteral("invalid legacy boarding transition");
+			}
+			if(result.reason.isEmpty() && ship == newShip && creature && candidateGeneralPose.IsLadder())
+			{
+				AuMatrix4x4 ladder;
+				if(!ship->CanGrabLadder(actor, to, ladder)) result.reason = QStringLiteral("legacy ladder out of reach");
+			}
+		}
+		if(!result.reason.isEmpty()) return result;
+	}
+	return result;
+}
+}
 
 DtSceneServer::DtSceneServer(unsigned int id, int socketDesc, QObject* parent) : QThread(parent)//, m_semAlive(1)
 {
@@ -2774,7 +3034,8 @@ void DtSceneServer::ClientPositionUpdate(bool atRest, float headTilt, AuAtomPos&
 	{
 		// Locate the person unit.
 		DaPerson* person = dynamic_cast<DaPerson*>(system->FindIdRecursive(m_idUnit));
-		if(person && system->FindIdRecursive(pos.ParentId()))
+		DaAtom* requestedParent = system->FindIdRecursive(pos.ParentId());
+		if(person && (requestedParent || LegacyShipAncestor(person->Parent())))
 		{
 			person->SetControlled(m_idUnit);
 			bool checkCollision = false;	// Set true if CheckCollision must be called
@@ -2790,6 +3051,93 @@ void DtSceneServer::ClientPositionUpdate(bool atRest, float headTilt, AuAtomPos&
 				updatePerson = false;							// Scene atom's parent is a teleporter.
 			else if(!parent->IsNormal())
 				updatePerson = false;
+			else if(!requestedParent)
+				updatePerson = false;
+
+			LegacyMovementCheck legacyCheck;
+			DaUnit* rejectedControl = 0;
+			DaUnit* validatedControl = 0;
+			if(updatePerson)
+			{
+				LegacyClientFrame controlledFrame;
+				if(parentAlso)
+				{
+					DaUnit* controlled = person->ParentControlAtom();
+					if(controlled && requestedParent == controlled)
+					{
+						DaAtom* requestedControlParent = system->FindIdRecursive(parentPos.ParentId());
+						DaVehicle* vehicle = dynamic_cast<DaVehicle*>(controlled);
+						const AuPose proposedGeneralPose = ClientPosesMayApply(*person, pose)
+							? (person->HasDNA3() ? pose[DpBody::PS_LowerTorso] : pose[AuAnimalPart::PS_General])
+							: person->CurrentGeneralPose();
+						const bool keepsControl = (!vehicle || vehicle->IsControlSeat(seatIndex))
+							&& (!dynamic_cast<DaVessel*>(controlled) || proposedGeneralPose.IsHelmStation());
+						if(requestedControlParent && keepsControl && controlled->IsClientControlledNoReset()
+							&& !dynamic_cast<DaTeleporter*>(controlled->Parent()))
+						{
+							validatedControl = controlled;
+							legacyCheck = CheckLegacyClientMovement(*controlled, requestedControlParent, parentPos, parentPose,
+								parentStationId, parentWhichConsole, parentVec);
+							if(!legacyCheck.reason.isEmpty()) rejectedControl = controlled;
+							else
+							{
+								controlledFrame.atom = controlled;
+								controlledFrame.parent = requestedControlParent;
+								controlledFrame.position = parentPos;
+							}
+						}
+					}
+				}
+				if(legacyCheck.reason.isEmpty())
+					legacyCheck = CheckLegacyClientMovement(*person, requestedParent, pos, pose, stationId, whichConsole, vec,
+						controlledFrame.atom ? &controlledFrame : 0);
+				if(!legacyCheck.reason.isEmpty()) updatePerson = false;
+			}
+			else if(!requestedParent && LegacyShipAncestor(parent))
+			{
+				legacyCheck.ship = LegacyShipAncestor(parent);
+				legacyCheck.reason = QStringLiteral("unknown parent");
+			}
+			if(!legacyCheck.reason.isEmpty())
+			{
+				// Controller sync is required because normal atom updates preserve a client's locally controlled position.
+				person->ForcePosMove(person->Pos(), person->Vector());
+				person->SyncController(AuSyncPose(person->CurrentGeneralPose(), person->CurrentHeadTilt(),
+					person->StationId(), person->VehicleSeatIndex()));
+				if(validatedControl)
+				{
+					validatedControl->ForcePosMove(validatedControl->Pos(), validatedControl->Vector());
+					DaCreature* mount = dynamic_cast<DaCreature*>(validatedControl);
+					if(mount) mount->SyncController(AuSyncPose(mount->CurrentGeneralPose(), mount->CurrentHeadTilt(),
+						mount->StationId(), mount->VehicleSeatIndex()));
+				}
+				if(!m_tmLegacyMovementLog.isValid() || m_tmLegacyMovementLog.elapsed() >= 1000)
+				{
+					m_tmLegacyMovementLog.start();
+					DaAtom* rejectedActor = rejectedControl ? static_cast<DaAtom*>(rejectedControl) : person;
+					const AuAtomPos& rejectedPosition = rejectedControl ? parentPos : pos;
+					g_Au.Log(QStringLiteral("Legacy movement rejected: avatar %1 mover %2 ship %3 reason %4 serverParent %5 clientParent %6 "
+						"from (%7,%8,%9) to (%10,%11,%12) hit (%13,%14,%15) normal (%16,%17,%18) "
+						"bodyZ old (%19,%20) new (%21,%22) bodyXY old (%23,%24,%25,%26) new (%27,%28,%29,%30) "
+						"pose (%31,%32) hand %33 bounds=core detail %34")
+						.arg(person->Id().StringId())
+						.arg(rejectedActor->Id().StringId())
+						.arg(legacyCheck.ship ? legacyCheck.ship->Id().StringId() : QStringLiteral("unknown"))
+						.arg(legacyCheck.reason).arg(rejectedActor->ParentId().StringId()).arg(rejectedPosition.ParentId().StringId())
+						.arg(legacyCheck.from.x).arg(legacyCheck.from.y).arg(legacyCheck.from.z)
+						.arg(legacyCheck.to.x).arg(legacyCheck.to.y).arg(legacyCheck.to.z)
+						.arg(legacyCheck.hit.x).arg(legacyCheck.hit.y).arg(legacyCheck.hit.z)
+						.arg(legacyCheck.normal.x).arg(legacyCheck.normal.y).arg(legacyCheck.normal.z)
+						.arg(legacyCheck.from.z + legacyCheck.oldBottom).arg(legacyCheck.from.z + legacyCheck.oldTop)
+						.arg(legacyCheck.to.z + legacyCheck.newBottom).arg(legacyCheck.to.z + legacyCheck.newTop)
+						.arg(legacyCheck.from.x + legacyCheck.oldMinimum.x).arg(legacyCheck.from.y + legacyCheck.oldMinimum.y)
+						.arg(legacyCheck.from.x + legacyCheck.oldMaximum.x).arg(legacyCheck.from.y + legacyCheck.oldMaximum.y)
+						.arg(legacyCheck.to.x + legacyCheck.newMinimum.x).arg(legacyCheck.to.y + legacyCheck.newMinimum.y)
+						.arg(legacyCheck.to.x + legacyCheck.newMaximum.x).arg(legacyCheck.to.y + legacyCheck.newMaximum.y)
+						.arg(legacyCheck.oldPose).arg(legacyCheck.newPose).arg(legacyCheck.hasItemInHand)
+						.arg(legacyCheck.diagnostic));
+				}
+			}
 
 			if(updatePerson)
 			{

@@ -12,6 +12,8 @@
 #include "autime.h"
 #include "davessel.h"
 #include "dpconsoleempty.h"
+#include <QMutex>
+#include <QSharedPointer>
 #include <QVector2D>
 
 class AuQuad;
@@ -22,6 +24,7 @@ class AuScRoute;
 class PsEngineTrail;
 class PsLandingSystem;
 class PsLaunchSystem;
+namespace AuLegacyScGeometry { class CollisionWorld; }
 
 class AUATOM_DLL DaSc : public DaVessel
 {
@@ -38,6 +41,12 @@ class AUATOM_DLL DaSc : public DaVessel
 	bool m_LegacyTextureRequested = false;
 	bool CreateLegacyDeviceObjects(AuAtomRenderInfo& ari);
 	void RenderLegacyTextures(const AuGLSLScBase& shader, AuAtomRenderInfo& ari, bool transparent);
+	mutable QMutex m_LegacyCollisionLock;
+	mutable quint32 m_LegacyCollisionDesignId = 0;
+	mutable QSharedPointer<const AuLegacyScGeometry::CollisionWorld> m_LegacyCollision;
+	mutable AuElapsedTimer m_LegacyCollisionLogTime;
+	QSharedPointer<const AuLegacyScGeometry::CollisionWorld> LegacyCollision(const AuScDesign& design) const;
+	bool LegacyBodyOffsets(const DaAtom& who, AuBox& offsets) const;
 protected:
 	enum AUDIO_SOURCE
 	{
@@ -664,6 +673,13 @@ public:	// Methods
 	virtual bool IsInsideAirBreathable() const;
 
 	bool IsLegacyDebug() const;
+	// Server position preflight can supply bounds for the proposed pose/orientation.
+	bool IsLegacyBodyPathBlocked(const AuPoint& from, const AuPoint& to, const AuBox& bodyOffsets,
+		AuPoint& hitLoc, AuPoint& hitNormal) const;
+	bool IsLegacyBodyTransitionBlocked(const AuPoint& from, const AuPoint& to, const AuBox& oldOffsets,
+		const AuBox& newOffsets, AuPoint& hitLoc, AuPoint& hitNormal, bool allowSlideReplay = false,
+		QString* diagnostic = 0) const;
+	bool IsAboveLegacyOpenHatch(const AuPoint& origin) const;
 
 	virtual bool IsLandingGearExtended() const;
 

@@ -6513,7 +6513,8 @@ void DtChatChannel::SpawnLegacySc(quint32 designId, AuLegacyScProtocol::Reply& r
 	for(int attempt = 0; attempt < 16 && !placed; ++attempt)
 	{
 		const double angle = (attempt % 8) * 0.7853981633974483;
-		AuPoint location = origin + (right * std::cos(angle) + forward * std::sin(angle)) * distance;
+		const double attemptDistance = terrain && attempt >= 8 ? distance + radius + 30 : distance;
+		AuPoint location = origin + (right * std::cos(angle) + forward * std::sin(angle)) * attemptDistance;
 		AuPoint spawnUp = up;
 		if(world)
 		{
@@ -6523,11 +6524,13 @@ void DtChatChannel::SpawnLegacySc(quint32 designId, AuLegacyScProtocol::Reply& r
 		if(terrain)
 		{
 			const AuPoint ground = terrain->GroundLoc(location);
-			const double clearance = -minimum.z + 4;
-			if((location - ground).Dot(spawnUp) < clearance)
-				location = ground + spawnUp * clearance;
+			// Report extents are actual hull faces, without obstruction margins.
+			// Place the hull one inch above terrain instead of suspending it at
+			// the avatar's altitude or adding several feet below its boarding deck.
+			const double clearance = -minimum.z + 1.0 / 12;
+			location = ground + spawnUp * clearance;
 		}
-		if(attempt >= 8)
+		if(!terrain && attempt >= 8)
 			location += spawnUp * (radius + 30);
 		if(terrain && terrain->IsSpawnAreaObstructed(location, radius + 4))
 			continue;

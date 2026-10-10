@@ -14,6 +14,7 @@
 #include "augleffects.h"
 #include "auglobal.h"
 #include "auitem.h"
+#include "aulegacysccollision.h"
 #include "auParticleSystem.h"
 #include "auquad.h"
 #include "ausound.h"
@@ -25,6 +26,7 @@
 #include "daatomlist.h"
 #include "dabd.h"
 #include "dacapsule.h"
+#include "dacreature.h"
 #include "dadesigner.h"
 #include "dadesignplane.h"
 #include "daeffect.h"
@@ -2185,9 +2187,11 @@ bool DaAtom::RoughExtents(AuBox &fExt) const
 // 2. If 'pMove' collides with 'this' atom and movement to 'fnuloc' is
 // blocked, 2 is returned.
 DaAtom::COLLISION_TYPE DaAtom::CheckCollision(const AuPoint &foldloc, const AuPoint &fnuloc, DaAtom *&pHit,
-		AuPoint& hitLoc, AuPoint& hitNormal)
+		AuPoint& hitLoc, AuPoint& hitNormal, AuPoint* resolvedDestination)
 {
 	Q_ASSERT(!fnuloc.IsNaN());
+	AuPoint destination(fnuloc);
+	if(resolvedDestination) *resolvedDestination = destination;
 	if(IsEthereal())
 		return CT_Miss;		// Atoms do not hit anything while ethereal.
 	DaAtom* pParent = Parent();
@@ -2198,13 +2202,56 @@ DaAtom::COLLISION_TYPE DaAtom::CheckCollision(const AuPoint &foldloc, const AuPo
 	AuBox fMoveExt;
 	if(!RoughExtentsWithShields(fMoveExt))
 		return CT_Miss;
+
+	// Resolve exterior hull contact after the parent has adjusted movement for
+	// terrain. The final collision check still checks every parent and peer.
+	const DaCreature* creature = dynamic_cast<const DaCreature*>(this);
+	if(resolvedDestination && creature && !AgentEntity())
+	{
+		DaAtomList peers;
+		pParent->ListNormalSubatoms(peers);
+		AuBox peerBodyExtents;
+		bool peerBodyExtentsReady = false;
+		for(DaAtom* peer : peers)
+		{
+			const DaSc* ship = dynamic_cast<const DaSc*>(peer);
+			if(!ship || !ship->IsLegacyDebug() || !ship->IsObstacle(this)) continue;
+			if(!peerBodyExtentsReady)
+			{
+				peerBodyExtents = fMoveExt;
+				creature->LegacyCollisionExtents(peerBodyExtents);
+				peerBodyExtentsReady = true;
+			}
+			const AuMatrix4x4 shipTransform = ship->Transform();
+			const AuPoint shipOldLoc = shipTransform.UnProject(foldloc);
+			AuPoint shipDestination = shipTransform.UnProject(destination);
+			AuBox shipBounds;
+			if(!ship->RoughExtents(shipBounds)) continue;
+			const AuMatrix4x4 bodyToShip = shipTransform.Inverse() * Transform();
+			const AuBox shipBodyExtents = AuLegacyScGeometry::MovementBodyOffsets(peerBodyExtents,
+				bodyToShip.ProjectVector(creature->GravityNormal()));
+			AuPoint bodyMinimum, bodyMaximum, hullMinimum, hullMaximum;
+			shipBodyExtents.GetMinMax(bodyMinimum, bodyMaximum);
+			shipBounds.GetMinMax(hullMinimum, hullMaximum);
+			const AuPoint pathMinimum = bodyMinimum + shipOldLoc.Min(shipDestination);
+			const AuPoint pathMaximum = bodyMaximum + shipOldLoc.Max(shipDestination);
+			if(pathMaximum.x < hullMinimum.x || pathMinimum.x > hullMaximum.x
+				|| pathMaximum.y < hullMinimum.y || pathMinimum.y > hullMaximum.y
+				|| pathMaximum.z < hullMinimum.z || pathMinimum.z > hullMaximum.z) continue;
+			const AuPoint requested = shipDestination;
+			ship->FilterDestinationLoc(this, shipOldLoc, shipDestination);
+			if(shipDestination.Distance2(requested) > 1e-18)
+				destination = shipTransform.Project(shipDestination);
+		}
+		*resolvedDestination = destination;
+	}
 	AuMatrix4x4 tmove;
-	tmove.Translate(fnuloc - foldloc);
+	tmove.Translate(destination - foldloc);
 	tmove *= Transform();
 	fMoveExt.Transform(tmove);
 
 	// Check for collision with parent atom and my peers there.
-	return CheckCollisionRelativeToAtom(pParent, foldloc, fnuloc, pHit, hitLoc, hitNormal, fMoveExt);
+	return CheckCollisionRelativeToAtom(pParent, foldloc, destination, pHit, hitLoc, hitNormal, fMoveExt);
 }
 
 DaAtom::COLLISION_TYPE DaAtom::CheckCollisionRelativeToAtom(DaAtom* pParent, const AuPoint &foldloc, const AuPoint &fnuloc,
@@ -2232,6 +2279,9 @@ DaAtom::COLLISION_TYPE DaAtom::CheckCollisionRelativeToAtom(DaAtom* pParent, con
 	// When the movement step is large, we check peers for rough collision with the movement segment.
 	bool checkPathBlocked = foldloc.Distance2(fnuloc) > FeetPerMeter()*FeetPerMeter();
 	AuBox fext;
+	AuBox legacyMoveExt;
+	AuBox legacyAnatomy;
+	bool legacyAnatomyRead = false, legacyAnatomyValid = false;
 	for(AuIdList::iterator it = peers.begin(); it != peers.end(); it++)
 	{
 		DaAtom* pAtom = subs.FindId(*it);
@@ -2256,8 +2306,29 @@ DaAtom::COLLISION_TYPE DaAtom::CheckCollisionRelativeToAtom(DaAtom* pParent, con
 		AuMatrix4x4 t = pAtom->Transform();
 		fext.Transform(t);
 
+		const AuBox* moveExt = &fMoveExt;
+		const DaSc* legacyShip = dynamic_cast<const DaSc*>(pAtom);
+		const DaCreature* creature = dynamic_cast<const DaCreature*>(this);
+		if(legacyShip && legacyShip->IsLegacyDebug() && creature)
+		{
+			if(!legacyAnatomyRead)
+			{
+				legacyAnatomyValid = creature->LegacyCollisionExtents(legacyAnatomy);
+				legacyAnatomyRead = true;
+			}
+			// Legacy broad and narrow phases use the same stable shape.
+			// Other peers keep their existing bounds.
+			if(legacyAnatomyValid)
+			{
+				const AuMatrix4x4 bodyToShip = t.Inverse() * Transform();
+				legacyMoveExt = AuLegacyScGeometry::MovementBodyOffsets(legacyAnatomy,
+					bodyToShip.ProjectVector(creature->GravityNormal()));
+				for(AuPoint& corner : legacyMoveExt.m_fCorners) corner = t.ProjectVector(corner) + fnuloc;
+				moveExt = &legacyMoveExt;
+			}
+		}
 		// Perform an intersection test on the extents.
-		if(fext.DoesIntersect(fMoveExt))
+		if(fext.DoesIntersect(*moveExt))
 		{
 			DaCapsule* capsule = dynamic_cast<DaCapsule*>(pAtom);
 			if(capsule)
@@ -2737,7 +2808,7 @@ bool DaAtom::MoveSubatom(DaAtom *pMove, const AuPoint &vMove, int /*elapsedMs*/)
 	// Determine the result of attempting to move to the nu location.
 	DaAtom *pHit = NULL;
 	AuPoint hitLoc, hitNormal;
-	COLLISION_TYPE eCollide = pMove->CheckCollision(foldloc, fnuloc, pHit, hitLoc, hitNormal);
+	COLLISION_TYPE eCollide = pMove->CheckCollision(foldloc, fnuloc, pHit, hitLoc, hitNormal, &fnuloc);
 	pMove->SetMoveResult(eCollide);
 	//qDebug() << "DaAtom::MoveSubatom" << Id() << Name() << "move" << pMove->Id() << pMove->Name() << "vMove" << vMove
 		//<< "result" << eCollide;
@@ -3266,7 +3337,10 @@ AuQueryEnvironment* DaAtom::CreateEnvironmentQuery() const
 				// Creatures are immune to falling while they are in reach of a ladder, just like a gravity well.
 				if(ves)
 				{
-					if(CanGrabLadderOnMyShip())
+					const DaSc* legacyShip = dynamic_cast<const DaSc*>(ves);
+					const bool ladderProtection = legacyShip && legacyShip->IsLegacyDebug()
+						? IsClimbingLadder() || legacyShip->IsAboveLegacyOpenHatch(Location()) : CanGrabLadderOnMyShip();
+					if(ladderProtection)
 						qe->m_Environment |= EB_InLadderWell;	// Turn the bit on.
 
 					// When the capsule is in atmosphere range of a planet or when its

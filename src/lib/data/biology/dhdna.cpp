@@ -1232,6 +1232,8 @@ void DhDNA::Dump() const
 // 'speedEnc' is speed modifier due to encumberance. It is multiplied by the natural pose speed.
 float DhDNA::Rhythm(const AuPose& pose, float cycleOffset, float speedEnc) const
 {
+	if(m_CollisionRhythmFrozen)
+		return sinf(cycleOffset);
 	float bodyHz = speedEnc/CycleSpeed();
 	return pose.Rhythm(bodyHz, cycleOffset, AuElapsedTimer::Now());
 }

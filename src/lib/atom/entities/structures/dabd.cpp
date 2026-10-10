@@ -8235,7 +8235,7 @@ bool DaBd::MoveSubatom(DaAtom* pMove, const AuPoint& vMove, int elapsedMs)
 	// Determine the result of attempting to move to the nu location.
 	DaAtom *pHit = NULL;
 	AuPoint hitLoc, hitNormal;
-	COLLISION_TYPE eCollide = pMove->CheckCollision(foldloc, fnuloc, pHit, hitLoc, hitNormal);
+	COLLISION_TYPE eCollide = pMove->CheckCollision(foldloc, fnuloc, pHit, hitLoc, hitNormal, &fnuloc);
 	pMove->SetMoveResult(eCollide);
 
 	switch(eCollide)

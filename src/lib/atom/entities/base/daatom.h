@@ -3746,7 +3746,10 @@ public:
 	// 'oldloc' and 'nuloc' are relative to my parent atom.
 	// 'hit', 'hitLoc' and 'hitNormal' are output parameters set if I hit another atom.
 	// 'hitLoc' and 'hitNormal' are in the space of the atom that was hit.
-	COLLISION_TYPE CheckCollision(const AuPoint& oldloc, const AuPoint& nuloc, DaAtom*& hit, AuPoint& hitLoc, AuPoint& hitNormal);
+	// Actual movement may request a destination slid along legacy spacecraft surfaces.
+	// Probes that omit this output retain their original destination and strict collision result.
+	COLLISION_TYPE CheckCollision(const AuPoint& oldloc, const AuPoint& nuloc, DaAtom*& hit, AuPoint& hitLoc, AuPoint& hitNormal,
+			AuPoint* resolvedDestination = nullptr);
 
 protected:
 	// 'foldloc' and 'fnuloc' are relative to pParent.

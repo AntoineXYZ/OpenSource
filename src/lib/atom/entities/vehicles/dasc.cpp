@@ -11,6 +11,8 @@
 #include "aucommpacket.h"
 #include "augame.h"
 #include "aulegacyscgeometry.h"
+#include "aulegacysccollision.h"
+#include <QMutexLocker>
 #include <cmath>
 #include "auscdesign.h"
 #include "auscparts.h"
@@ -51,6 +53,17 @@
 #include <QSqlQuery>
 
 #define d_SpacecraftLight				(200*FeetPerMeter())	// Attenuation distance of exterior light.
+
+namespace
+{
+void LogLegacyCollision(const QString& message)
+{
+	if(g_Au.IsSceneClient())
+		g_Au.Log(g_Au.CacheApp() + QStringLiteral("/soh.txt"), message);
+	else
+		g_Au.Log(message);
+}
+}
 
 DaSc::DaSc() : m_CmdEmpty(),
 	m_EngineEmpty(),
@@ -1091,6 +1104,95 @@ void DaSc::UnlockDesign() const
 	g_Au.UnlockScDesigns();
 }
 
+QSharedPointer<const AuLegacyScGeometry::CollisionWorld> DaSc::LegacyCollision(const AuScDesign& design) const
+{
+	QMutexLocker guard(&m_LegacyCollisionLock);
+	if(m_LegacyCollisionDesignId != design.Id())
+	{
+		m_LegacyCollision.clear();
+		m_LegacyCollisionDesignId = design.Id();
+	}
+	if(!m_LegacyCollision && AuLegacyScGeometry::IsCollisionDesign(design))
+	{
+		m_LegacyCollision.reset(new AuLegacyScGeometry::CollisionWorld(design));
+		LogLegacyCollision(QStringLiteral("Legacy collision %1: ship=%2 blueprint=%3 triangles=%4 valid=%5 bounds=core")
+			.arg(g_Au.IsSceneClient() ? QStringLiteral("client") : QStringLiteral("server"))
+			.arg(Id().GetID()).arg(design.Id()).arg(m_LegacyCollision->TriangleCount()).arg(m_LegacyCollision->IsValid()));
+	}
+	return m_LegacyCollision;
+}
+
+bool DaSc::LegacyBodyOffsets(const DaAtom& who, AuBox& offsets) const
+{
+	const DaCreature* creature = dynamic_cast<const DaCreature*>(&who);
+	if(creature ? !creature->LegacyCollisionExtents(offsets) : !who.RoughExtents(offsets)) return false;
+	const DaAtom* common = CommonParent(&who, 0);
+	if(!common) return false;
+	AuMatrix4x4 shipM, bodyM;
+	if(!GetTransformRelativeToParent(shipM, common) || !who.GetTransformRelativeToParent(bodyM, common)) return false;
+	const AuMatrix4x4 bodyToShip = shipM.Inverse() * bodyM;
+	if(creature)
+		offsets = AuLegacyScGeometry::MovementBodyOffsets(offsets, bodyToShip.ProjectVector(creature->GravityNormal()));
+	else
+		for(AuPoint& corner : offsets.m_fCorners) corner = bodyToShip.ProjectVector(corner);
+	return true;
+}
+
+bool DaSc::IsLegacyBodyPathBlocked(const AuPoint& from, const AuPoint& to, const AuBox& bodyOffsets,
+	AuPoint& hitLoc, AuPoint& hitNormal) const
+{
+	m_DesignLock.lockForRead();
+	const AuScDesign* design = LockDesign();
+	const auto world = design ? LegacyCollision(*design) : QSharedPointer<const AuLegacyScGeometry::CollisionWorld>();
+	// Previously spawned v1 ships keep their original collision until respawned.
+	const bool previousBlueprint = design && !AuLegacyScGeometry::IsCollisionDesign(*design);
+	const bool previousBlocked = previousBlueprint
+		&& design->IsPathBlocked(from, to, hitLoc, hitNormal, m_DoorStates, m_LandingGearStates, m_Lifts);
+	UnlockDesign();
+	m_DesignLock.unlock();
+	if(previousBlueprint) return previousBlocked;
+	if(!world || !world->IsValid())
+	{
+		hitLoc = from;
+		hitNormal = AuPoint(0, 0, 0);
+		return true;
+	}
+	return world->IsBodyPathBlocked(from, to, bodyOffsets, hitLoc, hitNormal);
+}
+
+bool DaSc::IsAboveLegacyOpenHatch(const AuPoint& origin) const
+{
+	if(!IsLegacyDebug()) return false;
+	m_DesignLock.lockForRead();
+	const AuScDesign* design = LockDesign();
+	const auto world = design ? LegacyCollision(*design) : QSharedPointer<const AuLegacyScGeometry::CollisionWorld>();
+	UnlockDesign();
+	m_DesignLock.unlock();
+	return world && world->AboveOpenHatch(origin);
+}
+
+bool DaSc::IsLegacyBodyTransitionBlocked(const AuPoint& from, const AuPoint& to, const AuBox& oldOffsets,
+	const AuBox& newOffsets, AuPoint& hitLoc, AuPoint& hitNormal, bool allowSlideReplay, QString* diagnostic) const
+{
+	if(diagnostic) diagnostic->clear();
+	m_DesignLock.lockForRead();
+	const AuScDesign* design = LockDesign();
+	const auto world = design ? LegacyCollision(*design) : QSharedPointer<const AuLegacyScGeometry::CollisionWorld>();
+	const bool previousBlueprint = design && !AuLegacyScGeometry::IsCollisionDesign(*design);
+	const bool previousBlocked = previousBlueprint
+		&& design->IsPathBlocked(from, to, hitLoc, hitNormal, m_DoorStates, m_LandingGearStates, m_Lifts);
+	UnlockDesign();
+	m_DesignLock.unlock();
+	if(previousBlueprint) return previousBlocked;
+	if(!world || !world->IsValid())
+	{
+		hitLoc = from;
+		hitNormal = AuPoint(0, 0, 0);
+		return true;
+	}
+	return world->IsBodyTransitionBlocked(from, to, oldOffsets, newOffsets, hitLoc, hitNormal, allowSlideReplay, diagnostic);
+}
+
 AuPoint DaSc::BerthLocation(const AuId& id) const
 {
 	m_RosterLock.lockForRead();
@@ -1482,7 +1584,42 @@ bool DaSc::CanEnterNeutralWormhole() const
 
 bool DaSc::CanGrabLadder(const DaAtom& who, const AuPoint& loc, AuMatrix4x4& mLadder)
 {
-	Q_UNUSED(who);
+	if(IsLegacyDebug())
+	{
+		struct HatchLadder { AuPoint anchor, facing; };
+		QVector<HatchLadder> ladders;
+		m_DesignLock.lockForRead();
+		const AuScDesign* design = LockDesign();
+		if(design)
+			for(const AuScPart* part : design->Parts())
+				if(!part->IsOmitted() && part->IsLadderPath()
+					&& part->GroupName().startsWith(QStringLiteral("legacy/hatch-ladder/detail/")))
+				{
+					const AuScPathLadder* ladder = dynamic_cast<const AuScPathLadder*>(part);
+					if(ladder) ladders.append(HatchLadder{ladder->PathSegment(0).Loc2(), ladder->Facing()});
+				}
+		UnlockDesign();
+		m_DesignLock.unlock();
+		AuBox offsets;
+		if(!LegacyBodyOffsets(who, offsets)) return false;
+		double closest = 36;
+		bool found = false;
+		for(const HatchLadder& ladder : ladders)
+		{
+			// The hatch may be on this deck or the next. Preserve the origin's z
+			// when attaching, just as the 2016 character controller does.
+			if(loc.z < ladder.anchor.z - 8 - .05 || loc.z >= ladder.anchor.z + 8 - .05) continue;
+			const AuPoint target(ladder.anchor.x, ladder.anchor.y, loc.z);
+			const double distance = loc.Distance2(target);
+			AuPoint hit, normal;
+			if(distance >= closest || IsLegacyBodyPathBlocked(loc, target, offsets, hit, normal)) continue;
+			const AuPoint right = ladder.facing.Cross(AuPoint(0, 0, 1));
+			mLadder = AuMatrix4x4(target, right, ladder.facing);
+			closest = distance;
+			found = true;
+		}
+		return found;
+	}
 	bool foundLadder;
 	m_DesignLock.lockForRead();
 	const AuScDesign* scd = LockDesign();
@@ -1527,6 +1664,7 @@ unsigned int DaSc::CargoCapacityVolume() const
 bool DaSc::CheckChildExit(const AuPoint &oldloc, const AuPoint &nuloc, const DaAtom* who) const
 {
 	Q_UNUSED(oldloc);
+	if(IsLegacyDebug()) return !IsInOrOnHull(nuloc);
 	const DaCreature* c = dynamic_cast<const DaCreature*>(who);
 	if(c)
 	{
@@ -1588,7 +1726,7 @@ bool DaSc::CheckPeerJoin(const AuPoint &oldloc, const AuPoint &nuloc, const DaAt
 	// Insure path from old location to nu location is not blocked.
 	// They must move into my space through a valid opening.
 	AuPoint oloc = tsub.Project(oldloc);						// Get location relative to ship.
-	if(IsInOrOnHull(oloc))
+	if(!IsLegacyDebug() && IsInOrOnHull(oloc))
 	{
 		//qDebug() << "DaSc::CheckPeerJoin" << *this << "oloc already in or on hull";
 		return false;
@@ -4839,9 +4977,58 @@ void DaSc::EnumViewPanelControls(qint16 panelId, QList<AuControlButton>& control
 
 void DaSc::FilterDestinationLoc(DaAtom* moveAtom, const AuPoint& oldLoc, AuPoint& nuLoc) const
 {
-	Q_UNUSED(moveAtom);
-	Q_UNUSED(oldLoc);
-	Q_UNUSED(nuLoc);
+	const DaCreature* creature = dynamic_cast<const DaCreature*>(moveAtom);
+	if(IsLegacyDebug() && creature && !creature->IsEthereal() && !creature->AgentEntity())
+	{
+		AuBox offsets;
+		AuMatrix4x4 bodyToShip;
+		if(LegacyBodyOffsets(*creature, offsets) && GetRelativeTransform(*creature, bodyToShip))
+		{
+			const AuPoint gravityUp = bodyToShip.ProjectVector(creature->GravityNormal());
+			const bool grounded = creature->IsTouchingGround() && !creature->IsJumping()
+				&& !creature->IsFlying() && !creature->IsLadderPose() && !creature->InLadderWell()
+				&& !creature->IsInGravityWell();
+			const bool aboard = creature->Parent() == this;
+			const bool followGround = aboard && grounded;
+			m_DesignLock.lockForRead();
+			const AuScDesign* design = LockDesign();
+			const auto world = design ? LegacyCollision(*design) : QSharedPointer<const AuLegacyScGeometry::CollisionWorld>();
+			UnlockDesign();
+			m_DesignLock.unlock();
+			if(world && world->IsValid())
+			{
+				const AuPoint requested = nuLoc;
+				AuPoint contactNormal;
+				nuLoc = world->ResolveDestination(oldLoc, nuLoc, offsets, gravityUp,
+					creature->GroundHeightAboveCG(), followGround, contactNormal, !aboard && grounded);
+				if(!contactNormal.IsZero())
+				{
+					const AuPoint localNormal = bodyToShip.UnProjectVector(contactNormal);
+					AuPoint velocity = moveAtom->Vector();
+					const double inward = velocity.Dot(localNormal);
+					if(inward < 0) moveAtom->SetVector(velocity - localNormal * inward);
+				}
+				if(nuLoc.Distance2(requested) > 1e-8 && qEnvironmentVariableIsSet("HAZERON_LEGACY_COLLISION_STATS"))
+				{
+					const int loggedPose = int(creature->CurrentGeneralPose().Pose());
+					QMutexLocker guard(&m_LegacyCollisionLock);
+					if(!m_LegacyCollisionLogTime.isValid() || m_LegacyCollisionLogTime.ElapsedMSec() >= 1000)
+					{
+						m_LegacyCollisionLogTime.Set();
+						AuPoint minimum, maximum;
+						offsets.GetMinMax(minimum, maximum);
+						LogLegacyCollision(QStringLiteral("Legacy collision %1: resolved ship=%2 actor=%3 requested=(%4,%5,%6) accepted=(%7,%8,%9) "
+							"bodyOffsets=(%10,%11,%12)-(%13,%14,%15) normal=(%16,%17,%18) pose=%19 bounds=core")
+							.arg(g_Au.IsSceneClient() ? QStringLiteral("client") : QStringLiteral("server"))
+							.arg(Id().GetID()).arg(moveAtom->Id().GetID()).arg(requested.x).arg(requested.y).arg(requested.z)
+							.arg(nuLoc.x).arg(nuLoc.y).arg(nuLoc.z)
+							.arg(minimum.x).arg(minimum.y).arg(minimum.z).arg(maximum.x).arg(maximum.y).arg(maximum.z)
+							.arg(contactNormal.x).arg(contactNormal.y).arg(contactNormal.z).arg(loggedPose));
+					}
+				}
+			}
+		}
+	}
 	/*
 	if(!moveAtom->IsAboveOpenHatch() && nuLoc.z < oldLoc.z)
 	{
@@ -4872,7 +5059,11 @@ double DaSc::CeilingHt(const AuPoint& loc, const AuPoint& gravityN, bool isLocIn
 	const AuScDesign* scd = LockDesign();
 	double ceilingHt;
 	if(scd)
-		ceilingHt = scd->HeightOfCeiling(loc, gravityN, m_DoorStates, m_LandingGearStates, m_Lifts);
+	{
+		const auto world = IsLegacyDebug() ? LegacyCollision(*scd) : QSharedPointer<const AuLegacyScGeometry::CollisionWorld>();
+		ceilingHt = world && world->IsValid() ? world->HeightOfCeiling(loc, gravityN)
+			: scd->HeightOfCeiling(loc, gravityN, m_DoorStates, m_LandingGearStates, m_Lifts);
+	}
 	else
 		ceilingHt = 0;
 	UnlockDesign();
@@ -4884,6 +5075,26 @@ bool DaSc::FloorHt(const AuPoint& loc, const AuPoint& gravityN, double& htAbvFlo
 		AuPoint& stairNormal, bool isLocInside, const DaAtom* forWho) const
 {
 	onStairs = false;
+	if(IsLegacyDebug())
+	{
+		m_DesignLock.lockForRead();
+		const AuScDesign* design = LockDesign();
+		const auto world = design ? LegacyCollision(*design) : QSharedPointer<const AuLegacyScGeometry::CollisionWorld>();
+		if(world && world->IsValid())
+		{
+			htAbvFloor = world->HeightAboveFloor(loc, gravityN, stairNormal);
+			const quint16 roomId = design->RoomVoidContainingLocLive(loc, .1, m_DoorStates, m_LandingGearStates, m_Lifts);
+			const auto room = design->Parts().find(roomId);
+			inGravityWell = room != design->Parts().cend() && (*room)->GravityType() == G_Zero;
+			// The native query must receive the fall distance even over a hole,
+			// where no floor normal exists. It otherwise defaults to grounded.
+			if(stairNormal.IsZero()) stairNormal = gravityN;
+			onStairs = true;
+		}
+		UnlockDesign();
+		m_DesignLock.unlock();
+		if(world && world->IsValid()) return true;
+	}
 	double floorHt;
 	if(isLocInside)
 	{
@@ -6052,7 +6263,7 @@ bool DaSc::InsideRoom(const AuPoint& loc, quint16& roomId) const
 {
 	m_DesignLock.lockForRead();
 	const AuScDesign* scd = LockDesign();
-	roomId = scd->RoomVoidContainingLocLive(loc, .1, m_DoorStates, m_LandingGearStates, m_Lifts);
+	roomId = scd ? scd->RoomVoidContainingLocLive(loc, .1, m_DoorStates, m_LandingGearStates, m_Lifts) : 0;
 	UnlockDesign();
 	m_DesignLock.unlock();
 	return roomId;
@@ -6136,13 +6347,26 @@ bool DaSc::InsideRoomType(const AuPoint& loc, bool getRoomUp, quint16& roomId, R
 {
 	roomId = InsideRoomType(loc, roomType, roomName);
 	if(!roomId)
+	{
+		if(IsLegacyDebug()) gravityN = AuPoint(0, 0, 1);
 		return false;
+	}
 
 	gravityN = GravityNormal();
 	m_DesignLock.lockForRead();
 	const AuScDesign* scd = LockDesign();
 	if(scd)
-		htAbvFloor = scd->RoomVoidHeightAboveFloor(roomId, loc, getRoomUp, gravityN, m_Lifts);	// Height above room void floor.
+	{
+		const auto world = IsLegacyDebug() ? LegacyCollision(*scd) : QSharedPointer<const AuLegacyScGeometry::CollisionWorld>();
+		if(world && world->IsValid())
+		{
+			gravityN = scd->Parts().RoomVoidGravityUp(roomId, m_Lifts);
+			AuPoint floorNormal;
+			htAbvFloor = world->HeightAboveFloor(loc, gravityN, floorNormal);
+		}
+		else
+			htAbvFloor = scd->RoomVoidHeightAboveFloor(roomId, loc, getRoomUp, gravityN, m_Lifts);	// Height above room void floor.
+	}
 	else
 		htAbvFloor = 0;
 	UnlockDesign();
@@ -6620,7 +6844,16 @@ int DaSc::IsInOrOnHull(const AuPoint& loc) const
 	m_DesignLock.lockForRead();
 	const AuScDesign* scd = LockDesign();
 	if(scd)
-		v = scd->IsInsideHull(loc, m_DoorStates, m_LandingGearStates, m_Lifts);
+	{
+		if(IsLegacyDebug())
+		{
+			// Room faces describe real onboard space. Hull/barrier silhouettes and
+			// extended aperture voids are collision aids, not boarding volumes.
+			v = scd->RoomVoidContainingLocLive(loc, .1, m_DoorStates, m_LandingGearStates, m_Lifts);
+		}
+		else
+			v = scd->IsInsideHull(loc, m_DoorStates, m_LandingGearStates, m_Lifts);
+	}
 	else
 		v = false;
 	UnlockDesign();
@@ -6707,8 +6940,37 @@ bool DaSc::IsPathBlocked(const AuPoint& oloc, const AuPoint& nloc, AuPoint& hitL
 		return true;											// No movement allowed until the design is valid.
 	}
 
-	if(toWho->AgentEntity())
+	if(toWho && toWho->AgentEntity())
 		return false;
+	if(IsLegacyDebug() && toWho)
+	{
+		AuBox offsets;
+		if(!LegacyBodyOffsets(*toWho, offsets))
+		{
+			hitLoc = oloc;
+			hitNormal = AuPoint(0, 0, 0);
+			return true;
+		}
+		const bool blocked = IsLegacyBodyPathBlocked(oloc, nloc, offsets, hitLoc, hitNormal);
+		if(blocked && qEnvironmentVariableIsSet("HAZERON_LEGACY_COLLISION_STATS"))
+		{
+			QMutexLocker guard(&m_LegacyCollisionLock);
+			if(!m_LegacyCollisionLogTime.isValid() || m_LegacyCollisionLogTime.ElapsedMSec() >= 1000)
+			{
+				m_LegacyCollisionLogTime.Set();
+				AuPoint minimum, maximum;
+				offsets.GetMinMax(minimum, maximum);
+				LogLegacyCollision(QStringLiteral("Legacy collision %1: blocked ship=%2 actor=%3 from=(%4,%5,%6) to=(%7,%8,%9) size=(%10,%11,%12) "
+					"bodyOffsets=(%13,%14,%15)-(%16,%17,%18) normal=(%19,%20,%21) bounds=core")
+					.arg(g_Au.IsSceneClient() ? QStringLiteral("client") : QStringLiteral("server"))
+					.arg(Id().GetID()).arg(toWho->Id().GetID()).arg(oloc.x).arg(oloc.y).arg(oloc.z)
+					.arg(nloc.x).arg(nloc.y).arg(nloc.z).arg(maximum.x-minimum.x).arg(maximum.y-minimum.y).arg(maximum.z-minimum.z)
+					.arg(minimum.x).arg(minimum.y).arg(minimum.z).arg(maximum.x).arg(maximum.y).arg(maximum.z)
+					.arg(hitNormal.x).arg(hitNormal.y).arg(hitNormal.z));
+			}
+		}
+		return blocked;
+	}
 
 	if(ShieldsBlockWeapons() && !ShieldContains(oloc))
 	{
@@ -7587,7 +7849,7 @@ bool DaSc::MoveSubatom(DaAtom* pMove, const AuPoint& vMove, int elapsedMs)
 	// Determine the result of attempting to move to the nu location.
 	DaAtom *pHit = NULL;
 	AuPoint hitLoc, hitNormal;
-	COLLISION_TYPE eCollide = pMove->CheckCollision(foldloc, fnuloc, pHit, hitLoc, hitNormal);
+	COLLISION_TYPE eCollide = pMove->CheckCollision(foldloc, fnuloc, pHit, hitLoc, hitNormal, &fnuloc);
 	pMove->SetMoveResult(eCollide);
 
 	switch(eCollide)

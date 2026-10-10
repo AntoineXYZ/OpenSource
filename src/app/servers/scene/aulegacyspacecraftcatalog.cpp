@@ -4,8 +4,10 @@
 #include "audbglobal.h"
 #include "aulegacyscdesign.h"
 #include "aulegacyscgeometry.h"
+#include "aulegacysccollision.h"
 #include "aulegacyscprotocol.h"
 #include "auscdesign.h"
+#include "auscparts.h"
 #include "auscreport.h"
 #include "dgdata.h"
 #include <QCryptographicHash>
@@ -279,6 +281,8 @@ bool PrepareLegacySpacecraftSpawn(quint32 legacyId, const AuId& architectId,
 	sourceQuery.finish();
 	AuScDesign runtimeDesign;
 	AuScReport preparedReport;
+	bool regenerate = !derived;
+	const quint32 previousRuntimeId = runtimeId;
 	if(derived)
 	{
 		runtimeDesign.Load(runtimeId, connection.db);
@@ -287,11 +291,21 @@ bool PrepareLegacySpacecraftSpawn(quint32 legacyId, const AuId& architectId,
 			error = QStringLiteral("The stored runtime blueprint is unavailable or deleted. Check the server logs.");
 			return false;
 		}
-		// Catalog naming is presentation metadata; the original file stays intact.
-		runtimeDesign.SetName(name);
-		runtimeDesign.ReportDesign(preparedReport);
+		regenerate = true;
+		for(const AuScPart* part : runtimeDesign.Parts())
+			if(part->IsHullMesh() && part->GroupName() == QStringLiteral("legacy/debug/static/v4"))
+			{
+				regenerate = false;
+				break;
+			}
+		if(!regenerate)
+		{
+			// Catalog naming is presentation metadata; the original file stays intact.
+			runtimeDesign.SetName(name);
+			runtimeDesign.ReportDesign(preparedReport);
+		}
 	}
-	else
+	if(regenerate)
 	{
 		AuLegacyScDesign legacyDesign;
 		if(!AuLegacyScDesign::ReadUpload(source, legacyDesign, error))
@@ -324,9 +338,12 @@ bool PrepareLegacySpacecraftSpawn(quint32 legacyId, const AuId& architectId,
 		}
 		verify.finish();
 		QSqlQuery link(connection.db);
-		link.prepare("UPDATE n_LegacyScDesign SET runtimeDesignId = ? WHERE id = ? AND runtimeDesignId IS NULL");
+		link.prepare(derived
+			? "UPDATE n_LegacyScDesign SET runtimeDesignId = ? WHERE id = ? AND runtimeDesignId = ?"
+			: "UPDATE n_LegacyScDesign SET runtimeDesignId = ? WHERE id = ? AND runtimeDesignId IS NULL");
 		link.addBindValue(qulonglong(runtimeId));
 		link.addBindValue(qulonglong(legacyId));
+		if(derived) link.addBindValue(qulonglong(previousRuntimeId));
 		if(!link.exec() || link.numRowsAffected() != 1)
 		{
 			error = QStringLiteral("Unable to link the runtime blueprint to its legacy design. Apply legacyspacecraft.sql.");
@@ -346,7 +363,7 @@ bool PrepareLegacySpacecraftSpawn(quint32 legacyId, const AuId& architectId,
 	g_Au.UnlockScDesigns();
 	report = preparedReport;
 	qInfo() << "Legacy spacecraft catalog:" << "prepared legacy design" << legacyId
-		<< "as runtime blueprint" << runtimeId << (derived ? "(existing)" : "(created)");
+		<< "as runtime blueprint" << runtimeId << (!regenerate ? "(existing)" : derived ? "(upgraded)" : "(created)");
 	return true;
 }
 

@@ -52,6 +52,7 @@
 #include "psweather.h"
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QSet>
 //#include <QFile>			//DHH only for debug output
 //#include <QTextStream>	//DHH only for debug output
 
@@ -7206,6 +7207,7 @@ void DaPerson::DecayMoveActions()
 		return;
 
 	int controlDecayMs = ControlDecayMs();
+	bool updateTickTock = false;
 
 	m_PersonLock.lockForWrite();
 
@@ -7235,7 +7237,7 @@ void DaPerson::DecayMoveActions()
 			if(CurrentGeneralPose() == AuPose::Hover && !CanHover())
 			{
 				SetGeneralPose(AuPose::Glide);				// Resume gliding.
-				TickTock();
+				updateTickTock = true;
 			}
 			else
 			{
@@ -7273,13 +7275,14 @@ void DaPerson::DecayMoveActions()
 			Jump(JumpPower(), JumpVectorFromCurrentPose());
 			SetGeneralPose(AuPose::Jump);
 			SetInMotion();
-			TickTock();
+			updateTickTock = true;
 		}
 	}
 
 	if(!(m_uiActions & ACT_MoveMask))
 	{
 		m_PersonLock.unlock();
+		if(updateTickTock) TickTock();
 		return;
 	}
 
@@ -7327,6 +7330,9 @@ void DaPerson::DecayMoveActions()
 	}
 
 	m_PersonLock.unlock();
+	// TickTock reads person state through IsTocker/IsAIControlled. Release
+	// the non-recursive write lock before refreshing the tick registration.
+	if(updateTickTock) TickTock();
 
 	DaAnimal* mount = dynamic_cast<DaAnimal*>(Parent());
 	if(mount)

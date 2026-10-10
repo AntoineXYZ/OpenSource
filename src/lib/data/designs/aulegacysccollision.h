@@ -1,0 +1,61 @@
+#ifndef AuLegacyScCollision_H
+#define AuLegacyScCollision_H
+
+#include "audata.h"
+#include "aupoint.h"
+#include <QScopedPointer>
+
+class AuBox;
+class AuScDesign;
+class QString;
+
+namespace AuLegacyScGeometry
+{
+// Only newly generated legacy blueprints opt in to shared movement collision.
+AUDATA_DLL bool IsCollisionDesign(const AuScDesign& design);
+
+// A gravity-aligned movement core derived from anatomy and stance. Camera
+// rotation and limb reach do not change its clearance around the atom origin.
+AUDATA_DLL AuBox MovementBodyOffsets(const AuBox& anatomy, const AuPoint& gravityUp);
+
+// Immutable index of the recovered structural and obstacle-cell triangles.
+// Both scene client and server consume the same serialized blueprint geometry.
+class AUDATA_DLL CollisionWorld
+{
+public:
+	explicit CollisionWorld(const AuScDesign& design);
+	~CollisionWorld();
+	bool IsValid() const;
+	int TriangleCount() const;
+
+	// Body corners are offsets from the moving atom origin in ship coordinates.
+	// Use the stable movement core, including growth and gravity alignment.
+	bool IsBodyPathBlocked(const AuPoint& from, const AuPoint& to, const AuBox& bodyOffsets,
+		AuPoint& hitLoc, AuPoint& hitNormal) const;
+	// Packet validation compares the previous authorized body and the proposed
+	// body, retaining existing contact while rejecting deeper overlap.
+	// Slide replay is limited to short updates in the same parent frame.
+	bool IsBodyTransitionBlocked(const AuPoint& from, const AuPoint& to, const AuBox& oldOffsets,
+		const AuBox& newOffsets, AuPoint& hitLoc, AuPoint& hitNormal, bool allowSlideReplay = false,
+		QString* diagnostic = nullptr) const;
+	// Native movement supplies ground state and the creature's CG-to-feet height.
+	// Ground adjustment is limited to nearby recovered ramps, then every segment
+	// is swept against the same collision geometry used for server validation.
+	AuPoint ResolveDestination(const AuPoint& from, const AuPoint& to, const AuBox& bodyOffsets,
+		const AuPoint& gravityUp, double standingHeight, bool allowGroundSnap, AuPoint& hitNormal,
+		bool preserveGroundHeight = false) const;
+
+	// Distances from the atom origin, matching the native capsule query contract.
+	// A hole has no implicit room-void floor or ceiling.
+	double HeightAboveFloor(const AuPoint& loc, const AuPoint& gravityUp, AuPoint& floorNormal) const;
+	double HeightOfCeiling(const AuPoint& loc, const AuPoint& gravityUp) const;
+	bool AboveOpenHatch(const AuPoint& loc) const;
+
+private:
+	Q_DISABLE_COPY(CollisionWorld)
+	class Impl;
+	QScopedPointer<Impl> m_Impl;
+};
+}
+
+#endif

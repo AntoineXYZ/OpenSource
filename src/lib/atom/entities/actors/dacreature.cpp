@@ -3649,6 +3649,161 @@ bool DaCreature::SightTargetDetails(const AuPoint& eyeLoc, const AuMatrix4x4 &tM
 	return hitMe;
 }
 
+struct DaCreature::LegacyCollisionShape
+{
+	QSharedPointer<DpBody> body;
+	QSharedPointer<AuAnimalia> animalia;
+	AuPose poses3[DpBody::PS_Count];
+	AuPose poses4[AuAnimalPart::PS_Count];
+	bool hasItemInHand = false;
+	AuPoint minimum, maximum;
+};
+
+namespace
+{
+	AuPose LegacyCollisionPose(const AuPose& pose)
+	{
+		// Dying animation and camera/head animation do not change the occupied posture.
+		switch(pose.Pose())
+		{
+		case AuPose::Jump: return pose;
+		case AuPose::WritheFaceDown: return AuPose::DeadFaceDown;
+		case AuPose::WritheFaceLeft: return AuPose::DeadFaceLeft;
+		case AuPose::WritheFaceRight: return AuPose::DeadFaceRight;
+		case AuPose::WritheFaceUp: return AuPose::DeadFaceUp;
+		default: return pose.Stationary();
+		}
+	}
+}
+
+bool DaCreature::LegacyCollisionExtents(AuBox& extents) const
+{
+	return LegacyCollisionExtents(extents, HasItemInHand());
+}
+
+bool DaCreature::LegacyCollisionExtents(AuBox& extents, bool hasItemInHand) const
+{
+	QSharedPointer<const LegacyCollisionShape> shape;
+	{
+		QReadLocker bodyGuard(&m_BodyLock);
+		if(!m_Body && !m_Animalia)
+			return false;
+		QMutexLocker shapeGuard(&m_LegacyCollisionShapeLock);
+		bool matches = m_LegacyCollisionShape && m_LegacyCollisionShape->hasItemInHand == hasItemInHand;
+		AuPose poses3[DpBody::PS_Count];
+		AuPose poses4[AuAnimalPart::PS_Count];
+		if(m_Body)
+		{
+			for(int section = 0; section < DpBody::PS_Count; ++section)
+			{
+				const AuPose& current = m_Body->CurrentPoses()[section];
+				poses3[section] = LegacyCollisionPose(current.Pose() == AuPose::Jump ? current : m_Body->StationaryPose(current));
+				if(matches && m_LegacyCollisionShape->poses3[section] != poses3[section]) matches = false;
+			}
+			if(matches)
+			{
+				const DpBody* cached = m_LegacyCollisionShape->body.data();
+				matches = cached && cached->DNA() == m_Body->DNA()
+					&& cached->Sex() == m_Body->Sex() && cached->IsLeftHanded() == m_Body->IsLeftHanded();
+			}
+		}
+		else
+		{
+			for(int section = 0; section < AuAnimalPart::PS_Count; ++section)
+			{
+				poses4[section] = section == AuAnimalPart::PS_Mouth ? AuPose(AuPose::MouthClosed)
+					: LegacyCollisionPose(m_Animalia->CurrentSectionPose(AuAnimalPart::SECTION(section)));
+				if(matches && m_LegacyCollisionShape->poses4[section] != poses4[section]) matches = false;
+			}
+			if(matches)
+			{
+				const AuAnimalia* cached = m_LegacyCollisionShape->animalia.data();
+				matches = cached && cached->DNA() == m_Animalia->DNA()
+					&& cached->Chromatid() == m_Animalia->Chromatid()
+					&& cached->Handedness() == m_Animalia->Handedness();
+			}
+		}
+		if(!matches)
+		{
+			QSharedPointer<LegacyCollisionShape> replacement(new LegacyCollisionShape);
+			replacement->hasItemInHand = hasItemInHand;
+			if(m_Body)
+			{
+				DhDNA dna(m_Body->DNA());
+				dna.FreezePoseRhythm();
+				replacement->body.reset(new DpBody(m_Body->Sex(), m_Body->IsLeftHanded(), dna));
+				for(int section = 0; section < DpBody::PS_Count; ++section)
+					replacement->poses3[section] = poses3[section];
+				replacement->body->Pose(poses3, hasItemInHand, 1);
+				replacement->body->RoughExtents(replacement->minimum, replacement->maximum);
+				if(poses3[DpBody::PS_LowerTorso].Pose() == AuPose::Jump)
+				{
+					// Jump limbs spread wider than the standing body. Keep the
+					// upright movement width, so takeoff at a hull threshold does
+					// not create a new overlap with the floor or door jambs.
+					// The posed shadow retains the jump height and CG convention.
+					DpBody upright(m_Body->Sex(), m_Body->IsLeftHanded(), dna);
+					upright.Pose(AuPose::Stand, hasItemInHand, 1);
+					AuPoint uprightMinimum, uprightMaximum;
+					upright.RoughExtents(uprightMinimum, uprightMaximum);
+					replacement->minimum.x = uprightMinimum.x;
+					replacement->minimum.y = uprightMinimum.y;
+					replacement->maximum.x = uprightMaximum.x;
+					replacement->maximum.y = uprightMaximum.y;
+				}
+			}
+			else
+			{
+				replacement->animalia.reset(new AuAnimalia(m_Animalia->DNA(), m_Animalia->Chromatid(),
+					m_Animalia->Handedness(), GrowthStage()));
+				for(int section = 0; section < AuAnimalPart::PS_Count; ++section)
+					replacement->poses4[section] = poses4[section];
+				// Zero frequency freezes all limb rhythms and the tail; the mouth and head remain neutral.
+				replacement->animalia->Pose(Id(), poses4, hasItemInHand, 0);
+				replacement->animalia->SightExtents(replacement->minimum, replacement->maximum);
+				if(poses4[AuAnimalPart::PS_General].Pose() == AuPose::Jump)
+				{
+					AuAnimalia upright(m_Animalia->DNA(), m_Animalia->Chromatid(),
+						m_Animalia->Handedness(), GrowthStage());
+					upright.Pose(Id(), AuPose::Stand, hasItemInHand, 0);
+					AuPoint uprightMinimum, uprightMaximum;
+					upright.SightExtents(uprightMinimum, uprightMaximum);
+					replacement->minimum.x = uprightMinimum.x;
+					replacement->minimum.y = uprightMinimum.y;
+					replacement->maximum.x = uprightMaximum.x;
+					replacement->maximum.y = uprightMaximum.y;
+				}
+			}
+			m_LegacyCollisionShape = replacement;
+		}
+		shape = m_LegacyCollisionShape;
+	}
+
+	AuPoint minimum = shape->minimum, maximum = shape->maximum;
+	if(!IsFullGrown())
+	{
+		const AuPoint scale = GrowthScaleBody();
+		minimum.x *= scale.x;
+		minimum.y *= scale.y;
+		minimum.z *= scale.z;
+		maximum.x *= scale.x;
+		maximum.y *= scale.y;
+		maximum.z *= scale.z;
+	}
+	extents.SetFromMinMax(minimum, maximum);
+	const quint8 growthTime = GrowthTime();
+	const bool aboardVehicle = dynamic_cast<const DaVehicle*>(Parent());
+	const AuPoint offset = shape->body
+		? CGOffset(*shape->body, m_MinutesToFullGrown, growthTime, aboardVehicle)
+		: CGOffset(*shape->animalia, m_MinutesToFullGrown, growthTime, aboardVehicle);
+	AuMatrix4x4 bodyTransform;
+	if(CurrentGeneralPose().Pose() != AuPose::EyesOnly)
+		BodyPoseAdjustTransform(bodyTransform);
+	bodyTransform.Translate(offset);
+	extents.Transform(bodyTransform);
+	return true;
+}
+
 bool DaCreature::RoughExtents(AuBox &fExt) const
 {
 	AuPoint min, max;

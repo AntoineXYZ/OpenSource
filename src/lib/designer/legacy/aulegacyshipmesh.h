@@ -98,9 +98,51 @@ struct Batch
 	float effectFrameSeconds = 0.1f;
 };
 
+struct HullOpening
+{
+	HullOpening() = default;
+	HullOpening(const QPointF& first, const QPointF& second, int floorDeck, int type, quint32 id)
+		: a(first), b(second), deck(floorDeck), detailType(type), detailId(id) {}
+
+	QPointF a;
+	QPointF b;
+	int deck = 0;
+	int detailType = 0;
+	quint32 detailId = 0;
+};
+
+struct HatchOpening
+{
+	HatchOpening() = default;
+	HatchOpening(const QPolygonF& shape, int floorDeck, quint32 id)
+		: boundary(shape), deck(floorDeck), detailId(id) {}
+
+	QPolygonF boundary;
+	int deck = 0;
+	quint32 detailId = 0;
+};
+
+struct HullWindowBoundary
+{
+	HullWindowBoundary() = default;
+	HullWindowBoundary(const QPointF& first, const QPointF& second, int floorDeck)
+		: a(first), b(second), deck(floorDeck) {}
+
+	QPointF a;
+	QPointF b;
+	int deck = 0;
+};
+
 struct Mesh
 {
 	QVector<Batch> batches;
+	// Actual rendered wall apertures, including permanent hull openings which
+	// have no panel batch. Their endpoints retain the surrounding hull jambs.
+	QVector<HullOpening> hullOpenings;
+	QVector<HatchOpening> hatchOpenings;
+	// Movement boundaries at the inner frame of sloped hull windows. These
+	// are separate from the visible glass and its recovered wall profile.
+	QVector<HullWindowBoundary> hullWindowBoundaries;
 	QVector3D minimum;
 	QVector3D maximum;
 	QStringList warnings;

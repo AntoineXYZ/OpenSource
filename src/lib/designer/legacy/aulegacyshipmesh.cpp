@@ -612,6 +612,7 @@ struct WallSpan
 	quint16 tag;
 	int detail;
 	quint32 doorId;
+	quint32 detailId;
 };
 
 using DetailGrid = QHash<quint32, QVector<Detail>>;
@@ -655,11 +656,12 @@ QVector<WallSpan> WallSpans(const Edge& edge, bool exterior, const DetailGrid& d
 	for(int i = 1; i < cuts.size(); ++i)
 	{
 		const double middle = (cuts.at(i - 1) + cuts.at(i)) / 2;
-		WallSpan span = {a + direction * cuts.at(i - 1), a + direction * cuts.at(i), edge.tag, 0, 0};
+		WallSpan span = {a + direction * cuts.at(i - 1), a + direction * cuts.at(i), edge.tag, 0, 0, 0};
 		for(const Opening& opening : openings)
 			if(middle > opening.start && middle < opening.end)
 			{
 				span.detail = opening.type;
+				span.detailId = opening.id;
 				span.doorId = IsDoorDetail(opening.type) ? opening.id : 0;
 				if(exterior) span.tag = quint16((IsSideTurret(opening.type) ? 31
 					: opening.type == 3 ? 28 : opening.type == 9 ? 29 : 30) << 8);
@@ -690,13 +692,18 @@ void HullWalls(Builder& out, const QVector<Edge>& edges, int deck, int armor, co
 			const WallSpan& previous = spans.at((i + spans.size() - 1) % spans.size());
 			const WallSpan& next = spans.at((i + 1) % spans.size());
 			const QPointF a = edge.a, b = edge.b;
+			if(edge.detail == 3 || edge.detail == 9 || edge.detail == 50)
+				out.mesh.hullOpenings.append(HullOpening{a, b, deck, edge.detail, edge.detailId});
 			const QPointF direction = b - a;
 			const QPointF na = JoinNormal(a - previous.a, direction);
 			const QPointF nb = JoinNormal(direction, next.b - b);
 			const QVector<ProfilePoint> profile = WallProfile(Type(edge.tag), armor);
+			bool slopedWindow = false, opening = false;
 			for(int j = 1; j < profile.size(); ++j)
 			{
 				const ProfilePoint p = profile.at(j - 1), q = profile.at(j);
+				slopedWindow |= p.strip == 5 && std::abs(p.offset - q.offset) > Epsilon;
+				opening |= p.strip >= 1 && p.strip <= 3;
 				if(!p.strip) continue;
 				const Material material = HullMaterial(p.strip);
 				const QVector3D a0 = Position(a + na * p.offset, deck * DeckHeight + p.height);
@@ -715,6 +722,11 @@ void HullWalls(Builder& out, const QVector<Edge>& edges, int deck, int armor, co
 				out.Triangle(material, deck, true, a0, b1, b0, {0, 0}, {1, 1}, {1, 0}, doorId);
 				out.Triangle(material, deck, true, a0, a1, b1, {0, 0}, {0, 1}, {1, 1}, doorId);
 			}
+			// Keep movement inside the baseline frame across the entire deck,
+			// before the glass or its sill can deflect a walking body vertically.
+			// Window strips above doors or turrets must not close their apertures.
+			if(slopedWindow && !opening)
+				out.mesh.hullWindowBoundaries.append(HullWindowBoundary{a, b, deck});
 			// RenderWallEndCap closes both room profiles to the baseline. Its
 			// interior-facing strip uses the end-cap tile and height-scaled V.
 			if(Type(edge.tag) != Type(next.tag))
@@ -773,6 +785,8 @@ const QPoint Corners[4] = {{4, 0}, {4, 4}, {0, 4}, {0, 0}};
 void DeckSurfaces(Builder& out, const Raster& raster, int deck, int armor, const QVector<Detail>& details)
 {
 	const QVector<Hatch> hatches = Hatches(details, deck);
+	for(const Hatch& hatch : hatches)
+		if(hatch.doorId) out.mesh.hatchOpenings.append(HatchOpening{hatch.boundary, deck, hatch.doorId});
 	QSet<quint16> turrets;
 	for(const Detail& detail : details)
 	{

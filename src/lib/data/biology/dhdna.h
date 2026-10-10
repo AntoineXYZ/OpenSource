@@ -635,6 +635,12 @@ public:	// Methods
 	// 'speedEnc' is speed modifier due to encumberance. It is multiplied by the natural pose speed. 1=natural speed, .5=half speed
 	float Rhythm(const AuPose& pose, float cycleOffset, float speedEnc) const;
 
+	// Only transient collision bodies freeze their animation rhythm. This is not DNA and is not serialized.
+	inline void FreezePoseRhythm()
+	{
+		m_CollisionRhythmFrozen = true;
+	}
+
 	float SightRange() const
 	{
 		float sightRange = (EyeSize+1) * 90;	// Sight range of eyes, in feet.
@@ -750,6 +756,9 @@ protected:
 		isOk = true;
 		return value;
 	}
+
+private:
+	bool m_CollisionRhythmFrozen = false;
 };
 
 Q_DECLARE_METATYPE(DhDNA)	// Needed to this use class in queued signal/slot connections. Must also call qRegisterMetaType.

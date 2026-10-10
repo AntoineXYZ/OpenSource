@@ -5221,7 +5221,7 @@ bool DaWorldRingSection::MoveSubatom(DaAtom *pMove, const AuPoint &vMove, int el
 	// Determine the result of attempting to move to the nu location.
 	DaAtom *pHit = NULL;
 	AuPoint hitLoc, hitNormal;
-	COLLISION_TYPE eCollide = pMove->CheckCollision(foldloc, fnuloc, pHit, hitLoc, hitNormal);
+	COLLISION_TYPE eCollide = pMove->CheckCollision(foldloc, fnuloc, pHit, hitLoc, hitNormal, &fnuloc);
 	pMove->SetMoveResult(eCollide);
 	//qDebug() << "DaWorldRingSection::MoveSubatom" << Id() << Name() << "move" << pMove->Id() << pMove->Name()
 		//<< "CheckCollision" << eCollide << "oldloc" << foldloc << "nuloc" << fnuloc

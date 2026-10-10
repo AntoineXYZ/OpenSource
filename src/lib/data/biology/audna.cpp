@@ -6414,8 +6414,13 @@ void AuChromoTorso::AnglesForPose(const AuId& id, const AuElapsedTimer& when, fl
 	// c = cycle
 	// s/c = sec / cycle = 1 / hz
 	// ms/c = s/c * 1000ms/s
-	qint64 periodMs = 1000.f/bodyHz;
-	tailY = when.Cycle(periodMs) * PIf*2;	//DHH
+	if(bodyHz > 0)
+	{
+		qint64 periodMs = 1000.f/bodyHz;
+		tailY = when.Cycle(periodMs) * PIf*2;	//DHH
+	}
+	else
+		tailY = PIf/2;
 	if(tailY < PIf)
 		tailY -= PIf/2;
 	else

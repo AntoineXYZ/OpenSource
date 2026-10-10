@@ -14,6 +14,8 @@
 #include "aupose.h"
 #include "daunit.h"
 #include "dpbody.h"
+#include <QMutex>
+#include <QSharedPointer>
 
 class AuAnimalia;
 class AuGear;
@@ -41,6 +43,9 @@ protected:
 
 private:
 	mutable QReadWriteLock				m_BodyLock;				// Guards m_Body vars.
+	struct LegacyCollisionShape;
+	mutable QMutex m_LegacyCollisionShapeLock;
+	mutable QSharedPointer<const LegacyCollisionShape> m_LegacyCollisionShape;
 	AuAnimalia*							m_Animalia;				// Constructed from DNA. Only DNA is serialized.
 	DpBody*								m_Body;					// Constructed from DNA. Only DNA is serialized.
 	AuHairStyle::STYLE					m_Haircut;
@@ -1342,6 +1347,10 @@ public:
 			DaAtomList& shadScRingworldFog);
 
 	virtual bool RoughExtents(AuBox &fExt) const;
+
+	// Legacy ship movement uses the creature's anatomy and stance, independently of the render animation clock.
+	bool LegacyCollisionExtents(AuBox& extents) const;
+	bool LegacyCollisionExtents(AuBox& extents, bool hasItemInHand) const;
 
 	void SetupCamera(AuMatrix4x4& camera, double& nearClip, double& farClip, AuAtomRenderInfo& ari) const;
 
