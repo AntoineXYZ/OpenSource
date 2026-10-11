@@ -11,6 +11,7 @@
 #include "auglobal.h"
 #include "ausound.h"
 #include "daperson.h"
+#include "dasc.h"
 #include "dicontrolinput.h"
 #include "dipanelcontrol.h"
 #include <QPainter>
@@ -982,7 +983,11 @@ void DpStationWeapon::AnimateDeviceObjects(AuGLEffects& re, const DaVessel& ship
 		QPainter p(&pads);
 		p.setPen(QPen(QColor(0,64,128), 0.f));
 		p.setFont(QFont(g_Au.TypefaceSans(), 10));
-		QString text = QVariant(m_WhichWeapon+1).toString();
+		// Legacy runtime bay identifiers already include the original +1
+		// display offset, reserving zero for an invalid native identifier.
+		const DaSc* legacy = dynamic_cast<const DaSc*>(&ship);
+		const bool legacyBay = legacy && legacy->IsLegacyDebug();
+		QString text = QVariant(m_WhichWeapon + (legacyBay ? 0 : 1)).toString();
 		p.drawText(QRect(0,0,48,16), Qt::AlignLeft|Qt::AlignTop, text);
 		p.end();
 

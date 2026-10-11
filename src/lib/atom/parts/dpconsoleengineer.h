@@ -29,6 +29,11 @@ public:
 	virtual void EnumControlPanels(AuQuadArray &aControlPanels, const AuMatrix4x4 &tModel, QVector<qint16>& idPanels,
 			const DaCreature& seatedCreature) const;
 
+	virtual void ProcessControlInput(const DiControlInputArray& controls, DaPerson* person, DaVessel& ship,
+			CONTROL_CONTEXT context, const AuPoint& location);
+
+	virtual bool Tick(const AuElapsedTimer& last, const AuElapsedTimer& now, DaPerson* person);
+
 	// 'sceneAtom' is the atom for whom the scene is being constructed.
 	// 'seatedCreature' is the creature seated at this console, if any; may be 0.
 	virtual void Render(const AuMatrix4x4& projection, const AuMatrix4x4& farProjection, const AuMatrix4x4& tModel,
@@ -44,6 +49,9 @@ public:
 
 protected:
 	virtual void PanelDimensions(double& width, double& height) const;
+
+private:
+	void SelectLegacyFTL(const DaVessel& ship);
 };
 
 #endif // DpConsoleEngineer_H

@@ -458,8 +458,7 @@ void AuShipSystemArray::GatherShipSystems(quint8 quality, const AuScReport& desi
 		m_HullModule = design.HullModule();
 		m_PowerPlantModule = design.PowerPlantModule();
 
-		// Only the recovered core consumers operate at this milestone. Other
-		// subsystem counts remain in the report without allocating live systems.
+		// Legacy equipment uses one internal hit and one allocation per unit.
 		if(design.LifeSupportHits())
 		{
 			append(AuShipSystem(SYS_LifeSupport, 0, design.LifeSupportModule(), quality,
@@ -468,8 +467,24 @@ void AuShipSystemArray::GatherShipSystems(quint8 quality, const AuScReport& desi
 		if(design.ManeuverDriveHits())
 		{
 			append(AuShipSystem(SYS_ManeuverDrive, 0, design.ManeuverDriveModule(), quality,
-				design.ManeuverDriveHits(), systemIndex));
+				design.ManeuverDriveHits(), systemIndex++));
 		}
+		for(auto drive = design.FTLDrives().cbegin(); drive != design.FTLDrives().cend(); ++drive)
+			append(AuShipSystem(SYS_FTLDrive, drive.key(), drive->Module(), quality,
+				design.FTLDriveHits(drive.key()), systemIndex++));
+		if(design.SensorHits()) append(AuShipSystem(SYS_Sensor, 0, design.SensorModule(), quality,
+			design.SensorHits(), systemIndex++));
+		if(design.ShieldHits()) append(AuShipSystem(SYS_Shield, 0, design.ShieldModule(), quality,
+			design.ShieldHits(), systemIndex++));
+		for(auto bay = design.WeaponBays().cbegin(); bay != design.WeaponBays().cend(); ++bay)
+			append(AuShipSystem(SYS_Weapon, bay.key(), bay->Module(), quality,
+				design.WeaponBayHits(bay.key()), systemIndex++));
+		for(quint16 surgery : design.SurgeryUnitIds())
+			append(AuShipSystem(SYS_SurgeryUnit, surgery, design.SurgeryUnitModule(surgery), quality,
+				1, systemIndex++));
+		for(auto transporter = design.Transporters().cbegin(); transporter != design.Transporters().cend(); ++transporter)
+			if(transporter->Pads()) append(AuShipSystem(SYS_Transporter, transporter.key(), transporter->Module(),
+				quality, transporter->Pads(), systemIndex++));
 		return;
 	}
 
@@ -1221,7 +1236,32 @@ bool AuShipSystemArray::Reconcile(const AuScReport& design)
 		//qDebug() << "AuShipSystemArray::Reconcile size mismatch requires reconcile. old" << size() << "new" << ck.size();
 	}
 
-	if(reconcileNeeded)
+	if(reconcileNeeded && design.LegacyStats())
+	{
+		// Adding newly operational systems to an existing legacy ship must not
+		// reset its current modules, damage, or power-relay connections.
+		for(int index = 0; index < ck.size(); ++index)
+			for(const AuShipSystem& previous : *this)
+				if(previous.SysId() == ck[index].SysId())
+				{
+					const unsigned int healthMax = ck[index].GetHealthMax();
+					ck[index] = previous;
+					ck[index].SetHealthMax(healthMax);
+					int consumer = -1;
+					const int oldConsumer = previous.GetConnectedConsumer();
+					if(oldConsumer >= 0 && oldConsumer < size())
+						for(int candidate = 0; candidate < ck.size(); ++candidate)
+							if(ck[candidate].SysId() == at(oldConsumer).SysId())
+							{
+								consumer = candidate;
+								break;
+							}
+					ck[index].SetConnectedConsumer(consumer);
+					break;
+				}
+		*this = ck;
+	}
+	else if(reconcileNeeded)
 		GatherShipSystems(design.Quality(), design);
 	return reconcileNeeded;
 }

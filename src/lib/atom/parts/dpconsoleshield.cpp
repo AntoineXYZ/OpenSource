@@ -7,6 +7,10 @@
 #include "dpconsoleshield.h"
 //
 #include "dacreature.h"
+#include "daperson.h"
+#include "dasc.h"
+#include "ausound.h"
+#include "dicontrolinput.h"
 
 DpConsoleShield::DpConsoleShield()
 {
@@ -23,6 +27,34 @@ DpConsoleShield::DpConsoleShield(const DpConsoleShield& c) : DpStationShield(c),
 DpStation* DpConsoleShield::Clone() const
 {
 	return new DpConsoleShield(*this);
+}
+
+void DpConsoleShield::ProcessControlInput(const DiControlInputArray& controls, DaPerson* person, DaVessel& ship,
+		CONTROL_CONTEXT context, const AuPoint& location)
+{
+	const DaSc* legacy = dynamic_cast<const DaSc*>(&ship);
+	if(!legacy || !legacy->IsLegacyDebug())
+	{
+		DpStationShield::ProcessControlInput(controls, person, ship, context, location);
+		return;
+	}
+	if(ship.IsNew()) return;
+	DiControlInputArray active = controls;
+	if(active.HasId(CI_PowerOnOff))
+	{
+		// AuAtom13:180620990 toggles the original shield switch between
+		// on and off; the later three-state Down mode did not exist.
+		if(context != CONTROL_Client)
+			ship.SetShieldState(ship.ShieldState() == DaVessel::SS_Up ? DaVessel::SS_Off : DaVessel::SS_Up);
+		if(context != CONTROL_Server)
+		{
+			AuEffect click(person->ButtonSoundLoc(), AuPoint(0, 0), AuPoint(0, 0), SOUND_Bleep7, 1,
+				ship.ShieldState() == DaVessel::SS_Up ? .9f : 1.f);
+			person->AddEffect(click);
+		}
+		active.RemoveId(CI_PowerOnOff);
+	}
+	DpStationShield::ProcessControlInput(active, person, ship, context, location);
 }
 
 void DpConsoleShield::CreateDeviceObjects(AuAtomRenderInfo& ari, const DaAtom& parent, bool inBuilding)

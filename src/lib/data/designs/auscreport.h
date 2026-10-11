@@ -15,6 +15,7 @@
 #include "auscreporthelpers.h"
 #include "demanufacturingprocess.h"
 
+class AuScDesign;
 class AuScParts;
 
 class AUDATA_DLL AuScReport
@@ -140,6 +141,9 @@ public:	// Operators
 public:	// Methods
 	void SetLegacyStats(const QSharedPointer<const AuLegacyScStats>& stats);
 
+	// Bind native manual controls to the generated legacy equipment identities.
+	void InitializeLegacyStations(const AuScDesign& design);
+
 	inline const QSharedPointer<const AuLegacyScStats>& LegacyStats() const
 	{
 		return m_LegacyStats;
@@ -240,6 +244,7 @@ public:	// Methods
 
 	inline quint16 CommandStationCount() const
 	{
+		if(m_LegacyStats) return quint16(m_LegacyStats->Stats().officerStations);
 		return m_CommandStations.size();
 	}
 
@@ -262,6 +267,7 @@ public:	// Methods
 
 	inline quint16 CrewStationCount() const
 	{
+		if(m_LegacyStats) return quint16(m_LegacyStats->Stats().crewStations);
 		return m_CrewStations.size() + m_Transporters.size();
 	}
 
@@ -986,6 +992,7 @@ public:	// Methods
 	// dissipates 1 unit of shield energy.
 	inline float ShieldDissipatePerDamagePoint() const
 	{
+		if(m_LegacyStats) return m_LegacyStats->Performance().shieldDissipationPerDamage;
 		quint8 shieldQ = m_Shield.Quality();
 		if(!shieldQ)
 			return 1.f/10.f;

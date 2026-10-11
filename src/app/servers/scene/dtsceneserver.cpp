@@ -90,22 +90,24 @@ struct LegacyClientFrame
 bool IsLegacyConsolePose(const AuPose& pose)
 {
 	return pose == AuPose::ConsoleCommand || pose == AuPose::ConsoleEngine
-		|| pose == AuPose::ConsolePilot || pose == AuPose::ConsolePower;
+		|| pose == AuPose::ConsolePilot || pose == AuPose::ConsolePower
+		|| pose == AuPose::ConsoleNav || pose == AuPose::ConsoleFireControl
+		|| pose == AuPose::ConsoleSensor || pose == AuPose::ConsoleShield
+		|| pose == AuPose::ConsoleSurgery || pose == AuPose::ConsoleSurgeryUnit
+		|| pose == AuPose::ConsoleTransporter;
 }
 
 bool ValidateLegacyConsoleAttachment(DaSc& ship, const DaCreature& creature, const AuPose& pose,
 		quint16 stationId, quint16 controlId, const AuPoint& location, QString& reason)
 {
 	AuStation station;
-	if(!ship.Station(stationId, station))
-		reason = QStringLiteral("legacy console station unavailable");
-	else if(location.Distance2(station.OpM().Translation()) > .05 * .05)
-		reason = QStringLiteral("legacy console seat position mismatch");
-	else if(creature.IsConsolePose() && creature.StationId() == stationId)
+	if(creature.IsConsolePose() && creature.StationId() == stationId)
 	{
 		// An occupied seat cannot pass the entry test again. Accept only the
 		// station mode and control already authorized on the server.
-		if(creature.CurrentGeneralPose() != pose || creature.ControlId() != controlId)
+		if(!ship.Station(creature, station))
+			reason = QStringLiteral("legacy console station unavailable");
+		else if(creature.CurrentGeneralPose() != pose || creature.ControlId() != controlId)
 			reason = QStringLiteral("legacy console mode mismatch");
 	}
 	else
@@ -118,7 +120,10 @@ bool ValidateLegacyConsoleAttachment(DaSc& ship, const DaCreature& creature, con
 			reason = QStringLiteral("legacy console entry unavailable");
 		else if(pose != AuStation::OpPose(available.Type(), available.OccPos(), available.SeatIndex()))
 			reason = QStringLiteral("legacy console entry pose mismatch");
+		else station = available;
 	}
+	if(reason.isEmpty() && location.Distance2(station.OpM().Translation()) > .05 * .05)
+		reason = QStringLiteral("legacy console seat position mismatch");
 	return reason.isEmpty();
 }
 

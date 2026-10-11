@@ -19,6 +19,7 @@
 #include <QPainter>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QMap>
 #include <QScopedPointer>
 #include <QSet>
 #include <algorithm>
@@ -261,11 +262,21 @@ AuScPoint VertexPoint(const Vertex& vertex, const AuLegacyScDesign& legacy, cons
 
 SURFACE_EFFECT BatchEffect(const Batch& batch)
 {
+	// The recovered FTL hull applique uses each hull surface's original UVs,
+	// independently of the equipment batches' effect-frame metadata.
+	if(!batch.interior && (batch.material == Material::HullBottom || batch.material == Material::HullTop
+		|| batch.material == Material::HullTopBottomWindow || batch.material == Material::HullWall
+		|| batch.material == Material::HullWallWindow)) return EFF_Hull;
 	if(batch.effectFirstFrame < 0 || batch.effectFrameCount <= 0) return EFF_None;
 	switch(batch.material)
 	{
 	case Material::PowerPlant: return EFF_PowerPlant;
 	case Material::GravityDrive: return EFF_ManeuverDrive;
+	case Material::Sensor: return EFF_Sensor;
+	case Material::Shield: return EFF_Shield;
+	case Material::FTLDrive: return EFF_FTLDrive1;
+	case Material::WeaponBay: return EFF_Weapon1;
+	case Material::TransporterPad: return EFF_TransporterPad1;
 	case Material::Berth:
 	case Material::LifeSupport:
 	case Material::Surgery: return EFF_LifeSupport;
@@ -346,18 +357,25 @@ bool BlocksPathCell(int type)
 	}
 }
 
-bool IsCoreConsoleDetail(int type)
+bool IsLiveConsoleDetail(int type)
 {
-	return type == 6 || type == 12 || type == 13 || type == 73;
+	return type == 1 || type == 4 || type == 6 || type == 7 || type == 12
+		|| type == 13 || type == 15 || type == 17 || type == 19 || type == 73;
 }
 
-AuScConsole* CoreConsole(int type)
+AuScConsole* LiveConsole(int type)
 {
 	switch(type)
 	{
+	case 1: return new AuScConsoleNavigator;
+	case 4: return new AuScConsoleMedic;
 	case 6: return new AuScConsoleEngineer;
+	case 7: return new AuScConsoleFireControl;
 	case 12: return new AuScConsoleHelm;
 	case 13: return new AuScConsolePowerRelay;
+	case 15: return new AuScConsoleSensor;
+	case 17: return new AuScConsoleShield;
+	case 19: return new AuScConsoleTransporter;
 	case 73: return new AuScConsoleCommand;
 	default: return nullptr;
 	}
@@ -406,7 +424,57 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 	}
 	for(int index = 0; index < source.details.size(); ++index)
 		source.details[index].detailId = legacy.DetailRecordId(index);
-	const Mesh mesh = BuildMesh(source);
+	Mesh mesh = BuildMesh(source);
+	// Legacy equipment batches can combine units from several numbered bays.
+	// Preserve their triangle provenance so each bay animates independently.
+	QHash<quint16, const Room*> sourceRooms;
+	for(const Room& room : source.rooms)
+		if(!sourceRooms.contains(room.roomId)) sourceRooms.insert(room.roomId, &room);
+	QHash<quint32, quint16> detailBays;
+	QHash<quint32, quint16> detailTransporterRooms;
+	for(const Detail& detail : source.details)
+	{
+		const Room* room = sourceRooms.value(detail.roomId, nullptr);
+		if(room) detailBays.insert(detail.detailId, quint16(room->roomSubtype) + 1);
+		if(room) detailTransporterRooms.insert(detail.detailId,
+			quint16(quint16(quint8(room->deck)) << 8) | room->roomSubtype);
+	}
+	QHash<int, quint16> batchBays;
+	QHash<int, quint16> batchTransporterRooms;
+	const int originalBatchCount = mesh.batches.size();
+	for(int index = 0; index < originalBatchCount; ++index)
+	{
+		const Batch original = mesh.batches[index];
+		if((original.material != Material::WeaponBay && original.material != Material::TransporterPad)
+			|| original.effectFirstFrame < 0) continue;
+		QMap<quint16, Batch> split;
+		for(int vertex = 0; vertex + 2 < original.vertices.size(); vertex += 3)
+		{
+			const quint32 detailId = original.triangleDetails.value(vertex / 3, original.detailId);
+			const quint16 bay = original.material == Material::WeaponBay ? detailBays.value(detailId, 0)
+				: detailTransporterRooms.value(detailId, 0);
+			if(!split.contains(bay))
+			{
+				Batch batch = original;
+				batch.vertices.clear();
+				batch.triangleDetails.clear();
+				split.insert(bay, batch);
+			}
+			Batch& batch = split[bay];
+			for(int offset = 0; offset < 3; ++offset) batch.vertices.append(original.vertices[vertex + offset]);
+			batch.triangleDetails.append(detailId);
+		}
+		bool first = true;
+		for(auto bay = split.cbegin(); bay != split.cend(); ++bay)
+		{
+			const int splitIndex = first ? index : mesh.batches.size();
+			if(first) mesh.batches[index] = bay.value();
+			else mesh.batches.append(bay.value());
+			if(original.material == Material::WeaponBay) batchBays.insert(splitIndex, bay.key());
+			else batchTransporterRooms.insert(splitIndex, bay.key());
+			first = false;
+		}
+	}
 	qint64 meshVertices = 0;
 	for(const Batch& batch : mesh.batches) meshVertices += batch.vertices.size();
 	if(meshVertices >= 6000000)
@@ -441,16 +509,17 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 	};
 	bool foundHull = false;
 	AuScFaceList exteriorFaces;
-	QSet<quint32> coreConsoleDetails;
+	QSet<quint32> liveConsoleDetails;
 	for(const Detail& detail : source.details)
-		if(IsCoreConsoleDetail(detail.detailType)
+		if(IsLiveConsoleDetail(detail.detailType)
 			&& detail.deck >= MinimumDeck && detail.deck <= MaximumDeck)
-			coreConsoleDetails.insert(detail.detailId);
+			liveConsoleDetails.insert(detail.detailId);
 	const QVector<DoorDefinition> doors = DoorDefinitions(source, mesh);
 	QHash<quint32, QVector<int>> doorBatches;
 	for(int index = 0; index < mesh.batches.size(); ++index)
 		if(mesh.batches[index].doorId) doorBatches[mesh.batches[index].doorId].append(index);
 	QHash<quint32, quint16> doorPartIds;
+	QHash<quint16, quint16> transporterDrawRooms;
 	for(const DoorDefinition& definition : doors)
 	{
 		AuScDoor door;
@@ -520,7 +589,7 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 	{
 		const Batch& batch = mesh.batches[index];
 		if(batch.doorId || batch.vertices.isEmpty()
-			|| (batch.consoleId && coreConsoleDetails.contains(batch.consoleId))) continue;
+			|| (batch.consoleId && liveConsoleDetails.contains(batch.consoleId))) continue;
 		AuScFaceList faces;
 		const int previousTriangles = triangleCount;
 		const Tile tile = palette.tiles.value(TextureKey(batch));
@@ -539,7 +608,9 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 			: batch.interior ? static_cast<AuScMeshBase*>(&interior) : static_cast<AuScMeshBase*>(&hull);
 		part->SetFaces(faces);
 		QString group = QStringLiteral("legacy/geometry/%1/detail/%2").arg(index).arg(batch.detailId);
-		if(BatchEffect(batch) != EFF_None) group += QStringLiteral("/effect/%1").arg(batch.effectFirstFrame);
+		if(BatchEffect(batch) != EFF_None) group += QStringLiteral("/effect/%1")
+			.arg(BatchEffect(batch) == EFF_Hull ? 31 : batch.effectFirstFrame);
+		if(batchBays.value(index)) group += QStringLiteral("/bay/%1").arg(batchBays.value(index));
 		part->SetGroupName(group + QStringLiteral("/interior/%1").arg(int(batch.interior)));
 		if(part == &hull)
 		{
@@ -547,11 +618,14 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 			foundHull = true;
 		}
 		interior.SetInteriorLighting(false, INTLIGHT_Dark);
-		if(part != &hull && !AddPart(generated, *part))
+		const quint16 partId = part == &hull ? 0 : AddPart(generated, *part);
+		if(part != &hull && !partId)
 		{
 			error = QStringLiteral("The selected legacy design has too many generated parts.");
 			return false;
 		}
+		if(partId && batchTransporterRooms.contains(index))
+			transporterDrawRooms.insert(partId, batchTransporterRooms.value(index));
 		if(!batch.doorId && !batch.equipment && batch.material != Material::Ladder && batch.material != Material::LadderPole)
 		{
 			AuScFaceList collision;
@@ -578,7 +652,7 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 	{
 		AuScHull hull;
 		hull.SetFaces(exteriorFaces);
-		hull.SetGroupName(QStringLiteral("legacy/debug/static/v8"));
+		hull.SetGroupName(QStringLiteral("legacy/debug/static/v9"));
 		if(!AddPart(generated, hull))
 		{
 			error = QStringLiteral("The selected legacy design has too many generated hull parts.");
@@ -629,7 +703,23 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 		if(!chargeTriangles(points.size() * 4)) return false;
 		volume.MakeExtrusion(points, AuPoint(0, 0, AuLegacyShip::DeckHeight), AuMatrix4x4(), 1, true);
 		volume.SetGravity(room.roomType == 11 ? G_Zero : G_Artificial, AuPoint(0, 0, 1));
-		volume.SetHoldAccess(HOLD_Inaccessible);
+		// Native inventory access is the modern representation of these
+		// recovered room roles. Other compartments retain no hold access.
+		HOLD_ACCESS holdAccess = HOLD_Inaccessible;
+		switch(room.roomType)
+		{
+		case ROOM_Barracks: holdAccess = HOLD_Armory; break;
+		case ROOM_Brig: holdAccess = HOLD_Feeder; break;
+		case ROOM_Hold: holdAccess = HOLD_Hold; break;
+		case ROOM_EngineRoom: holdAccess = HOLD_FuelCoupling; break;
+		case ROOM_Galley: holdAccess = HOLD_Pantry; break;
+		case ROOM_VehicleBay: holdAccess = HOLD_VehicleBay; break;
+		case ROOM_Lounge: holdAccess = HOLD_Bar; break;
+		case ROOM_SickBay: holdAccess = HOLD_Pharmacy; break;
+		case ROOM_Stateroom: holdAccess = HOLD_Wardrobe; break;
+		default: break;
+		}
+		volume.SetHoldAccess(holdAccess);
 		volume.SetGroupName(QStringLiteral("Legacy room %1").arg(index + 1));
 		if(!AddPart(generated, volume))
 		{
@@ -638,27 +728,141 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 		}
 		++roomCount;
 	}
-	// Keep original source order. The recovered console interaction chooses the
-	// first eligible detail, even when its authoring hidden flag is set. Native
-	// old-style consoles own the chair/panel model and its occupied swivel pose.
+	const auto roomKey = [&](const Detail& detail) {
+		const Room* room = sourceRooms.value(detail.roomId, nullptr);
+		return quint16(quint16(quint8(room ? room->deck : detail.deck)) << 8)
+			| (room ? room->roomSubtype : 0);
+	};
+	const auto detailFloor = [&](const Detail& detail) {
+		const QPointF point = DecodePoint(detail.packedXY);
+		return legacy.AuthorToShip(AuPoint(point.x(), point.y(), detail.deck * AuLegacyShip::DeckHeight));
+	};
+	QHash<quint16, const Detail*> firstSurgeries;
+	QHash<quint16, AuPointArray> transporterPads;
+	QHash<quint32, quint16> surgeryParts;
+	QSet<quint16> initializedWeaponBays;
+	QMap<quint16, AuPoint> emitters;
+	for(const Room& room : source.rooms)
+		if(room.roomType == ROOM_WeaponBay) initializedWeaponBays.insert(quint16(room.roomSubtype) + 1);
 	for(const Detail& detail : source.details)
 	{
-		if(!coreConsoleDetails.contains(detail.detailId)) continue;
-		QScopedPointer<AuScConsole> console(CoreConsole(detail.detailType));
-		const QPointF point = DecodePoint(detail.packedXY);
-		const AuPoint floor = legacy.AuthorToShip(AuPoint(point.x(), point.y(),
-			detail.deck * AuLegacyShip::DeckHeight));
+		if(detail.detailType == 23 || detail.detailType == 99)
+		{
+			const quint16 bay = detailBays.value(detail.detailId, 0);
+			if(bay)
+			{
+				// AnalyzeDesign creates numbered bays before details. If an
+				// emitter itself creates a missing bay, its position stays invalid.
+				if(!initializedWeaponBays.contains(bay)) initializedWeaponBays.insert(bay);
+				else if(detail.detailType == 99)
+					emitters.insert(bay, detailFloor(detail) + AuPoint(0, 0, AuLegacyShip::DeckHeight * .5));
+			}
+		}
+		if(detail.detailType == 20) transporterPads[roomKey(detail)].append(detailFloor(detail));
+		if(detail.detailType != 11) continue;
+		if(!firstSurgeries.contains(roomKey(detail))) firstSurgeries.insert(roomKey(detail), &detail);
+		// The old surgery mesh stays visible. A serializable native post supplies
+		// one independent system identity per physical surgery unit.
+		AuScCitizenPost surgery;
+		surgery.SetPosition(AuScPost::Occupant_Stand);
+		surgery.MakeIcon(detailFloor(detail), 0, AuMatrix4x4());
+		surgery.SetGroupName(QStringLiteral("legacy/surgery/detail/%1/module/%2/room/%3")
+			.arg(detail.detailId).arg(detail.commodityIdNormalized).arg(roomKey(detail)));
+		const quint16 partId = AddPart(generated, surgery);
+		if(!partId)
+		{
+			error = QStringLiteral("The selected legacy design has too many surgery units.");
+			return false;
+		}
+		surgeryParts.insert(detail.detailId, partId);
+	}
+	for(auto emitter = emitters.cbegin(); emitter != emitters.cend(); ++emitter)
+	{
+		AuScCitizenPost marker;
+		marker.MakeIcon(emitter.value(), 0, AuMatrix4x4());
+		marker.SetGroupName(QStringLiteral("legacy/emitter/bay/%1").arg(emitter.key()));
+		if(!AddPart(generated, marker))
+		{
+			error = QStringLiteral("The selected legacy design has too many weapon emitters.");
+			return false;
+		}
+	}
+	QHash<quint16, quint16> canonicalTransporters;
+	QHash<quint32, quint16> canonicalMedics;
+	// Keep original source order. The recovered interaction chooses the first
+	// eligible detail, even when its authoring hidden flag is set. Native old
+	// consoles own the chair/panel model and its occupied swivel pose.
+	for(const Detail& detail : source.details)
+	{
+		if(!liveConsoleDetails.contains(detail.detailId)) continue;
+		QScopedPointer<AuScConsole> console(LiveConsole(detail.detailType));
+		const AuPoint floor = detailFloor(detail);
 		// The native icon has unequal front/back margins; compensate so its
 		// face center, and therefore the operator floor, stays at the legacy cell.
 		const double iconOffset = (console->IconFore() - console->IconBack()) / 2;
 		console->MakeIcon(floor - AuPoint(0, iconOffset, 0), 0, AuMatrix4x4());
-		console->SetGroupName(QStringLiteral("legacy/console/detail/%1/type/%2/deck/%3")
-			.arg(detail.detailId).arg(detail.detailType).arg(detail.deck));
-		if(!AddPart(generated, *console))
+		QString group = QStringLiteral("legacy/console/detail/%1/type/%2/deck/%3")
+			.arg(detail.detailId).arg(detail.detailType).arg(detail.deck);
+		if(detail.detailType == 7)
+		{
+			// AuData13:180075f30: a bridge fire-control console selects the
+			// lowest numbered bay; other rooms select their own room subtype.
+			const Room* room = sourceRooms.value(detail.roomId, nullptr);
+			quint16 control = room ? quint16(room->roomSubtype) + 1 : 0xffff;
+			if(room && room->roomType == 2)
+				control = legacy.Stats().weaponBays.isEmpty() ? 0xffff : quint16(legacy.Stats().weaponBays.firstKey()) + 1;
+			group += QStringLiteral("/control/%1").arg(control);
+			if(emitters.contains(control))
+				static_cast<AuScConsoleFireControl*>(console.data())->SetEmitLoc(emitters.value(control));
+		}
+		else if(detail.detailType == 4)
+		{
+			const Detail* patient = firstSurgeries.value(roomKey(detail), nullptr);
+			const AuPoint patientFloor = patient ? detailFloor(*patient) : floor;
+			static_cast<AuScConsoleMedic*>(console.data())->SetPatient(AuScPart::Patient_Stand, patientFloor,
+				patientFloor + AuPoint(0, 1, 0));
+			group += QStringLiteral("/room/%1/surgery/%2/module/%3").arg(roomKey(detail))
+				.arg(patient ? patient->detailId : 0).arg(patient ? patient->commodityIdNormalized : 0);
+		}
+		else if(detail.detailType == 19)
+		{
+			static_cast<AuScConsoleTransporter*>(console.data())->SetPadLocs(transporterPads.value(roomKey(detail)));
+			group += QStringLiteral("/room/%1").arg(roomKey(detail));
+		}
+		console->SetGroupName(group);
+		const quint16 partId = AddPart(generated, *console);
+		if(!partId)
 		{
 			error = QStringLiteral("The selected legacy design has too many generated console parts.");
 			return false;
 		}
+		if(detail.detailType == 19)
+		{
+			if(!canonicalTransporters.contains(roomKey(detail))) canonicalTransporters.insert(roomKey(detail), partId);
+			generated.Parts().value(partId)->SetGroupName(group + QStringLiteral("/control/%1")
+				.arg(canonicalTransporters.value(roomKey(detail))));
+		}
+		if(detail.detailType == 4)
+		{
+			const Detail* patient = firstSurgeries.value(roomKey(detail), nullptr);
+			if(patient && !canonicalMedics.contains(patient->detailId)) canonicalMedics.insert(patient->detailId, partId);
+		}
+	}
+	for(auto surgery = surgeryParts.cbegin(); surgery != surgeryParts.cend(); ++surgery)
+		if(canonicalMedics.contains(surgery.key()))
+		{
+			AuScPart* marker = generated.Parts().value(surgery.value());
+			marker->SetGroupName(marker->GroupName() + QStringLiteral("/medic/%1").arg(canonicalMedics.value(surgery.key())));
+		}
+	for(auto draw = transporterDrawRooms.cbegin(); draw != transporterDrawRooms.cend(); ++draw)
+	{
+		if(!canonicalTransporters.contains(draw.value())) continue;
+		AuScPart* part = generated.Parts().value(draw.key());
+		QString group = part->GroupName();
+		const int interior = group.lastIndexOf(QStringLiteral("/interior/"));
+		group.insert(interior >= 0 ? interior : group.size(), QStringLiteral("/transporter/%1")
+			.arg(canonicalTransporters.value(draw.value(), 0)));
+		part->SetGroupName(group);
 	}
 	// Open panel apertures need voids through the hull's conservative silhouette;
 	// otherwise its collision margin can stop a player before entering a room.
@@ -823,7 +1027,8 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 		return false;
 	}
 	// Build silhouettes without the modern voxel volume pass. Volume is already
-	// computed from the accepted legacy source, and carries no working systems.
+	// computed from the accepted legacy source. Live switches and power state
+	// are initialized separately when the ship is spawned.
 	generated.Parts().RefreshObstructionsCache();
 	generated.SetLegacyHullVolume(quint32(std::max(1.0, std::ceil(double(legacy.Stats().hullVolume) / CubicFeetPerCubicMeter()))));
 	generated.SetLegacyStats(QSharedPointer<const AuLegacyScStats>(new AuLegacyScStats(legacy.SourceDesign(), legacy.Stats())));
@@ -955,7 +1160,15 @@ QImage OriginalEffectTexture(int frame)
 	else if(frame >= 12 && frame < 16) region = QRect(160, (15 - frame) * 32, 32, 32);
 	else if(frame >= 16 && frame < 20) region = QRect(32, (19 - frame) * 32, 32, 32);
 	else if(frame >= 20 && frame < 24) region = QRect(128, (23 - frame) * 32, 32, 32);
+	else if(frame >= 24 && frame < 27) region = QRect(256 + (frame - 24) * 32, 0, 32, 128);
+	else if(frame >= 27 && frame < 31) region = QRect(0, (30 - frame) * 32, 32, 32);
+	else if(frame >= 31 && frame < 35) region = QRect(768, (34 - frame) * 32, 32, 32);
 	else if(frame >= 40 && frame < 43) region = QRect(480 + (frame - 40) * 64, 0, 64, 128);
+	else if(frame >= 43 && frame < 47) region = QRect(736, (46 - frame) * 32, 32, 32);
+	else if(frame >= 47 && frame < 51) region = QRect(704, (50 - frame) * 32, 32, 32);
+	else if(frame >= 51 && frame < 55) region = QRect(672, (54 - frame) * 32, 32, 32);
+	else if(frame >= 55 && frame < 59) region = QRect(192, (58 - frame) * 32, 32, 32);
+	else if(frame >= 59 && frame < 63) region = QRect(832, (62 - frame) * 32, 32, 32);
 	else return QImage();
 	static const QImage atlas(QStringLiteral(":/data/legacy_ShipEffects.png"));
 	if(atlas.isNull()) return QImage();

@@ -131,6 +131,11 @@ public:
 protected:
 	static GLuint CreateDisplayTexture(AuGLEffects& re, const AuId& parentId);
 
+	void SetSelectedFTL(quint16 whichFTL)
+	{
+		m_WhichFTL = whichFTL;
+	}
+
 	void InitAccelSkewGraph();
 
 	void InitPowerPlantSkewGraph();

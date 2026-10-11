@@ -21,8 +21,10 @@ bool LegacyShip(const DaAtom& atom)
 	return ship && ship->IsLegacyDebug();
 }
 
-void RemoveDeferredControls(DiControlInputArray& controls)
+void RemoveModernFTLControls(DiControlInputArray& controls)
 {
+	// AuAtom13:18060fc50/18060e130 define the original pilot controls without
+	// FTL buttons or keyboard actions; FTL belongs to the engineer console.
 	controls.RemoveId(DpStationHelm::CI_FTLSelect);
 	controls.RemoveId(DpStationHelm::CI_FTLEngage);
 	controls.RemoveId(DpStationHelm::CI_FTLSettingUp);
@@ -121,8 +123,8 @@ void DpConsoleHelm::AnimateDeviceObjects(AuGLEffects& re, const DaVessel& ship, 
 			static const QImage hullClosed(QStringLiteral(":data/pc_HullDoorsUnlocked.png"));
 			QImage hullButton = ship.AnyHullDoorOpen() ? hullOpen : hullClosed;
 			texture->ReplaceSubImage(re, hullButton, 200, 90);
-			// FTL and landing gear are deferred. Keep their original artwork
-			// instead of the indicators laid out for the modern helm panel.
+			// FTL operation belongs to the original engineer console. Keep the
+			// pilot artwork where the modern panel adds FTL and landing gear.
 			QImage ftlSlot = original.copy(204, original.height() - 124, 32, 16);
 			texture->ReplaceSubImage(re, ftlSlot, 204, 108);
 			QImage gearSlot = original.copy(236, original.height() - 88, 16, 16);
@@ -136,7 +138,7 @@ void DpConsoleHelm::EnumControlInputs(DiControlInputArray& controls) const
 	DpStationHelm::EnumControlInputs(controls);
 	if(m_LegacyControls)
 	{
-		RemoveDeferredControls(controls);
+		RemoveModernFTLControls(controls);
 		controls.RemoveId(CI_BeaconsOnOff);
 		controls.RemoveId(CI_StrobesOnOff);
 		controls.RemoveId(CI_NavLightsOnOff);
@@ -158,7 +160,7 @@ void DpConsoleHelm::ProcessControlInput(const DiControlInputArray& controls, DaP
 	}
 	if(!ship.IsNormal()) return;
 	DiControlInputArray active = controls;
-	RemoveDeferredControls(active);
+	RemoveModernFTLControls(active);
 	active.RemoveId(CI_BeaconsOnOff);
 	active.RemoveId(CI_StrobesOnOff);
 	active.RemoveId(CI_NavLightsOnOff);
@@ -200,7 +202,7 @@ void DpConsoleHelm::SampleControlPanelInput(qint16 panelId, const AuPoint& panel
 	controls.RemoveId(CI_GearUpDown);
 	controls.RemoveId(CI_HeadlightOnOff);
 	controls.RemoveId(CI_CloseHullDoors);
-	RemoveDeferredControls(controls);
+	RemoveModernFTLControls(controls);
 	double width, height;
 	PanelDimensions(width, height);
 	if(width <= 0 || height <= 0) return;

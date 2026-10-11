@@ -7,6 +7,8 @@
 #include "dpconsoleengineer.h"
 //
 #include "dacreature.h"
+#include "daperson.h"
+#include "dasc.h"
 
 DpConsoleEngineer::DpConsoleEngineer(quint16 whichFTL) : DpStationEngineer(whichFTL)
 {
@@ -23,6 +25,31 @@ DpConsoleEngineer::DpConsoleEngineer(const DpConsoleEngineer& c) : DpStationEngi
 DpStation* DpConsoleEngineer::Clone() const
 {
 	return new DpConsoleEngineer(*this);
+}
+
+void DpConsoleEngineer::SelectLegacyFTL(const DaVessel& ship)
+{
+	const DaSc* legacy = dynamic_cast<const DaSc*>(&ship);
+	if(!legacy || !legacy->IsLegacyDebug()) return;
+	// The original console selected the ship's sole FTL system with identifier
+	// zero. Runtime blueprints give that system a part identifier instead.
+	const quint16 selectedFTL = SystemWhich();
+	if(!selectedFTL || ship.SystemModule(SYS_FTLDrive, selectedFTL) == CID_Invalid)
+		SetSelectedFTL(ship.FTLWarpDrive() ? ship.FTLWarpDrive() : ship.FTLWormholeDrive());
+}
+
+void DpConsoleEngineer::ProcessControlInput(const DiControlInputArray& controls, DaPerson* person, DaVessel& ship,
+		CONTROL_CONTEXT context, const AuPoint& location)
+{
+	SelectLegacyFTL(ship);
+	DpStationEngineer::ProcessControlInput(controls, person, ship, context, location);
+}
+
+bool DpConsoleEngineer::Tick(const AuElapsedTimer& last, const AuElapsedTimer& now, DaPerson* person)
+{
+	DaVessel* ship = dynamic_cast<DaVessel*>(person->Parent());
+	if(ship) SelectLegacyFTL(*ship);
+	return DpStationEngineer::Tick(last, now, person);
 }
 
 void DpConsoleEngineer::CreateDeviceObjects(AuAtomRenderInfo& ari, const DaAtom& parent, bool inBuilding)

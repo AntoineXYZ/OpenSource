@@ -773,7 +773,8 @@ void AuScDesign::LoadLegacyTextureMap(QSqlDatabase& db)
 			|| part->GroupName() == QStringLiteral("legacy/debug/static/v5")) includeOpenHatches = true;
 		if(part->GroupName() == QStringLiteral("legacy/debug/static/v6")
 			|| part->GroupName() == QStringLiteral("legacy/debug/static/v7")
-			|| part->GroupName() == QStringLiteral("legacy/debug/static/v8")) includeDoors = true;
+			|| part->GroupName() == QStringLiteral("legacy/debug/static/v8")
+			|| part->GroupName() == QStringLiteral("legacy/debug/static/v9")) includeDoors = true;
 	}
 	AuLegacyScDesign accepted;
 	QString error;
@@ -799,7 +800,8 @@ bool AuScDesign::NeedsLegacyTextureMap() const
 			|| part->GroupName() == QStringLiteral("legacy/debug/static/v5")
 			|| part->GroupName() == QStringLiteral("legacy/debug/static/v6")
 			|| part->GroupName() == QStringLiteral("legacy/debug/static/v7")
-			|| part->GroupName() == QStringLiteral("legacy/debug/static/v8")) return true;
+			|| part->GroupName() == QStringLiteral("legacy/debug/static/v8")
+			|| part->GroupName() == QStringLiteral("legacy/debug/static/v9")) return true;
 	return false;
 }
 
@@ -2316,7 +2318,11 @@ void AuScDesign::ReportDesign(AuScReport& report) const
 
 	// Calculate values that are based on system volumes.
 	report.UpdateCalculatedValues();
-	if(m_LegacyStats) report.SetLegacyStats(m_LegacyStats);
+	if(m_LegacyStats)
+	{
+		report.SetLegacyStats(m_LegacyStats);
+		report.InitializeLegacyStations(*this);
+	}
 
 	// Assemblies report their parts list.
 	if(State() != Final)

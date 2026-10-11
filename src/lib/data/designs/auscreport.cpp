@@ -17,6 +17,7 @@
 #include "dgdata.h"
 
 #include <QLocale>
+#include <QStringList>
 #include <algorithm>
 #include <cmath>
 
@@ -24,6 +25,24 @@
 
 namespace
 {
+COMMODITYID LegacyBayModule(quint16 module)
+{
+	switch(module)
+	{
+	case 0xfc: case 0xfd: return CID_EnergyWeaponBayModule;
+	case 0xfe: case 0xff: return CID_WeaponLauncherBayModule;
+	case 0x100: return CID_AtmosphereCondenserBayModule;
+	case 0x101: return CID_ProspectorBayModule;
+	case 0x102: return CID_TractorBeamBayModule;
+	case 0x105: return CID_BallisticWeaponBayModule;
+	case 0x11b: return CID_ParticleCollectorBayModule;
+	case 0x121: return CID_SiphonBayModule;
+	case 0x123: return CID_WildcatterBayModule;
+	case 0x13f: return CID_WeaponDeploymentBayModule;
+	default: return CID_Invalid;
+	}
+}
+
 QString LegacyStatsListing(const AuLegacyScStats& snapshot)
 {
 	const AuLegacyShip::Header& header = snapshot.Header();
@@ -560,6 +579,76 @@ void AuScReport::SetLegacyStats(const QSharedPointer<const AuLegacyScStats>& sta
 		const int structure = m_LegacyStats->Performance().structure;
 		m_Structure = structure >= 3 ? SC_Station : quint8(structure);
 		UpdateCalculatedValues();
+	}
+}
+
+void AuScReport::InitializeLegacyStations(const AuScDesign& design)
+{
+	if(!m_LegacyStats) return;
+	const AuScReportStationHash previousCrew = m_CrewStations;
+	const AuScReportTransporterStationHash previousTransporters = m_Transporters;
+	m_CommandStations.clear();
+	m_CrewStations.clear();
+	m_Transporters.clear();
+	QSet<quint16> transporterRooms;
+	QList<quint16> partIds = design.Parts().keys();
+	std::sort(partIds.begin(), partIds.end());
+	for(quint16 partId : partIds)
+	{
+		const auto part = design.Parts().find(partId);
+		const AuScPart& equipment = **part;
+		if(equipment.IsOmitted()) continue;
+		const QString group = equipment.GroupName();
+		const bool surgery = group.startsWith(QStringLiteral("legacy/surgery/detail/"));
+		if(!surgery && (!equipment.IsConsole()
+			|| !group.startsWith(QStringLiteral("legacy/console/detail/")))) continue;
+		const QStringList fields = group.split('/');
+		const auto property = [&fields](const QString& name, quint16 fallback = 0) {
+			const int index = fields.indexOf(name);
+			bool valid = false;
+			const uint value = index >= 0 && index + 1 < fields.size()
+				? fields.at(index + 1).toUInt(&valid) : 0;
+			return valid && value <= 65535 ? quint16(value) : fallback;
+		};
+		const quint16 roomId = design.Parts().RoomVoidContainingLoc(equipment.OperatorLoc(), .5);
+		if(equipment.StationType() == AuStation::Console_Transporter)
+		{
+			// The recovered system groups pads by the original deck/room number.
+			// Its first console supplies the native part identifier for that room.
+			const quint16 roomKey = property(QStringLiteral("room"), roomId);
+			if(transporterRooms.contains(roomKey)) continue;
+			transporterRooms.insert(roomKey);
+			quint16 originalModule = 0xf6;
+			for(const AuLegacyShip::ModulePair& module : m_LegacyStats->Header().secondPairs)
+				if(module.first == roomKey) { originalModule = module.secondNormalized; break; }
+			const COMMODITYID module = originalModule == 0xf7 ? CID_VehicleTransporterModule
+				: originalModule == 0xf6 ? CID_PersonnelTransporterModule : CID_Invalid;
+			AuPointArray pads;
+			equipment.PadLocs(pads);
+			const quint8 quality = previousTransporters.contains(part.key())
+				? previousTransporters.value(part.key()).Quality() : m_Quality;
+			m_Transporters.insert(part.key(), AuScReportTransporterStation(module, quality,
+				equipment.Type(), equipment.ReportDesc(), quint8(qMin(255, pads.size())), roomId,
+				equipment.WhichEffect()));
+			continue;
+		}
+		COMMODITYID module = CommandAndControlModule();
+		if(surgery)
+		{
+			switch(property(QStringLiteral("module"), 0xf3))
+			{
+			case 0xf3: module = CID_SurgeryMedicalModule; break;
+			case 0xf4: module = CID_GeneticsMedicalModule; break;
+			case 0xf5: module = CID_CyberneticsMedicalModule; break;
+			default: module = CID_Invalid; break;
+			}
+		}
+		const quint8 quality = previousCrew.contains(part.key())
+			? previousCrew.value(part.key()).Quality() : m_Quality;
+		const AuScReportStation station(module, quality, equipment.Type(), equipment.ReportDesc(),
+			roomId, equipment.WhichEffect());
+		if(equipment.IsCommandStation()) m_CommandStations.insert(part.key(), station);
+		else m_CrewStations.insert(part.key(), station);
 	}
 }
 
@@ -4258,9 +4347,11 @@ quint32 AuScReport::TransporterHits() const
 
 quint32 AuScReport::TransporterHits(quint16 partId) const
 {
-	if(m_LegacyStats) return partId ? quint32(m_LegacyStats->Stats().transporterRooms.value(partId)) : TransporterHits();
+	if(m_LegacyStats && !partId) return TransporterHits();
 	AuScReportTransporterStationHash::const_iterator ti = m_Transporters.find(partId);
-	return (*ti).Hits();
+	if(m_LegacyStats && ti == m_Transporters.cend())
+		return quint32(m_LegacyStats->Stats().transporterRooms.value(partId));
+	return ti == m_Transporters.cend() ? 0 : (*ti).Hits();
 }
 
 quint8 AuScReport::TransporterQuality(quint16 partId) const
@@ -4538,6 +4629,9 @@ quint16 AuScReport::TransporterRoomId(quint16 partId) const
 
 float AuScReport::HarvesterBayRange(quint16 which, unsigned int unitsFired) const
 {
+	if(m_LegacyStats)
+		return which && m_Bays.contains(which) ? std::sqrt(float(unitsFired * 10)) * 100.f * 3.28084f
+			* AuLegacyShip::LegacyTechBoost(m_LegacyStats->Performance().techLevelUsed) : 0;
 	AuScReportSysVolHash::const_iterator ti = m_Bays.find(which);
 	if(ti == m_Bays.cend())
 		return 0;
@@ -4547,6 +4641,8 @@ float AuScReport::HarvesterBayRange(quint16 which, unsigned int unitsFired) cons
 
 float AuScReport::TractorBeamRange(quint16 which, unsigned int unitsFired) const
 {
+	if(m_LegacyStats)
+		return HarvesterBayRange(which, unitsFired) / 2;
 	AuScReportSysVolHash::const_iterator ti = m_Bays.find(which);
 	if(ti == m_Bays.cend())
 		return 0;
@@ -4556,6 +4652,9 @@ float AuScReport::TractorBeamRange(quint16 which, unsigned int unitsFired) const
 
 float AuScReport::WeaponBayRange(quint16 which) const
 {
+	if(m_LegacyStats)
+		return m_Bays.contains(which) ? float(AuLegacyShip::LegacyTechBoost(m_LegacyStats->Performance().techLevelUsed))
+			* 85000.f : 0;
 	AuScReportSysVolHash::const_iterator ti = m_Bays.find(which);
 	if(ti == m_Bays.cend())
 		return 0;
@@ -4673,6 +4772,7 @@ QList<quint16> AuScReport::SurgeryUnitIds() const
 	for(QHash<quint16, AuScReportStation>::const_iterator ci = m_CrewStations.cbegin(); ci != m_CrewStations.cend(); ci++)
 		if(ScModuleSystem((*ci).Module()) == SYS_SurgeryUnit)
 			unitIds.append(ci.key());
+	if(m_LegacyStats) std::sort(unitIds.begin(), unitIds.end());
 	return unitIds;
 }
 
@@ -4765,16 +4865,30 @@ COMMODITYID AuScReport::PowerPlantModule() const
 
 COMMODITYID AuScReport::ShieldModule() const
 {
+	if(m_LegacyStats)
+	{
+		switch(m_LegacyStats->Performance().shieldModule)
+		{
+		case 0xf0: return CID_EnergyShieldModule;
+		case 0xf1: return CID_KineticShieldModule;
+		case 0xf2: return CID_CloakingShieldModule;
+		default: return CID_Invalid;
+		}
+	}
 	return m_Shield.Module();
 }
 
 COMMODITYID AuScReport::SensorModule() const
 {
+	if(m_LegacyStats) return m_LegacyStats->Header().scalarSlots.at(6) == 0x107 ? CID_SensorModule : CID_Invalid;
 	return m_Sensor.Module();
 }
 
 float AuScReport::WeaponBayPower(quint16 which, float unitsFired) const
 {
+	if(m_LegacyStats)
+		return m_Bays.contains(which) ? AuLegacyShip::LegacyTechBoost(m_LegacyStats->Performance().techLevelUsed)
+			* unitsFired * 10.f : 0;
 	AuScReportSysVolHash::const_iterator ti = m_Bays.find(which);
 	if(ti == m_Bays.cend())
 		return 0;
@@ -4796,6 +4910,7 @@ double AuScReport::LifeSupportPowerRate() const
 // Returns FTL drive idle power use rate in units per real world second.
 double AuScReport::FTLDrivePowerRate(quint16 partId) const
 {
+	if(m_LegacyStats) return float(FTLDriveUnits(partId)) * .00032407406f;
 	// Each FTL drive uses one power unit per U day.
 	// Calculate use rate in power units per real second.
 	const double rUnitRate = (double)UDaysPerRealDay() / (double)(24 * 3600);
@@ -4837,6 +4952,7 @@ double AuScReport::ManeuverPowerRate() const
 // Returns shield power use rate in units per real world second.
 double AuScReport::ShieldPowerRate() const
 {
+	if(m_LegacyStats) return m_LegacyStats->Performance().shieldPowerPerSecond;
 	// Each shield unit uses one power units per U day.
 	// Calculate use rate in power units per real second.
 	const double rUnitRate = (double)UDaysPerRealDay() / (double)(24 * 3600);
@@ -4847,6 +4963,7 @@ double AuScReport::ShieldPowerRate() const
 // Returns sensor power use rate in units per real world second.
 double AuScReport::SensorPowerRate() const
 {
+	if(m_LegacyStats) return m_LegacyStats->Performance().sensorPowerPerSecond;
 	// Each sensor uses one power units per U day.
 	// Calculate use rate in power units per real second.
 	const double rUnitRate = (double)UDaysPerRealDay() / (double)(24 * 3600);
@@ -4880,6 +4997,11 @@ quint8 AuScReport::MaxCapacitorFTLSetting(quint16 whichFTL) const
 	AuScReportSysVolHash::const_iterator fi = m_FTLDrives.find(whichFTL);
 	if(fi == m_FTLDrives.cend())
 		return 0;
+	if(m_LegacyStats)
+	{
+		const auto& performance = m_LegacyStats->Performance();
+		return performance.ftlModule == 0x103 ? 2 : quint8(qMax(0, performance.maxWarpFactor - 1));
+	}
 
 	return AuScDesign::MaxCapacitorFTLSetting((*fi).Module(), (*fi).Quality(), m_FTLDriveUnitsToEngage, m_CapacitorMax);
 }
@@ -4914,6 +5036,8 @@ double AuScReport::PowerNeededToEngageFTLDrive(quint16 whichFTL, quint8 driveSet
 	AuScReportSysVolHash::const_iterator fi = m_FTLDrives.find(whichFTL);
 	if(fi == m_FTLDrives.cend())
 		return -1;
+	// AuAtom13:1800d5e60 ignores the warp setting when charging a legacy drive.
+	if(m_LegacyStats) return m_LegacyStats->Performance().ftlEngagePower;
 
 	const float tlBoost = (float)QualityBoostF((*fi).Quality());
 	switch((*fi).Module())
@@ -5274,6 +5398,37 @@ void AuScReport::UpdateCalculatedValues()
 	if(m_LegacyStats)
 	{
 		const AuLegacyShip::Performance& performance = m_LegacyStats->Performance();
+		// Reuse the saved native module dictionaries for controls and allocation.
+		// Their rounded volume is metadata only: legacy units and performance
+		// continue to come from the original-unit snapshot.
+		const auto systemVolume = [this](COMMODITYID module, quint64 units, const AuScReportSysVol& previous) {
+			return AuScReportSysVol(module, previous.Module() == CID_Invalid ? qMax<quint8>(1, m_Quality) : previous.Quality(),
+				quint32(std::ceil(double(units) * 256. / CubicFeetPerCubicMeter())));
+		};
+		m_Sensor = systemVolume(SensorModule(), m_LegacyStats->Stats().sensorUnits, m_Sensor);
+		m_Shield = systemVolume(ShieldModule(), m_LegacyStats->Stats().shieldUnits, m_Shield);
+		AuScReportSysVolHash ftlDrives;
+		COMMODITYID ftlModule = CID_Invalid;
+		if(performance.ftlModule == 0x103) ftlModule = CID_WormholePNNFTLDriveModule;
+		else if(performance.ftlModule == 0x104)
+		{
+			const COMMODITYID warpModules[] = {CID_Warp1FTLDriveModule, CID_Warp2FTLDriveModule,
+				CID_Warp3FTLDriveModule, CID_Warp4FTLDriveModule, CID_Warp5FTLDriveModule,
+				CID_Warp6FTLDriveModule, CID_Warp7FTLDriveModule, CID_Warp8FTLDriveModule, CID_Warp9FTLDriveModule};
+			ftlModule = warpModules[qBound(0, performance.techLevelUsed - 23, 8)];
+		}
+		if(m_LegacyStats->Stats().ftlUnits && ftlModule != CID_Invalid)
+			ftlDrives.insert(1, systemVolume(ftlModule, m_LegacyStats->Stats().ftlUnits, m_FTLDrives.value(1)));
+		m_FTLDrives = ftlDrives;
+		AuScReportSysVolHash bays;
+		for(auto bay = performance.weaponBays.cbegin(); bay != performance.weaponBays.cend(); ++bay)
+		{
+			const quint16 which = quint16(bay.key()) + 1;
+			const COMMODITYID module = LegacyBayModule(bay->module);
+			const quint64 units = m_LegacyStats->Stats().weaponBays.value(bay.key()).units;
+			if(module != CID_Invalid) bays.insert(which, systemVolume(module, units, m_Bays.value(which)));
+		}
+		m_Bays = bays;
 		m_MassEquipmentKg = performance.equipmentMassLb * KilogramsPerPound();
 		m_MassFuelKg = performance.fuelMassLb * KilogramsPerPound();
 		m_MassHullKg = performance.hullMassLb * KilogramsPerPound();
@@ -6071,7 +6226,8 @@ quint32 AuScReport::SystemHits(const AuSysId& sysId) const
 		case SYS_PowerPlant: return PowerPlantHits();
 		case SYS_Sensor: return SensorHits();
 		case SYS_Shield: return ShieldHits();
-		case SYS_SurgeryUnit: return sysId.Which() ? (stats.surgeries ? 1 : 0) : quint32(stats.surgeries);
+		case SYS_SurgeryUnit: return sysId.Which()
+			? (SurgeryUnitModule(sysId.Which()) != CID_Invalid ? 1 : 0) : quint32(stats.surgeries);
 		case SYS_Transporter: return TransporterHits(sysId.Which());
 		case SYS_Turret: return sysId.Which() ? (stats.turrets ? 1 : 0) : quint32(stats.turrets);
 		case SYS_Weapon: return sysId.Which() ? WeaponBayHits(sysId.Which()) : WeaponBayHits();
@@ -6187,11 +6343,12 @@ void AuScReport::SystemIds(QSet<AuSysId>& sysIds, bool structural) const
 		else
 		{
 			const SYSTEM systems[] = {SYS_CommandAndControl, SYS_ManeuverDrive, SYS_LifeSupport,
-				SYS_PowerPlant, SYS_Sensor, SYS_Shield, SYS_SurgeryUnit, SYS_Turret, SYS_FTLDrive};
+				SYS_PowerPlant, SYS_Sensor, SYS_Shield, SYS_Turret};
 			for(SYSTEM system : systems) if(SystemHits(system)) sysIds.insert(system);
-			for(auto room = m_LegacyStats->Stats().transporterRooms.cbegin();
-				room != m_LegacyStats->Stats().transporterRooms.cend(); ++room)
-				if(room.value()) sysIds.insert(AuSysId(SYS_Transporter, room.key()));
+			if(FTLDriveHits()) sysIds.insert(AuSysId(SYS_FTLDrive, 1));
+			for(quint16 surgery : SurgeryUnitIds()) sysIds.insert(AuSysId(SYS_SurgeryUnit, surgery));
+			for(auto room = m_Transporters.cbegin(); room != m_Transporters.cend(); ++room)
+				if(room->Pads()) sysIds.insert(AuSysId(SYS_Transporter, room.key()));
 			for(auto bay = m_LegacyStats->Stats().weaponBays.cbegin();
 				bay != m_LegacyStats->Stats().weaponBays.cend(); ++bay)
 				if(bay->units) sysIds.insert(AuSysId(SYS_Weapon, quint16(bay.key()) + 1));

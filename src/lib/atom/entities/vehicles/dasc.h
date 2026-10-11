@@ -44,6 +44,8 @@ class AUATOM_DLL DaSc : public DaVessel
 		bool cutout = false;
 		bool translucent = false;
 		quint16 doorId = 0;
+		quint16 weaponBayId = 0;
+		quint16 transporterId = 0;
 		quint8 doorState = 0;
 	};
 	struct LegacyDoorSound
@@ -127,7 +129,7 @@ private:
 private:
 	mutable QReadWriteLock				m_AirLock;
 	AuElapsedTimer						m_AirChg;				// Time of last state change
-	AuAirPressureHash					m_AirPressures;			// Key is part id. Value is .5% per increment, so 200=100%, std=50%.
+	AuAirPressureHash					m_AirPressures;			// Room name or shared legacy pressure key; .5% per increment, standard=100.
 
 private:
 	mutable QReadWriteLock				m_FTLLock;
@@ -791,6 +793,8 @@ public:	// Methods
 	virtual int MaxCapacitorWarpFactor() const;
 
 	virtual float MaxTransporterRange() const;
+
+	virtual float TransporterRange(quint16 which) const;
 
 	virtual quint64 MemoryUsage() const;
 

@@ -48,6 +48,7 @@
 #include "dpscweapon.h"
 #include "dgdata.h"
 #include "dicontrolinput.h"
+#include "aulegacyshiparmordata.h"
 #include "psfiresmoketrail.h"
 #include "pslandingsystem.h"
 #include "pslaunchsystem.h"
@@ -68,6 +69,29 @@ constexpr double LegacyHatchDescentOpenClearance = .5;
 constexpr bool LegacyRestrictNeutralAccessToNewShips = false;
 // The original core equipment effects advance every 100 milliseconds.
 constexpr int LegacyEffectFrameMSec = 100;
+// DaSpaceShip stores one pressure byte for the entire legacy hull. Keep that
+// value in the existing saved/replicated air hash, independently of room names.
+const QString LegacyAirPressureRoom = QStringLiteral("legacy/ship-air-pressure");
+
+quint32 LegacyStationField(const AuScPart& part, const QString& key, quint32 fallback = 0)
+{
+	const QStringList fields = part.GroupName().split(QLatin1Char('/'));
+	for(int index = 2; index + 1 < fields.size(); index += 2)
+		if(fields.at(index) == key) return fields.at(index + 1).toUInt();
+	return fallback;
+}
+
+AuStation LegacyPatientStation(const AuScPart& part)
+{
+	if(part.IsConsole())
+	{
+		const AuStation patient = part.PatientStation(AuPoint(0, 0, 1));
+		return AuStation(AuStation::Console_Patient, patient.OpM(), AuStation::Occupant_Stand, 1);
+	}
+	AuMatrix4x4 patient;
+	patient.Translate(part.OperatorLoc());
+	return AuStation(AuStation::Console_Patient, patient, AuStation::Occupant_Stand, 0);
+}
 
 void LogLegacyCollision(const QString& message)
 {
@@ -941,7 +965,16 @@ bool DaSc::ActiveTransporterPadLocation(quint16 which, AuPoint& padLoc) const
 float DaSc::AirPressure(const QString& roomName) const
 {
 	if(IsLegacyDebug())
-		return .5f;
+	{
+		m_AirLock.lockForRead();
+		AuAirPressureHash::const_iterator ai = m_AirPressures.find(LegacyAirPressureRoom);
+		if(ai == m_AirPressures.cend()) ai = m_AirPressures.cbegin();
+		// Older legacy saves already initialized every room to 100. An absent
+		// hash retains the original constructor's standard-pressure default.
+		const int pressure = ai == m_AirPressures.cend() ? 100 : int(*ai);
+		m_AirLock.unlock();
+		return qMin(pressure, 200) / 200.f;
+	}
 	float p = 0;
 	m_AirLock.lockForRead();
 	if(p != 0)
@@ -1506,21 +1539,32 @@ bool DaSc::CanEnterConsole(const DaPerson& who, quint16& stationId, AuStation& s
 		// Console metadata is inserted in original detail order. The recovered
 		// interaction checks the avatar's CG deck and strictly less than 3ft in
 		// XY, without requiring the console and avatar to share a room name.
-		QVector<quint16> consoleIds;
+		QMap<quint32, quint16> consoleIds;
 		for(auto pi = scd->Parts().cbegin(); pi != scd->Parts().cend(); ++pi)
 		{
 			const AuScPart* console = *pi;
-			if(console->IsOmitted() || !console->IsConsole()
-				|| !console->GroupName().startsWith(QStringLiteral("legacy/console/detail/"))) continue;
-			consoleIds.append(pi.key());
+			const bool surgery = console->GroupName().startsWith(QStringLiteral("legacy/surgery/detail/"));
+			if(console->IsOmitted() || (!surgery && (!console->IsConsole()
+				|| !console->GroupName().startsWith(QStringLiteral("legacy/console/detail/"))))) continue;
+			consoleIds.insert(LegacyStationField(*console, QStringLiteral("detail"), pi.key()), pi.key());
 		}
-		std::sort(consoleIds.begin(), consoleIds.end());
 		for(quint16 consoleId : consoleIds)
 		{
 			const AuScPart* console = scd->Parts().value(consoleId);
 			const AuPoint floor = console->OperatorLoc();
 			if(who.Location().Distance2_2D(floor) >= 3 * 3
 				|| std::floor((who.Location().z - floor.z + .05) / AuLegacyShip::DeckHeight) != 0) continue;
+			if(console->GroupName().startsWith(QStringLiteral("legacy/surgery/detail/")))
+			{
+				const quint16 medic = quint16(LegacyStationField(*console, QStringLiteral("medic")));
+				if(medic && scd->Parts().contains(medic))
+				{
+					consoleId = medic;
+					console = scd->Parts().value(medic);
+				}
+				station = LegacyPatientStation(*console);
+			}
+			else station = console->OperatorStation(AuPoint(0, 0, 1));
 			which = AttemptConsoleEntry(who, whoInCoC, consoleId, *console, station, AuPoint(0, 0, 1));
 			if(!which) continue;
 			stationId = consoleId;
@@ -1763,12 +1807,13 @@ quint16 DaSc::AttemptConsoleEntry(const DaPerson& who, bool whoInCoC, quint16 co
 		AuStation& station, const AuPoint& gravityN) const
 {
 	// Console's operator position matrix relative to the ship.
-	station = console.ClosestStation(who.Location(), gravityN);
+	const bool legacyConsole = console.GroupName().startsWith(QStringLiteral("legacy/console/detail/"))
+		|| console.GroupName().startsWith(QStringLiteral("legacy/surgery/detail/"));
+	if(!legacyConsole) station = console.ClosestStation(who.Location(), gravityN);
 	if(station.Type() == AuStation::TYPE_Count)
 		return 0;
 	AuPoint whoLoc = station.OpM().UnProject(who.Location());	// 'who's location relative to the console.
 	double floordist = whoLoc.Length2_2D();
-	const bool legacyConsole = console.GroupName().startsWith(QStringLiteral("legacy/console/detail/"));
 	if(!legacyConsole && (floordist > 3*3 || whoLoc.z < -3 || whoLoc.z > 6))
 		return 0;
 
@@ -1809,7 +1854,7 @@ quint16 DaSc::AttemptConsoleEntry(const DaPerson& who, bool whoInCoC, quint16 co
 	// For example, a standing station is positioned on the floor; we must adjust so our feet are there, instead of our cg.
 	station.OffsetOpM(who.ConsolePoseOffset(station.Type(), station.OccPos(), who.CGHeightStanding(), who.TorsoThickness(),
 				station.SeatIndex()));
-	return consolePartId;
+	return legacyConsole ? quint16(LegacyStationField(console, QStringLiteral("control"), consolePartId)) : consolePartId;
 }
 
 bool DaSc::CanEnterNegativeWormhole() const
@@ -2509,7 +2554,8 @@ void DaSc::PatientStation(quint16 medicStationId, quint16& surgeryId, AuStation&
 			AuScReportStationHash::const_iterator si = m_Design.CrewStations().find(medicStationId);
 			if(si != m_Design.CrewStations().cend())
 				gravityN = scd->RoomVoidGravityUp((*si).RoomId(), m_Lifts);
-			station = (*pi)->PatientStation(gravityN);
+			station = IsLegacyDebug() && (*pi)->GroupName().startsWith(QStringLiteral("legacy/console/detail/"))
+				? LegacyPatientStation(**pi) : (*pi)->PatientStation(gravityN);
 		}
 	}
 	UnlockDesign();
@@ -2705,6 +2751,44 @@ bool DaSc::ColonistVoidLocation(AuPoint& voidLoc) const
 void DaSc::CombatArmorEffectiveness(WEAPONMODE mode, WEAPONEFFECT effect, bool hitShield, const AuPoint& wpnLoc,
 		const AuPoint& hitLoc, float& baseAbsorb, float& baseBlock, float& auxAbsorb, float& auxBlock) const
 {
+	if(IsLegacyDebug())
+	{
+		// AuAtom13:1803d7000 uses original commodity armor factors and a
+		// linear technology boost, rather than the modern quality curve.
+		baseAbsorb = baseBlock = auxAbsorb = auxBlock = 0;
+		m_DesignLock.lockForRead();
+		const QSharedPointer<const AuLegacyScStats> stats = m_Design.LegacyStats();
+		m_DesignLock.unlock();
+		if(!stats) return;
+		int modeIndex = -1;
+		switch(mode)
+		{
+		case WM_Area: case WM_Detonator: case WM_Fuse: modeIndex = 0; break;
+		case WM_Contact: modeIndex = 1; break;
+		case WM_Projectile: modeIndex = 2; break;
+		case WM_Psionic: modeIndex = 3; break;
+		default: break;
+		}
+		const int effectIndex = effect >= WE_None && effect <= WE_Generic ? int(effect) : -1;
+		const auto armor = [&](quint16 module, float& absorbed, float& blocked) {
+			const AuLegacyShip::LegacyArmor::Data* data = AuLegacyShip::LegacyArmor::Get(module);
+			if(!data) return;
+			absorbed = ((modeIndex >= 0 ? data->modeAbsorb[modeIndex] : 0)
+				+ (effectIndex >= 0 ? data->effectAbsorb[effectIndex] : 0)) / 200.f;
+			blocked = (modeIndex >= 0 ? data->modeBlock[modeIndex] : 0)
+				+ (effectIndex >= 0 ? data->effectBlock[effectIndex] : 0);
+		};
+		const float boost = 1.f + stats->Performance().techLevelUsed * .05f;
+		armor(stats->Header().scalarSlots.value(2), baseAbsorb, baseBlock);
+		baseBlock *= (stats->Header().armor + 1) * boost;
+		if(ShieldsWorkingAndUp())
+		{
+			armor(stats->Performance().shieldModule, auxAbsorb, auxBlock);
+			const SHIELD side = SHIELD((wpnLoc - hitLoc).Direction());
+			auxBlock *= ShieldCapacitor(side) * boost;
+		}
+		return;
+	}
 	DaVessel::CombatArmorEffectiveness(mode, effect, hitShield, wpnLoc, hitLoc, baseAbsorb, baseBlock, auxAbsorb, auxBlock);
 	if(hitShield)
 	{
@@ -2725,8 +2809,6 @@ void DaSc::CombatArmorEffectiveness(WEAPONMODE mode, WEAPONEFFECT effect, bool h
 void DaSc::CombatApplyDamage(const AuCombatAttacker& attacker, const AuCombatWeapon& weapon, const AuPoint& wpnLoc,
 		const AuPoint& hitLoc, AuCombatResult& result)
 {
-	if(IsLegacyDebug())
-		return;
 	DaVessel::CombatApplyDamage(attacker, weapon, wpnLoc, hitLoc, result);
 	if(InDesignEnvironment())
 		return;
@@ -2744,7 +2826,7 @@ void DaSc::CombatApplyDamage(const AuCombatAttacker& attacker, const AuCombatWea
 		// Take energy from the appropriate shield capacitor.
 		// hitLoc is the point on my shields that was hit.
 		// Get direction of vector from the hit location toward the center of the design, which is the center of the shield bubble.
-		AuPoint::DIRECTION dir = (hitLoc - DesignCenterOffset()).Direction();
+		AuPoint::DIRECTION dir = (IsLegacyDebug() ? wpnLoc - hitLoc : hitLoc - DesignCenterOffset()).Direction();
 		m_ShieldsLock.lockForWrite();
 		unsigned int scram = m_ShieldScram[dir];
 		if(m_ShieldCap[dir] > capUsed)
@@ -2752,7 +2834,7 @@ void DaSc::CombatApplyDamage(const AuCombatAttacker& attacker, const AuCombatWea
 		else
 		{
 			// Shield reduced to zero.
-			scram += 20;
+			if(!IsLegacyDebug()) scram += 20;
 			m_ShieldCap[dir] = 0;
 		}
 		//if(result.m_CriticalHits)
@@ -2818,6 +2900,33 @@ void DaSc::CombatApplyDamage(const AuCombatAttacker& attacker, const AuCombatWea
 		intUnitsDamage1 = 0;
 		hullUnitsDamage2 = result.m_Damage2;
 		intUnitsDamage2 = 0;
+	}
+	if(IsLegacyDebug())
+	{
+		// AuData13:180073310 and AuAtom13:1803d54f0 retain separate
+		// durability units for hull and equipment. Raw combat damage remains
+		// unchanged for shield discharge, hit reporting, and kinetic impulse.
+		m_DesignLock.lockForRead();
+		const QSharedPointer<const AuLegacyScStats> stats = m_Design.LegacyStats();
+		m_DesignLock.unlock();
+		if(stats)
+		{
+			float hullDurability = stats->Header().armor + 1;
+			if(stats->Header().streamline) hullDurability *= 1.1f;
+			hullDurability *= 1.f + stats->Performance().techLevelUsed * .05f;
+			const quint16 module = stats->Header().scalarSlots.value(2);
+			if(module == 0x119) hullDurability *= 1.5f;
+			else if(module == 0x118) hullDurability *= 1.25f;
+			const quint32 maxHits = DesignHitsStructural();
+			const quint32 damagedHits = HitsDamageStructural();
+			const auto units = [&](quint32 damage, bool critical, int& hullDamage, int& equipmentDamage) {
+				const quint32 internal = critical && maxHits ? quint32(quint64(damage) * damagedHits / maxHits) : 0;
+				hullDamage = int(std::ceil(float(damage - internal) / hullDurability));
+				equipmentDamage = int((quint64(internal) + 9) / 10);
+			};
+			units(result.m_Damage1, result.m_CriticalHits > 0, hullUnitsDamage1, intUnitsDamage1);
+			units(result.m_Damage2, result.m_CriticalHits == 2, hullUnitsDamage2, intUnitsDamage2);
+		}
 	}
 
 	// Record damage dealt into this unit's damage log.
@@ -3209,8 +3318,8 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 		if(!AuLegacyScGeometry::ReadTextureMap(design->LegacyTextureMap(), bindings, error)) return false;
 		const int side = bindings.first().packedTile.width();
 		QHash<quint32, int> tiles;
-		QMap<quint32, QVector<QMap<float, AuScTriRenderList>>> triangles;
-		QHash<quint32, QString> roomNames;
+		QMap<quint64, QVector<QMap<float, AuScTriRenderList>>> triangles;
+		QHash<quint64, QString> roomNames;
 		for(int index = 0; index < bindings.size(); ++index)
 		{
 			const auto& binding = bindings[index];
@@ -3223,7 +3332,8 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 		bool oldForcedInteriorGlow = true;
 		for(const AuScPart* part : design->Parts())
 			if(part->IsHullMesh() && (part->GroupName() == QStringLiteral("legacy/debug/static/v7")
-				|| part->GroupName() == QStringLiteral("legacy/debug/static/v8")))
+				|| part->GroupName() == QStringLiteral("legacy/debug/static/v8")
+				|| part->GroupName() == QStringLiteral("legacy/debug/static/v9")))
 			{
 				oldForcedInteriorGlow = false;
 				break;
@@ -3236,6 +3346,8 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 			const bool isDoor = part->IsDoor();
 			const QString roomName = part->GroupName();
 			int effectFirstFrame = -1;
+			quint16 weaponBayId = 0;
+			quint16 transporterId = 0;
 			const QStringList fields = roomName.split('/');
 			const int effectField = fields.indexOf(QStringLiteral("effect"));
 			if(effectField >= 0)
@@ -3243,11 +3355,36 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 				bool valid = false;
 				effectFirstFrame = fields.value(effectField + 1).toInt(&valid);
 				if(!valid || (effectFirstFrame != 0 && effectFirstFrame != 8 && effectFirstFrame != 16
-					&& effectFirstFrame != 20 && effectFirstFrame != 40))
+					&& effectFirstFrame != 20 && effectFirstFrame != 24 && effectFirstFrame != 27 && effectFirstFrame != 31
+					&& effectFirstFrame != 40 && effectFirstFrame != 47 && effectFirstFrame != 51 && effectFirstFrame != 55))
 				{
 					error = QStringLiteral("Legacy mesh has invalid equipment effect metadata.");
 					return false;
 				}
+			}
+			const int bayField = fields.indexOf(QStringLiteral("bay"));
+			if(bayField >= 0)
+			{
+				bool valid = false;
+				const int id = fields.value(bayField + 1).toInt(&valid);
+				if(!valid || id < 1 || id > 256 || effectFirstFrame != 51)
+				{
+					error = QStringLiteral("Legacy mesh has invalid weapon bay effect metadata.");
+					return false;
+				}
+				weaponBayId = quint16(id);
+			}
+			const int transporterField = fields.indexOf(QStringLiteral("transporter"));
+			if(transporterField >= 0)
+			{
+				bool valid = false;
+				const int id = fields.value(transporterField + 1).toInt(&valid);
+				if(!valid || id < 1 || id > 65535 || effectFirstFrame != 47)
+				{
+					error = QStringLiteral("Legacy mesh has invalid transporter effect metadata.");
+					return false;
+				}
+				transporterId = quint16(id);
 			}
 			const bool partInterior = roomName.endsWith(QStringLiteral("/interior/1"))
 				|| (!roomName.endsWith(QStringLiteral("/interior/0"))
@@ -3262,6 +3399,9 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 				opaque.Insert(transparent);
 				for(const AuScTriRender& original : opaque)
 				{
+					// Hull faces are combined in the final static hull part, so their
+					// effect comes from the native face rather than equipment metadata.
+					const int triangleEffectFrame = original.Effect() == EFF_Hull ? 31 : effectFirstFrame;
 					if(++count > 1000000)
 					{
 						error = QStringLiteral("Legacy render geometry exceeds its triangle limit.");
@@ -3291,8 +3431,9 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 					const bool interior = isDoor ? !hullDoorMaterial : partInterior;
 					// Low 25 bits retain door state and lighting; upper bits separate
 					// effect batches, including berth sides from their plain tops.
-					const quint32 lightingKey = (stateKey << 1) | quint32(interior)
-						| (quint32(effectFirstFrame + 1) << 25);
+					const quint64 lightingKey = (quint64(stateKey) << 1) | quint64(interior)
+						| (quint64(triangleEffectFrame + 1) << 25) | (quint64(weaponBayId) << 32)
+						| (quint64(transporterId) << 41);
 					if(!triangles.contains(lightingKey))
 					{
 						triangles.insert(lightingKey, QVector<QMap<float, AuScTriRenderList>>(bindings.size()));
@@ -3311,10 +3452,10 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 						AuScPoint result(point);
 						result.m_Tx = (point.m_Tx * 256 - binding.packedTile.x() - .5f) / (side - 1);
 						result.m_Ty = 1 - ((1 - point.m_Ty) * 256 - binding.packedTile.y() - .5f) / (side - 1);
-						if(effectFirstFrame >= 0)
+						if(triangleEffectFrame >= 0)
 						{
-							const int width = effectFirstFrame == 0 ? 128 : effectFirstFrame == 40 ? 64 : 32;
-							const int height = effectFirstFrame == 40 ? 128 : 32;
+							const int width = triangleEffectFrame == 0 ? 128 : triangleEffectFrame == 40 ? 64 : 32;
+							const int height = triangleEffectFrame == 24 || triangleEffectFrame == 40 ? 128 : 32;
 							result.SetEffectCoord((.5f + point.EffectTx() * (width - 1)) / width,
 								(.5f + point.EffectTy() * (height - 1)) / height);
 						}
@@ -3391,10 +3532,12 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 					draw.translucent = draw.opacity < .999f || transparentTexture;
 					draw.texture = texture;
 					draw.unlitTexture = unlitTexture;
-					draw.effectFirstFrame = int(states.key() >> 25) - 1;
+					draw.effectFirstFrame = int((states.key() >> 25) & 0x7f) - 1;
+					draw.weaponBayId = quint16((states.key() >> 32) & 0x1ff);
+					draw.transporterId = quint16(states.key() >> 41);
 					if(draw.effectFirstFrame >= 0)
 					{
-						draw.effectFrameCount = draw.effectFirstFrame == 40 ? 3 : 4;
+						draw.effectFrameCount = draw.effectFirstFrame == 24 || draw.effectFirstFrame == 40 ? 3 : 4;
 						for(int frame = 0; frame < draw.effectFrameCount; ++frame)
 						{
 							const auto effectTexture = [&](int sourceFrame) {
@@ -3405,7 +3548,12 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 							draw.effectTextures[frame] = effectTexture(draw.effectFirstFrame + frame);
 							// AuAtom13:1803c9950 selects 12..15 for On, 16..19 for Hold.
 							if(draw.effectFirstFrame == 16) draw.onEffectTextures[frame] = effectTexture(12 + frame);
-							if(!draw.effectTextures[frame] || (draw.effectFirstFrame == 16 && !draw.onEffectTextures[frame]))
+							// Original warp hull frames run backwards through 62..59.
+							if(draw.effectFirstFrame == 31) draw.onEffectTextures[frame] = effectTexture(62 - frame);
+							if(draw.effectFirstFrame == 47) draw.onEffectTextures[frame] = effectTexture(43 + frame);
+							if(!draw.effectTextures[frame] || ((draw.effectFirstFrame == 16 || draw.effectFirstFrame == 31
+								|| draw.effectFirstFrame == 47)
+								&& !draw.onEffectTextures[frame]))
 							{
 								error = QStringLiteral("Unable to create a legacy equipment effect texture.");
 								return false;
@@ -3447,6 +3595,20 @@ void DaSc::RenderLegacyTextures(const AuGLSLScBase& shader, AuAtomRenderInfo& ar
 	const bool powerPlantWorking = PowerPlantWorking();
 	const bool maneuverWorking = GravityDriveWorking();
 	const bool maneuverHold = GravityDriveState() == GD_Hold;
+	const bool sensorWorking = SensorsWorking();
+	const bool shieldWorking = ShieldsWorkingAndUp();
+	const quint16 warpId = FTLWarpDrive();
+	const quint16 ftlId = warpId ? warpId : FTLWormholeDrive();
+	const bool ftlOn = powered && ftlId && FTLDriveState(ftlId) == FTL_DRIVE_On;
+	const FTL_COMMIT ftlCommit = ftlId ? FTLDriveCommitState(ftlId) : FTL_COMMIT_Dormant;
+	const bool ftlHullHot = ftlOn && ftlCommit >= FTL_COMMIT_ChargedBegin && ftlCommit <= FTL_COMMIT_ChargedEnd;
+	QSet<quint16> firingBays;
+	// AuAtom13:1803c9950 lights a bay's units only during the first two
+	// seconds of its firing sequence, independently of the capacitor.
+	m_BayLock.lockForRead();
+	for(const auto& bay : m_BayFired)
+		if(bay.second.m_When.ElapsedSec() <= 2) firingBays.insert(bay.first);
+	m_BayLock.unlock();
 	const qint64 frameTime = AuTime::CurrentMSecsSinceEpoch() / LegacyEffectFrameMSec;
 	const bool exteriorLightEnabled = m_MyExtLight >= 0 && ari.re->Light(m_MyExtLight).m_bEnabled;
 	shader.SetEffectTexture(0, 0);
@@ -3497,12 +3659,19 @@ void DaSc::RenderLegacyTextures(const AuGLSLScBase& shader, AuAtomRenderInfo& ar
 		GLuint effectTexture = 0;
 		const bool effectActive = draw.effectFirstFrame == 20 ? powerPlantWorking
 			: draw.effectFirstFrame == 16 ? maneuverWorking
+			: draw.effectFirstFrame == 24 ? sensorWorking
+			: draw.effectFirstFrame == 27 ? shieldWorking
+			: draw.effectFirstFrame == 31 ? ftlHullHot
+			: draw.effectFirstFrame == 55 ? ftlOn
+			: draw.effectFirstFrame == 47 ? draw.transporterId && IsTransporterSystemOn(draw.transporterId)
+			: draw.effectFirstFrame == 51 ? firingBays.contains(draw.weaponBayId)
 			: draw.effectFirstFrame == 0 || draw.effectFirstFrame == 8 || draw.effectFirstFrame == 40
 				? lifeSupportAllocated : false;
 		if(effectActive && draw.effectFrameCount)
 		{
 			const int frame = int(frameTime % draw.effectFrameCount);
-			effectTexture = draw.effectFirstFrame == 16 && !maneuverHold
+			effectTexture = (draw.effectFirstFrame == 16 && !maneuverHold) || (draw.effectFirstFrame == 31 && warpId)
+				|| (draw.effectFirstFrame == 47 && IsTransporterSystemActive(draw.transporterId))
 				? draw.onEffectTextures[frame] : draw.effectTextures[frame];
 		}
 		// Each draw has one recovered effect atlas region; native vertex data
@@ -3530,12 +3699,24 @@ void DaSc::CreateDeviceObjects(AuAtomRenderInfo& ari)
 		if(!m_CmdEmpty.HasDeviceObjects())
 		{
 			m_CmdEmpty.CreateDeviceObjectsEmpty(ari, *this, "Empty", 0, false);
+			m_NavEmpty.CreateDeviceObjectsEmpty(ari, *this, QString("NCon%1").arg(Id().GetID()),
+				":data/txConsoleNav.bmp", false);
 			m_EngineEmpty.CreateDeviceObjectsEmpty(ari, *this, QString("ECon%1").arg(Id().GetID()),
 				":data/ec_Console.bmp", false);
 			m_PilotEmpty.CreateDeviceObjectsEmpty(ari, *this, QString("LegacyPCon%1").arg(Id().GetID()),
 				":data/legacy_pc_Console.bmp", false);
 			m_PowerEmpty.CreateDeviceObjectsEmpty(ari, *this, QString("DCon%1").arg(Id().GetID()),
 				":data/dc_Console.bmp", false);
+			m_FireEmpty.CreateDeviceObjectsEmpty(ari, *this, QString("WCon%1").arg(Id().GetID()),
+				":data/txConsoleWeapon.bmp", false);
+			m_SensorEmpty.CreateDeviceObjectsEmpty(ari, *this, QString("SCon%1").arg(Id().GetID()),
+				":data/sc_Console.bmp", false);
+			m_ShieldEmpty.CreateDeviceObjectsEmpty(ari, *this, QString("HCon%1").arg(Id().GetID()),
+				":data/txConsoleShield.bmp", false);
+			m_SurgeryEmpty.CreateDeviceObjectsEmpty(ari, *this, QString("MCon%1").arg(Id().GetID()),
+				":data/txConsoleSurgery.bmp", false);
+			m_TransEmpty.CreateDeviceObjectsEmpty(ari, *this, QString("TCon%1").arg(Id().GetID()),
+				":data/txConsoleTransporter.bmp", false);
 		}
 		if(!m_VAOsCreated) CreateLegacyDeviceObjects(ari);
 		if(!m_AudioShip[0] && ari.al)
@@ -3544,6 +3725,8 @@ void DaSc::CreateDeviceObjects(AuAtomRenderInfo& ari)
 			alSourcei(m_AudioShip[AS_GravityDriveExt], AL_BUFFER, ari.al->AudioBuffer(SOUND_GravityDriveExt));
 			alSourcei(m_AudioShip[AS_GravityDriveInt], AL_BUFFER, ari.al->AudioBuffer(SOUND_GravityDriveInt));
 			alSourcei(m_AudioShip[AS_PowerPlant], AL_BUFFER, ari.al->AudioBuffer(SOUND_PowerPlant));
+			alSourcei(m_AudioShip[AS_Sensors], AL_BUFFER, ari.al->AudioBuffer(SOUND_Telemetry));
+			alSourcei(m_AudioShip[AS_TractorBeam], AL_BUFFER, ari.al->AudioBuffer(SOUND_TractorBeam));
 		}
 		return;
 	}
@@ -4600,9 +4783,9 @@ void DaSc::CycleCapacitor()
 		powerConsumed += rPowerBurn;
 		capLevel -= rPowerBurn;
 
-		if(!IsLegacyDebug()) BalanceRoomAirPressures(true);
+		BalanceRoomAirPressures(true);
 	}
-	else if(!IsLegacyDebug() && AnyHullDoorOpen())
+	else if(AnyHullDoorOpen())
 	{
 		// Life support is off and a door is open.
 		// Equalize air pressure with outside quickly.
@@ -4610,7 +4793,7 @@ void DaSc::CycleCapacitor()
 	}
 
 	// Consume power for idling FTL drives.
-	if(!IsLegacyDebug() && HasFTLDrive())
+	if(HasFTLDrive())
 	{
 		m_FTLLock.lockForRead();
 		for(QHash<quint16, AuFTLDriveState>::const_iterator fi = m_FTLDrives.cbegin();
@@ -4712,8 +4895,9 @@ void DaSc::CycleCapacitor()
 		}
 	m_BayLock.unlock();
 
+	bool legacyShieldCharged = false;
 	// Shields consume power.
-	if(ShieldsWorkingAndOn())
+	if(IsLegacyDebug() ? ShieldsWorkingAndUp() : ShieldsWorkingAndOn())
 	{
 		//if(Is(1081605148))
 			//qDebug() << "DaSc::CycleCapacitor" << Id() << Name() << "shieldState" << ShieldState() << "capLevel" << capLevel;
@@ -4741,6 +4925,7 @@ void DaSc::CycleCapacitor()
 				chargeAmount = 60;						// So charge rate is 1 unit per second, per side, when up.
 			if(ShieldState() == SS_Up)
 				chargeAmount /= 10;						// Shields charge slower when up.
+			if(IsLegacyDebug()) chargeAmount = 6;
 
 			// Limit the charge amount to the amount in the capacitor, leaving 1.
 			if(chargeAmount > capLevel - 1)
@@ -4749,7 +4934,10 @@ void DaSc::CycleCapacitor()
 			{
 				double charged = ShieldCharge(chargeAmount);
 				powerConsumed += charged;
-				capLevel -= charged;
+				// AuAtom13:1803e1f60 performs two legacy charge calls,
+				// accounting for the first and consuming the second result.
+				capLevel -= IsLegacyDebug() ? ShieldCharge(chargeAmount) : charged;
+				legacyShieldCharged = IsLegacyDebug() && charged > 0;
 				//if(Is(1081605148))
 					//qDebug() << " shield charged" << charged;
 			}
@@ -4784,7 +4972,7 @@ void DaSc::CycleCapacitor()
 	// cause lights and engines to change appearance. This also enables consoles
 	// and turrets to respond on the client.
 	bool hasPower = (capLevel > 0) ? true : false;
-	if(hadPower != hasPower || (IsLegacyDebug() && (capIn != capLevel || fuelIn != FuelQuantity())))
+	if(hadPower != hasPower || legacyShieldCharged || (IsLegacyDebug() && (capIn != capLevel || fuelIn != FuelQuantity())))
 		SetModified();
 }
 
@@ -4792,13 +4980,16 @@ void DaSc::CycleFTLDrive()
 {
 	quint16 warpDrive = FTLWarpDrive();	// Warp drive if any.
 	quint16 canReengageWarp;			// Warp drive that can be reengaged.
-	if(warpDrive && CanReengageFTLNow(warpDrive))
+	// The recovered legacy drive completes its fifty-second hot cycle. Automatic
+	// warp reengagement was added to the modern spacecraft implementation.
+	if(!IsLegacyDebug() && warpDrive && CanReengageFTLNow(warpDrive))
 		canReengageWarp = warpDrive;
 	else
 		canReengageWarp = 0;
 
 	quint16 reengageWarp = 0;			// Set to which warp drive needs to be reengaged, if any.
 	bool detachRiders = false;
+	bool stateChanged = false;
 	m_FTLLock.lockForWrite();
 	for(AuFTLDriveStateHash::iterator fi = m_FTLDrives.begin(); fi != m_FTLDrives.end(); fi++)
 	{
@@ -4865,9 +5056,11 @@ void DaSc::CycleFTLDrive()
 			(*fi).SetCommit(nuCommit);
 			(*fi).SetPower(nuState);
 			m_FTLChg.Set();
+			stateChanged = true;
 		}
 	}
 	m_FTLLock.unlock();
+	if(IsLegacyDebug() && stateChanged) SetModified();
 
 	if(detachRiders)
 	{
@@ -4881,8 +5074,6 @@ void DaSc::CycleFTLDrive()
 
 void DaSc::DamageAndDestroy(const QString& reason)
 {
-	if(IsLegacyDebug())
-		return;
 	// Pirates can be removed quietly if they are not in any scene and if no person is aboard, whether or not they are on line.
 	if(!IsInAnyScene() && IsPirateWithFreeWill() && !FindPersonRecursive())
 	{
@@ -5846,7 +6037,15 @@ quint32 DaSc::FuelCapacity() const
 double DaSc::Gravity(double cgDistance) const
 {
 	if(IsLegacyDebug())
-		return GravityStandard();
+	{
+		// AuAtom13:1803f4250: legacy life support supplies interior gravity
+		// even without capacitor power. Atmosphere and the designer retain it
+		// when life support is absent or destroyed.
+		if(!IsDesignDataCacheValid() || LifeSupportWorking() || IsInAtmosphere() || InDesignEnvironment())
+			return GravityStandard();
+		const DaSc* parentShip = dynamic_cast<const DaSc*>(Parent());
+		return parentShip ? parentShip->Gravity(cgDistance) : 0;
+	}
 	// Ship interior gravity functions when the gravity drive is working or inside atmosphere range of a planet.
 	if(IsInAtmosphere())
 		return GravityStandard();
@@ -7507,7 +7706,10 @@ bool DaSc::IsInScene(const DaPerson* sceneAtom, const AuPoint& cameraEnvLoc) con
 bool DaSc::IsInsideAirBreathable() const
 {
 	if(IsLegacyDebug())
-		return true;
+	{
+		const float pressure = AirPressure(LegacyAirPressureRoom);
+		return pressure >= .15f && pressure <= .85f;
+	}
 	// Check air pressure in all rooms. Any breathable air and the answer is yes.
 	// NOTE: The 15%-85% pressure range matches the atmosphere density requirement in DaWorld::HasBreathableAtmosphere.
 	bool anyAir = false;
@@ -8197,6 +8399,7 @@ DaSc* DaSc::LoadSubatoms(AuEther& ether, QSqlDatabase& db, const AuId& parentId,
 					if(blueprint.LegacyStats() && blueprint.LegacyStats()->IsValid())
 					{
 						pnu->m_Design.SetLegacyStats(blueprint.LegacyStats());
+						pnu->m_Design.InitializeLegacyStations(blueprint);
 						legacyStatsUpgraded = true;
 					}
 				}
@@ -8476,6 +8679,17 @@ int DaSc::MaxCapacitorWarpFactor() const
 			CapacitorLevel());
 	m_DesignLock.unlock();
 	return warpFactor;
+}
+
+float DaSc::TransporterRange(quint16 which) const
+{
+	if(!IsLegacyDebug()) return DaVessel::TransporterRange(which);
+	m_DesignLock.lockForRead();
+	const auto stats = m_Design.LegacyStats();
+	m_DesignLock.unlock();
+	// AuAtom13:1800dc650 limits the original 27,690ft range by live sensors.
+	const float range = 27690.f * (1.f + (stats ? stats->Performance().techLevelUsed : 0) * .05f);
+	return qMin(SensorRange(), range);
 }
 
 float DaSc::MaxTransporterRange() const
@@ -10529,6 +10743,12 @@ void DaSc::GetRenderLightsRecursive(const DaPerson& person, const AuMatrix4x4& m
 
 void DaSc::SetFTLDriveSetting(quint16 whichFTL, quint8 setting)
 {
+	// AuAtom13:180461e50 only allows an operational, dormant legacy drive to
+	// change polarity or warp factor; the setting stays fixed throughout a jump.
+	if(IsLegacyDebug() && (!FTLDriveWorking(whichFTL)
+		|| FTLDriveCommitState(whichFTL) != FTL_COMMIT_Dormant))
+		return;
+
 	// Insure the setting is sane for the current FTL drive module.
 	m_DesignLock.lockForRead();
 	if(setting > m_Design.MaxCapacitorFTLSetting(whichFTL))
@@ -11722,19 +11942,32 @@ void DaSc::Tock(const AuTime& last, const AuTime& now, const AuScripts& scripts,
 			InvalidateEnvironmentRecursive();
 			m_Tocked = true;
 		}
-		// Keep occupant processing and manual core operation without missions or deferred subsystems.
+		// Process occupants and manual systems without the modern mission AI.
 		DaCapsule::Tock(last, now, scripts, tockTrans);
 		m_ConCaptAI = 0;
 		m_ConEngineerAI = m_ConEngineerPerson = 0;
 		m_ConPilotAI = m_ConPilotPerson = 0;
 		m_ConPowerRelayAI = m_ConPowerRelayPerson = 0;
+		m_ConNavigatorAI = m_ConNavigatorPerson = 0;
+		m_ConSensorAI = m_ConSensorPerson = 0;
+		m_ConShieldAI = m_ConShieldPerson = 0;
+		m_ConWeaponAI = m_ConWeaponPerson = 0;
 		if(!IsNormal() || InDesignEnvironment() || last.IsNull()) return;
 		// DaSpaceShip::Tock, AuAtom13:18046d6e0, closes automatic doors each world tick.
 		CloseAutomaticDoors();
 		if(StartMoving()) SetModified();
 		if(last.ElapsedSecTicks(now))
 		{
-			CycleCapacitor();
+			// DaSpaceShip::Think cycles a newly built ship only while its
+			// plant is on; initialized ships cycle even without generation.
+			if(IsPowerPlantOn() || !IsNew()) CycleCapacitor();
+			if(!IsNew())
+			{
+				CycleFTLDrive();
+				ShieldStabilize();
+				if(HasTransporter()) DeactivateTransporterSystems();
+				CycleBayWeapons();
+			}
 			if(IsPilotMannedByPerson() || !IsPilotMannedByAI()) DecayMoveActions();
 		}
 		tockTrans.Add(DtTockTransaction(__FILE__, __LINE__, now));
@@ -12128,11 +12361,24 @@ bool DaSc::WeaponBayCanFire(quint16 which) const
 
 AuPoint DaSc::WeaponBayEmitLoc(quint16 whichBay, const AuPoint& gunnerLoc) const
 {
-	Q_UNUSED(gunnerLoc);
-	AuPoint emitLoc;
+	// AuAtom13:1803ef610 uses the gunner's location when the recovered
+	// numbered bay has no valid emitter. A detail99 emitter is half a deck up.
+	AuPoint emitLoc = IsLegacyDebug() ? gunnerLoc : AuPoint();
 	const AuScDesign* scd = LockDesign();
 	if(scd)
-		emitLoc = scd->WeaponEmitLocation(whichBay);
+	{
+		if(IsLegacyDebug())
+		{
+			for(const AuScPart* part : scd->Parts())
+				if(!part->IsOmitted() && part->GroupName().startsWith(QStringLiteral("legacy/emitter/bay/"))
+					&& LegacyStationField(*part, QStringLiteral("bay")) == whichBay)
+				{
+					emitLoc = part->OperatorLoc();
+					break;
+				}
+		}
+		else emitLoc = scd->WeaponEmitLocation(whichBay);
+	}
 	UnlockDesign();
 	return emitLoc;
 }
@@ -12142,12 +12388,16 @@ void DaSc::WeaponBayIds(QList<quint16>& bayIds) const
 	m_DesignLock.lockForRead();
 	bayIds = m_Design.WeaponBays().keys();
 	m_DesignLock.unlock();
+	// The original bay map was ordered; client and server must use the same
+	// order when the operator selects the next or previous numbered bay.
+	if(IsLegacyDebug()) std::sort(bayIds.begin(), bayIds.end());
 }
 
 quint16 DaSc::WeaponBayNextId(quint16 which) const
 {
 	QList<quint16> bayIds;
 	WeaponBayIds(bayIds);
+	if(bayIds.isEmpty()) return 0;
 
 	int curi = bayIds.indexOf(which) + 1;	// If not found, find return -1.
 
@@ -12161,6 +12411,7 @@ quint16 DaSc::WeaponBayPreviousId(quint16 which) const
 {
 	QList<quint16> bayIds;
 	WeaponBayIds(bayIds);
+	if(bayIds.isEmpty()) return 0;
 
 	int curi = bayIds.indexOf(which) - 1;	// If not found, find return -1.
 
@@ -13050,7 +13301,10 @@ void DaSc::RenderAudioSources(const DaPerson* sceneAtom, const AuMatrix4x4& mode
 		m_DoorInt2 = 0;
 	}
 
-	// Sensors
+	}
+
+	// Sensors also run on legacy ships; only the native siren and door sounds
+	// above are excluded because legacy doors have their own audio path.
 	alGetSourcei(m_AudioShip[AS_Sensors], AL_SOURCE_STATE, &state);
 	if(!IsFuzzyZero(gain) && SensorsWorking())
 	{
@@ -13075,8 +13329,6 @@ void DaSc::RenderAudioSources(const DaPerson* sceneAtom, const AuMatrix4x4& mode
 		// Sensors are off.
 		if(state == AL_PLAYING)
 			alSourcePause(m_AudioShip[AS_Sensors]);
-	}
-
 	}
 
 	// Power Plant
@@ -13258,8 +13510,6 @@ void DaSc::RenderAudioSources(const DaPerson* sceneAtom, const AuMatrix4x4& mode
 			alSourcePause(m_AudioShip[AS_GravityDriveInt]);
 	}
 
-	if(IsLegacyDebug()) return;
-
 	// Tractor beam
 	alGetSourcei(m_AudioShip[AS_TractorBeam], AL_SOURCE_STATE, &state);
 	AuPoint tpos;
@@ -13362,18 +13612,36 @@ void DaSc::ReconcileSystems()
 	const bool legacy = IsLegacyDebug();
 	if(legacy) m_SystemsLock.lockForWrite();
 	m_DesignLock.lockForWrite();
-	const bool changed = m_ssaShipSystems.Reconcile(m_Design);
-	if(changed)
-	{
-		m_tmSystemsUpg.Set();
-		//qDebug() << "DaSc::ReconcileSystems" << *this;
-	}
+	bool changed = m_ssaShipSystems.Reconcile(m_Design);
+	const QList<quint16> driveIds = legacy ? m_Design.FTLDrives().keys() : QList<quint16>();
+	const QList<quint16> transporterIds = legacy ? m_Design.Transporters().keys() : QList<quint16>();
+	if(changed) m_tmSystemsUpg.Set();
 	m_DesignLock.unlock();
 	if(legacy)
 	{
 		UpdateSystemsHealthSystemsLocked();
 		UpdateSystemsPowerSystemsLocked();
 		m_SystemsLock.unlock();
+		// Older live ships predate FTL operation but already carry its stats.
+		// Add missing cold drives without resetting any existing power state.
+		m_FTLLock.lockForWrite();
+		for(quint16 drive : driveIds)
+			if(!m_FTLDrives.contains(drive))
+			{
+				m_FTLDrives.insert(drive, AuFTLDriveState());
+				m_FTLChg.Set();
+				changed = true;
+			}
+		m_FTLLock.unlock();
+		m_TRoomLock.lockForWrite();
+		for(quint16 room : transporterIds)
+			if(!m_TRoomStates.contains(room))
+			{
+				m_TRoomStates.insert(room, TRANSPORTER_Off);
+				m_TRoomChg.Set();
+				changed = true;
+			}
+		m_TRoomLock.unlock();
 		if(changed) SetModified();
 	}
 }
@@ -14049,6 +14317,7 @@ void DaSc::SetDesign(const AuScReport& r)
 	m_DesignLock.unlock();
 
 	m_AirLock.lockForWrite();
+	if(IsLegacyDebug()) m_AirPressures.insert(LegacyAirPressureRoom, 100);
 	for(QStringList::const_iterator ri = rooms.cbegin(); ri != rooms.cend(); ri++)
 		m_AirPressures.insert(*ri, 100);	// 100 = 50% which is standard atmosphere pressure
 	m_AirChg.Set();
@@ -16664,6 +16933,45 @@ bool DaSc::VehicleParkingSpot(VEHICLE_SPOT_TYPE spotType, AuMatrix4x4& parkPosM,
 
 void DaSc::BalanceRoomAirPressures(bool lifeSupportWorking)
 {
+	if(IsLegacyDebug())
+	{
+		// AuAtom13:1803e1f60 adjusts one ship-wide byte once per real second.
+		// Closed, unpowered hulls retain their air; interior doors and hatches
+		// do not divide the legacy hull into separately pressurized rooms.
+		const bool hullDoorOpen = AnyHullDoorOpen();
+		if(!lifeSupportWorking && !hullDoorOpen) return;
+		const int target = hullDoorOpen ? int(AirDensity() * 200.f) : 100;
+		const int step = hullDoorOpen && !lifeSupportWorking ? 2 : 1;
+		bool airChanged = false;
+		m_AirLock.lockForWrite();
+		AuAirPressureHash::const_iterator pressureIt = m_AirPressures.constFind(LegacyAirPressureRoom);
+		if(pressureIt == m_AirPressures.cend()) pressureIt = m_AirPressures.cbegin();
+		const int oldPressure = pressureIt == m_AirPressures.cend() ? 100 : int(*pressureIt);
+		const int pressure = oldPressure < target ? qMin(oldPressure + step, target) :
+			oldPressure > target ? qMax(oldPressure - step, target) : oldPressure;
+		const quint8 storedPressure = quint8(pressure);
+		for(AuAirPressureHash::iterator ai = m_AirPressures.begin(); ai != m_AirPressures.end(); ++ai)
+		{
+			if(*ai != storedPressure)
+			{
+				*ai = storedPressure;
+				airChanged = true;
+			}
+		}
+		if(!m_AirPressures.contains(LegacyAirPressureRoom))
+		{
+			m_AirPressures.insert(LegacyAirPressureRoom, storedPressure);
+			airChanged = true;
+		}
+		if(airChanged) m_AirChg.Set();
+		m_AirLock.unlock();
+		if(airChanged)
+		{
+			SetModified();
+			InvalidateEnvironmentRecursive();
+		}
+		return;
+	}
 	// Server caches hull door room names for balancing room air pressures.
 	if(!m_DoorRoomsValid)
 	{
@@ -17682,7 +17990,8 @@ bool DaSc::Station(quint16 stationId, AuStation& station) const
 				if(ri != scd->Parts().cend())
 					gravityN = (*ri)->GravityUp(gravityN, AuMatrix4x4());
 			}
-			station = (*pi)->OperatorStation(gravityN);
+			station = IsLegacyDebug() && (*pi)->GroupName().startsWith(QStringLiteral("legacy/surgery/detail/"))
+				? LegacyPatientStation(**pi) : (*pi)->OperatorStation(gravityN);
 			if(station.Type() != AuStation::TYPE_Count)
 				foundStation = true;
 		}
@@ -17707,7 +18016,13 @@ bool DaSc::Station(const DaCreature& who, AuStation& station) const
 		if(pi != scd->Parts().cend())
 		{
 			// Console's operator position matrix relative to the ship.
-			station = (*pi)->ClosestStation(who.Location(), gN);
+			const bool legacyStation = IsLegacyDebug()
+				&& ((*pi)->GroupName().startsWith(QStringLiteral("legacy/console/detail/"))
+					|| (*pi)->GroupName().startsWith(QStringLiteral("legacy/surgery/detail/")));
+			if(legacyStation)
+				station = who.CurrentGeneralPose() == AuPose::ConsoleSurgeryUnit
+					? LegacyPatientStation(**pi) : (*pi)->OperatorStation(gN);
+			else station = (*pi)->ClosestStation(who.Location(), gN);
 			if(station.Type() != AuStation::TYPE_Count)
 			{
 				// Adjust for pose.
