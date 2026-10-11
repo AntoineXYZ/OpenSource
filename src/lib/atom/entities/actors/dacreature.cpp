@@ -3666,6 +3666,12 @@ namespace
 		// Dying animation and camera/head animation do not change the occupied posture.
 		switch(pose.Pose())
 		{
+		case AuPose::Ladder:
+		case AuPose::LadderClimb:
+			// Climbing extends hands and feet outside the upright movement core.
+			// Attaching preserves the origin, so those animation changes must not
+			// invent a wider body or push its collision bounds through a deck.
+			return AuPose::Stand;
 		case AuPose::Jump: return pose;
 		case AuPose::WritheFaceDown: return AuPose::DeadFaceDown;
 		case AuPose::WritheFaceLeft: return AuPose::DeadFaceLeft;
@@ -7586,6 +7592,10 @@ bool DaCreature::GrabLadderOnMyShip()
 	AuMatrix4x4 mLadder;
 	if(!ship->CanGrabLadder(*this, myloc, mLadder))
 		return false;
+	DaSc* legacyShip = dynamic_cast<DaSc*>(ship);
+	if(legacyShip && !legacyShip->IsLegacyDebug()) legacyShip = 0;
+	AuBox oldOffsets;
+	if(legacyShip && !legacyShip->LegacyBodyOffsets(*this, oldOffsets)) return false;
 
 	// Insure there is a clear path to the creature's nu eye position. This prevents grabbing a ladder under
 	// a ship and tweaking your head up into the ship.
@@ -7602,7 +7612,8 @@ bool DaCreature::GrabLadderOnMyShip()
 	SetGeneralPose(AuPose::Ladder, false);
 
 	AuPoint hitLoc, hitNormal;
-	if(ship->IsPathBlocked(eyePos, Transform().Project(CameraOffset()), hitLoc, hitNormal, this))
+	if(legacyShip ? legacyShip->IsLegacyLadderAttachmentBlocked(*this, myloc, oldOffsets, eyePos, hitLoc, hitNormal)
+		: ship->IsPathBlocked(eyePos, Transform().Project(CameraOffset()), hitLoc, hitNormal, this))
 	{
 		// Eye path was blocked so restore pose and transform.
 		SetGeneralPose(myPose, stationId, false);
@@ -7638,6 +7649,10 @@ bool DaCreature::GrabLadderOnMyShipAt(const AuPoint& ladderLoc)
 	AuMatrix4x4 mLadder;
 	if(!ship->CanGrabLadderAt(*this, ladderLoc, mLadder))
 		return false;
+	DaSc* legacyShip = dynamic_cast<DaSc*>(ship);
+	if(legacyShip && !legacyShip->IsLegacyDebug()) legacyShip = 0;
+	AuBox oldOffsets;
+	if(legacyShip && !legacyShip->LegacyBodyOffsets(*this, oldOffsets)) return false;
 	//DHH Check distance to ladderLoc.
 
 	// Insure there is a clear path to the creature's nu eye position. This prevents grabbing a ladder under
@@ -7655,7 +7670,8 @@ bool DaCreature::GrabLadderOnMyShipAt(const AuPoint& ladderLoc)
 	SetGeneralPose(AuPose::Ladder, false);
 
 	AuPoint hitLoc, hitNormal;
-	if(ship->IsPathBlocked(eyePos, Transform().Project(CameraOffset()), hitLoc, hitNormal, this))
+	if(legacyShip ? legacyShip->IsLegacyLadderAttachmentBlocked(*this, myT.Translation(), oldOffsets, eyePos, hitLoc, hitNormal)
+		: ship->IsPathBlocked(eyePos, Transform().Project(CameraOffset()), hitLoc, hitNormal, this))
 	{
 		// Eye path was blocked so restore pose and transform.
 		SetGeneralPose(myPose, stationId, false);
@@ -7689,6 +7705,10 @@ bool DaCreature::GrabLadderOnCapsule(DaCapsule* ship)
 	AuMatrix4x4 mLadder;
 	if(!ship->CanGrabLadder(*this, myloc, mLadder))
 		return false;
+	DaSc* legacyShip = dynamic_cast<DaSc*>(ship);
+	if(legacyShip && !legacyShip->IsLegacyDebug()) legacyShip = 0;
+	AuBox oldOffsets;
+	if(legacyShip && !legacyShip->LegacyBodyOffsets(*this, oldOffsets)) return false;
 
 	// Insure there is a clear path to the creature's nu eye position. This prevents grabbing a ladder under
 	// a ship and tweaking your head up into the ship.
@@ -7707,7 +7727,8 @@ bool DaCreature::GrabLadderOnCapsule(DaCapsule* ship)
 	InvalidateEnvironment();
 
 	AuPoint hitLoc, hitNormal;
-	if(ship->IsPathBlocked(eyePos, Transform().Project(CameraOffset()), hitLoc, hitNormal, this))
+	if(legacyShip ? legacyShip->IsLegacyLadderAttachmentBlocked(*this, myloc, oldOffsets, eyePos, hitLoc, hitNormal)
+		: ship->IsPathBlocked(eyePos, Transform().Project(CameraOffset()), hitLoc, hitNormal, this))
 	{
 		// Eye path was blocked so restore parent, pose and transform.
 		SetGeneralPose(myPose, stationId, false);

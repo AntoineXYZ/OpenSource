@@ -262,6 +262,8 @@ LegacyMovementCheck CheckLegacyClientMovement(DaAtom& actor, DaAtom* requestedPa
 			const bool unchangedFrame = !movesWithParent || movingFrame->position.ParentId() == movingFrame->atom->ParentId();
 			const bool allowSlideReplay = parent == requestedParent && unchangedFrame;
 			ship->OpenLegacyAutomaticDoors(actor, from, to, oldOffsets);
+			if(candidateGeneralPose.IsLadder())
+				ship->OpenLegacyAutomaticDoors(actor, from, to, newOffsets);
 			if(ship->IsLegacyBodyTransitionBlocked(from, to, oldOffsets, newOffsets, result.hit, result.normal, allowSlideReplay,
 				&result.diagnostic))
 				result.reason = QStringLiteral("legacy body path blocked");
@@ -283,7 +285,10 @@ LegacyMovementCheck CheckLegacyClientMovement(DaAtom& actor, DaAtom* requestedPa
 			if(result.reason.isEmpty() && ship == newShip && creature && candidateGeneralPose.IsLadder())
 			{
 				AuMatrix4x4 ladder;
-				if(!ship->CanGrabLadder(actor, to, ladder)) result.reason = QStringLiteral("legacy ladder out of reach");
+				// The old-to-proposed body transition has already been checked above.
+				// Rechecking the path with the live actor would use its old pose.
+				if(!ship->FindLegacyLadder(to, ladder, &result.diagnostic))
+					result.reason = QStringLiteral("legacy ladder out of reach");
 			}
 		}
 		if(!result.reason.isEmpty()) return result;

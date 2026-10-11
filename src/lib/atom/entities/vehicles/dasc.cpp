@@ -12,6 +12,7 @@
 #include "augame.h"
 #include "aulegacyscgeometry.h"
 #include "aulegacysccollision.h"
+#include "aulegacyship.h"
 #include <QMutexLocker>
 #include <algorithm>
 #include <cmath>
@@ -1330,6 +1331,21 @@ bool DaSc::IsLegacyBodyPathBlocked(const AuPoint& from, const AuPoint& to, const
 	return world->IsBodyPathBlocked(from, to, bodyOffsets, hitLoc, hitNormal, &doors);
 }
 
+bool DaSc::IsLegacyLadderAttachmentBlocked(const DaCreature& who, const AuPoint& oldOrigin,
+	const AuBox& oldOffsets, const AuPoint& oldEye, AuPoint& hitLoc, AuPoint& hitNormal)
+{
+	AuBox newOffsets;
+	if(!LegacyBodyOffsets(who, newOffsets)) return true;
+	const AuPoint newOrigin = who.Location();
+	OpenLegacyAutomaticDoors(who, oldOrigin, newOrigin, oldOffsets);
+	OpenLegacyAutomaticDoors(who, oldOrigin, newOrigin, newOffsets);
+	if(IsLegacyBodyTransitionBlocked(oldOrigin, newOrigin, oldOffsets, newOffsets, hitLoc, hitNormal)) return true;
+	// The native attachment guard supplies eye positions, not body origins.
+	AuBox eyeOffsets;
+	eyeOffsets.SetFromMinMax(AuPoint(0, 0, 0), AuPoint(0, 0, 0));
+	return IsLegacyBodyPathBlocked(oldEye, who.Transform().Project(who.CameraOffset()), eyeOffsets, hitLoc, hitNormal);
+}
+
 bool DaSc::IsAboveLegacyOpenHatch(const AuPoint& origin) const
 {
 	if(!IsLegacyDebug()) return false;
@@ -1758,40 +1774,9 @@ bool DaSc::CanGrabLadder(const DaAtom& who, const AuPoint& loc, AuMatrix4x4& mLa
 {
 	if(IsLegacyDebug())
 	{
-		struct HatchLadder { AuPoint anchor, facing; };
-		QVector<HatchLadder> ladders;
-		m_DesignLock.lockForRead();
-		const AuScDesign* design = LockDesign();
-		if(design)
-			for(const AuScPart* part : design->Parts())
-				if(!part->IsOmitted() && part->IsLadderPath()
-					&& part->GroupName().startsWith(QStringLiteral("legacy/hatch-ladder/detail/")))
-				{
-					if(part->AssociatedPartId() && !m_DoorStates.IsDoorOpen(part->AssociatedPartId())) continue;
-					const AuScPathLadder* ladder = dynamic_cast<const AuScPathLadder*>(part);
-					if(ladder) ladders.append(HatchLadder{ladder->PathSegment(0).Loc2(), ladder->Facing()});
-				}
-		UnlockDesign();
-		m_DesignLock.unlock();
 		AuBox offsets;
 		if(!LegacyBodyOffsets(who, offsets)) return false;
-		double closest = 36;
-		bool found = false;
-		for(const HatchLadder& ladder : ladders)
-		{
-			// The hatch may be on this deck or the next. Preserve the origin's z
-			// when attaching, just as the 2016 character controller does.
-			if(loc.z < ladder.anchor.z - 8 - .05 || loc.z >= ladder.anchor.z + 8 - .05) continue;
-			const AuPoint target(ladder.anchor.x, ladder.anchor.y, loc.z);
-			const double distance = loc.Distance2(target);
-			AuPoint hit, normal;
-			if(distance >= closest || IsLegacyBodyPathBlocked(loc, target, offsets, hit, normal)) continue;
-			const AuPoint right = ladder.facing.Cross(AuPoint(0, 0, 1));
-			mLadder = AuMatrix4x4(target, right, ladder.facing);
-			closest = distance;
-			found = true;
-		}
-		return found;
+		return FindLegacyLadder(loc, mLadder, 0, &offsets);
 	}
 	bool foundLadder;
 	m_DesignLock.lockForRead();
@@ -1803,6 +1788,56 @@ bool DaSc::CanGrabLadder(const DaAtom& who, const AuPoint& loc, AuMatrix4x4& mLa
 	UnlockDesign();
 	m_DesignLock.unlock();
 	return foundLadder;
+}
+
+bool DaSc::FindLegacyLadder(const AuPoint& loc, AuMatrix4x4& mLadder, QString* diagnostic,
+	const AuBox* bodyOffsets) const
+{
+	if(diagnostic) diagnostic->clear();
+	struct HatchLadder { AuPoint anchor, facing; };
+	QVector<HatchLadder> ladders;
+	m_DesignLock.lockForRead();
+	const AuScDesign* design = LockDesign();
+	if(design)
+		for(const AuScPart* part : design->Parts())
+			if(!part->IsOmitted() && part->IsLadderPath()
+				&& part->GroupName().startsWith(QStringLiteral("legacy/hatch-ladder/detail/")))
+			{
+				// Closing the hatch blocks passage through its panel, not access
+				// to the ladder below it. The offline walk controller does the same.
+				const AuScPathLadder* ladder = dynamic_cast<const AuScPathLadder*>(part);
+				if(ladder) ladders.append(HatchLadder{ladder->PathSegment(0).Loc2(), ladder->Facing()});
+			}
+	UnlockDesign();
+	m_DesignLock.unlock();
+	double closest = 36;
+	bool found = false;
+	int onDeck = 0, withinReach = 0, blocked = 0;
+	for(const HatchLadder& ladder : ladders)
+	{
+		// Preserve the body origin's height when attaching on this deck or the next.
+		if(loc.z < ladder.anchor.z - AuLegacyShip::DeckHeight - .05
+			|| loc.z >= ladder.anchor.z + AuLegacyShip::DeckHeight - .05) continue;
+		++onDeck;
+		const AuPoint target(ladder.anchor.x, ladder.anchor.y, loc.z);
+		const double distance = loc.Distance2(target);
+		if(distance >= closest) continue;
+		++withinReach;
+		AuPoint hit, normal;
+		if(bodyOffsets && IsLegacyBodyPathBlocked(loc, target, *bodyOffsets, hit, normal))
+		{
+			++blocked;
+			continue;
+		}
+		const AuPoint right = ladder.facing.Cross(AuPoint(0, 0, 1));
+		mLadder = AuMatrix4x4(target, right, ladder.facing);
+		closest = distance;
+		found = true;
+	}
+	if(!found && diagnostic)
+		*diagnostic = QStringLiteral("stage=ladder-reach ladders=%1 onDeck=%2 withinReach=%3 blocked=%4")
+			.arg(ladders.size()).arg(onDeck).arg(withinReach).arg(blocked);
+	return found;
 }
 
 bool DaSc::CanSetInMotion() const

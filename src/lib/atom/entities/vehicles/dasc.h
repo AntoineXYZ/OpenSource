@@ -54,7 +54,6 @@ class AUATOM_DLL DaSc : public DaVessel
 	mutable QSharedPointer<const AuLegacyScGeometry::CollisionWorld> m_LegacyCollision;
 	mutable AuElapsedTimer m_LegacyCollisionLogTime;
 	QSharedPointer<const AuLegacyScGeometry::CollisionWorld> LegacyCollision(const AuScDesign& design) const;
-	bool LegacyBodyOffsets(const DaAtom& who, AuBox& offsets) const;
 	QVector<quint16> LegacyDoorOperationGroup(unsigned int doorIndex) const;
 	int ClosestLegacyDoor(const AuPoint& location, double& distance, int openState, const DaSentient* who) const;
 	void QueueLegacyDoorSound(const AuScPart& part, const AuScDoorState& door, bool opening);
@@ -687,6 +686,11 @@ public:	// Methods
 	virtual bool IsInsideAirBreathable() const;
 
 	bool IsLegacyDebug() const;
+	bool LegacyBodyOffsets(const DaAtom& who, AuBox& offsets) const;
+	bool FindLegacyLadder(const AuPoint& loc, AuMatrix4x4& mLadder, QString* diagnostic = 0,
+		const AuBox* bodyOffsets = 0) const;
+	bool IsLegacyLadderAttachmentBlocked(const DaCreature& who, const AuPoint& oldOrigin,
+		const AuBox& oldOffsets, const AuPoint& oldEye, AuPoint& hitLoc, AuPoint& hitNormal);
 	void OpenLegacyAutomaticDoors(const DaAtom& who, const AuPoint& from, const AuPoint& to, const AuBox& offsets);
 	// Server position preflight can supply bounds for the proposed pose/orientation.
 	bool IsLegacyBodyPathBlocked(const AuPoint& from, const AuPoint& to, const AuBox& bodyOffsets,
