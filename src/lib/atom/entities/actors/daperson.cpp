@@ -1542,8 +1542,9 @@ void DaPerson::RenderLast(const AuMatrix4x4& projection, AuAtomRenderInfo& ari, 
 	}
 	else
 	{
-		// Calculate the location of the planet in eye space.
-		AuPoint globeP = rmod.Matrix(planet->Id()).Translation();
+		// Precipitation lighting uses object space, including the planet center used
+		// to calculate the local horizon. Convert it from eye space like the suns.
+		AuPoint globeP = model.UnProject(rmod.Matrix(planet->Id()).Translation());
 		if(bSnowShaders)
 		{
 			ari.re->GLSL().SnowShader().Select(projection);
