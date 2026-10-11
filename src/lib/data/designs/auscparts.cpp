@@ -11485,7 +11485,9 @@ bool AuScDoor::Sight(quint16 partId, const AuPoint& eyeLoc, AuPoint& sightLoc, c
 	if(di == doorStates.cend())
 		return false;
 
-	QHash<quint8, AuScFaceList>::const_iterator smi = m_StateMeshes.find((*di).State());
+	const bool legacyPanel = GroupName().startsWith(QStringLiteral("legacy/door/"));
+	if(legacyPanel && (*di).IsOpen()) return false;
+	QHash<quint8, AuScFaceList>::const_iterator smi = m_StateMeshes.find(legacyPanel ? Closed : (*di).State());
 	if(smi == m_StateMeshes.cend())
 	{
 		if((*di).State() == LockedClosed)
@@ -24109,7 +24111,8 @@ void AuScBarrier::operator<<(QDataStream& in)
 	in >> m_Faces;
 	in >> hasWhat;
 
-	m_PartState = hasWhat & 0x7f;
+	// Bits 7 and 6 describe the associated ID and stored silhouette, not the part state.
+	m_PartState = hasWhat & 0x3f;
 
 	if(hasWhat & 0x80)
 		in >> m_PartId;
@@ -24652,6 +24655,8 @@ void AuScBarrier::ListComponents(DeProcessComponentArray& pc, STREAMLINE streaml
 bool AuScBarrier::Sight(quint16 partId, const AuPoint& eyeLoc, AuPoint& sightLoc, const AuDoorStateHash& doorStates,
 		const AuLandingGearStateHash& landingGearStates, const AuLiftHash& liftStops, AuPoint& sightSurfaceNormal) const
 {
+	// Legacy panel collision is separate from the visible, operable door.
+	if(GroupName().startsWith(QStringLiteral("legacy/door-collision/"))) return false;
 	Q_UNUSED(partId);
 	Q_UNUSED(doorStates);
 	Q_UNUSED(landingGearStates);

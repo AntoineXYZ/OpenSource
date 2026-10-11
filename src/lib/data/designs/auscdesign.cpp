@@ -735,15 +735,18 @@ void AuScDesign::LoadLegacyTextureMap(QSqlDatabase& db)
 	const QByteArray source = query.value(1).toByteArray();
 	if(source.isEmpty() || query.value(0).toString().toLatin1()
 		!= QCryptographicHash::hash(source, QCryptographicHash::Sha256).toHex()) return;
-	bool includeOpenHatches = false;
+	bool includeOpenHatches = false, includeDoors = false;
 	for(const AuScPart* part : *m_Parts)
+	{
 		if(part->GroupName() == QStringLiteral("legacy/debug/static/v3")
 			|| part->GroupName() == QStringLiteral("legacy/debug/static/v4")
 			|| part->GroupName() == QStringLiteral("legacy/debug/static/v5")) includeOpenHatches = true;
+		if(part->GroupName() == QStringLiteral("legacy/debug/static/v6")) includeDoors = true;
+	}
 	AuLegacyScDesign accepted;
 	QString error;
 	if(!AuLegacyScDesign::ReadUpload(source, accepted, error)
-		|| !AuLegacyScGeometry::TextureMap(accepted, m_LegacyTextureMap, error, includeOpenHatches))
+		|| !AuLegacyScGeometry::TextureMap(accepted, m_LegacyTextureMap, error, includeOpenHatches, includeDoors))
 		qWarning() << "Legacy texture map:" << Id() << error;
 }
 
@@ -755,7 +758,8 @@ bool AuScDesign::NeedsLegacyTextureMap() const
 			|| part->GroupName() == QStringLiteral("legacy/debug/static/v2")
 			|| part->GroupName() == QStringLiteral("legacy/debug/static/v3")
 			|| part->GroupName() == QStringLiteral("legacy/debug/static/v4")
-			|| part->GroupName() == QStringLiteral("legacy/debug/static/v5")) return true;
+			|| part->GroupName() == QStringLiteral("legacy/debug/static/v5")
+			|| part->GroupName() == QStringLiteral("legacy/debug/static/v6")) return true;
 	return false;
 }
 

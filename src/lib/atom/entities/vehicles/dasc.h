@@ -36,7 +36,15 @@ class AUATOM_DLL DaSc : public DaVessel
 		float opacity = 1;
 		bool cutout = false;
 		bool translucent = false;
+		quint16 doorId = 0;
+		quint8 doorState = 0;
 	};
+	struct LegacyDoorSound
+	{
+		int sound = 0;
+		AuPoint location;
+	};
+	LegacyDoorSound m_LegacyDoorSounds[4];
 	QVector<LegacyTextureDraw> m_LegacyTextureDraws;
 	bool m_LegacyTextureRequested = false;
 	bool CreateLegacyDeviceObjects(AuAtomRenderInfo& ari);
@@ -47,6 +55,9 @@ class AUATOM_DLL DaSc : public DaVessel
 	mutable AuElapsedTimer m_LegacyCollisionLogTime;
 	QSharedPointer<const AuLegacyScGeometry::CollisionWorld> LegacyCollision(const AuScDesign& design) const;
 	bool LegacyBodyOffsets(const DaAtom& who, AuBox& offsets) const;
+	QVector<quint16> LegacyDoorOperationGroup(unsigned int doorIndex) const;
+	int ClosestLegacyDoor(const AuPoint& location, double& distance, int openState, const DaSentient* who) const;
+	void QueueLegacyDoorSound(const AuScPart& part, const AuScDoorState& door, bool opening);
 protected:
 	enum AUDIO_SOURCE
 	{
@@ -55,6 +66,8 @@ protected:
 		AS_DoorInt2,
 		AS_DoorLift1,
 		AS_DoorLift2,
+		AS_LegacyDoorCargo,
+		AS_LegacyDoorHatch,
 		AS_GravityDriveExt,
 		AS_GravityDriveInt,
 		AS_PowerPlant,
@@ -460,6 +473,7 @@ public:	// Methods
 	virtual unsigned int CrewBerths() const;
 
 	virtual bool CrewDoorLocked(unsigned int doorIndex) const;
+	virtual bool CanOpenDoor(const DaSentient& who, unsigned int doorIndex) const;
 
 	virtual quint32 CryoBerths() const;
 
@@ -673,6 +687,7 @@ public:	// Methods
 	virtual bool IsInsideAirBreathable() const;
 
 	bool IsLegacyDebug() const;
+	void OpenLegacyAutomaticDoors(const DaAtom& who, const AuPoint& from, const AuPoint& to, const AuBox& offsets);
 	// Server position preflight can supply bounds for the proposed pose/orientation.
 	bool IsLegacyBodyPathBlocked(const AuPoint& from, const AuPoint& to, const AuBox& bodyOffsets,
 		AuPoint& hitLoc, AuPoint& hitNormal) const;

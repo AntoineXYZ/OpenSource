@@ -77,14 +77,9 @@ bool IsHatchPanel(const Batch& batch)
 		|| batch.material == Material::HullHatch || batch.material == Material::InteriorHatch);
 }
 
-Material TextureMaterial(const Batch& batch)
-{
-	return IsHatchPanel(batch) ? DoorMaterialFrame(batch.material, DoorFrame::Open) : batch.material;
-}
-
 QString TextureKey(const Batch& batch)
 {
-	const QString source = batch.textureFile.isEmpty() ? QStringLiteral("material:%1").arg(int(TextureMaterial(batch))) : batch.textureFile;
+	const QString source = batch.textureFile.isEmpty() ? QStringLiteral("material:%1").arg(int(batch.material)) : batch.textureFile;
 	return QStringLiteral("%1/%2/%3/%4").arg(source).arg(batch.tint.x()).arg(batch.tint.y()).arg(batch.tint.z());
 }
 
@@ -103,17 +98,25 @@ public:
 	AuDesignTex textures[SCTEXI_Count];
 	QHash<QString, Tile> tiles;
 	QByteArray textureMap;
-	bool Build(const Mesh& mesh, QString& error, bool includeOpenHatches)
+	bool Build(const Mesh& mesh, QString& error, bool includeOpenHatches, bool includeDoors = false)
 	{
-		QVector<const Batch*> sources;
+		QVector<Batch> sources;
 		QSet<QString> keys;
 		for(const Batch& batch : mesh.batches)
 		{
-			if((batch.doorId && (!includeOpenHatches || !IsHatchPanel(batch))) || batch.vertices.isEmpty()) continue;
-			const QString key = TextureKey(batch);
-			if(keys.contains(key)) continue;
-			keys.insert(key);
-			sources.append(&batch);
+			if(batch.vertices.isEmpty()) continue;
+			if(batch.doorId && !includeDoors && (!includeOpenHatches || !IsHatchPanel(batch))) continue;
+			const int frames = batch.doorId && includeDoors ? 3 : 1;
+			for(int frame = 0; frame < frames; ++frame)
+			{
+				Batch source = batch;
+				if(batch.doorId)
+					source.material = DoorMaterialFrame(batch.material, includeDoors ? DoorFrame(frame) : DoorFrame::Open);
+				const QString key = TextureKey(source);
+				if(keys.contains(key)) continue;
+				keys.insert(key);
+				sources.append(source);
+			}
 		}
 		const int side = sources.size() <= 56 ? 128 : 64;
 		const int columns = 256 / side;
@@ -133,8 +136,8 @@ public:
 		}
 		for(int index = 0; index < sources.size(); ++index)
 		{
-			const Batch& batch = *sources[index];
-			const int material = int(TextureMaterial(batch));
+			const Batch& batch = sources[index];
+			const int material = int(batch.material);
 			QImage image;
 			if(!batch.textureFile.isEmpty())
 			{
@@ -306,9 +309,9 @@ bool AddTriangleFaces(AuScFaceList& faces, const Vertex* triangle, const Batch& 
 	return true;
 }
 
-bool AddPart(AuScDesign& design, const AuScPart& part)
+quint16 AddPart(AuScDesign& design, const AuScPart& part)
 {
-	return design.Parts().size() < MaximumParts && design.Parts().AddPart(part) != 0;
+	return design.Parts().size() < MaximumParts ? design.Parts().AddPart(part) : 0;
 }
 
 bool BlocksPathCell(int type)
@@ -379,7 +382,7 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 			return false;
 		}
 	Palette palette;
-	if(!palette.Build(mesh, error, true)) return false;
+	if(!palette.Build(mesh, error, true, true)) return false;
 	AuScDesign generated(runtimeDesignId, architectId, architectName);
 	generated.SetName(legacy.Name());
 	generated.SetState(AuDesign::FinalAssembly);
@@ -399,11 +402,80 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 	};
 	bool foundHull = false;
 	AuScFaceList exteriorFaces;
+	const QVector<DoorDefinition> doors = DoorDefinitions(source, mesh);
+	QHash<quint32, QVector<int>> doorBatches;
+	for(int index = 0; index < mesh.batches.size(); ++index)
+		if(mesh.batches[index].doorId) doorBatches[mesh.batches[index].doorId].append(index);
+	QHash<quint32, quint16> doorPartIds;
+	for(const DoorDefinition& definition : doors)
+	{
+		AuScDoor door;
+		const quint8 states[] = {AuScDoor::Closed, AuScDoor::Open50, AuScDoor::Open};
+		AuScFaceList collision;
+		for(int frame = 0; frame < 3; ++frame)
+		{
+			AuScFaceList faces;
+			const int previousTriangles = triangleCount;
+			for(int index : doorBatches.value(definition.id))
+			{
+				Batch batch = mesh.batches[index];
+				batch.material = DoorMaterialFrame(batch.material, DoorFrame(frame));
+				const Tile tile = palette.tiles.value(TextureKey(batch));
+				for(int vertex = 0; vertex + 2 < batch.vertices.size(); vertex += 3)
+				{
+					if(!AddTriangleFaces(faces, &batch.vertices[vertex], batch, legacy, tile, triangleCount, tileVisits))
+					{
+						error = QStringLiteral("The selected legacy design exceeds the door geometry processing limit.");
+						return false;
+					}
+					if(frame == 0)
+					{
+						if(!chargeTriangles(1)) return false;
+						const auto point = [&](int offset) {
+							const Vertex& value = batch.vertices[vertex + offset];
+							return AuScPoint(legacy.AuthorToShip(Point(value.position)), 0, 0, Point(value.normal));
+						};
+						collision.AddFace(AuScFaceTri(point(0), point(1), point(2)));
+					}
+				}
+			}
+			if(!chargeTriangles(triangleCount - previousTriangles)) return false;
+			door.AddState(states[frame]);
+			door.SetState(states[frame]);
+			door.SetFaces(faces);
+		}
+		quint32 group = definition.id;
+		for(quint32 id : DoorOperationGroup(doors, definition.id)) group = std::min(group, id);
+		door.SetGroupName(QStringLiteral("legacy/door/detail/%1/type/%2/deck/%3/group/%4")
+			.arg(definition.id).arg(definition.type).arg(definition.deck).arg(group));
+		door.SetDoorOpLocs(legacy.AuthorToShip(AuPoint(definition.a.x(), definition.a.y(), definition.deck * AuLegacyShip::DeckHeight)),
+			legacy.AuthorToShip(AuPoint(definition.b.x(), definition.b.y(), definition.deck * AuLegacyShip::DeckHeight)));
+		door.SetDoorProperties(IsAutomaticDoorDetail(definition.type) ? Qt::Checked : Qt::Unchecked,
+			Qt::Unchecked, Qt::Unchecked, Qt::Unchecked);
+		door.SetHullDoor(definition.type == 3 || definition.type == 50 || definition.type == 52
+			|| (definition.type >= 91 && definition.type <= 97));
+		door.SetState(AuScDoor::Closed);
+		const quint16 partId = AddPart(generated, door);
+		if(!partId)
+		{
+			error = QStringLiteral("The selected legacy design has too many generated door parts.");
+			return false;
+		}
+		doorPartIds.insert(definition.id, partId);
+		AuScBarrier barrier;
+		barrier.SetFaces(collision);
+		barrier.SetAssociatedPart(partId, AuScDoor::Closed);
+		barrier.SetGroupName(QStringLiteral("legacy/door-collision/detail/%1").arg(definition.id));
+		if(!AddPart(generated, barrier))
+		{
+			error = QStringLiteral("The selected legacy design has too many generated door collision parts.");
+			return false;
+		}
+	}
 	for(int index = 0; index < mesh.batches.size(); ++index)
 	{
 		const Batch& batch = mesh.batches[index];
-		const bool hatchPanel = IsHatchPanel(batch);
-		if((batch.doorId && !hatchPanel) || batch.vertices.isEmpty()) continue;
+		if(batch.doorId || batch.vertices.isEmpty()) continue;
 		AuScFaceList faces;
 		const int previousTriangles = triangleCount;
 		const Tile tile = palette.tiles.value(TextureKey(batch));
@@ -418,13 +490,10 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 		AuScHull hull;
 		AuScMesh equipment;
 		AuScRoom interior;
-		// Open hatch faces are visual meshes. They never enter the hull or the
-		// barrier geometry consumed by character movement and floor queries.
-		AuScMeshBase* part = batch.equipment || hatchPanel ? static_cast<AuScMeshBase*>(&equipment)
+		AuScMeshBase* part = batch.equipment ? static_cast<AuScMeshBase*>(&equipment)
 			: batch.interior ? static_cast<AuScMeshBase*>(&interior) : static_cast<AuScMeshBase*>(&hull);
 		part->SetFaces(faces);
-		part->SetGroupName(hatchPanel ? QStringLiteral("legacy/open-hatch/detail/%1").arg(batch.doorId)
-			: QStringLiteral("legacy/geometry/%1/detail/%2").arg(index).arg(batch.detailId));
+		part->SetGroupName(QStringLiteral("legacy/geometry/%1/detail/%2").arg(index).arg(batch.detailId));
 		if(part == &hull)
 		{
 			exteriorFaces.AddFaces(faces);
@@ -462,7 +531,7 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 	{
 		AuScHull hull;
 		hull.SetFaces(exteriorFaces);
-		hull.SetGroupName(QStringLiteral("legacy/debug/static/v5"));
+		hull.SetGroupName(QStringLiteral("legacy/debug/static/v6"));
 		if(!AddPart(generated, hull))
 		{
 			error = QStringLiteral("The selected legacy design has too many generated hull parts.");
@@ -571,7 +640,7 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 	QHash<quint32, QPolygonF> hatchBoundaries;
 	for(const HatchOpening& hatch : mesh.hatchOpenings)
 		hatchBoundaries.insert(hatch.detailId, hatch.boundary);
-	for(const DoorDefinition& door : DoorDefinitions(source, mesh))
+	for(const DoorDefinition& door : doors)
 	{
 		if(door.type == 3 || door.type == 50) continue;
 		AuScHullVoid opening;
@@ -637,6 +706,8 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 		ladder.SetFacing(AuPoint(std::cos(angle), std::sin(angle), 0));
 		ladder.SetGroupName(QStringLiteral("legacy/hatch-ladder/detail/%1/cell/%2/deck/%3")
 			.arg(detail.detailId).arg(detail.packedXY).arg(detail.deck));
+		if(doorPartIds.contains(detail.detailId))
+			ladder.SetAssociatedPart(doorPartIds.value(detail.detailId), AuScDoor::Open);
 		if(!AddPart(generated, ladder))
 		{
 			error = QStringLiteral("The selected legacy design has too many hatch ladder parts.");
@@ -708,7 +779,7 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 	return true;
 }
 
-bool TextureMap(const AuLegacyScDesign& legacy, QByteArray& output, QString& error, bool includeOpenHatches)
+bool TextureMap(const AuLegacyScDesign& legacy, QByteArray& output, QString& error, bool includeOpenHatches, bool includeDoors)
 {
 	QMutexLocker guard(&modelCacheMutex);
 	output.clear();
@@ -748,7 +819,7 @@ bool TextureMap(const AuLegacyScDesign& legacy, QByteArray& output, QString& err
 			return false;
 		}
 	Palette palette;
-	if(!palette.Build(mesh, error, includeOpenHatches)) return false;
+	if(!palette.Build(mesh, error, includeOpenHatches, includeDoors)) return false;
 	output = palette.textureMap;
 	return true;
 }

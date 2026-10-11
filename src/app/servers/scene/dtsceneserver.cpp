@@ -261,6 +261,7 @@ LegacyMovementCheck CheckLegacyClientMovement(DaAtom& actor, DaAtom* requestedPa
 			// candidate body, and replay a bounded local slide for unchanged-parent reports, including exterior hull peers.
 			const bool unchangedFrame = !movesWithParent || movingFrame->position.ParentId() == movingFrame->atom->ParentId();
 			const bool allowSlideReplay = parent == requestedParent && unchangedFrame;
+			ship->OpenLegacyAutomaticDoors(actor, from, to, oldOffsets);
 			if(ship->IsLegacyBodyTransitionBlocked(from, to, oldOffsets, newOffsets, result.hit, result.normal, allowSlideReplay,
 				&result.diagnostic))
 				result.reason = QStringLiteral("legacy body path blocked");

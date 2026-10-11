@@ -71,6 +71,8 @@ void PsWeather::Render(const AuMatrix4x4& projection, const AuMatrix4x4& model, 
 {
 	Q_UNUSED(projection);
 	Q_UNUSED(scale);
+	// The shaders use the active camera projection. Let OpenGL clip at the screen edges,
+	// including snowflake corners and rain streaks whose centers lie outside the view.
 	if(m_renderMethod == RENDER_METHOD_Snow)
 	{
 		if(!s_SnowFlakeVAO.VAO())
@@ -83,12 +85,6 @@ void PsWeather::Render(const AuMatrix4x4& projection, const AuMatrix4x4& model, 
 			AuPoint viewPt = model.Project(pParticle->m_vCurPos);
 			if(viewPt.z >= 0)
 				continue;
-			else
-			{
-				viewPt.Unit();
-				if(viewPt.Dot(AuPoint(0,0,-1)) < .7071)
-					continue;
-			}
 
 			re.GLSL().SnowShader().SetFlakePosition(pParticle->m_vCurPos.x, pParticle->m_vCurPos.y, pParticle->m_vCurPos.z);
 			s_SnowFlakeVAO.DrawGL();
@@ -108,12 +104,6 @@ void PsWeather::Render(const AuMatrix4x4& projection, const AuMatrix4x4& model, 
 			AuPoint viewPt = model.Project(pParticle->m_vCurPos);
 			if(viewPt.z >= 0)
 				continue;
-			else
-			{
-				viewPt.Unit();
-				if(viewPt.Dot(AuPoint(0,0,-1)) < .7071)
-					continue;
-			}
 
 			re.GLSL().SnowRingworldShader().SetFlakePosition(pParticle->m_vCurPos.x,pParticle->m_vCurPos.y,pParticle->m_vCurPos.z);
 			s_SnowFlakeVAO.DrawGL();
@@ -128,20 +118,13 @@ void PsWeather::Render(const AuMatrix4x4& projection, const AuMatrix4x4& model, 
 		AuPointArray verts;
 		for(auParticle* pParticle = GetActiveList(); pParticle; pParticle=pParticle->m_pNext)
 		{
-			// Skip the particles behind the viewer.
-			AuPoint viewPt = model.Project(pParticle->m_vCurPos);
-			if(viewPt.z >= 0)
-				continue;
-			else
-			{
-				viewPt.Unit();
-				if(viewPt.Dot(AuPoint(0,0,-1)) < .7071)
-					continue;
-			}
-
 			AuPoint vDir(pParticle->m_vOldPos - pParticle->m_vCurPos);
 			vDir.Unit(.01);
 			AuPoint vOldPos(pParticle->m_vOldPos - vDir);
+
+			// Skip only streaks with both endpoints behind the viewer.
+			if(model.Project(pParticle->m_vCurPos).z >= 0 && model.Project(vOldPos).z >= 0)
+				continue;
 
 			verts.append(vOldPos);
 			verts.append(pParticle->m_vCurPos);

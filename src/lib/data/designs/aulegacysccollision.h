@@ -4,8 +4,10 @@
 #include "audata.h"
 #include "aupoint.h"
 #include <QScopedPointer>
+#include <QVector>
 
 class AuBox;
+class AuDoorStateHash;
 class AuScDesign;
 class QString;
 
@@ -18,7 +20,7 @@ AUDATA_DLL bool IsCollisionDesign(const AuScDesign& design);
 // rotation and limb reach do not change its clearance around the atom origin.
 AUDATA_DLL AuBox MovementBodyOffsets(const AuBox& anatomy, const AuPoint& gravityUp);
 
-// Immutable index of the recovered structural and obstacle-cell triangles.
+// Immutable index of the recovered structural, door and obstacle-cell triangles.
 // Both scene client and server consume the same serialized blueprint geometry.
 class AUDATA_DLL CollisionWorld
 {
@@ -33,29 +35,35 @@ public:
 	// Body corners are offsets from the moving atom origin in ship coordinates.
 	// Use the stable movement core, including growth and gravity alignment.
 	bool IsBodyPathBlocked(const AuPoint& from, const AuPoint& to, const AuBox& bodyOffsets,
-		AuPoint& hitLoc, AuPoint& hitNormal) const;
+		AuPoint& hitLoc, AuPoint& hitNormal, const AuDoorStateHash* doorStates = nullptr) const;
+	// Native door part IDs at the first obstruction along this attempted movement.
+	QVector<quint16> BlockedDoors(const AuPoint& from, const AuPoint& to, const AuBox& bodyOffsets,
+		const AuDoorStateHash* doorStates = nullptr) const;
 	// Packet validation compares the previous authorized body and the proposed
 	// body, retaining existing contact while rejecting deeper overlap.
 	// Slide replay is limited to short updates in the same parent frame.
 	// Doorway steps also validate an upward leg followed by a forward leg.
 	bool IsBodyTransitionBlocked(const AuPoint& from, const AuPoint& to, const AuBox& oldOffsets,
 		const AuBox& newOffsets, AuPoint& hitLoc, AuPoint& hitNormal, bool allowSlideReplay = false,
-		QString* diagnostic = nullptr) const;
+		QString* diagnostic = nullptr, const AuDoorStateHash* doorStates = nullptr) const;
 	// Native movement supplies ground state and the creature's CG-to-feet height.
 	// Ground adjustment is limited to nearby recovered ramps, then every segment
 	// is swept against the same collision geometry used for server validation.
 	// Exterior walking can step up at most 3/4 ft onto a hull-door landing.
 	AuPoint ResolveDestination(const AuPoint& from, const AuPoint& to, const AuBox& bodyOffsets,
 		const AuPoint& gravityUp, double standingHeight, bool allowGroundSnap, AuPoint& hitNormal,
-		bool preserveGroundHeight = false) const;
+		bool preserveGroundHeight = false, const AuDoorStateHash* doorStates = nullptr) const;
 
 	// Distances from the atom origin, matching the native capsule query contract.
 	// A hole has no implicit room-void floor or ceiling.
-	double HeightAboveFloor(const AuPoint& loc, const AuPoint& gravityUp, AuPoint& floorNormal) const;
-	double HeightOfCeiling(const AuPoint& loc, const AuPoint& gravityUp) const;
-	bool AboveOpenHatch(const AuPoint& loc) const;
+	double HeightAboveFloor(const AuPoint& loc, const AuPoint& gravityUp, AuPoint& floorNormal,
+		const AuDoorStateHash* doorStates = nullptr) const;
+	double HeightOfCeiling(const AuPoint& loc, const AuPoint& gravityUp,
+		const AuDoorStateHash* doorStates = nullptr) const;
+	bool AboveOpenHatch(const AuPoint& loc, const AuDoorStateHash* doorStates = nullptr) const;
 	// An exterior landing can support walking before the actor joins the ship.
-	bool IsOnBoardingStep(const AuPoint& loc, const AuPoint& gravityUp, double standingHeight) const;
+	bool IsOnBoardingStep(const AuPoint& loc, const AuPoint& gravityUp, double standingHeight,
+		const AuDoorStateHash* doorStates = nullptr) const;
 
 private:
 	Q_DISABLE_COPY(CollisionWorld)

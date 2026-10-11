@@ -35,6 +35,7 @@
 #include "dagalaxy.h"
 #include "daitem.h"
 #include "danpc.h"
+#include "dasc.h"
 #include "dasector.h"
 #include "dasolarsystem.h"
 #include "dastar.h"
@@ -4834,6 +4835,46 @@ void DaPerson::ProcessControlInput(const DiControlInputArray& aActiveControls, D
 		case CI_DoorOpen:
 			if(cc != CONTROL_Client)
 			{
+				QSet<DaSc*> legacyShips;
+				DaVessel* aboard = FindParentVesselInEnv();
+				DaSc* aboardShip = dynamic_cast<DaSc*>(aboard);
+				if(aboardShip && aboardShip->IsLegacyDebug()) legacyShips.insert(aboardShip);
+				if(!aboard)
+				{
+					// Match the offline Open Door control before boarding as well.
+					// The ship checks distance in its own frame and applies its locks.
+					DaAtom* peerParent = Parent();
+					for(int level = 0; peerParent && level < 2; ++level, peerParent = peerParent->Parent())
+					{
+						DaAtomList peers;
+						peerParent->ListNormalSubatoms(peers);
+						for(DaAtom* peer : peers)
+						{
+							DaSc* ship = dynamic_cast<DaSc*>(peer);
+							if(ship && ship->IsLegacyDebug()) legacyShips.insert(ship);
+						}
+					}
+				}
+				DaSc* closestShip = 0;
+				int closestDoor = -1;
+				double closestDistance = 6;
+				for(DaSc* ship : legacyShips)
+				{
+					double distance;
+					const int door = ship->ClosestClosedDoor(this, distance);
+					if(door >= 0 && distance <= closestDistance && ship->CanOpenDoor(*this, door))
+					{
+						closestShip = ship;
+						closestDoor = door;
+						closestDistance = distance;
+					}
+				}
+				if(closestShip)
+				{
+					closestShip->OpenDoor(closestDoor);
+					break;
+				}
+				if(aboardShip && aboardShip->IsLegacyDebug()) break;
 				if(!ci.TargetId().IsNull() && ci.TargetLoc().Length() < 10)
 				{
 					DaAtom* target = 0;
@@ -4842,7 +4883,17 @@ void DaPerson::ProcessControlInput(const DiControlInputArray& aActiveControls, D
 						target = system->FindIdRecursive(ci.TargetId());
 					DaCapsule* capTarget = dynamic_cast<DaCapsule*>(target);
 					if(capTarget)
-						capTarget->ToggleDoorState(*this, ci.TargetPart());
+					{
+						DaSc* legacyTarget = dynamic_cast<DaSc*>(capTarget);
+						if(legacyTarget && legacyTarget->IsLegacyDebug())
+						{
+							double distance;
+							const int door = legacyTarget->ClosestClosedDoor(this, distance);
+							if(door >= 0 && distance <= 6 && legacyTarget->CanOpenDoor(*this, door))
+								legacyTarget->OpenDoor(door);
+						}
+						else capTarget->ToggleDoorState(*this, ci.TargetPart());
+					}
 				}
 			}
 			break;

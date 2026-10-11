@@ -13,6 +13,7 @@
 #include "aulegacyscgeometry.h"
 #include "aulegacysccollision.h"
 #include <QMutexLocker>
+#include <algorithm>
 #include <cmath>
 #include "auscdesign.h"
 #include "auscparts.h"
@@ -56,12 +57,50 @@
 
 namespace
 {
+// Time an automatic legacy door or hatch must remain clear before closing.
+constexpr qint64 LegacyAutomaticDoorCloseDelayMSec = 2500;
+constexpr unsigned int LegacyAutomaticDoorCheckIntervalMSec = 250;
+
 void LogLegacyCollision(const QString& message)
 {
 	if(g_Au.IsSceneClient())
 		g_Au.Log(g_Au.CacheApp() + QStringLiteral("/soh.txt"), message);
 	else
 		g_Au.Log(message);
+}
+
+struct LegacyDoorInfo
+{
+	int type = -1;
+	int deck = 0;
+	quint32 group = 0;
+
+	explicit LegacyDoorInfo(const AuScPart& part)
+	{
+		const QStringList fields = part.GroupName().split(QLatin1Char('/'));
+		if(fields.size() != 10 || fields.at(0) != QStringLiteral("legacy")
+			|| fields.at(1) != QStringLiteral("door") || fields.at(2) != QStringLiteral("detail")
+			|| fields.at(4) != QStringLiteral("type") || fields.at(6) != QStringLiteral("deck")
+			|| fields.at(8) != QStringLiteral("group")) return;
+		type = fields.at(5).toInt();
+		deck = fields.at(7).toInt();
+		group = fields.at(9).toUInt();
+	}
+
+	bool IsHatch() const { return type == 8 || type == 51 || type == 52 || (type >= 77 && type <= 97); }
+	bool IsCrewDoor() const { return type == 49 || type == 51 || type == 54 || (type >= 84 && type <= 90); }
+	bool IsHullDoor() const { return type == 3 || type == 50 || type == 52 || (type >= 91 && type <= 97); }
+};
+
+double LegacyDoorDistance2(const AuScDoorState& door, const AuPoint& point)
+{
+	const AuPoint a(door.OpLoc1().x, door.OpLoc1().y, 0);
+	const AuPoint b(door.OpLoc2().x, door.OpLoc2().y, 0);
+	const AuPoint p(point.x, point.y, 0);
+	const AuPoint span = b - a;
+	const double length = span.Length2();
+	const double along = length ? qBound(0., (p - a).Dot(span) / length, 1.) : 0.;
+	return p.Distance2(a + span * along);
 }
 }
 
@@ -692,13 +731,29 @@ bool DaSc::Refresh(DaAtom* pAtom, AuAtomRenderInfo* ari)
 	m_Lifts = pA->m_Lifts;
 
 	// Door states.
-	if(ari)
+	bool legacyDoorChg = false;
+	if(IsLegacyDebug())
+	{
+		legacyDoorChg = m_DoorStates.size() != pA->m_DoorStates.size();
+		for(auto door = pA->m_DoorStates.cbegin(); !legacyDoorChg && door != pA->m_DoorStates.cend(); ++door)
+		{
+			const auto previous = m_DoorStates.constFind(door.key());
+			legacyDoorChg = previous == m_DoorStates.cend() || previous->IsOpen() != door->IsOpen();
+		}
+	}
+	if(ari && !IsLegacyDebug())
 	{
 		// Trigger sounds and animations as we update door states in the scene.
 		AuDoorStateHash::const_iterator si = pA->m_DoorStates.cbegin();
-		AuDoorStateHash::iterator ri = m_DoorStates.begin();
-		while(si != pA->m_DoorStates.cend() && ri != m_DoorStates.end())
+		while(si != pA->m_DoorStates.cend())
 		{
+			AuDoorStateHash::iterator ri = m_DoorStates.find(si.key());
+			if(ri == m_DoorStates.end())
+			{
+				m_DoorStates.insert(si.key(), *si);
+				++si;
+				continue;
+			}
 			if((*si).State() != (*ri).State())
 			{
 				bool isOpen = (*si).IsOpen();
@@ -756,7 +811,6 @@ bool DaSc::Refresh(DaAtom* pAtom, AuAtomRenderInfo* ari)
 				*ri = *si;
 			}
 			si++;
-			ri++;
 		}
 	}
 	else
@@ -807,7 +861,7 @@ bool DaSc::Refresh(DaAtom* pAtom, AuAtomRenderInfo* ari)
 	m_TurretPosLock.unlock();
 	pA->m_TurretPosLock.unlock();
 
-	if(airPressureChg)
+	if(airPressureChg || legacyDoorChg)
 		InvalidateEnvironmentRecursive();
 	return transformChanged;
 }
@@ -1138,6 +1192,121 @@ bool DaSc::LegacyBodyOffsets(const DaAtom& who, AuBox& offsets) const
 	return true;
 }
 
+QVector<quint16> DaSc::LegacyDoorOperationGroup(unsigned int doorIndex) const
+{
+	QVector<quint16> result;
+	m_DesignLock.lockForRead();
+	const AuScDesign* design = LockDesign();
+	if(design)
+	{
+		const auto selected = design->Parts().constFind(quint16(doorIndex));
+		if(selected != design->Parts().cend())
+		{
+			const LegacyDoorInfo info(**selected);
+			if(info.type >= 0)
+				for(auto part = design->Parts().cbegin(); part != design->Parts().cend(); ++part)
+					if((*part)->IsDoor() && LegacyDoorInfo(**part).group == info.group)
+						result.append(part.key());
+		}
+	}
+	UnlockDesign();
+	m_DesignLock.unlock();
+	return result;
+}
+
+int DaSc::ClosestLegacyDoor(const AuPoint& location, double& distance, int openState, const DaSentient* who) const
+{
+	const bool privileged = who && (who->AgentEntity() || IsCrewOrTroop(who->Id()) || InChainOfCommand(who));
+	const bool inside = who && who->IsInsideSpacecraft() && who->FindParentVesselInEnv() == this;
+	double closest = 36;
+	int result = -1;
+	m_DesignLock.lockForRead();
+	const AuScDesign* design = LockDesign();
+	if(design)
+	{
+		QList<quint16> ids = m_DoorStates.keys();
+		std::sort(ids.begin(), ids.end());
+		for(quint16 id : ids)
+		{
+			const auto door = m_DoorStates.constFind(id);
+			if(openState >= 0 && door->IsOpen() != bool(openState)) continue;
+			if(door->IsLocked() && !privileged && !(door->IsHullDoor() && inside)) continue;
+			const auto part = design->Parts().constFind(door.key());
+			if(part == design->Parts().cend()) continue;
+			const LegacyDoorInfo info(**part);
+			const int deckDelta = int(std::floor((location.z - door->OpLoc1().z + .05) / 8));
+			if(info.type < 0 || (deckDelta != 0 && deckDelta != -1)) continue;
+			const double candidate = LegacyDoorDistance2(*door, location);
+			if(candidate > closest || (result >= 0 && candidate == closest)) continue;
+			closest = candidate;
+			result = door.key();
+		}
+	}
+	UnlockDesign();
+	m_DesignLock.unlock();
+	distance = std::sqrt(closest);
+	return result;
+}
+
+void DaSc::QueueLegacyDoorSound(const AuScPart& part, const AuScDoorState& door, bool opening)
+{
+	const LegacyDoorInfo info(part);
+	if(info.type < 0) return;
+	int channel;
+	SOUND_EFFECT sound;
+	if(info.type == 3 || info.type == 53 || info.type == 54)
+	{
+		channel = 0;
+		sound = opening ? SOUND_DoorCargoOpen : SOUND_DoorCargoClose;
+	}
+	else if(info.type == 50)
+	{
+		channel = 1;
+		sound = opening ? SOUND_DoorExtOpen : SOUND_DoorExtClose;
+	}
+	else if(info.IsHatch())
+	{
+		channel = 2;
+		sound = opening ? SOUND_DoorHatchOpen : SOUND_DoorHatchClose;
+	}
+	else
+	{
+		channel = 3;
+		sound = opening ? SOUND_DoorIntOpen : SOUND_DoorIntClose;
+	}
+	m_LegacyDoorSounds[channel].sound = sound;
+	m_LegacyDoorSounds[channel].location = (door.OpLoc1() + door.OpLoc2()) / 2;
+	if(!info.IsHatch()) m_LegacyDoorSounds[channel].location.z += 4;
+}
+
+void DaSc::OpenLegacyAutomaticDoors(const DaAtom& who, const AuPoint& from, const AuPoint& to, const AuBox& offsets)
+{
+	if(!IsLegacyDebug() || !who.OpensAutomaticDoors()) return;
+	QVector<quint16> candidates;
+	m_DesignLock.lockForRead();
+	const AuScDesign* design = LockDesign();
+	const auto world = design ? LegacyCollision(*design) : QSharedPointer<const AuLegacyScGeometry::CollisionWorld>();
+	if(world && world->IsValid())
+	{
+		for(quint16 door : world->BlockedDoors(from, to, offsets, &m_DoorStates))
+		{
+			const auto part = design->Parts().constFind(door);
+			const auto state = m_DoorStates.constFind(door);
+			if(part == design->Parts().cend() || state == m_DoorStates.cend()) continue;
+			const LegacyDoorInfo info(**part);
+			const int deckDelta = int(std::floor((from.z - state->OpLoc1().z + .05) / 8));
+			if((*part)->IsAutomaticDoor() && !state->IsJammed() && LegacyDoorDistance2(*state, from) <= 36
+				&& (deckDelta == 0 || (info.IsHatch() && deckDelta == -1)))
+				candidates.append(door);
+		}
+	}
+	UnlockDesign();
+	m_DesignLock.unlock();
+	const DaSentient* sentient = dynamic_cast<const DaSentient*>(&who);
+	for(quint16 door : candidates)
+		if(!IsDoorLocked(door) || (sentient && CanOpenDoor(*sentient, door))) OpenDoor(door);
+}
+
 bool DaSc::IsLegacyBodyPathBlocked(const AuPoint& from, const AuPoint& to, const AuBox& bodyOffsets,
 	AuPoint& hitLoc, AuPoint& hitNormal) const
 {
@@ -1148,6 +1317,7 @@ bool DaSc::IsLegacyBodyPathBlocked(const AuPoint& from, const AuPoint& to, const
 	const bool previousBlueprint = design && !AuLegacyScGeometry::IsCollisionDesign(*design);
 	const bool previousBlocked = previousBlueprint
 		&& design->IsPathBlocked(from, to, hitLoc, hitNormal, m_DoorStates, m_LandingGearStates, m_Lifts);
+	const AuDoorStateHash doors(m_DoorStates);
 	UnlockDesign();
 	m_DesignLock.unlock();
 	if(previousBlueprint) return previousBlocked;
@@ -1157,7 +1327,7 @@ bool DaSc::IsLegacyBodyPathBlocked(const AuPoint& from, const AuPoint& to, const
 		hitNormal = AuPoint(0, 0, 0);
 		return true;
 	}
-	return world->IsBodyPathBlocked(from, to, bodyOffsets, hitLoc, hitNormal);
+	return world->IsBodyPathBlocked(from, to, bodyOffsets, hitLoc, hitNormal, &doors);
 }
 
 bool DaSc::IsAboveLegacyOpenHatch(const AuPoint& origin) const
@@ -1166,9 +1336,10 @@ bool DaSc::IsAboveLegacyOpenHatch(const AuPoint& origin) const
 	m_DesignLock.lockForRead();
 	const AuScDesign* design = LockDesign();
 	const auto world = design ? LegacyCollision(*design) : QSharedPointer<const AuLegacyScGeometry::CollisionWorld>();
+	const AuDoorStateHash doors(m_DoorStates);
 	UnlockDesign();
 	m_DesignLock.unlock();
-	return world && world->AboveOpenHatch(origin);
+	return world && world->AboveOpenHatch(origin, &doors);
 }
 
 bool DaSc::IsLegacyBodyTransitionBlocked(const AuPoint& from, const AuPoint& to, const AuBox& oldOffsets,
@@ -1181,6 +1352,7 @@ bool DaSc::IsLegacyBodyTransitionBlocked(const AuPoint& from, const AuPoint& to,
 	const bool previousBlueprint = design && !AuLegacyScGeometry::IsCollisionDesign(*design);
 	const bool previousBlocked = previousBlueprint
 		&& design->IsPathBlocked(from, to, hitLoc, hitNormal, m_DoorStates, m_LandingGearStates, m_Lifts);
+	const AuDoorStateHash doors(m_DoorStates);
 	UnlockDesign();
 	m_DesignLock.unlock();
 	if(previousBlueprint) return previousBlocked;
@@ -1190,7 +1362,7 @@ bool DaSc::IsLegacyBodyTransitionBlocked(const AuPoint& from, const AuPoint& to,
 		hitNormal = AuPoint(0, 0, 0);
 		return true;
 	}
-	return world->IsBodyTransitionBlocked(from, to, oldOffsets, newOffsets, hitLoc, hitNormal, allowSlideReplay, diagnostic);
+	return world->IsBodyTransitionBlocked(from, to, oldOffsets, newOffsets, hitLoc, hitNormal, allowSlideReplay, diagnostic, &doors);
 }
 
 AuPoint DaSc::BerthLocation(const AuId& id) const
@@ -1595,6 +1767,7 @@ bool DaSc::CanGrabLadder(const DaAtom& who, const AuPoint& loc, AuMatrix4x4& mLa
 				if(!part->IsOmitted() && part->IsLadderPath()
 					&& part->GroupName().startsWith(QStringLiteral("legacy/hatch-ladder/detail/")))
 				{
+					if(part->AssociatedPartId() && !m_DoorStates.IsDoorOpen(part->AssociatedPartId())) continue;
 					const AuScPathLadder* ladder = dynamic_cast<const AuScPathLadder*>(part);
 					if(ladder) ladders.append(HatchLadder{ladder->PathSegment(0).Loc2(), ladder->Facing()});
 				}
@@ -1748,17 +1921,30 @@ DaAtom* DaSc::Clone() const
 void DaSc::CloseAllDoors()
 {
 	m_DesignLock.lockForWrite();
-	if(m_DoorStates.CloseAllDoors())
+	const bool changed = m_DoorStates.CloseAllDoors();
+	if(changed)
 	{
 		m_DoorChg.Set();
 		m_DoorOpenTimes.clear();
 		SetModified();
 	}
 	m_DesignLock.unlock();
+	if(changed && IsLegacyDebug()) InvalidateEnvironmentRecursive();
 }
 
 void DaSc::CloseAllHullDoors()
 {
+	if(IsLegacyDebug())
+	{
+		QVector<quint16> closing;
+		m_DesignLock.lockForRead();
+		for(auto door = m_DoorStates.cbegin(); door != m_DoorStates.cend(); ++door)
+			if(door->IsHullDoor() && door->IsOpen() && !door->IsJammed()) closing.append(door.key());
+		m_DesignLock.unlock();
+		for(quint16 door : closing)
+			CloseDoor(door);
+		return;
+	}
 	m_DesignLock.lockForWrite();
 	if(m_DoorStates.CloseHullDoors())
 	{
@@ -1770,6 +1956,21 @@ void DaSc::CloseAllHullDoors()
 
 void DaSc::CloseDoor(unsigned int doorIndex)
 {
+	if(IsLegacyDebug())
+	{
+		const QVector<quint16> group = LegacyDoorOperationGroup(doorIndex);
+		bool changed = false;
+		m_DesignLock.lockForWrite();
+		for(quint16 door : group)
+		{
+			changed = m_DoorStates.CloseDoor(door) || changed;
+			m_DoorOpenTimes.remove(door);
+		}
+		if(changed) { m_DoorChg.Set(); SetModified(); }
+		m_DesignLock.unlock();
+		if(changed) InvalidateEnvironmentRecursive();
+		return;
+	}
 	if(IsDoorOpen(doorIndex))
 	{
 		// Check for anything in the door void space that would block the door from closing.
@@ -1823,6 +2024,13 @@ void DaSc::ClosestAudibleUnits(const AuPoint& searchLoc, AuPoint& closestGravity
 
 int DaSc::ClosestClosedDoor(const DaAtom* toWho, double& doorDistance) const
 {
+	if(IsLegacyDebug())
+	{
+		AuMatrix4x4 transform;
+		if(toWho && GetRelativeTransform(*toWho, transform))
+			return ClosestLegacyDoor(transform.Translation(), doorDistance, 0, dynamic_cast<const DaSentient*>(toWho));
+		return -1;
+	}
 	m_DesignLock.lockForRead();
 	quint16 door = m_DoorStates.ClosestClosedDoor(toWho->Location(), doorDistance);
 	m_DesignLock.unlock();
@@ -1843,6 +2051,13 @@ int DaSc::ClosestDoor(const AuPoint& toLoc, double& doorDistance) const
 
 int DaSc::ClosestOpenDoor(const DaAtom* toWho, double& doorDistance) const
 {
+	if(IsLegacyDebug())
+	{
+		AuMatrix4x4 transform;
+		if(toWho && GetRelativeTransform(*toWho, transform))
+			return ClosestLegacyDoor(transform.Translation(), doorDistance, 1, dynamic_cast<const DaSentient*>(toWho));
+		return -1;
+	}
 	m_DesignLock.lockForRead();
 	quint16 door = m_DoorStates.ClosestOpenDoor(toWho->Location(), doorDistance);
 	m_DesignLock.unlock();
@@ -2890,7 +3105,7 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 		if(!AuLegacyScGeometry::ReadTextureMap(design->LegacyTextureMap(), bindings, error)) return false;
 		const int side = bindings.first().packedTile.width();
 		QHash<quint32, int> tiles;
-		QVector<QMap<float, AuScTriRenderList>> triangles(bindings.size());
+		QMap<quint32, QVector<QMap<float, AuScTriRenderList>>> triangles;
 		for(int index = 0; index < bindings.size(); ++index)
 		{
 			const auto& binding = bindings[index];
@@ -2901,60 +3116,72 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 		QColor colors[AuScFace::THEME_Count];
 		for(QColor& color : colors) color = Qt::white;
 		int count = 0;
-		for(const AuScPart* part : design->Parts())
+		for(auto partIterator = design->Parts().cbegin(); partIterator != design->Parts().cend(); ++partIterator)
 		{
+			const AuScPart* part = *partIterator;
 			if(part->IsOmitted() || !part->IsVisibleInFinalModel()) continue;
-			AuScTriRenderList opaque, transparent;
-			part->RenderTriangles(opaque, transparent, colors);
-			opaque.Insert(transparent);
-			for(const AuScTriRender& original : opaque)
+			const bool isDoor = part->IsDoor();
+			const quint8 frames[] = {AuScDoor::Closed, AuScDoor::Open50, AuScDoor::Open};
+			for(int frame = 0; frame < (isDoor ? 3 : 1); ++frame)
 			{
-				if(++count > 1000000)
+				const quint32 stateKey = isDoor ? (quint32(partIterator.key()) << 8) | frames[frame] : 0;
+				if(!triangles.contains(stateKey)) triangles.insert(stateKey, QVector<QMap<float, AuScTriRenderList>>(bindings.size()));
+				AuScTriRenderList opaque, transparent;
+				if(isDoor) part->RenderTrianglesState(opaque, transparent, colors, frames[frame]);
+				else part->RenderTriangles(opaque, transparent, colors);
+				opaque.Insert(transparent);
+				for(const AuScTriRender& original : opaque)
 				{
-					error = QStringLiteral("Legacy render geometry exceeds its triangle limit.");
-					return false;
+					if(++count > 1000000)
+					{
+						error = QStringLiteral("Legacy render geometry exceeds its triangle limit.");
+						return false;
+					}
+					const float u = (original.V0().m_Tx + original.V1().m_Tx + original.V2().m_Tx) / 3;
+					const float v = (original.V0().m_Ty + original.V1().m_Ty + original.V2().m_Ty) / 3;
+					if(!std::isfinite(u) || !std::isfinite(v) || u < 0 || u >= 1 || v <= 0 || v > 1)
+					{
+						error = QStringLiteral("Legacy mesh has invalid texture coordinates.");
+						return false;
+					}
+					const int x = int(std::floor(u * 256 / side)) * side;
+					const int y = int(std::floor((1 - v) * 256 / side)) * side;
+					const quint32 key = (quint32(original.TextureIndex()) << 16) | (quint32(x) << 8) | quint32(y);
+					const auto tile = tiles.constFind(key);
+					if(tile == tiles.constEnd())
+					{
+						error = QStringLiteral("Legacy mesh texture coordinates do not match its material map.");
+						return false;
+					}
+					const auto& binding = bindings.at(tile.value());
+					float opacity = original.Opacity();
+					// The palette adapter forced partly transparent images into the
+					// blend pass. Direct sampling classifies each texel instead.
+					if(opacity == .999f && binding.tint.w() == 1) opacity = 1;
+					if(!std::isfinite(opacity) || opacity < 0 || opacity > 1)
+					{
+						error = QStringLiteral("Legacy mesh has invalid surface opacity.");
+						return false;
+					}
+					const auto vertex = [&](const AuScPoint& point) {
+						AuScPoint result(point);
+						result.m_Tx = (point.m_Tx * 256 - binding.packedTile.x() - .5f) / (side - 1);
+						result.m_Ty = 1 - ((1 - point.m_Ty) * 256 - binding.packedTile.y() - .5f) / (side - 1);
+						return result;
+					};
+					AuScTri triangle(vertex(original.V0()), vertex(original.V1()), vertex(original.V2()));
+					AuScTriRender rendered(triangle, 0, QColor(0, 0, 0, 0), original.Reflectivity(), original.Shine(),
+						original.SelfIllumination(), 1, EFF_None);
+					triangles[stateKey][tile.value()][opacity].insert(EFF_None, rendered);
 				}
-				const float u = (original.V0().m_Tx + original.V1().m_Tx + original.V2().m_Tx) / 3;
-				const float v = (original.V0().m_Ty + original.V1().m_Ty + original.V2().m_Ty) / 3;
-				if(!std::isfinite(u) || !std::isfinite(v) || u < 0 || u >= 1 || v <= 0 || v > 1)
-				{
-					error = QStringLiteral("Legacy mesh has invalid texture coordinates.");
-					return false;
-				}
-				const int x = int(std::floor(u * 256 / side)) * side;
-				const int y = int(std::floor((1 - v) * 256 / side)) * side;
-				const quint32 key = (quint32(original.TextureIndex()) << 16) | (quint32(x) << 8) | quint32(y);
-				const auto tile = tiles.constFind(key);
-				if(tile == tiles.constEnd())
-				{
-					error = QStringLiteral("Legacy mesh texture coordinates do not match its material map.");
-					return false;
-				}
-				const auto& binding = bindings.at(tile.value());
-				float opacity = original.Opacity();
-				// The palette adapter forced partly transparent images into the
-				// blend pass. Direct sampling classifies each texel instead.
-				if(opacity == .999f && binding.tint.w() == 1) opacity = 1;
-				if(!std::isfinite(opacity) || opacity < 0 || opacity > 1)
-				{
-					error = QStringLiteral("Legacy mesh has invalid surface opacity.");
-					return false;
-				}
-				const auto vertex = [&](const AuScPoint& point) {
-					AuScPoint result(point);
-					result.m_Tx = (point.m_Tx * 256 - binding.packedTile.x() - .5f) / (side - 1);
-					result.m_Ty = 1 - ((1 - point.m_Ty) * 256 - binding.packedTile.y() - .5f) / (side - 1);
-					return result;
-				};
-				AuScTri triangle(vertex(original.V0()), vertex(original.V1()), vertex(original.V2()));
-				AuScTriRender rendered(triangle, 0, QColor(0, 0, 0, 0), original.Reflectivity(), original.Shine(),
-					original.SelfIllumination(), 1, EFF_None);
-				triangles[tile.value()][opacity].insert(EFF_None, rendered);
 			}
 		}
 		for(int index = 0; index < bindings.size(); ++index)
 		{
-			if(triangles[index].isEmpty()) continue;
+			bool used = false;
+			for(auto states = triangles.cbegin(); states != triangles.cend(); ++states)
+				if(!states.value().at(index).isEmpty()) { used = true; break; }
+			if(!used) continue;
 			const auto& binding = bindings[index];
 			const QImage image = AuLegacyScGeometry::OriginalTexture(binding);
 			if(image.isNull())
@@ -2979,22 +3206,27 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 				error = QStringLiteral("Unable to create a legacy surface texture.");
 				return false;
 			}
-			for(auto group = triangles[index].cbegin(); group != triangles[index].cend(); ++group)
+			for(auto states = triangles.cbegin(); states != triangles.cend(); ++states)
 			{
-				LegacyTextureDraw draw;
-				draw.textureInset = binding.textureInset;
-				draw.cutout = binding.cutout;
-				draw.opacity = group.key();
-				draw.translucent = draw.opacity < .999f || transparentTexture;
-				draw.texture = texture;
-				draw.vao.Create(*ari.re, group.value(), GL_STATIC_DRAW);
-				if(!draw.vao.VAO())
+				for(auto group = states.value().at(index).cbegin(); group != states.value().at(index).cend(); ++group)
 				{
-					draw.vao.DeleteGL();
-					error = QStringLiteral("Unable to create legacy render geometry.");
-					return false;
+					LegacyTextureDraw draw;
+					draw.doorId = quint16(states.key() >> 8);
+					draw.doorState = quint8(states.key() & 0xff);
+					draw.textureInset = binding.textureInset;
+					draw.cutout = binding.cutout;
+					draw.opacity = group.key();
+					draw.translucent = draw.opacity < .999f || transparentTexture;
+					draw.texture = texture;
+					draw.vao.Create(*ari.re, group.value(), GL_STATIC_DRAW);
+					if(!draw.vao.VAO())
+					{
+						draw.vao.DeleteGL();
+						error = QStringLiteral("Unable to create legacy render geometry.");
+						return false;
+					}
+					draws.append(draw);
 				}
-				draws.append(draw);
 			}
 		}
 		return !draws.isEmpty();
@@ -3024,6 +3256,13 @@ void DaSc::RenderLegacyTextures(const AuGLSLScBase& shader, AuAtomRenderInfo& ar
 	}
 	for(LegacyTextureDraw& draw : m_LegacyTextureDraws)
 	{
+		if(draw.doorId)
+		{
+			const quint8 state = m_DoorRenderState.value(draw.doorId, m_DoorStates.DoorState(draw.doorId));
+			const quint8 frame = state == AuScDoor::Open || state == AuScDoor::LockedOpen || state == AuScDoor::StuckOpen
+				? AuScDoor::Open : state == AuScDoor::Open50 ? AuScDoor::Open50 : AuScDoor::Closed;
+			if(draw.doorState != frame) continue;
+		}
 		if(transparent && (draw.cutout || !draw.translucent)) continue;
 		if(!transparent && !draw.cutout && draw.opacity < .999f) continue;
 		shader.SetSurfaceTexture(0, draw.texture);
@@ -3044,6 +3283,7 @@ void DaSc::CreateDeviceObjects(AuAtomRenderInfo& ari)
 	if(IsLegacyDebug())
 	{
 		if(!m_VAOsCreated) CreateLegacyDeviceObjects(ari);
+		if(!m_AudioShip[0] && ari.al) alGenSources(AS_MaxSources, m_AudioShip);
 		return;
 	}
 
@@ -3983,6 +4223,25 @@ bool DaSc::CrewDoorLocked(unsigned int doorIndex) const
 	return is;
 }
 
+bool DaSc::CanOpenDoor(const DaSentient& who, unsigned int doorIndex) const
+{
+	if(!IsLegacyDebug()) return DaVessel::CanOpenDoor(who, doorIndex);
+	if(!IsDoorIndexValid(doorIndex)) return false;
+	AuMatrix4x4 transform;
+	if(!GetRelativeTransform(who, transform)) return false;
+	m_DesignLock.lockForRead();
+	const auto door = m_DoorStates.constFind(quint16(doorIndex));
+	if(door == m_DoorStates.cend()) { m_DesignLock.unlock(); return false; }
+	const AuPoint location = transform.Translation();
+	const int deckDelta = int(std::floor((location.z - door->OpLoc1().z + .05) / 8));
+	const bool withinReach = (deckDelta == 0 || deckDelta == -1) && LegacyDoorDistance2(*door, location) <= 36;
+	m_DesignLock.unlock();
+	if(!withinReach) return false;
+	if(!IsDoorLocked(doorIndex)) return true;
+	if(IsHullDoor(doorIndex) && who.IsInsideSpacecraft() && who.FindParentVesselInEnv() == this) return true;
+	return who.AgentEntity() || IsCrewOrTroop(who.Id()) || InChainOfCommand(&who);
+}
+
 void DaSc::CycleCapacitor()
 {
 	const float capMax = CapacitorMax();
@@ -4847,6 +5106,38 @@ void DaSc::EnumControlPanels(AuQuadArray& aControlPanels, const AuMatrix4x4& tMo
 	AuMatrix4x4 smat;
 	GetRelativeTransform(*sceneAtom, smat);
 	AuPoint sloc = smat.Translation();
+	if(IsLegacyDebug())
+	{
+		m_DesignLock.lockForRead();
+		const AuScDesign* design = LockDesign();
+		if(design)
+			for(auto door = m_DoorStates.cbegin(); door != m_DoorStates.cend(); ++door)
+			{
+				const auto part = design->Parts().constFind(door.key());
+				if(part == design->Parts().cend()) continue;
+				const LegacyDoorInfo info(**part);
+				const int deckDelta = int(std::floor((sloc.z - door->OpLoc1().z + .05) / 8));
+				if(info.type < 0 || (deckDelta != 0 && deckDelta != -1) || LegacyDoorDistance2(*door, sloc) > 36) continue;
+				AuQuad panel;
+				if(info.IsHatch())
+				{
+					const AuPoint center = door->OpLoc1();
+					panel = AuQuad(center + AuPoint(-1.5, -1.5, 0), center + AuPoint(-1.5, 1.5, 0),
+						center + AuPoint(1.5, 1.5, 0), center + AuPoint(1.5, -1.5, 0));
+				}
+				else
+				{
+					const AuPoint up(0, 0, 7.5);
+					panel = AuQuad(door->OpLoc1(), door->OpLoc1() + up, door->OpLoc2() + up, door->OpLoc2());
+				}
+				panel.Transform(tModel);
+				aControlPanels.append(panel);
+				idPanels.append(door.key());
+			}
+		UnlockDesign();
+		m_DesignLock.unlock();
+		return;
+	}
 
 	// Door switch quads, three intersecting.
 	const float rad = 1.;										// radius of switch hot zone
@@ -4961,6 +5252,24 @@ void DaSc::EnumViewPanelControls(qint16 panelId, QList<AuControlButton>& control
 	{
 		GLuint texDoor = ari.re->CreateTextureFromBitmap(Id().GetID(), "EVDoor", ":data/ScDoorStd.png");
 		controls.append(AuControlButton(tr("Door"), Id(), panelId, CI_OpenCloseDoor, texDoor));
+		if(IsLegacyDebug())
+		{
+			bool lockable = false;
+			m_DesignLock.lockForRead();
+			const AuScDesign* design = LockDesign();
+			if(design)
+			{
+				const auto part = design->Parts().constFind(quint16(panelId));
+				if(part != design->Parts().cend())
+				{
+					const LegacyDoorInfo info(**part);
+					lockable = info.IsCrewDoor() || info.IsHullDoor();
+				}
+			}
+			UnlockDesign();
+			m_DesignLock.unlock();
+			if(!lockable) return;
+		}
 
 		if(IsDoorLocked(panelId))
 		{
@@ -4984,6 +5293,7 @@ void DaSc::FilterDestinationLoc(DaAtom* moveAtom, const AuPoint& oldLoc, AuPoint
 		AuMatrix4x4 bodyToShip;
 		if(LegacyBodyOffsets(*creature, offsets) && GetRelativeTransform(*creature, bodyToShip))
 		{
+			const_cast<DaSc*>(this)->OpenLegacyAutomaticDoors(*creature, oldLoc, nuLoc, offsets);
 			const AuPoint gravityUp = bodyToShip.ProjectVector(creature->GravityNormal());
 			const bool walking = !creature->IsJumping()
 				&& !creature->IsFlying() && !creature->IsLadderPose() && !creature->InLadderWell()
@@ -4994,6 +5304,7 @@ void DaSc::FilterDestinationLoc(DaAtom* moveAtom, const AuPoint& oldLoc, AuPoint
 			m_DesignLock.lockForRead();
 			const AuScDesign* design = LockDesign();
 			const auto world = design ? LegacyCollision(*design) : QSharedPointer<const AuLegacyScGeometry::CollisionWorld>();
+			const AuDoorStateHash doors(m_DoorStates);
 			UnlockDesign();
 			m_DesignLock.unlock();
 			if(world && world->IsValid())
@@ -5002,10 +5313,10 @@ void DaSc::FilterDestinationLoc(DaAtom* moveAtom, const AuPoint& oldLoc, AuPoint
 				AuPoint contactNormal;
 				const double standingHeight = creature->GroundHeightAboveCG();
 				const bool boardingGround = !aboard && walking && (grounded
-					|| world->IsOnBoardingStep(oldLoc, gravityUp, standingHeight));
+					|| world->IsOnBoardingStep(oldLoc, gravityUp, standingHeight, &doors));
 				nuLoc = world->ResolveDestination(oldLoc, nuLoc, offsets, gravityUp,
-					standingHeight, followGround, contactNormal, boardingGround);
-				if(boardingGround && world->IsOnBoardingStep(nuLoc, gravityUp, standingHeight))
+					standingHeight, followGround, contactNormal, boardingGround, &doors);
+				if(boardingGround && world->IsOnBoardingStep(nuLoc, gravityUp, standingHeight, &doors))
 				{
 					// The world remains the parent until the doorway is crossed.
 					// Its gravity must not accumulate falling speed on the landing,
@@ -5075,7 +5386,7 @@ double DaSc::CeilingHt(const AuPoint& loc, const AuPoint& gravityN, bool isLocIn
 	if(scd)
 	{
 		const auto world = IsLegacyDebug() ? LegacyCollision(*scd) : QSharedPointer<const AuLegacyScGeometry::CollisionWorld>();
-		ceilingHt = world && world->IsValid() ? world->HeightOfCeiling(loc, gravityN)
+		ceilingHt = world && world->IsValid() ? world->HeightOfCeiling(loc, gravityN, &m_DoorStates)
 			: scd->HeightOfCeiling(loc, gravityN, m_DoorStates, m_LandingGearStates, m_Lifts);
 	}
 	else
@@ -5096,7 +5407,7 @@ bool DaSc::FloorHt(const AuPoint& loc, const AuPoint& gravityN, double& htAbvFlo
 		const auto world = design ? LegacyCollision(*design) : QSharedPointer<const AuLegacyScGeometry::CollisionWorld>();
 		if(world && world->IsValid())
 		{
-			htAbvFloor = world->HeightAboveFloor(loc, gravityN, stairNormal);
+			htAbvFloor = world->HeightAboveFloor(loc, gravityN, stairNormal, &m_DoorStates);
 			const quint16 roomId = design->RoomVoidContainingLocLive(loc, .1, m_DoorStates, m_LandingGearStates, m_Lifts);
 			const auto room = design->Parts().find(roomId);
 			inGravityWell = room != design->Parts().cend() && (*room)->GravityType() == G_Zero;
@@ -6376,7 +6687,7 @@ bool DaSc::InsideRoomType(const AuPoint& loc, bool getRoomUp, quint16& roomId, R
 		{
 			gravityN = scd->Parts().RoomVoidGravityUp(roomId, m_Lifts);
 			AuPoint floorNormal;
-			htAbvFloor = world->HeightAboveFloor(loc, gravityN, floorNormal);
+			htAbvFloor = world->HeightAboveFloor(loc, gravityN, floorNormal, &m_DoorStates);
 		}
 		else
 			htAbvFloor = scd->RoomVoidHeightAboveFloor(roomId, loc, getRoomUp, gravityN, m_Lifts);	// Height above room void floor.
@@ -6722,7 +7033,7 @@ bool DaSc::IsCommandConsoleAt(const AuPoint& loc) const
 bool DaSc::IsControl(const DaAtom* sceneAtom) const
 {
 	Q_UNUSED(sceneAtom);
-	return !IsLegacyDebug();
+	return true;
 }
 
 bool DaSc::IsDesignDataCacheValid() const
@@ -6787,6 +7098,20 @@ bool DaSc::IsDoorLocked(unsigned int doorId) const
 
 bool DaSc::IsDoorOnWall(unsigned int doorIndex) const
 {
+	if(IsLegacyDebug())
+	{
+		bool wall = true;
+		m_DesignLock.lockForRead();
+		const AuScDesign* design = LockDesign();
+		if(design)
+		{
+			const auto part = design->Parts().constFind(quint16(doorIndex));
+			if(part != design->Parts().cend()) wall = !LegacyDoorInfo(**part).IsHatch();
+		}
+		UnlockDesign();
+		m_DesignLock.unlock();
+		return wall;
+	}
 	Q_UNUSED(doorIndex);
 	// In practice, this is used to decide if a doorway has an associated ladder. AuScReport::EntranceLocation returns ladders as
 	// 'holes', so we'll say all doors are on the wall, without ladders.
@@ -6965,6 +7290,7 @@ bool DaSc::IsPathBlocked(const AuPoint& oloc, const AuPoint& nloc, AuPoint& hitL
 			hitNormal = AuPoint(0, 0, 0);
 			return true;
 		}
+		OpenLegacyAutomaticDoors(*toWho, oloc, nloc, offsets);
 		const bool blocked = IsLegacyBodyPathBlocked(oloc, nloc, offsets, hitLoc, hitNormal);
 		if(blocked && qEnvironmentVariableIsSet("HAZERON_LEGACY_COLLISION_STATS"))
 		{
@@ -7969,6 +8295,17 @@ int DaSc::OnDesignDeck(const AuPoint& loc) const
 
 bool DaSc::OpenDoor(unsigned int doorIndex)
 {
+	if(IsLegacyDebug())
+	{
+		const QVector<quint16> group = LegacyDoorOperationGroup(doorIndex);
+		bool changed = false;
+		m_DesignLock.lockForWrite();
+		for(quint16 door : group) changed = m_DoorStates.OpenDoor(door) || changed;
+		if(changed) { m_DoorChg.Set(); SetModified(); }
+		m_DesignLock.unlock();
+		if(changed) InvalidateEnvironmentRecursive();
+		return changed;
+	}
 	// Get lift id, if door index is a lift door.
 	quint16 liftId = 0;
 	bool liftCanMove = false;
@@ -8087,8 +8424,6 @@ float DaSc::PowerPlantUnits() const
 void DaSc::ProcessControlInput(const DiControlInputArray& aActiveControls, DaPerson* sceneAtom, const AuGearPos& gearPos,
 		qint8 chSelValue, CONTROL_CONTEXT cc, int msElapsed)
 {
-	if(IsLegacyDebug())
-		return;
 	Q_UNUSED(gearPos);
 	Q_UNUSED(chSelValue);
 	Q_UNUSED(msElapsed);
@@ -8098,6 +8433,7 @@ void DaSc::ProcessControlInput(const DiControlInputArray& aActiveControls, DaPer
 		switch(ci.GetId())
 		{
 		case CI_OperateTurboLift:
+			if(IsLegacyDebug()) break;
 			if(cc != CONTROL_Server)
 			{
 				// This requires a user interface object. That must be provided by the client application.
@@ -10986,6 +11322,19 @@ unsigned int DaSc::IsTocker() const
 	if(!IsNormal())
 		return ms;
 	// Here we know ms is not zero.
+	if(IsLegacyDebug() && ms > LegacyAutomaticDoorCheckIntervalMSec)
+	{
+		bool hasOpenAutomaticDoor = false;
+		m_DesignLock.lockForRead();
+		for(const AuScDoorState& door : m_DoorStates)
+			if(door.IsOpen() && door.IsAutomaticDoor() && !door.IsJammed())
+			{
+				hasOpenAutomaticDoor = true;
+				break;
+			}
+		m_DesignLock.unlock();
+		if(hasOpenAutomaticDoor) return LegacyAutomaticDoorCheckIntervalMSec;
+	}
 
 	/* This is not necessary because DaVessel never returns ms > 10 seconds.
 	if(ms > d_MSecPerMin)
@@ -11035,6 +11384,8 @@ void DaSc::Tock(const AuTime& last, const AuTime& now, const AuScripts& scripts,
 		}
 		// Keep ordinary atom and occupant processing without running ship systems.
 		DaCapsule::Tock(last, now, scripts, tockTrans);
+		// DaSpaceShip::Tock, AuAtom13:18046d6e0, closes automatic doors each world tick.
+		if(IsNormal() && !InDesignEnvironment()) CloseAutomaticDoors();
 		return;
 	}
 
@@ -11818,6 +12169,72 @@ void DaSc::FetchVehicle()
 
 void DaSc::CloseAutomaticDoors()
 {
+	if(IsLegacyDebug())
+	{
+		DaAtomList occupants;
+		FindPeopleAwakeRecursive(occupants);
+		FindCitizens(occupants);
+		QVector<AuPoint> locations;
+		for(const DaAtom* atom : occupants)
+		{
+			if(!atom->KeepsAutomaticDoorsOpen() || !atom->IsInsideSpacecraft()
+				|| atom->FindParentVesselInEnv() != this) continue;
+			AuMatrix4x4 transform;
+			if(GetRelativeTransform(*atom, transform)) locations.append(transform.Translation());
+		}
+		QHash<quint32, QVector<quint16>> groups;
+		QSet<quint32> occupiedGroups;
+		m_DesignLock.lockForRead();
+		const AuScDesign* design = LockDesign();
+		if(design)
+			for(auto door = m_DoorStates.cbegin(); door != m_DoorStates.cend(); ++door)
+			{
+				if(!door->IsOpen() || door->IsJammed()) continue;
+				const auto part = design->Parts().constFind(door.key());
+				if(part == design->Parts().cend() || !(*part)->IsAutomaticDoor()) continue;
+				const LegacyDoorInfo info(**part);
+				bool nearby = false;
+				for(const AuPoint& location : locations)
+				{
+					// AuAtom13:1803d0640: horizontal distance <3ft, on the wall deck or below an automatic hatch.
+					const int deckDelta = int(std::floor((location.z - door->OpLoc1().z + .05) / 8));
+					if((deckDelta == 0 || (info.IsHatch() && deckDelta == -1))
+						&& LegacyDoorDistance2(*door, location) < 9) { nearby = true; break; }
+				}
+				groups[info.group].append(door.key());
+				if(nearby) occupiedGroups.insert(info.group);
+			}
+		UnlockDesign();
+		m_DesignLock.unlock();
+		const AuTime now = AuTime::Now();
+		QVector<quint16> closing;
+		m_DesignLock.lockForWrite();
+		for(auto group = groups.cbegin(); group != groups.cend(); ++group)
+		{
+			const bool occupied = occupiedGroups.contains(group.key());
+			bool delayElapsed = !occupied;
+			for(quint16 door : group.value())
+			{
+				if(occupied)
+				{
+					m_DoorOpenTimes.remove(door);
+					continue;
+				}
+				const auto clearSince = m_DoorOpenTimes.constFind(door);
+				if(clearSince == m_DoorOpenTimes.cend())
+				{
+					m_DoorOpenTimes.insert(door, now);
+					delayElapsed = false;
+				}
+				else if(clearSince->MSecsTo(now) < LegacyAutomaticDoorCloseDelayMSec)
+					delayElapsed = false;
+			}
+			if(delayElapsed) closing.append(group.value().first());
+		}
+		m_DesignLock.unlock();
+		for(quint16 door : closing) CloseDoor(door);
+		return;
+	}
 	QSet<quint16> doorsToClose;
 
 	DaAtomList people;
@@ -11954,6 +12371,43 @@ void DaSc::RenderAudioSources(const DaPerson* sceneAtom, const AuMatrix4x4& mode
 		// The listener is not aboard so all sounds emanate from (0,0).
 		isListenerAboard = false;
 		epos = model.Translation();
+	}
+	if(IsLegacyDebug())
+	{
+		const AUDIO_SOURCE channels[] = {AS_LegacyDoorCargo, AS_DoorExt, AS_LegacyDoorHatch, AS_DoorInt1};
+		for(int channel = 0; channel < 4; ++channel)
+		{
+			LegacyDoorSound& pending = m_LegacyDoorSounds[channel];
+			const ALuint source = m_AudioShip[channels[channel]];
+			if(!source) continue;
+			if(IsFuzzyZero(gain))
+			{
+				alSourceStop(source);
+				pending.sound = SOUND_None;
+				continue;
+			}
+			if(pending.sound != SOUND_None)
+			{
+				const SOUND_EFFECT sound = SOUND_EFFECT(pending.sound);
+				alSourceStop(source);
+				alSourcei(source, AL_BUFFER, al->AudioBuffer(sound));
+				epos = isListenerAboard ? model.Project(pending.location) : model.Translation();
+				const float channelGain = channel == 2 ? (isListenerAboard ? 1.f : 2.f)
+					: channel == 3 ? 2.f : (isListenerAboard ? 2.f : 10.f);
+				alSource3f(source, AL_POSITION, epos.x, epos.y, epos.z);
+				alSourcef(source, AL_GAIN, gain * channelGain * AuSound::SoundGain(sound));
+				alSourcef(source, AL_REFERENCE_DISTANCE, float(AuSound::SoundReferenceDistance(sound)));
+				alSourcef(source, AL_ROLLOFF_FACTOR, AuSound::SoundRolloffFactor(sound));
+				alSourcePlay(source);
+				pending.sound = SOUND_None;
+			}
+			else
+			{
+				epos = isListenerAboard ? model.Project(pending.location) : model.Translation();
+				alSource3f(source, AL_POSITION, epos.x, epos.y, epos.z);
+			}
+		}
+		return;
 	}
 
 	// Siren
@@ -13203,6 +13657,8 @@ void DaSc::SetDesign(const AuScReport& r)
 	if(scd)
 	{
 		scd->DoorStates(m_DoorStates);
+		if(IsLegacyDebug() && !pardes)
+			for(AuScDoorState& door : m_DoorStates) door.SetState(AuScDoor::Closed);
 		m_DoorChg.Set();
 
 		AuScPartSet landingGear;
@@ -16029,11 +16485,42 @@ void DaSc::ToggleDoorLock(const DaPerson& person, unsigned int targetPart)
 		person.Thought(text);
 		return;
 	}
+	if(IsLegacyDebug() && !CanOpenDoor(person, targetPart)) return;
 
 	bool doorChg = false;
 	QString text;
 	m_DesignLock.lockForWrite();
 	AuDoorStateHash::iterator dsi = m_DoorStates.find(targetPart);
+	if(IsLegacyDebug())
+	{
+		const AuScDesign* design = LockDesign();
+		if(design && dsi != m_DoorStates.end())
+		{
+			const auto selected = design->Parts().constFind(quint16(targetPart));
+			if(selected != design->Parts().cend())
+			{
+				const LegacyDoorInfo selectedInfo(**selected);
+				const bool locked = !dsi->IsLocked();
+				if(selectedInfo.IsCrewDoor() || selectedInfo.IsHullDoor())
+					for(auto door = m_DoorStates.begin(); door != m_DoorStates.end(); ++door)
+					{
+						const auto part = design->Parts().constFind(door.key());
+						if(part == design->Parts().cend()) continue;
+						const LegacyDoorInfo info(**part);
+						if((selectedInfo.IsCrewDoor() && info.IsCrewDoor()) || (selectedInfo.IsHullDoor() && info.IsHullDoor()))
+							doorChg = door->SetLock(locked) || doorChg;
+					}
+				if(doorChg)
+					text = selectedInfo.IsHullDoor() ? (locked ? tr("Hull doors locked to outside entry.") : tr("Hull doors unlocked."))
+						: (locked ? tr("Crew doors locked.") : tr("Crew doors unlocked."));
+			}
+		}
+		UnlockDesign();
+		if(doorChg) { m_DoorChg.Set(); SetModified(); }
+		m_DesignLock.unlock();
+		if(!text.isEmpty()) person.Thought(text);
+		return;
+	}
 	if(dsi != m_DoorStates.end())
 	{
 		if((*dsi).IsHullDoor())
@@ -16607,7 +17094,9 @@ bool DaSc::RoomHasNavHUD(const QString& roomName) const
 
 void DaSc::AnimateRenderStates()
 {
-	if(m_RenderStateTime.isValid() && m_RenderStateTime.elapsed() < 50)
+	// DaSpaceShip::AnimateDeviceObjects, AuAtom13:1803c9950: shared 100ms Closed/Half/Open atlas stepping.
+	if(m_RenderStateTime.isValid() && (IsLegacyDebug()
+		? !m_RenderStateTime.IsNewPeriod(100) : m_RenderStateTime.elapsed() < 50))
 		return;
 	m_RenderStateTime.restart();
 
@@ -16616,13 +17105,31 @@ void DaSc::AnimateRenderStates()
 	if(scd)
 	{
 		// Door states.
-		for(AuDoorStateHash::const_iterator di = m_DoorStates.cbegin(); di != m_DoorStates.cend(); di++)
+		QList<quint16> doorIds = m_DoorStates.keys();
+		if(IsLegacyDebug()) std::sort(doorIds.begin(), doorIds.end());
+		for(quint16 doorId : doorIds)
 		{
+			const auto di = m_DoorStates.constFind(doorId);
 			AuScParts::const_iterator pi = scd->Parts().find(di.key());
 			if(pi == scd->Parts().cend())
 				continue;
 			quint8 s = (*di).State();	// real state of the door
 			QHash<quint16, quint8>::iterator si = m_DoorRenderState.find(di.key());	// last rendered state of the door
+			if(IsLegacyDebug())
+			{
+				const quint8 target = di->IsOpen() ? AuScDoor::Open : AuScDoor::Closed;
+				if(si == m_DoorRenderState.end()) m_DoorRenderState.insert(di.key(), target);
+				else if(*si != target)
+				{
+					if(*si == AuScDoor::Open50) *si = target;
+					else
+					{
+						*si = AuScDoor::Open50;
+						QueueLegacyDoorSound(**pi, *di, di->IsOpen());
+					}
+				}
+				continue;
+			}
 			if(si == m_DoorRenderState.end())
 				m_DoorRenderState.insert(di.key(), s);
 			else if(*si != s)
@@ -17972,6 +18479,27 @@ quint32 DaSc::SystemModuleCount(const AuSysId& sysId) const
 
 void DaSc::ToggleDoorState(const DaSentient& who, unsigned int doorIndex)
 {
+	if(IsLegacyDebug())
+	{
+		if(IsHullDoor(doorIndex) && !IsDoorLocked(doorIndex)
+			&& !(who.IsInsideSpacecraft() && who.FindParentVesselInEnv() == this))
+		{
+			const POLITICAL_STANCE stance = PoliticalStance(EmpireId(), who.EmpireId());
+			if(stance == POL_Enemy || (IsNew() && stance == POL_Neutral)) return;
+		}
+		if(CanOpenDoor(who, doorIndex))
+		{
+			if(IsDoorJammed(doorIndex))
+			{
+				UnjamDoor(doorIndex);
+				who.Thought(tr("Door unjammed."));
+			}
+			else if(IsDoorOpen(doorIndex)) CloseDoor(doorIndex);
+			else OpenDoor(doorIndex);
+		}
+		else if(IsDoorLocked(doorIndex)) who.Thought(tr("The door is locked."));
+		return;
+	}
 	// Determine if the person can open the door due to locking, access policy, etc. Ignores jamming.
 	if(CanOpenDoor(who, doorIndex))
 	{

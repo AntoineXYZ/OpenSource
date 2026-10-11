@@ -3,6 +3,7 @@
 #include "aulegacyship.h"
 #include "auscdesign.h"
 #include "auscparts.h"
+#include "auscreporthelpers.h"
 
 #include <QVector>
 #include <QHash>
@@ -97,6 +98,7 @@ struct Triangle
 	bool boardingStep = false;
 	int obstacle = -1;
 	int patch = -1;
+	quint16 doorId = 0;
 	QString group;
 	Triangle(const AuScTri& triangle, bool stairSurface, const QString& sourceGroup)
 		: a(triangle.V0()), b(triangle.V1()), c(triangle.V2()),
@@ -360,7 +362,7 @@ public:
 	};
 	QVector<Triangle> triangles;
 	QVector<Node> nodes;
-	QSet<quint32> hatchCells;
+	QHash<quint32, quint16> hatchCells;
 	AuPoint authorOffset = AuPoint(0, 0, 0);
 	QVector<Bounds> obstacles;
 	struct Patch { AuPoint normal, point; };
@@ -369,6 +371,12 @@ public:
 	bool valid = false;
 	Bounds boardingBounds;
 	bool hasBoardingBounds = false;
+	bool statefulDoors = false;
+
+	bool DoorOpen(const Triangle& triangle, const AuDoorStateHash* doorStates) const
+	{
+		return triangle.doorId && doorStates && doorStates->IsDoorOpen(triangle.doorId);
+	}
 
 	void BuildPatches()
 	{
@@ -399,6 +407,7 @@ public:
 					// retain separate planes, and different cells retain their own
 					// solid-volume identities even when adjacent faces share edges.
 					if(triangle.obstacle != triangles[other].obstacle) continue;
+					if(triangle.doorId != triangles[other].doorId) continue;
 					// A landing must not authorize existing overlap with the real
 					// deck floor when the actor's feet are still below the sill.
 					if(triangle.boardingStep != triangles[other].boardingStep) continue;
@@ -424,7 +433,7 @@ public:
 	}
 
 	void ContactNode(int id, const Bounds& bounds, const AuPoint& origin, const Body& body,
-		QHash<int, PatchContact>& contacts) const
+		QHash<int, PatchContact>& contacts, const AuDoorStateHash* doorStates) const
 	{
 		const Node& node = nodes[id];
 		if(!node.bounds.Intersects(bounds)) return;
@@ -433,7 +442,7 @@ public:
 			for(int index = node.first; index < node.first + node.count; ++index)
 			{
 				const Triangle& triangle = triangles[index];
-				if(triangle.patch < 0 || !triangle.bounds.Intersects(bounds)) continue;
+				if(triangle.patch < 0 || DoorOpen(triangle, doorStates) || !triangle.bounds.Intersects(bounds)) continue;
 				double depth; AuPoint normal;
 				if(!TriangleOverlap(triangle, body, origin, depth, normal)) continue;
 				const Patch& patch = patches[triangle.patch];
@@ -443,14 +452,15 @@ public:
 			}
 			return;
 		}
-		ContactNode(node.left, bounds, origin, body, contacts); ContactNode(node.right, bounds, origin, body, contacts);
+		ContactNode(node.left, bounds, origin, body, contacts, doorStates);
+		ContactNode(node.right, bounds, origin, body, contacts, doorStates);
 	}
 
-	QHash<int, PatchContact> Contacts(const AuPoint& origin, const Body& body) const
+	QHash<int, PatchContact> Contacts(const AuPoint& origin, const Body& body, const AuDoorStateHash* doorStates) const
 	{
 		Bounds bounds(origin + body.bounds.minimum); bounds.Include(origin + body.bounds.maximum);
 		QHash<int, PatchContact> contacts;
-		ContactNode(0, bounds, origin, body, contacts);
+		ContactNode(0, bounds, origin, body, contacts, doorStates);
 		return contacts;
 	}
 
@@ -478,7 +488,7 @@ public:
 
 	void SweepNode(int id, const Bounds& bounds, const Body& body, const AuPoint& from, const AuPoint& displacement,
 		double& fraction, AuPoint& normal, bool& hit, const Triangle*& hitTriangle,
-		const QHash<int, PatchContact>& contacts) const
+		const QHash<int, PatchContact>& contacts, const AuDoorStateHash* doorStates) const
 	{
 		const Node& node = nodes[id];
 		if(!node.bounds.Intersects(bounds)) return;
@@ -487,7 +497,7 @@ public:
 			for(int index = node.first; index < node.first + node.count; ++index)
 			{
 				const Triangle& triangle = triangles[index];
-				if(!triangle.bounds.Intersects(bounds)) continue;
+				if(DoorOpen(triangle, doorStates) || !triangle.bounds.Intersects(bounds)) continue;
 				// Each equipment path cell is a volume, not just its twelve faces.
 				// Catch a small actor entirely contained by a cell after a pose edit.
 				if(triangle.obstacle >= 0 && displacement.Length2() < 1e-16
@@ -519,27 +529,51 @@ public:
 			}
 			return;
 		}
-		SweepNode(node.left, bounds, body, from, displacement, fraction, normal, hit, hitTriangle, contacts);
-		SweepNode(node.right, bounds, body, from, displacement, fraction, normal, hit, hitTriangle, contacts);
+		SweepNode(node.left, bounds, body, from, displacement, fraction, normal, hit, hitTriangle, contacts, doorStates);
+		SweepNode(node.right, bounds, body, from, displacement, fraction, normal, hit, hitTriangle, contacts, doorStates);
 	}
 
 	bool Sweep(const AuPoint& from, const AuPoint& to, const Body& body, double& fraction, AuPoint& normal,
-		const Triangle** hitTriangle = nullptr) const
+		const Triangle** hitTriangle, const AuDoorStateHash* doorStates) const
 	{
 		Bounds bounds(from + body.bounds.minimum);
 		bounds.Include(from + body.bounds.maximum); bounds.Include(to + body.bounds.minimum); bounds.Include(to + body.bounds.maximum);
 		bounds.minimum -= AuPoint(Skin, Skin, Skin); bounds.maximum += AuPoint(Skin, Skin, Skin);
 		bool hit = false; fraction = 1;
 		const Triangle* triangle = nullptr;
-		const auto contacts = Contacts(from, body);
-		SweepNode(0, bounds, body, from, to - from, fraction, normal, hit, triangle, contacts);
+		const auto contacts = Contacts(from, body, doorStates);
+		SweepNode(0, bounds, body, from, to - from, fraction, normal, hit, triangle, contacts, doorStates);
 		if(hitTriangle) *hitTriangle = triangle;
 		return hit;
 	}
 
+	void BlockedDoorNode(int id, const Bounds& bounds, const AuPoint& from, const AuPoint& displacement,
+		const Body& body, const QHash<int, PatchContact>& contacts, QSet<quint16>& blocked,
+		double maximumFraction, const AuDoorStateHash* doorStates) const
+	{
+		const Node& node = nodes[id];
+		if(!node.bounds.Intersects(bounds)) return;
+		if(node.count)
+		{
+			for(int index = node.first; index < node.first + node.count; ++index)
+			{
+				const Triangle& triangle = triangles[index];
+				if(!triangle.doorId || DoorOpen(triangle, doorStates) || !triangle.bounds.Intersects(bounds)) continue;
+				const auto contact = contacts.constFind(triangle.patch);
+				if(contact != contacts.constEnd() && displacement.Dot(contact->normal) >= -1e-8) continue;
+				double fraction; AuPoint normal;
+				if(SweepTriangle(triangle, body, from, displacement, fraction, normal)
+					&& fraction <= maximumFraction + 1e-8) blocked.insert(triangle.doorId);
+			}
+			return;
+		}
+		BlockedDoorNode(node.left, bounds, from, displacement, body, contacts, blocked, maximumFraction, doorStates);
+		BlockedDoorNode(node.right, bounds, from, displacement, body, contacts, blocked, maximumFraction, doorStates);
+	}
+
 	bool DestinationBlocked(int id, const Bounds& bounds, const AuPoint& from, const AuPoint& to,
 		const Body& oldBody, const Body& newBody, AuPoint& normal, QString* diagnostic,
-		const QHash<int, PatchContact>& contacts, double contactTolerance) const
+		const QHash<int, PatchContact>& contacts, double contactTolerance, const AuDoorStateHash* doorStates) const
 	{
 		const Node& node = nodes[id];
 		if(!node.bounds.Intersects(bounds)) return false;
@@ -548,7 +582,7 @@ public:
 			for(int index = node.first; index < node.first + node.count; ++index)
 			{
 				const Triangle& triangle = triangles[index];
-				if(!triangle.bounds.Intersects(bounds)) continue;
+				if(DoorOpen(triangle, doorStates) || !triangle.bounds.Intersects(bounds)) continue;
 				if(triangle.obstacle >= 0)
 				{
 					const Bounds& cell = obstacles[triangle.obstacle];
@@ -584,18 +618,18 @@ public:
 			}
 			return false;
 		}
-		return DestinationBlocked(node.left, bounds, from, to, oldBody, newBody, normal, diagnostic, contacts, contactTolerance)
-			|| DestinationBlocked(node.right, bounds, from, to, oldBody, newBody, normal, diagnostic, contacts, contactTolerance);
+		return DestinationBlocked(node.left, bounds, from, to, oldBody, newBody, normal, diagnostic, contacts, contactTolerance, doorStates)
+			|| DestinationBlocked(node.right, bounds, from, to, oldBody, newBody, normal, diagnostic, contacts, contactTolerance, doorStates);
 	}
 
 	AuPoint Slide(const AuPoint& from, const AuPoint& to, const Body& body, const AuPoint& up, AuPoint& hitNormal,
-		bool preserveGroundHeight = false) const
+		bool preserveGroundHeight, const AuDoorStateHash* doorStates) const
 	{
 		AuPoint current = from, target = to;
 		for(int iteration = 0; iteration < 4; ++iteration)
 		{
 			double fraction; AuPoint normal;
-			if(!Sweep(current, target, body, fraction, normal)) return target;
+			if(!Sweep(current, target, body, fraction, normal, nullptr, doorStates)) return target;
 			hitNormal = normal;
 			AuPoint displacement = target - current;
 			const double backoff = displacement.Length() > Skin ? Skin / displacement.Length() : 0;
@@ -641,7 +675,7 @@ public:
 	}
 
 	void RayNode(int id, const AuPoint& origin, const AuPoint& direction, double& distance,
-		AuPoint& normal, bool& stair, bool* boardingStep = nullptr) const
+		AuPoint& normal, bool& stair, bool* boardingStep, const AuDoorStateHash* doorStates) const
 	{
 		const Node& node = nodes[id];
 		if(!node.bounds.IntersectsRay(origin, direction, distance)) return;
@@ -650,6 +684,7 @@ public:
 			for(int index = node.first; index < node.first + node.count; ++index)
 			{
 				const Triangle& triangle = triangles[index];
+				if(DoorOpen(triangle, doorStates)) continue;
 				const double divisor = triangle.normal.Dot(direction);
 				if(std::abs(divisor) < .5) continue;
 				const double candidate = (triangle.a - origin).Dot(triangle.normal) / divisor;
@@ -660,20 +695,21 @@ public:
 			}
 			return;
 		}
-		RayNode(node.left, origin, direction, distance, normal, stair, boardingStep);
-		RayNode(node.right, origin, direction, distance, normal, stair, boardingStep);
+		RayNode(node.left, origin, direction, distance, normal, stair, boardingStep, doorStates);
+		RayNode(node.right, origin, direction, distance, normal, stair, boardingStep, doorStates);
 	}
 
-	double Floor(const AuPoint& origin, const AuPoint& up, AuPoint& normal, bool& stair, bool* boardingStep = nullptr) const
+	double Floor(const AuPoint& origin, const AuPoint& up, AuPoint& normal, bool& stair, bool* boardingStep,
+		const AuDoorStateHash* doorStates) const
 	{
 		double distance = MaximumFall; normal = AuPoint(0, 0, 0); stair = false;
 		if(boardingStep) *boardingStep = false;
-		RayNode(0, origin, -up, distance, normal, stair, boardingStep);
+		RayNode(0, origin, -up, distance, normal, stair, boardingStep, doorStates);
 		return distance;
 	}
 
 	bool BoardingFloor(const AuPoint& from, const AuPoint& to, const Body& body, const AuPoint& up,
-		double& distance, AuPoint& normal) const
+		double& distance, AuPoint& normal, const AuDoorStateHash* doorStates) const
 	{
 		AuPoint forward = to - from;
 		forward -= up * forward.Dot(up);
@@ -689,7 +725,7 @@ public:
 		{
 			bool stair, boardingStep;
 			const AuPoint origin = probe + up * MaximumBoardingStep;
-			const double floor = Floor(origin, up, normal, stair, &boardingStep);
+			const double floor = Floor(origin, up, normal, stair, &boardingStep, doorStates);
 			if(!boardingStep || normal.Dot(up) < .55) continue;
 			const AuPoint floorPoint = origin - up * floor;
 			distance = (to - floorPoint).Dot(normal) / normal.Dot(up);
@@ -705,13 +741,17 @@ bool IsCollisionDesign(const AuScDesign& design)
 		if((*part)->IsHullMesh() && ((*part)->GroupName() == QStringLiteral("legacy/debug/static/v2")
 			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v3")
 			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v4")
-			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v5"))) return true;
+			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v5")
+			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v6"))) return true;
 	return false;
 }
 
 CollisionWorld::CollisionWorld(const AuScDesign& design) : m_Impl(new Impl)
 {
 	if(!IsCollisionDesign(design)) return;
+	for(auto part = design.Parts().cbegin(); part != design.Parts().cend(); ++part)
+		if((*part)->IsHullMesh() && (*part)->GroupName() == QStringLiteral("legacy/debug/static/v6"))
+			m_Impl->statefulDoors = true;
 	for(auto part = design.Parts().cbegin(); part != design.Parts().cend(); ++part)
 	{
 		if(!(*part)->IsOmitted() && (*part)->IsLadderPath()
@@ -729,7 +769,11 @@ CollisionWorld::CollisionWorld(const AuScDesign& design) : m_Impl(new Impl)
 				const AuPoint offset = AuPoint(center.x(), center.y(), deck * AuLegacyShip::DeckHeight) - anchor;
 				if(m_Impl->hatchCells.isEmpty()) m_Impl->authorOffset = offset;
 				if(Finite(offset) && offset.Distance2(m_Impl->authorOffset) < 1e-8)
-					m_Impl->hatchCells.insert((quint32(quint8(deck)) << 16) | quint16(packedXY));
+				{
+					const quint32 cell = (quint32(quint8(deck)) << 16) | quint16(packedXY);
+					if(!m_Impl->hatchCells.contains(cell) || !m_Impl->hatchCells.value(cell))
+						m_Impl->hatchCells.insert(cell, m_Impl->statefulDoors ? (*part)->AssociatedPartId() : 0);
+				}
 			}
 		}
 		if((*part)->IsOmitted() || !(*part)->IsBarrier() || !(*part)->GroupName().startsWith(QStringLiteral("legacy/"))) continue;
@@ -740,6 +784,9 @@ CollisionWorld::CollisionWorld(const AuScDesign& design) : m_Impl(new Impl)
 			m_Impl->triangles.clear(); return;
 		}
 		const bool stair = (*part)->GroupName() == QStringLiteral("legacy/stair-support");
+		const quint16 doorId = m_Impl->statefulDoors
+			&& (*part)->GroupName().startsWith(QStringLiteral("legacy/door-collision/detail/"))
+			&& (*part)->AssociatedPartState() == AuScDoor::Closed ? (*part)->AssociatedPartId() : 0;
 		const bool obstacleCells = (*part)->GroupName().startsWith(QStringLiteral("legacy/obstacle-chunk/"))
 			&& triangles.size() % 12 == 0;
 		const int firstObstacle = m_Impl->obstacles.size();
@@ -756,6 +803,7 @@ CollisionWorld::CollisionWorld(const AuScDesign& design) : m_Impl(new Impl)
 		for(int index = 0; index < triangles.size(); ++index)
 		{
 			Triangle triangle(triangles[index], stair, (*part)->GroupName());
+			triangle.doorId = doorId;
 			if(!Finite(triangle.a) || !Finite(triangle.b) || !Finite(triangle.c) || triangle.normal.IsZero()) continue;
 			if(obstacleCells)
 			{
@@ -792,7 +840,7 @@ void CollisionWorld::ExpandExtents(AuPoint& minimum, AuPoint& maximum) const
 }
 
 bool CollisionWorld::IsBodyPathBlocked(const AuPoint& from, const AuPoint& to, const AuBox& bodyOffsets,
-	AuPoint& hitLoc, AuPoint& hitNormal) const
+	AuPoint& hitLoc, AuPoint& hitNormal, const AuDoorStateHash* doorStates) const
 {
 	const Body body(bodyOffsets);
 	if(!IsValid() || !body.valid || !Finite(from) || !Finite(to))
@@ -800,15 +848,36 @@ bool CollisionWorld::IsBodyPathBlocked(const AuPoint& from, const AuPoint& to, c
 		hitLoc = from; hitNormal = AuPoint(0, 0, 0); return true;
 	}
 	double fraction;
-	if(!m_Impl->Sweep(from, to, body, fraction, hitNormal)) return false;
+	if(!m_Impl->Sweep(from, to, body, fraction, hitNormal, nullptr, doorStates)) return false;
 	const AuPoint displacement = to - from;
 	const double backoff = displacement.Length() > Skin ? Skin / displacement.Length() : 0;
 	hitLoc = from + displacement * std::max(0.0, fraction - backoff);
 	return true;
 }
 
+QVector<quint16> CollisionWorld::BlockedDoors(const AuPoint& from, const AuPoint& to, const AuBox& bodyOffsets,
+	const AuDoorStateHash* doorStates) const
+{
+	QVector<quint16> result;
+	const Body body(bodyOffsets);
+	if(!IsValid() || !body.valid || !Finite(from) || !Finite(to) || from == to) return result;
+	double maximumFraction; AuPoint normal;
+	if(!m_Impl->Sweep(from, to, body, maximumFraction, normal, nullptr, doorStates)) return result;
+	Bounds bounds(from + body.bounds.minimum);
+	bounds.Include(from + body.bounds.maximum); bounds.Include(to + body.bounds.minimum); bounds.Include(to + body.bounds.maximum);
+	bounds.minimum -= AuPoint(Skin, Skin, Skin); bounds.maximum += AuPoint(Skin, Skin, Skin);
+	QSet<quint16> blocked;
+	const auto contacts = m_Impl->Contacts(from, body, doorStates);
+	m_Impl->BlockedDoorNode(0, bounds, from, to - from, body, contacts, blocked, maximumFraction, doorStates);
+	result.reserve(blocked.size());
+	for(quint16 id : blocked) result.append(id);
+	std::sort(result.begin(), result.end());
+	return result;
+}
+
 bool CollisionWorld::IsBodyTransitionBlocked(const AuPoint& from, const AuPoint& to, const AuBox& oldOffsets,
-	const AuBox& newOffsets, AuPoint& hitLoc, AuPoint& hitNormal, bool allowSlideReplay, QString* diagnostic) const
+	const AuBox& newOffsets, AuPoint& hitLoc, AuPoint& hitNormal, bool allowSlideReplay, QString* diagnostic,
+	const AuDoorStateHash* doorStates) const
 {
 	if(diagnostic) diagnostic->clear();
 	const Body oldBody(oldOffsets), newBody(newOffsets);
@@ -819,8 +888,8 @@ bool CollisionWorld::IsBodyTransitionBlocked(const AuPoint& from, const AuPoint&
 	}
 	Bounds bounds(from + oldBody.bounds.minimum);
 	bounds.Include(from + oldBody.bounds.maximum); bounds.Include(to + newBody.bounds.minimum); bounds.Include(to + newBody.bounds.maximum);
-	const auto contacts = m_Impl->Contacts(from, oldBody);
-	if(m_Impl->DestinationBlocked(0, bounds, from, to, oldBody, newBody, hitNormal, diagnostic, contacts, GroundTolerance))
+	const auto contacts = m_Impl->Contacts(from, oldBody, doorStates);
+	if(m_Impl->DestinationBlocked(0, bounds, from, to, oldBody, newBody, hitNormal, diagnostic, contacts, GroundTolerance, doorStates))
 	{
 		hitLoc = from; return true;
 	}
@@ -837,8 +906,8 @@ bool CollisionWorld::IsBodyTransitionBlocked(const AuPoint& from, const AuPoint&
 	oldSweep.contactSkin = newSweep.contactSkin = GroundTolerance;
 	double oldFraction, newFraction; AuPoint oldNormal, newNormal;
 	const Triangle* oldTriangle = nullptr; const Triangle* newTriangle = nullptr;
-	const bool oldBlocked = m_Impl->Sweep(from, oldTarget, oldSweep, oldFraction, oldNormal, &oldTriangle);
-	const bool newBlocked = m_Impl->Sweep(newStart, to, newSweep, newFraction, newNormal, &newTriangle);
+	const bool oldBlocked = m_Impl->Sweep(from, oldTarget, oldSweep, oldFraction, oldNormal, &oldTriangle, doorStates);
+	const bool newBlocked = m_Impl->Sweep(newStart, to, newSweep, newFraction, newNormal, &newTriangle, doorStates);
 	if(!oldBlocked || !newBlocked) return false;
 	const AuPoint displacement = oldTarget - from;
 	if(oldBody.SameShape(newBody) && displacement.Length2() <= MaximumReplayDistance * MaximumReplayDistance)
@@ -847,14 +916,14 @@ bool CollisionWorld::IsBodyTransitionBlocked(const AuPoint& from, const AuPoint&
 		const double rise = displacement.Dot(up);
 		double floor; AuPoint floorNormal;
 		if(rise > 1e-8 && rise <= MaximumBoardingStep + 1e-8
-			&& m_Impl->BoardingFloor(from, oldTarget, oldBody, up, floor, floorNormal))
+			&& m_Impl->BoardingFloor(from, oldTarget, oldBody, up, floor, floorNormal, doorStates))
 		{
 			// A boarding packet can span the upward step and the parent change.
 			// Validate both legs continuously, including lintels and equipment.
 			const AuPoint raised = from + up * rise;
 			double fraction; AuPoint normal;
-			if(!m_Impl->Sweep(from, raised, oldSweep, fraction, normal)
-				&& !m_Impl->Sweep(raised, oldTarget, oldSweep, fraction, normal)) return false;
+			if(!m_Impl->Sweep(from, raised, oldSweep, fraction, normal, nullptr, doorStates)
+				&& !m_Impl->Sweep(raised, oldTarget, oldSweep, fraction, normal, nullptr, doorStates)) return false;
 		}
 	}
 	if(allowSlideReplay && displacement.Length2() <= MaximumReplayDistance * MaximumReplayDistance
@@ -865,17 +934,17 @@ bool CollisionWorld::IsBodyTransitionBlocked(const AuPoint& from, const AuPoint&
 		// each segment still uses the same continuous body sweep. No ground snap.
 		const AuPoint up(0, 0, 1);
 		AuPoint replayNormal;
-		const AuPoint resolved = m_Impl->Slide(from, oldTarget, oldSweep, up, replayNormal);
+		const AuPoint resolved = m_Impl->Slide(from, oldTarget, oldSweep, up, replayNormal, false, doorStates);
 		double connectorFraction; AuPoint connectorNormal;
 		if(resolved.Distance2(oldTarget) <= GroundTolerance * GroundTolerance
-			&& !m_Impl->Sweep(resolved, oldTarget, oldSweep, connectorFraction, connectorNormal)) return false;
+			&& !m_Impl->Sweep(resolved, oldTarget, oldSweep, connectorFraction, connectorNormal, nullptr, doorStates)) return false;
 		const AuPoint waypoints[] = {{oldTarget.x, from.y, from.z}, {from.x, oldTarget.y, from.z}};
 		for(const AuPoint& waypoint : waypoints)
 		{
 			if(from.Distance(waypoint) + waypoint.Distance(oldTarget) > MaximumReplayDistance) continue;
 			double fraction; AuPoint normal;
-			if(!m_Impl->Sweep(from, waypoint, oldSweep, fraction, normal)
-				&& !m_Impl->Sweep(waypoint, oldTarget, oldSweep, fraction, normal)) return false;
+			if(!m_Impl->Sweep(from, waypoint, oldSweep, fraction, normal, nullptr, doorStates)
+				&& !m_Impl->Sweep(waypoint, oldTarget, oldSweep, fraction, normal, nullptr, doorStates)) return false;
 		}
 	}
 	hitNormal = newFraction < oldFraction ? newNormal : oldNormal;
@@ -888,7 +957,7 @@ bool CollisionWorld::IsBodyTransitionBlocked(const AuPoint& from, const AuPoint&
 
 AuPoint CollisionWorld::ResolveDestination(const AuPoint& from, const AuPoint& to, const AuBox& bodyOffsets,
 	const AuPoint& gravityUp, double standingHeight, bool allowGroundSnap, AuPoint& hitNormal,
-	bool preserveGroundHeight) const
+	bool preserveGroundHeight, const AuDoorStateHash* doorStates) const
 {
 	hitNormal = AuPoint(0, 0, 0);
 	const Body body(bodyOffsets);
@@ -899,7 +968,7 @@ AuPoint CollisionWorld::ResolveDestination(const AuPoint& from, const AuPoint& t
 	if(preserveGroundHeight && std::isfinite(standingHeight) && standingHeight > 0)
 	{
 		double floor; AuPoint normal;
-		if(m_Impl->BoardingFloor(from, to, body, up, floor, normal))
+		if(m_Impl->BoardingFloor(from, to, body, up, floor, normal, doorStates))
 		{
 			const double adjustment = standingHeight + GroundTolerance - floor;
 			if(adjustment > 0 && adjustment <= MaximumBoardingStep)
@@ -910,10 +979,10 @@ AuPoint CollisionWorld::ResolveDestination(const AuPoint& from, const AuPoint& t
 				const double rise = std::max(0.0, (candidate - from).Dot(up));
 				const AuPoint raised = from + up * rise;
 				double fraction; AuPoint obstructionNormal;
-				if(rise <= MaximumBoardingStep && !m_Impl->Sweep(from, raised, body, fraction, obstructionNormal))
+				if(rise <= MaximumBoardingStep && !m_Impl->Sweep(from, raised, body, fraction, obstructionNormal, nullptr, doorStates))
 				{
 					target = candidate;
-					const AuPoint accepted = m_Impl->Slide(raised, target, body, up, hitNormal, true);
+					const AuPoint accepted = m_Impl->Slide(raised, target, body, up, hitNormal, true, doorStates);
 					if(hitNormal.IsZero()) hitNormal = normal;
 					return accepted;
 				}
@@ -923,52 +992,55 @@ AuPoint CollisionWorld::ResolveDestination(const AuPoint& from, const AuPoint& t
 	if(allowGroundSnap && std::isfinite(standingHeight) && standingHeight > 0)
 	{
 		AuPoint oldNormal, newNormal; bool oldStair, newStair;
-		const double oldFloor = m_Impl->Floor(from, up, oldNormal, oldStair);
+		const double oldFloor = m_Impl->Floor(from, up, oldNormal, oldStair, nullptr, doorStates);
 		const AuPoint movement = to - from;
 		const double horizontal = (movement - up * movement.Dot(up)).Length();
 		// Probe from above the proposed origin, so the next ramp is visible even
 		// if a long native tick placed the feet slightly below its surface.
 		const double probeLift = horizontal * 2 + .75;
-		const double newFloor = m_Impl->Floor(to + up * probeLift, up, newNormal, newStair) - probeLift;
+		const double newFloor = m_Impl->Floor(to + up * probeLift, up, newNormal, newStair, nullptr, doorStates) - probeLift;
 		const double adjustment = standingHeight + GroundTolerance - newFloor;
 		if(std::abs(oldFloor - standingHeight) <= .25 && (oldStair || newStair)
 			&& newNormal.Dot(up) >= .55 && adjustment >= -.75 && adjustment <= probeLift)
 			target += up * adjustment;
 	}
-	return m_Impl->Slide(from, target, body, up, hitNormal, preserveGroundHeight);
+	return m_Impl->Slide(from, target, body, up, hitNormal, preserveGroundHeight, doorStates);
 }
 
-double CollisionWorld::HeightAboveFloor(const AuPoint& loc, const AuPoint& gravityUp, AuPoint& floorNormal) const
+double CollisionWorld::HeightAboveFloor(const AuPoint& loc, const AuPoint& gravityUp, AuPoint& floorNormal,
+	const AuDoorStateHash* doorStates) const
 {
 	floorNormal = AuPoint(0, 0, 0);
 	if(!IsValid() || !Finite(loc) || !Finite(gravityUp)) return MaximumFall;
 	AuPoint up = gravityUp; up.Unit();
 	if(up.IsZero()) return MaximumFall;
 	bool stair;
-	return m_Impl->Floor(loc, up, floorNormal, stair);
+	return m_Impl->Floor(loc, up, floorNormal, stair, nullptr, doorStates);
 }
 
-bool CollisionWorld::IsOnBoardingStep(const AuPoint& loc, const AuPoint& gravityUp, double standingHeight) const
+bool CollisionWorld::IsOnBoardingStep(const AuPoint& loc, const AuPoint& gravityUp, double standingHeight,
+	const AuDoorStateHash* doorStates) const
 {
 	if(!IsValid() || !Finite(loc) || !Finite(gravityUp) || !std::isfinite(standingHeight)) return false;
 	AuPoint up = gravityUp; up.Unit();
 	if(up.IsZero()) return false;
 	AuPoint normal; bool stair, boardingStep;
-	const double floor = m_Impl->Floor(loc, up, normal, stair, &boardingStep);
+	const double floor = m_Impl->Floor(loc, up, normal, stair, &boardingStep, doorStates);
 	return boardingStep && normal.Dot(up) >= .55 && std::abs(floor - standingHeight) <= .25;
 }
 
-double CollisionWorld::HeightOfCeiling(const AuPoint& loc, const AuPoint& gravityUp) const
+double CollisionWorld::HeightOfCeiling(const AuPoint& loc, const AuPoint& gravityUp,
+	const AuDoorStateHash* doorStates) const
 {
 	if(!IsValid() || !Finite(loc) || !Finite(gravityUp)) return MaximumFall;
 	AuPoint up = gravityUp; up.Unit();
 	if(up.IsZero()) return MaximumFall;
 	double distance = MaximumFall; AuPoint normal; bool stair = false;
-	m_Impl->RayNode(0, loc, up, distance, normal, stair);
+	m_Impl->RayNode(0, loc, up, distance, normal, stair, nullptr, doorStates);
 	return distance;
 }
 
-bool CollisionWorld::AboveOpenHatch(const AuPoint& loc) const
+bool CollisionWorld::AboveOpenHatch(const AuPoint& loc, const AuDoorStateHash* doorStates) const
 {
 	if(!IsValid() || !Finite(loc)) return false;
 	const AuPoint authorLoc = loc + m_Impl->authorOffset;
@@ -978,6 +1050,8 @@ bool CollisionWorld::AboveOpenHatch(const AuPoint& loc) const
 	const int deck = int(std::floor((authorLoc.z + .05) / AuLegacyShip::DeckHeight));
 	if(deck < -127 || deck > 127) return false;
 	const quint16 packed = quint16(((int(x) & 0xff) << 8) | (int(y) & 0xff));
-	return m_Impl->hatchCells.contains((quint32(quint8(deck)) << 16) | packed);
+	const auto hatch = m_Impl->hatchCells.constFind((quint32(quint8(deck)) << 16) | packed);
+	if(hatch == m_Impl->hatchCells.constEnd()) return false;
+	return !m_Impl->statefulDoors || (hatch.value() && doorStates && doorStates->IsDoorOpen(hatch.value()));
 }
 }
