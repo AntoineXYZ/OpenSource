@@ -187,6 +187,7 @@ public:
 
 protected:
 	static GLuint CreateDisplayTexture(AuGLEffects& re, const AuId& parentId);
+	virtual QString DisplayTextureName(const AuId& parentId) const;
 
 	virtual void PanelDimensions(double& width, double& height) const = 0;
 };

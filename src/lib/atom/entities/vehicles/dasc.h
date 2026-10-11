@@ -33,6 +33,10 @@ class AUATOM_DLL DaSc : public DaVessel
 		AuScVAO vao;
 		GLuint texture = 0;
 		GLuint unlitTexture = 0;
+		GLuint effectTextures[4] = {};
+		GLuint holdEffectTextures[4] = {};
+		int effectFirstFrame = -1;
+		int effectFrameCount = 0;
 		QString roomName;
 		QVector2D textureInset;
 		float opacity = 1;

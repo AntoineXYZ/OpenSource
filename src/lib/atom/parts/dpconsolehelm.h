@@ -15,6 +15,7 @@ class AUATOM_DLL DpConsoleHelm : public DpStationHelm, public DpConsole
 {
 private:
 	bool m_LegacyControls = false;
+	void SetLegacyControls(bool legacy);
 
 public:
 	DpConsoleHelm();
@@ -60,6 +61,7 @@ public:
 	}
 
 protected:
+	virtual QString DisplayTextureName(const AuId& parentId) const;
 	virtual void PanelDimensions(double& width, double& height) const;
 };
 

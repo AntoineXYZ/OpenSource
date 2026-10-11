@@ -259,9 +259,24 @@ AuScPoint VertexPoint(const Vertex& vertex, const AuLegacyScDesign& legacy, cons
 	return AuScPoint(legacy.AuthorToShip(Point(vertex.position)), tx, ty, Point(vertex.normal.normalized()));
 }
 
+SURFACE_EFFECT BatchEffect(const Batch& batch)
+{
+	if(batch.effectFirstFrame < 0 || batch.effectFrameCount <= 0) return EFF_None;
+	switch(batch.material)
+	{
+	case Material::PowerPlant: return EFF_PowerPlant;
+	case Material::GravityDrive: return EFF_ManeuverDrive;
+	case Material::Berth:
+	case Material::LifeSupport:
+	case Material::Surgery: return EFF_LifeSupport;
+	default: return EFF_None;
+	}
+}
+
 bool AddTriangleFaces(AuScFaceList& faces, const Vertex* triangle, const Batch& batch,
 	const AuLegacyScDesign& legacy, const Tile& tile, int& count, int& visits)
 {
+	const SURFACE_EFFECT effect = BatchEffect(batch);
 	float minU = triangle[0].uv.x(), maxU = minU, minV = triangle[0].uv.y(), maxV = minV;
 	for(int index = 0; index < 3; ++index)
 	{
@@ -283,27 +298,32 @@ bool AddTriangleFaces(AuScFaceList& faces, const Vertex* triangle, const Batch& 
 			polygon = Clip(polygon, 0, float(u + 1), false);
 			polygon = Clip(polygon, 1, float(v), true);
 			polygon = Clip(polygon, 1, float(v + 1), false);
+			const auto point = [&](const Vertex& vertex) {
+				AuScPoint result = VertexPoint(vertex, legacy, tile, u, v);
+				if(effect != EFF_None) result.SetEffectCoord(vertex.uv.x() - u, vertex.uv.y() - v);
+				return result;
+			};
 			for(int index = 1; index + 1 < polygon.size(); ++index)
 			{
 				if(QVector3D::crossProduct(polygon[index].position - polygon[0].position,
 					polygon[index + 1].position - polygon[0].position).lengthSquared() < 1e-10f) continue;
 				if(++count > MaximumTriangles) return false;
-				AuScFaceTri face(VertexPoint(polygon[0], legacy, tile, u, v),
-					VertexPoint(polygon[index], legacy, tile, u, v), VertexPoint(polygon[index + 1], legacy, tile, u, v));
+				AuScFaceTri face(point(polygon[0]), point(polygon[index]), point(polygon[index + 1]));
 				face.SetTextureIndex(quint8(tile.texture));
 				face.SetPaint(QColor(255, 255, 255, 0));
 				face.SetOpacity(tile.translucent ? std::min(.999f, batch.tint.w()) : batch.tint.w());
 				face.SetSelfIllumination(batch.selfIllumination);
+				face.SetEffect(effect);
 				faces.AddFace(face);
 				if(batch.twoSided)
 				{
 					if(++count > MaximumTriangles) return false;
-					AuScFaceTri reverse(VertexPoint(polygon[0], legacy, tile, u, v),
-						VertexPoint(polygon[index + 1], legacy, tile, u, v), VertexPoint(polygon[index], legacy, tile, u, v));
+					AuScFaceTri reverse(point(polygon[0]), point(polygon[index + 1]), point(polygon[index]));
 					reverse.SetTextureIndex(quint8(tile.texture));
 					reverse.SetPaint(face.Paint());
 					reverse.SetOpacity(tile.translucent ? std::min(.999f, batch.tint.w()) : batch.tint.w());
 					reverse.SetSelfIllumination(face.SelfIllumination());
+					reverse.SetEffect(face.Effect());
 					faces.AddFace(reverse);
 				}
 			}
@@ -518,8 +538,9 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 		AuScMeshBase* part = batch.equipment ? static_cast<AuScMeshBase*>(&equipment)
 			: batch.interior ? static_cast<AuScMeshBase*>(&interior) : static_cast<AuScMeshBase*>(&hull);
 		part->SetFaces(faces);
-		part->SetGroupName(QStringLiteral("legacy/geometry/%1/detail/%2/interior/%3")
-			.arg(index).arg(batch.detailId).arg(int(batch.interior)));
+		QString group = QStringLiteral("legacy/geometry/%1/detail/%2").arg(index).arg(batch.detailId);
+		if(BatchEffect(batch) != EFF_None) group += QStringLiteral("/effect/%1").arg(batch.effectFirstFrame);
+		part->SetGroupName(group + QStringLiteral("/interior/%1").arg(int(batch.interior)));
 		if(part == &hull)
 		{
 			exteriorFaces.AddFaces(faces);
@@ -557,7 +578,7 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 	{
 		AuScHull hull;
 		hull.SetFaces(exteriorFaces);
-		hull.SetGroupName(QStringLiteral("legacy/debug/static/v7"));
+		hull.SetGroupName(QStringLiteral("legacy/debug/static/v8"));
 		if(!AddPart(generated, hull))
 		{
 			error = QStringLiteral("The selected legacy design has too many generated hull parts.");
@@ -923,6 +944,28 @@ bool ReadTextureMap(const QByteArray& bytes, QVector<TextureBinding>& output, QS
 	}
 	error.clear();
 	return true;
+}
+
+QImage OriginalEffectTexture(int frame)
+{
+	// Same frame rectangles as the offline renderer and AuAtom13:1803e8300.
+	QRect region;
+	if(frame >= 0 && frame < 4) region = QRect(352, frame * 32, 128, 32);
+	else if(frame >= 8 && frame < 12) region = QRect(224, (11 - frame) * 32, 32, 32);
+	else if(frame >= 12 && frame < 16) region = QRect(160, (15 - frame) * 32, 32, 32);
+	else if(frame >= 16 && frame < 20) region = QRect(32, (19 - frame) * 32, 32, 32);
+	else if(frame >= 20 && frame < 24) region = QRect(128, (23 - frame) * 32, 32, 32);
+	else if(frame >= 40 && frame < 43) region = QRect(480 + (frame - 40) * 64, 0, 64, 128);
+	else return QImage();
+	static const QImage atlas(QStringLiteral(":/data/legacy_ShipEffects.png"));
+	if(atlas.isNull()) return QImage();
+	// The frame table uses 1024x128 coordinates, while the recovered image
+	// is 2048x256. Match the offline shader's normalized atlas coordinates.
+	region = QRect(region.x() * atlas.width() / 1024, region.y() * atlas.height() / 128,
+		region.width() * atlas.width() / 1024, region.height() * atlas.height() / 128);
+	// QOpenGLTexture uploads the offline effect atlas without flipping rows.
+	// Compensate for the native texture uploader's row flip to preserve its UVs.
+	return atlas.copy(region).mirrored().convertToFormat(QImage::Format_ARGB32);
 }
 
 QImage OriginalTexture(const TextureBinding& binding, bool illuminated)

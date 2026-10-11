@@ -109,6 +109,8 @@
 	<file>data/txSpacecraft0Lit.png</file>
 	<file>data/legacy_txSpacecraft0Lit.png</file>
 	<file>data/legacy_pc_Console.bmp</file>
+	<file>data/legacy_pc_LightOn.bmp</file>
+	<file>data/legacy_pc_LightOff.bmp</file>
 	<file>data/legacy_ShipEffects.png</file>
 	<file>data/legacy_Troop.png</file>
 	<file>data/legacy_UpgradeModule.png</file>

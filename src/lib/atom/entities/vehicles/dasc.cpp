@@ -66,6 +66,8 @@ constexpr double LegacyHatchDescentOpenClearance = .5;
 // Temporarily disabled for testing; true restores 2016 neutral outside-entry
 // restrictions while a legacy ship is awaiting system initialization.
 constexpr bool LegacyRestrictNeutralAccessToNewShips = false;
+// The original core equipment effects advance every 100 milliseconds.
+constexpr int LegacyEffectFrameMSec = 100;
 
 void LogLegacyCollision(const QString& message)
 {
@@ -3220,7 +3222,8 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 		for(QColor& color : colors) color = Qt::white;
 		bool oldForcedInteriorGlow = true;
 		for(const AuScPart* part : design->Parts())
-			if(part->IsHullMesh() && part->GroupName() == QStringLiteral("legacy/debug/static/v7"))
+			if(part->IsHullMesh() && (part->GroupName() == QStringLiteral("legacy/debug/static/v7")
+				|| part->GroupName() == QStringLiteral("legacy/debug/static/v8")))
 			{
 				oldForcedInteriorGlow = false;
 				break;
@@ -3232,6 +3235,20 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 			if(part->IsOmitted() || !part->IsVisibleInFinalModel()) continue;
 			const bool isDoor = part->IsDoor();
 			const QString roomName = part->GroupName();
+			int effectFirstFrame = -1;
+			const QStringList fields = roomName.split('/');
+			const int effectField = fields.indexOf(QStringLiteral("effect"));
+			if(effectField >= 0)
+			{
+				bool valid = false;
+				effectFirstFrame = fields.value(effectField + 1).toInt(&valid);
+				if(!valid || (effectFirstFrame != 0 && effectFirstFrame != 8 && effectFirstFrame != 16
+					&& effectFirstFrame != 20 && effectFirstFrame != 40))
+				{
+					error = QStringLiteral("Legacy mesh has invalid equipment effect metadata.");
+					return false;
+				}
+			}
 			const bool partInterior = roomName.endsWith(QStringLiteral("/interior/1"))
 				|| (!roomName.endsWith(QStringLiteral("/interior/0"))
 					&& (part->IsRoomMesh() || (!part->IsHullMesh() && !isDoor)));
@@ -3272,7 +3289,10 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 					const bool hullDoorMaterial = (binding.material >= 8 && binding.material <= 10)
 						|| (binding.material >= 19 && binding.material <= 24);
 					const bool interior = isDoor ? !hullDoorMaterial : partInterior;
-					const quint32 lightingKey = (stateKey << 1) | quint32(interior);
+					// Low 25 bits retain door state and lighting; upper bits separate
+					// effect batches, including berth sides from their plain tops.
+					const quint32 lightingKey = (stateKey << 1) | quint32(interior)
+						| (quint32(effectFirstFrame + 1) << 25);
 					if(!triangles.contains(lightingKey))
 					{
 						triangles.insert(lightingKey, QVector<QMap<float, AuScTriRenderList>>(bindings.size()));
@@ -3291,6 +3311,13 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 						AuScPoint result(point);
 						result.m_Tx = (point.m_Tx * 256 - binding.packedTile.x() - .5f) / (side - 1);
 						result.m_Ty = 1 - ((1 - point.m_Ty) * 256 - binding.packedTile.y() - .5f) / (side - 1);
+						if(effectFirstFrame >= 0)
+						{
+							const int width = effectFirstFrame == 0 ? 128 : effectFirstFrame == 40 ? 64 : 32;
+							const int height = effectFirstFrame == 40 ? 128 : 32;
+							result.SetEffectCoord((.5f + point.EffectTx() * (width - 1)) / width,
+								(.5f + point.EffectTy() * (height - 1)) / height);
+						}
 						return result;
 					};
 					AuScTri triangle(vertex(original.V0()), vertex(original.V1()), vertex(original.V2()));
@@ -3299,8 +3326,8 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 					const float selfIllumination = oldForcedInteriorGlow && interior && original.SelfIllumination() == .25f
 						? 0.f : original.SelfIllumination();
 					AuScTriRender rendered(triangle, 0, QColor(0, 0, 0, 0), original.Reflectivity(), original.Shine(),
-						selfIllumination, 1, EFF_None);
-					triangles[lightingKey][tile.value()][opacity].insert(EFF_None, rendered);
+						selfIllumination, 1, original.Effect());
+					triangles[lightingKey][tile.value()][opacity].insert(original.Effect(), rendered);
 				}
 			}
 		}
@@ -3354,7 +3381,7 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 				for(auto group = states.value().at(index).cbegin(); group != states.value().at(index).cend(); ++group)
 				{
 					LegacyTextureDraw draw;
-					draw.doorId = quint16(states.key() >> 9);
+					draw.doorId = quint16((states.key() >> 9) & 0xffff);
 					draw.doorState = quint8((states.key() >> 1) & 0xff);
 					draw.interior = states.key() & 1;
 					draw.roomName = roomNames.value(states.key());
@@ -3364,6 +3391,26 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 					draw.translucent = draw.opacity < .999f || transparentTexture;
 					draw.texture = texture;
 					draw.unlitTexture = unlitTexture;
+					draw.effectFirstFrame = int(states.key() >> 25) - 1;
+					if(draw.effectFirstFrame >= 0)
+					{
+						draw.effectFrameCount = draw.effectFirstFrame == 40 ? 3 : 4;
+						for(int frame = 0; frame < draw.effectFrameCount; ++frame)
+						{
+							const auto effectTexture = [&](int sourceFrame) {
+								return ari.re->CreateTextureFromBitmap(STATIC_TEXTURE_ID,
+									QStringLiteral("LegacyEffect/%1").arg(sourceFrame),
+									AuLegacyScGeometry::OriginalEffectTexture(sourceFrame), GL_LINEAR, GL_LINEAR, false, 1);
+							};
+							draw.effectTextures[frame] = effectTexture(draw.effectFirstFrame + frame);
+							if(draw.effectFirstFrame == 16) draw.holdEffectTextures[frame] = effectTexture(12 + frame);
+							if(!draw.effectTextures[frame] || (draw.effectFirstFrame == 16 && !draw.holdEffectTextures[frame]))
+							{
+								error = QStringLiteral("Unable to create a legacy equipment effect texture.");
+								return false;
+							}
+						}
+					}
 					draw.vao.Create(*ari.re, group.value(), GL_STATIC_DRAW);
 					if(!draw.vao.VAO())
 					{
@@ -3395,6 +3442,11 @@ void DaSc::RenderLegacyTextures(const AuGLSLScBase& shader, AuAtomRenderInfo& ar
 {
 	const GLuint effects[EFF_Count] = {};
 	const bool powered = CapacitorLevel() > 0;
+	const bool lifeSupportAllocated = GetPowerConsumption(SYS_LifeSupport) > 0;
+	const bool powerPlantWorking = PowerPlantWorking();
+	const bool maneuverWorking = GravityDriveWorking();
+	const bool maneuverHold = GravityDriveState() == GD_Hold;
+	const qint64 frameTime = AuTime::CurrentMSecsSinceEpoch() / LegacyEffectFrameMSec;
 	const bool exteriorLightEnabled = m_MyExtLight >= 0 && ari.re->Light(m_MyExtLight).m_bEnabled;
 	shader.SetEffectTexture(0, 0);
 	if(transparent)
@@ -3441,8 +3493,23 @@ void DaSc::RenderLegacyTextures(const AuGLSLScBase& shader, AuAtomRenderInfo& ar
 		shader.SetGlowDiscard(0, 0, 0, discardAlpha);
 		shader.SetLegacySurface(draw.cutout ? 1 : transparent ? 3 : 2,
 			draw.textureInset.x(), draw.textureInset.y(), draw.opacity);
+		GLuint effectTexture = 0;
+		const bool effectActive = draw.effectFirstFrame == 20 ? powerPlantWorking
+			: draw.effectFirstFrame == 16 ? maneuverWorking
+			: draw.effectFirstFrame == 0 || draw.effectFirstFrame == 8 || draw.effectFirstFrame == 40
+				? lifeSupportAllocated : false;
+		if(effectActive && draw.effectFrameCount)
+		{
+			const int frame = int(frameTime % draw.effectFrameCount);
+			effectTexture = draw.effectFirstFrame == 16 && maneuverHold
+				? draw.holdEffectTextures[frame] : draw.effectTextures[frame];
+		}
+		// Each draw has one recovered effect atlas region; native vertex data
+		// still controls which surfaces receive the glowing overlay.
+		shader.SetEffectTexture(effectTexture, effectTexture ? 2 : 0);
 		draw.vao.DrawSc(shader, effects, 0);
 	}
+	shader.SetEffectTexture(0, 0);
 	shader.SetLegacySurface(0);
 	shader.SetGlowDiscard(0, 0, 0, .01f);
 	shader.SetAmbientLight(m_AmbientR, m_AmbientG, m_AmbientB);
@@ -3464,7 +3531,7 @@ void DaSc::CreateDeviceObjects(AuAtomRenderInfo& ari)
 			m_CmdEmpty.CreateDeviceObjectsEmpty(ari, *this, "Empty", 0, false);
 			m_EngineEmpty.CreateDeviceObjectsEmpty(ari, *this, QString("ECon%1").arg(Id().GetID()),
 				":data/ec_Console.bmp", false);
-			m_PilotEmpty.CreateDeviceObjectsEmpty(ari, *this, QString("PCon%1").arg(Id().GetID()),
+			m_PilotEmpty.CreateDeviceObjectsEmpty(ari, *this, QString("LegacyPCon%1").arg(Id().GetID()),
 				":data/legacy_pc_Console.bmp", false);
 			m_PowerEmpty.CreateDeviceObjectsEmpty(ari, *this, QString("DCon%1").arg(Id().GetID()),
 				":data/dc_Console.bmp", false);
@@ -6963,8 +7030,17 @@ void DaSc::InteriorAmbientLight(const QString& roomName, float& ambientR, float&
 	if(IsLegacyDebug())
 	{
 		const INTERIOR_LIGHT light = CapacitorLevel() > 0 ? InteriorLight(roomName) : INTLIGHT_Dark;
+		if(light == INTLIGHT_Dark)
+		{
+			// With the interior lights off, use the ship's external environment.
+			ambientR = ambientG = ambientB = .2f;
+			sunsBlocked = false;
+			float fogDensity, fogR, fogG, fogB;
+			SceneRenderParameters(0, ambientR, ambientG, ambientB, fogDensity, fogR, fogG, fogB, false, sunsBlocked);
+			return;
+		}
 		// AuAtom13:1800cdcf0, shared with the recovered offline renderer.
-		const float brightness = light == INTLIGHT_Bright ? 1.f : light == INTLIGHT_Dim ? .3f : .03f;
+		const float brightness = light == INTLIGHT_Bright ? 1.f : .3f;
 		ambientR = .47843137f * brightness;
 		ambientG = .5f * brightness;
 		ambientB = .49019608f * brightness;

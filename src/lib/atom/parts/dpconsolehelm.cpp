@@ -49,33 +49,70 @@ DpStation* DpConsoleHelm::Clone() const
 
 void DpConsoleHelm::CreateDeviceObjects(AuAtomRenderInfo& ari, const DaAtom& parent, bool inBuilding)
 {
-	m_LegacyControls = LegacyShip(parent);
+	SetLegacyControls(LegacyShip(parent));
 	if(m_LegacyControls && !m_ScreenTex)
 		m_ScreenTex = ari.re->CreateTextureFromBitmap(parent.Id().GetID(),
-			QString("PCon%1").arg(parent.Id().GetID()), ":data/legacy_pc_Console.bmp");
+			DisplayTextureName(parent.Id()), ":data/legacy_pc_Console.bmp");
 	DpStationHelm::CreateDeviceObjects(ari, parent, inBuilding);
 	DpConsole::CreateDeviceObjects(ari, parent, inBuilding);
+}
+
+void DpConsoleHelm::SetLegacyControls(bool legacy)
+{
+	// A design report can arrive after the console's first texture was created.
+	if(m_LegacyControls != legacy) m_ScreenTex = 0;
+	m_LegacyControls = legacy;
+}
+
+QString DpConsoleHelm::DisplayTextureName(const AuId& parentId) const
+{
+	return m_LegacyControls ? QString("LegacyPCon%1").arg(parentId.GetID())
+		: DpStationHelm::DisplayTextureName(parentId);
 }
 
 // Called between rendering scene frames that contains this object.
 void DpConsoleHelm::AnimateDeviceObjects(AuGLEffects& re, const DaVessel& ship, const AuElapsedTimer& last,
 		const AuPoint& location, const DaCreature& sceneAtom)
 {
+	SetLegacyControls(LegacyShip(ship));
+	if(m_LegacyControls && !m_ScreenTex)
+		m_ScreenTex = re.CreateTextureFromBitmap(ship.Id().GetID(), DisplayTextureName(ship.Id()),
+			":data/legacy_pc_Console.bmp");
 	DpStationHelm::AnimateDeviceObjects(re, ship, last, location, sceneAtom);	// Primary display screen.
 	DpConsole::AnimateDeviceObjects(re, ship, last, sceneAtom);					// Secondary display screen.
 	if(LegacyShip(ship))
 	{
 		// The recovered button occupies the modern beacon/strobe rectangles.
 		// Overlay it after native animation so those controls cannot replace it.
-		AuGLTexture* texture = re.FindTexture(QString("PCon%1").arg(ship.Id().GetID()));
+		AuGLTexture* texture = re.FindTexture(DisplayTextureName(ship.Id()));
 		if(texture)
 		{
+			static const QImage headlightOn(QStringLiteral(":data/legacy_pc_LightOn.bmp"));
+			static const QImage headlightOff(QStringLiteral(":data/legacy_pc_LightOff.bmp"));
+			QImage headlight = ship.IsHeadlightOn() ? headlightOn : headlightOff;
+			texture->ReplaceSubImage(re, headlight, 146, 90);
 			static const QImage on(QStringLiteral(":data/pc_IntLightOn.bmp"));
 			static const QImage dim(QStringLiteral(":data/pc_IntLightRed.bmp"));
 			static const QImage off(QStringLiteral(":data/pc_IntLightOff.bmp"));
 			const INTERIOR_LIGHT light = ship.InteriorLight(QString());
 			QImage button = light == INTLIGHT_Bright ? on : light == INTLIGHT_Dim ? dim : off;
 			texture->ReplaceSubImage(re, button, 164, 90);
+			// Also populate a newly selected legacy texture when the native
+			// instrument cache still holds readings from the previous texture.
+			static const QImage powerOn(QStringLiteral(":data/pc_PowerPlantOn.bmp"));
+			static const QImage powerOff(QStringLiteral(":data/pc_PowerPlantOff.bmp"));
+			QImage power = ship.IsPowerPlantOn() ? powerOn : powerOff;
+			texture->ReplaceSubImage(re, power, 218, 90);
+			static const QImage driveOn(QStringLiteral(":data/pc_ManeuverOn.bmp"));
+			static const QImage driveHold(QStringLiteral(":data/pc_ManeuverPark.bmp"));
+			static const QImage driveOff(QStringLiteral(":data/pc_ManeuverOff.bmp"));
+			const DaVessel::GRAVITY_DRIVE_STATE driveState = ship.GravityDriveState();
+			QImage drive = driveState == DaVessel::GD_On ? driveOn : driveState == DaVessel::GD_Hold ? driveHold : driveOff;
+			texture->ReplaceSubImage(re, drive, 236, 90);
+			static const QImage moored(QStringLiteral(":data/pc_Moored.bmp"));
+			static const QImage unmoored(QStringLiteral(":data/pc_Unmoored.bmp"));
+			QImage mooring = ship.IsMoored() ? moored : unmoored;
+			texture->ReplaceSubImage(re, mooring, 236, 108);
 			// Keep the recovered crew-door slot and hull-door indicator positions.
 			static const QImage original(QStringLiteral(":data/legacy_pc_Console.bmp"));
 			QImage crewSlot = original.copy(182, original.height() - 106, 16, 16);
@@ -84,6 +121,12 @@ void DpConsoleHelm::AnimateDeviceObjects(AuGLEffects& re, const DaVessel& ship, 
 			static const QImage hullClosed(QStringLiteral(":data/pc_HullDoorsUnlocked.png"));
 			QImage hullButton = ship.AnyHullDoorOpen() ? hullOpen : hullClosed;
 			texture->ReplaceSubImage(re, hullButton, 200, 90);
+			// FTL and landing gear are deferred. Keep their original artwork
+			// instead of the indicators laid out for the modern helm panel.
+			QImage ftlSlot = original.copy(204, original.height() - 124, 32, 16);
+			texture->ReplaceSubImage(re, ftlSlot, 204, 108);
+			QImage gearSlot = original.copy(236, original.height() - 88, 16, 16);
+			texture->ReplaceSubImage(re, gearSlot, 236, 72);
 		}
 	}
 }
@@ -96,6 +139,8 @@ void DpConsoleHelm::EnumControlInputs(DiControlInputArray& controls) const
 		RemoveDeferredControls(controls);
 		controls.RemoveId(CI_BeaconsOnOff);
 		controls.RemoveId(CI_StrobesOnOff);
+		controls.RemoveId(CI_NavLightsOnOff);
+		controls.RemoveId(CI_GearUpDown);
 		// Original helm control 13 remains reserved in the modern input enum.
 		controls.append(DiControlInput(QObject::tr("Interior Lights On/Dim/Off"), CI_UNUSED0,
 			Qt::Key_unknown, Qt::NoModifier, DiControlInput::MT_None, Qt::NoModifier,
@@ -116,6 +161,8 @@ void DpConsoleHelm::ProcessControlInput(const DiControlInputArray& controls, DaP
 	RemoveDeferredControls(active);
 	active.RemoveId(CI_BeaconsOnOff);
 	active.RemoveId(CI_StrobesOnOff);
+	active.RemoveId(CI_NavLightsOnOff);
+	active.RemoveId(CI_GearUpDown);
 	if(active.HasId(CI_UNUSED0) && !ship.IsNew())
 	{
 		if(context != CONTROL_Client)
@@ -132,13 +179,13 @@ void DpConsoleHelm::ProcessControlInput(const DiControlInputArray& controls, DaP
 
 void DpConsoleHelm::Refresh(const DpStation* station, const DaAtom& parent)
 {
-	m_LegacyControls = LegacyShip(parent);
+	SetLegacyControls(LegacyShip(parent));
 	DpStationHelm::Refresh(station, parent);
 }
 
 void DpConsoleHelm::Rx(QDataStream& in, DaCapsule& capsule)
 {
-	m_LegacyControls = LegacyShip(capsule);
+	SetLegacyControls(LegacyShip(capsule));
 	DpStationHelm::Rx(in, capsule);
 }
 
@@ -149,6 +196,9 @@ void DpConsoleHelm::SampleControlPanelInput(qint16 panelId, const AuPoint& panel
 	if(!m_LegacyControls || panelId) return;
 	controls.RemoveId(CI_BeaconsOnOff);
 	controls.RemoveId(CI_StrobesOnOff);
+	controls.RemoveId(CI_NavLightsOnOff);
+	controls.RemoveId(CI_GearUpDown);
+	controls.RemoveId(CI_HeadlightOnOff);
 	controls.RemoveId(CI_CloseHullDoors);
 	RemoveDeferredControls(controls);
 	double width, height;
@@ -156,6 +206,7 @@ void DpConsoleHelm::SampleControlPanelInput(qint16 panelId, const AuPoint& panel
 	if(width <= 0 || height <= 0) return;
 	const QPoint pixel(int(panelLoc.x * 256 / width), int(panelLoc.y * 128 / height));
 	const DiPanelControl legacy[] = {
+		DiPanelControl(CI_HeadlightOnOff, QRect(146, 90, 16, 16)),
 		DiPanelControl(CI_UNUSED0, QRect(164, 90, 16, 16)),
 		DiPanelControl(CI_CloseHullDoors, QRect(200, 83, 16, 7))
 	};
@@ -164,7 +215,7 @@ void DpConsoleHelm::SampleControlPanelInput(qint16 panelId, const AuPoint& panel
 
 bool DpConsoleHelm::Tick(const AuElapsedTimer& last, const AuElapsedTimer& now, DaPerson* person)
 {
-	m_LegacyControls = person->Parent() && LegacyShip(*person->Parent());
+	SetLegacyControls(person->Parent() && LegacyShip(*person->Parent()));
 	return DpStationHelm::Tick(last, now, person);
 }
 

@@ -468,7 +468,7 @@ void DpStationHelm::AnimateDeviceObjects(AuGLEffects& re, const DaVessel& ship, 
 
 	// Get the texture because we're going to make several changes to it.
 	QString name;
-	name = QString("PCon%1").arg(ship.Id().GetID());
+	name = DisplayTextureName(ship.Id());
 	AuGLTexture *pTex = re.FindTexture(name);
 	if(!pTex)
 		return;
@@ -2734,6 +2734,11 @@ GLuint DpStationHelm::CreateDisplayTexture(AuGLEffects& re, const AuId& parentId
 {
 	QString name = QString("PCon%1").arg(parentId.GetID());
 	return re.CreateTextureFromBitmap(parentId.GetID(), name, ":data/pc_Console.bmp");
+}
+
+QString DpStationHelm::DisplayTextureName(const AuId& parentId) const
+{
+	return QString("PCon%1").arg(parentId.GetID());
 }
 
 void DpStationHelm::DeleteDeviceObjects(AuGLEffects& re)

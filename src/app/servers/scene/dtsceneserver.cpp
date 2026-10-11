@@ -87,6 +87,41 @@ struct LegacyClientFrame
 	AuAtomPos position;
 };
 
+bool IsLegacyConsolePose(const AuPose& pose)
+{
+	return pose == AuPose::ConsoleCommand || pose == AuPose::ConsoleEngine
+		|| pose == AuPose::ConsolePilot || pose == AuPose::ConsolePower;
+}
+
+bool ValidateLegacyConsoleAttachment(DaSc& ship, const DaCreature& creature, const AuPose& pose,
+		quint16 stationId, quint16 controlId, const AuPoint& location, QString& reason)
+{
+	AuStation station;
+	if(!ship.Station(stationId, station))
+		reason = QStringLiteral("legacy console station unavailable");
+	else if(location.Distance2(station.OpM().Translation()) > .05 * .05)
+		reason = QStringLiteral("legacy console seat position mismatch");
+	else if(creature.IsConsolePose() && creature.StationId() == stationId)
+	{
+		// An occupied seat cannot pass the entry test again. Accept only the
+		// station mode and control already authorized on the server.
+		if(creature.CurrentGeneralPose() != pose || creature.ControlId() != controlId)
+			reason = QStringLiteral("legacy console mode mismatch");
+	}
+	else
+	{
+		const DaPerson* person = dynamic_cast<const DaPerson*>(&creature);
+		quint16 availableId = 0, availableControl = 0;
+		AuStation available;
+		if(!person || !ship.CanEnterConsole(*person, availableId, available, availableControl)
+			|| availableId != stationId || availableControl != controlId)
+			reason = QStringLiteral("legacy console entry unavailable");
+		else if(pose != AuStation::OpPose(available.Type(), available.OccPos(), available.SeatIndex()))
+			reason = QStringLiteral("legacy console entry pose mismatch");
+	}
+	return reason.isEmpty();
+}
+
 LegacyMovementCheck CheckLegacyClientMovement(DaAtom& actor, DaAtom* requestedParent, const AuAtomPos& proposed,
 		const AuPose requestedPoses[DpBody::PS_Count], quint16 stationId, quint16 controlId, const AuPoint& vector,
 		const LegacyClientFrame* movingFrame = 0, const DaPerson* controller = 0)
@@ -279,6 +314,16 @@ LegacyMovementCheck CheckLegacyClientMovement(DaAtom& actor, DaAtom* requestedPa
 			result.reason = QStringLiteral("legacy design unavailable");
 		else
 		{
+			// Old consoles use a fixed seat height, independent of avatar anatomy.
+			// Feet in the seated pose may extend below the deck. Validate the native
+			// seat transition instead of interpreting that snap as walking into it.
+			if(ship == newShip && parent == ship && requestedParent == ship && creature
+				&& IsLegacyConsolePose(candidateGeneralPose))
+			{
+				if(!ValidateLegacyConsoleAttachment(*ship, *creature, candidateGeneralPose, stationId, controlId, to,
+					result.reason)) return result;
+				continue;
+			}
 			// Reports can span several native slide/ground-contact steps. Compare the previous authorized body with the
 			// candidate body, and replay a bounded local slide for unchanged-parent reports, including exterior hull peers.
 			const bool unchangedFrame = !movesWithParent || movingFrame->position.ParentId() == movingFrame->atom->ParentId();

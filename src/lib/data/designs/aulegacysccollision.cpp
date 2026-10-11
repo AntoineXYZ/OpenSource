@@ -743,7 +743,8 @@ bool IsCollisionDesign(const AuScDesign& design)
 			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v4")
 			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v5")
 			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v6")
-			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v7"))) return true;
+			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v7")
+			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v8"))) return true;
 	return false;
 }
 
@@ -752,7 +753,8 @@ CollisionWorld::CollisionWorld(const AuScDesign& design) : m_Impl(new Impl)
 	if(!IsCollisionDesign(design)) return;
 	for(auto part = design.Parts().cbegin(); part != design.Parts().cend(); ++part)
 		if((*part)->IsHullMesh() && ((*part)->GroupName() == QStringLiteral("legacy/debug/static/v6")
-			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v7")))
+			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v7")
+			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v8")))
 			m_Impl->statefulDoors = true;
 	for(auto part = design.Parts().cbegin(); part != design.Parts().cend(); ++part)
 	{

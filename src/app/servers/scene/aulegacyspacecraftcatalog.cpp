@@ -294,7 +294,7 @@ bool PrepareLegacySpacecraftSpawn(quint32 legacyId, const AuId& architectId,
 		}
 		regenerate = true;
 		for(const AuScPart* part : runtimeDesign.Parts())
-			if(part->IsHullMesh() && part->GroupName() == QStringLiteral("legacy/debug/static/v7"))
+			if(part->IsHullMesh() && part->GroupName() == QStringLiteral("legacy/debug/static/v8"))
 			{
 				regenerate = false;
 				break;

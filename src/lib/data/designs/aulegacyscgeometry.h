@@ -36,6 +36,8 @@ AUDATA_DLL bool TextureMap(const AuLegacyScDesign& legacy, QByteArray& output, Q
 	bool includeOpenHatches = false, bool includeDoors = false);
 AUDATA_DLL bool ReadTextureMap(const QByteArray& bytes, QVector<TextureBinding>& output, QString& error);
 AUDATA_DLL QImage OriginalTexture(const TextureBinding& binding, bool illuminated = true);
+// Core subsystem animation frames from the recovered 2016 effect atlas.
+AUDATA_DLL QImage OriginalEffectTexture(int frame);
 
 // Builds a derived runtime blueprint with recovered geometry and core console
 // locations. Native old-style consoles own their chair/panel rendering.
