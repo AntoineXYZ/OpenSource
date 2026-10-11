@@ -20,11 +20,15 @@ thread_local QHash<QString, QByteArray>	s_GLSLProgramSrc;
 static void LoadLegacySurfaceShaders()
 {
 	// Compile these source files into Qt resources so ordinary client builds
-	// update the legacy surface modes without manually repacking glsl.har.
-	const char* names[] = {"Sc", "ScFog", "ScGlobe", "ScGlobeFog", "ScRingworld", "ScRingworldFog"};
+	// update legacy surface modes and lighting without repacking glsl.har.
+	const char* names[] = {
+		"Sc.f.glsl", "ScFog.f.glsl", "ScGlobe.f.glsl", "ScGlobeFog.f.glsl", "ScRingworld.f.glsl", "ScRingworldFog.f.glsl",
+		"Sc.v.glsl", "ScFog.v.glsl", "ScGlobe.v.glsl", "ScGlobeFog.v.glsl", "ScRingworld.v.glsl", "ScRingworldFog.v.glsl",
+		"H_SunLight.glsl", "H_SunLightGlobe.glsl", "H_SunLightRingworld.glsl"
+	};
 	for(const char* name : names)
 	{
-		const QString fileName = QStringLiteral("%1.f.glsl").arg(QString::fromLatin1(name));
+		const QString fileName = QString::fromLatin1(name);
 		QFile source(QStringLiteral(":/legacy-surface-shaders/") + fileName);
 		if(source.open(QIODevice::ReadOnly)) s_GLSLProgramSrc.insert(fileName, qCompress(source.readAll()));
 	}

@@ -6,6 +6,7 @@
 
 #version 150
 
+#define AU_LEGACY_SPACECRAFT_LIGHTING
 #SunLightGlobe
 
 uniform LightSources					light;					// Light sources.

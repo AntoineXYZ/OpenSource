@@ -9,5 +9,14 @@
 	<file alias="ScGlobeFog.f.glsl">shaders/ScGlobeFog.f.glsl</file>
 	<file alias="ScRingworld.f.glsl">shaders/ScRingworld.f.glsl</file>
 	<file alias="ScRingworldFog.f.glsl">shaders/ScRingworldFog.f.glsl</file>
+	<file alias="Sc.v.glsl">shaders/Sc.v.glsl</file>
+	<file alias="ScFog.v.glsl">shaders/ScFog.v.glsl</file>
+	<file alias="ScGlobe.v.glsl">shaders/ScGlobe.v.glsl</file>
+	<file alias="ScGlobeFog.v.glsl">shaders/ScGlobeFog.v.glsl</file>
+	<file alias="ScRingworld.v.glsl">shaders/ScRingworld.v.glsl</file>
+	<file alias="ScRingworldFog.v.glsl">shaders/ScRingworldFog.v.glsl</file>
+	<file alias="H_SunLight.glsl">shaders/H_SunLight.glsl</file>
+	<file alias="H_SunLightGlobe.glsl">shaders/H_SunLightGlobe.glsl</file>
+	<file alias="H_SunLightRingworld.glsl">shaders/H_SunLightRingworld.glsl</file>
 </qresource>
 </RCC>

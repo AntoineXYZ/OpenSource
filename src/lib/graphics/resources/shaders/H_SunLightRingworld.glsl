@@ -125,6 +125,10 @@ void computePointLight(PointLight light,
 	oSpecular = light.color * specular * attenuation * reflectiveness;
 }
 
+#ifdef AU_LEGACY_SPACECRAFT_LIGHTING
+uniform int legacySurfaceMode;
+#endif
+
 vec3 computeLighting(LightSources light,
 			float shininess,
 			float reflectiveness,
@@ -189,8 +193,11 @@ vec3 computeLighting(LightSources light,
 	// Calculate spherical ambient lighting that drops off to zero.
 	vec3 ambient = light.ambient * (dot(N, light.ambientUp) + 1)/2;
 
-	// Calculate spherical ambient lighting that drops off to 15% the ambient light value.
-	//vec3 ambient = mix(light.ambient * .15, light.ambient, (dot(N, light.ambientUp) + 1.)/2.);
+#ifdef AU_LEGACY_SPACECRAFT_LIGHTING
+	// Legacy spacecraft retain the offline renderer's 15% ambient minimum.
+	if(legacySurfaceMode != 0)
+		ambient = mix(light.ambient * .15, light.ambient, (dot(N, light.ambientUp) + 1.)/2.);
+#endif
 
 	// Calculate final color of lit vertex.
 	vec3 color = ambient + diffuseSum + specularSum;

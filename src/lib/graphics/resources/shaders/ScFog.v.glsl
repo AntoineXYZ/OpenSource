@@ -6,6 +6,7 @@
 
 #version 150
 
+#define AU_LEGACY_SPACECRAFT_LIGHTING
 #SunLight
 
 uniform float							fogDensity;				// Fog density for exponential fog calculation.
