@@ -63,6 +63,9 @@ constexpr qint64 LegacyAutomaticDoorCloseDelayMSec = 2500;
 constexpr unsigned int LegacyAutomaticDoorCheckIntervalMSec = 250;
 // Open a hatch before a descending climber's feet meet its deck plane (feet).
 constexpr double LegacyHatchDescentOpenClearance = .5;
+// Temporarily disabled for testing; true restores 2016 neutral outside-entry
+// restrictions while a legacy ship is awaiting system initialization.
+constexpr bool LegacyRestrictNeutralAccessToNewShips = false;
 
 void LogLegacyCollision(const QString& message)
 {
@@ -1470,7 +1473,7 @@ bool DaSc::CanEnterConsole(const DaPerson& who, quint16& stationId, AuStation& s
 	if(!IsDesignDataCacheValid())
 		return false;	// Failed to load ship design.
 
-	if(IsNew())
+	if(IsNew() && !IsLegacyDebug())
 	{
 		// Neutrals are not permitted to enter a console or turret on a new ship.
 		const DgData& gd = g_Au.LockDataForRead();
@@ -1489,12 +1492,48 @@ bool DaSc::CanEnterConsole(const DaPerson& who, quint16& stationId, AuStation& s
 
 	// Must check CoC now, before design is locked.
 	bool whoInCoC = InChainOfCommand(&who);
+	const bool legacyConsole = IsLegacyDebug();
 
 	// Look for consoles nearby.
 	QString roomN = who.ShipRoomName();
 	AuPoint gN = who.GravityNormal();
 	m_DesignLock.lockForRead();
 	const AuScDesign* scd = LockDesign();
+	if(scd && legacyConsole)
+	{
+		// Console metadata is inserted in original detail order. The recovered
+		// interaction checks the avatar's CG deck and strictly less than 3ft in
+		// XY, without requiring the console and avatar to share a room name.
+		QVector<quint16> consoleIds;
+		for(auto pi = scd->Parts().cbegin(); pi != scd->Parts().cend(); ++pi)
+		{
+			const AuScPart* console = *pi;
+			if(console->IsOmitted() || !console->IsConsole()
+				|| !console->GroupName().startsWith(QStringLiteral("legacy/console/detail/"))) continue;
+			consoleIds.append(pi.key());
+		}
+		std::sort(consoleIds.begin(), consoleIds.end());
+		for(quint16 consoleId : consoleIds)
+		{
+			const AuScPart* console = scd->Parts().value(consoleId);
+			const AuPoint floor = console->OperatorLoc();
+			if(who.Location().Distance2_2D(floor) >= 3 * 3
+				|| std::floor((who.Location().z - floor.z + .05) / AuLegacyShip::DeckHeight) != 0) continue;
+			which = AttemptConsoleEntry(who, whoInCoC, consoleId, *console, station, AuPoint(0, 0, 1));
+			if(!which) continue;
+			stationId = consoleId;
+			// Old consoles swivel with the occupant. Preserve their current
+			// heading when sitting down, as the recovered offline interaction does.
+			AuMatrix4x4 seat;
+			seat.Translate(station.OpM().Project(AuPoint(0, 0, 0)));
+			seat.RotateZ(who.Rotation().z);
+			station = AuStation(station.Type(), seat, station.OccPos(), station.SeatIndex());
+			break;
+		}
+		UnlockDesign();
+		m_DesignLock.unlock();
+		return which;
+	}
 	if(scd)
 	{
 		// Captain's chairs.
@@ -1727,7 +1766,8 @@ quint16 DaSc::AttemptConsoleEntry(const DaPerson& who, bool whoInCoC, quint16 co
 		return 0;
 	AuPoint whoLoc = station.OpM().UnProject(who.Location());	// 'who's location relative to the console.
 	double floordist = whoLoc.Length2_2D();
-	if(floordist > 3*3 || whoLoc.z < -3 || whoLoc.z > 6)
+	const bool legacyConsole = console.GroupName().startsWith(QStringLiteral("legacy/console/detail/"));
+	if(!legacyConsole && (floordist > 3*3 || whoLoc.z < -3 || whoLoc.z > 6))
 		return 0;
 
 	// Person must not be wearing armor or clothing to enter surgery unit, unless they are dying.
@@ -1866,14 +1906,17 @@ bool DaSc::FindLegacyLadder(const AuPoint& loc, AuMatrix4x4& mLadder, QString* d
 
 bool DaSc::CanSetInMotion() const
 {
-	return !IsLegacyDebug() && DaVessel::CanSetInMotion();
+	return DaVessel::CanSetInMotion();
 }
 
 float DaSc::CapacitorMax() const
 {
 	m_DesignLock.lockForRead();
 	float p = m_Design.CapacitorMax();
+	const quint32 plantHits = m_Design.IsLegacyDebug() ? m_Design.PowerPlantHits() : 0;
 	m_DesignLock.unlock();
+	if(IsLegacyDebug())
+		p *= plantHits ? float(SystemHitsRemaining(SYS_PowerPlant)) / plantHits : 0.f;
 	return p;
 }
 
@@ -3165,6 +3208,7 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 		const int side = bindings.first().packedTile.width();
 		QHash<quint32, int> tiles;
 		QMap<quint32, QVector<QMap<float, AuScTriRenderList>>> triangles;
+		QHash<quint32, QString> roomNames;
 		for(int index = 0; index < bindings.size(); ++index)
 		{
 			const auto& binding = bindings[index];
@@ -3174,17 +3218,27 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 		}
 		QColor colors[AuScFace::THEME_Count];
 		for(QColor& color : colors) color = Qt::white;
+		bool oldForcedInteriorGlow = true;
+		for(const AuScPart* part : design->Parts())
+			if(part->IsHullMesh() && part->GroupName() == QStringLiteral("legacy/debug/static/v7"))
+			{
+				oldForcedInteriorGlow = false;
+				break;
+			}
 		int count = 0;
 		for(auto partIterator = design->Parts().cbegin(); partIterator != design->Parts().cend(); ++partIterator)
 		{
 			const AuScPart* part = *partIterator;
 			if(part->IsOmitted() || !part->IsVisibleInFinalModel()) continue;
 			const bool isDoor = part->IsDoor();
+			const QString roomName = part->GroupName();
+			const bool partInterior = roomName.endsWith(QStringLiteral("/interior/1"))
+				|| (!roomName.endsWith(QStringLiteral("/interior/0"))
+					&& (part->IsRoomMesh() || (!part->IsHullMesh() && !isDoor)));
 			const quint8 frames[] = {AuScDoor::Closed, AuScDoor::Open50, AuScDoor::Open};
 			for(int frame = 0; frame < (isDoor ? 3 : 1); ++frame)
 			{
 				const quint32 stateKey = isDoor ? (quint32(partIterator.key()) << 8) | frames[frame] : 0;
-				if(!triangles.contains(stateKey)) triangles.insert(stateKey, QVector<QMap<float, AuScTriRenderList>>(bindings.size()));
 				AuScTriRenderList opaque, transparent;
 				if(isDoor) part->RenderTrianglesState(opaque, transparent, colors, frames[frame]);
 				else part->RenderTriangles(opaque, transparent, colors);
@@ -3213,6 +3267,17 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 						return false;
 					}
 					const auto& binding = bindings.at(tile.value());
+					// Hull doors use exterior materials on the outside and crew/interior
+					// materials on the inside. Keep those lighting passes independent.
+					const bool hullDoorMaterial = (binding.material >= 8 && binding.material <= 10)
+						|| (binding.material >= 19 && binding.material <= 24);
+					const bool interior = isDoor ? !hullDoorMaterial : partInterior;
+					const quint32 lightingKey = (stateKey << 1) | quint32(interior);
+					if(!triangles.contains(lightingKey))
+					{
+						triangles.insert(lightingKey, QVector<QMap<float, AuScTriRenderList>>(bindings.size()));
+						roomNames.insert(lightingKey, roomName);
+					}
 					float opacity = original.Opacity();
 					// The palette adapter forced partly transparent images into the
 					// blend pass. Direct sampling classifies each texel instead.
@@ -3229,9 +3294,13 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 						return result;
 					};
 					AuScTri triangle(vertex(original.V0()), vertex(original.V1()), vertex(original.V2()));
+					// Earlier runtime blueprints forced a minimum glow on interior
+					// faces. It would keep those rooms bright with their lights off.
+					const float selfIllumination = oldForcedInteriorGlow && interior && original.SelfIllumination() == .25f
+						? 0.f : original.SelfIllumination();
 					AuScTriRender rendered(triangle, 0, QColor(0, 0, 0, 0), original.Reflectivity(), original.Shine(),
-						original.SelfIllumination(), 1, EFF_None);
-					triangles[stateKey][tile.value()][opacity].insert(EFF_None, rendered);
+						selfIllumination, 1, EFF_None);
+					triangles[lightingKey][tile.value()][opacity].insert(EFF_None, rendered);
 				}
 			}
 		}
@@ -3260,7 +3329,22 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 				.arg(binding.tint.z()).arg(int(binding.cutout));
 			const GLuint texture = ari.re->CreateTextureFromBitmap(STATIC_TEXTURE_ID, key, image, GL_LINEAR, GL_LINEAR,
 				!binding.cutout, binding.cutout ? 1 : 0);
-			if(!texture)
+			GLuint unlitTexture = texture;
+			if(binding.resource.isEmpty() && binding.material >= 0)
+			{
+				const QImage unlit = AuLegacyScGeometry::OriginalTexture(binding, false);
+				if(unlit.isNull())
+				{
+					error = QStringLiteral("The bundled unlit legacy spacecraft texture is unavailable.");
+					return false;
+				}
+				const QString unlitKey = QStringLiteral("LegacyOriginal/Unlit/%1/%2/%3/%4/%5")
+					.arg(binding.material).arg(binding.tint.x()).arg(binding.tint.y())
+					.arg(binding.tint.z()).arg(int(binding.cutout));
+				unlitTexture = ari.re->CreateTextureFromBitmap(STATIC_TEXTURE_ID, unlitKey, unlit,
+					GL_LINEAR, GL_LINEAR, !binding.cutout, binding.cutout ? 1 : 0);
+			}
+			if(!texture || !unlitTexture)
 			{
 				error = QStringLiteral("Unable to create a legacy surface texture.");
 				return false;
@@ -3270,13 +3354,16 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 				for(auto group = states.value().at(index).cbegin(); group != states.value().at(index).cend(); ++group)
 				{
 					LegacyTextureDraw draw;
-					draw.doorId = quint16(states.key() >> 8);
-					draw.doorState = quint8(states.key() & 0xff);
+					draw.doorId = quint16(states.key() >> 9);
+					draw.doorState = quint8((states.key() >> 1) & 0xff);
+					draw.interior = states.key() & 1;
+					draw.roomName = roomNames.value(states.key());
 					draw.textureInset = binding.textureInset;
 					draw.cutout = binding.cutout;
 					draw.opacity = group.key();
 					draw.translucent = draw.opacity < .999f || transparentTexture;
 					draw.texture = texture;
+					draw.unlitTexture = unlitTexture;
 					draw.vao.Create(*ari.re, group.value(), GL_STATIC_DRAW);
 					if(!draw.vao.VAO())
 					{
@@ -3304,9 +3391,11 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 	return true;
 }
 
-void DaSc::RenderLegacyTextures(const AuGLSLScBase& shader, AuAtomRenderInfo& ari, bool transparent)
+void DaSc::RenderLegacyTextures(const AuGLSLScBase& shader, AuAtomRenderInfo& ari, const AuMatrix4x4& model, bool transparent)
 {
 	const GLuint effects[EFF_Count] = {};
+	const bool powered = CapacitorLevel() > 0;
+	const bool exteriorLightEnabled = m_MyExtLight >= 0 && ari.re->Light(m_MyExtLight).m_bEnabled;
 	shader.SetEffectTexture(0, 0);
 	if(transparent)
 	{
@@ -3324,14 +3413,43 @@ void DaSc::RenderLegacyTextures(const AuGLSLScBase& shader, AuAtomRenderInfo& ar
 		}
 		if(transparent && (draw.cutout || !draw.translucent)) continue;
 		if(!transparent && !draw.cutout && draw.opacity < .999f) continue;
-		shader.SetSurfaceTexture(0, draw.texture);
-		shader.SetGlowDiscard(0, 0, 0, draw.cutout ? .2f : .01f);
+		const INTERIOR_LIGHT light = powered ? InteriorLight(draw.roomName) : INTLIGHT_Dark;
+		if(draw.interior)
+		{
+			float ambientR, ambientG, ambientB;
+			bool sunsBlocked;
+			InteriorAmbientLight(draw.roomName, ambientR, ambientG, ambientB, sunsBlocked);
+			shader.SetAmbientLight(ambientR, ambientG, ambientB);
+			shader.SetAmbientLightUp(model.ProjectVector(0, 0, 1));
+			for(int sunIndex = 0; sunIndex < MAX_SUNS; ++sunIndex)
+				shader.SetSunEnabled(sunIndex, ari.re->Sun(sunIndex).m_Enabled && !sunsBlocked);
+			if(m_MyExtLight >= 0) shader.SetLightEnabled(m_MyExtLight, false);
+		}
+		else
+		{
+			shader.SetAmbientLight(m_AmbientR, m_AmbientG, m_AmbientB);
+			shader.SetAmbientLightUp(m_AmbientUp);
+			for(int sunIndex = 0; sunIndex < MAX_SUNS; ++sunIndex)
+				shader.SetSunEnabled(sunIndex, ari.re->Sun(sunIndex).m_Enabled && !m_SunsBlocked);
+			if(m_MyExtLight >= 0) shader.SetLightEnabled(m_MyExtLight, exteriorLightEnabled);
+		}
+		// As in the offline renderer, On and Dim use the illuminated atlas;
+		// Off and loss of capacitor charge use its original unlit counterpart.
+		shader.SetSurfaceTexture(0, light == INTLIGHT_Dark ? draw.unlitTexture : draw.texture);
+		const float discardAlpha = !draw.cutout ? .01f
+			: light == INTLIGHT_Bright ? .2f : draw.interior ? .1f : 0.f;
+		shader.SetGlowDiscard(0, 0, 0, discardAlpha);
 		shader.SetLegacySurface(draw.cutout ? 1 : transparent ? 3 : 2,
 			draw.textureInset.x(), draw.textureInset.y(), draw.opacity);
 		draw.vao.DrawSc(shader, effects, 0);
 	}
 	shader.SetLegacySurface(0);
 	shader.SetGlowDiscard(0, 0, 0, .01f);
+	shader.SetAmbientLight(m_AmbientR, m_AmbientG, m_AmbientB);
+	shader.SetAmbientLightUp(m_AmbientUp);
+	for(int sunIndex = 0; sunIndex < MAX_SUNS; ++sunIndex)
+		shader.SetSunEnabled(sunIndex, ari.re->Sun(sunIndex).m_Enabled && !m_SunsBlocked);
+	if(m_MyExtLight >= 0) shader.SetLightEnabled(m_MyExtLight, exteriorLightEnabled);
 	if(transparent) ari.re->glDisable(GL_BLEND);
 }
 
@@ -3341,8 +3459,24 @@ void DaSc::CreateDeviceObjects(AuAtomRenderInfo& ari)
 	DaVessel::CreateDeviceObjects(ari);
 	if(IsLegacyDebug())
 	{
+		if(!m_CmdEmpty.HasDeviceObjects())
+		{
+			m_CmdEmpty.CreateDeviceObjectsEmpty(ari, *this, "Empty", 0, false);
+			m_EngineEmpty.CreateDeviceObjectsEmpty(ari, *this, QString("ECon%1").arg(Id().GetID()),
+				":data/ec_Console.bmp", false);
+			m_PilotEmpty.CreateDeviceObjectsEmpty(ari, *this, QString("PCon%1").arg(Id().GetID()),
+				":data/legacy_pc_Console.bmp", false);
+			m_PowerEmpty.CreateDeviceObjectsEmpty(ari, *this, QString("DCon%1").arg(Id().GetID()),
+				":data/dc_Console.bmp", false);
+		}
 		if(!m_VAOsCreated) CreateLegacyDeviceObjects(ari);
-		if(!m_AudioShip[0] && ari.al) alGenSources(AS_MaxSources, m_AudioShip);
+		if(!m_AudioShip[0] && ari.al)
+		{
+			alGenSources(AS_MaxSources, m_AudioShip);
+			alSourcei(m_AudioShip[AS_GravityDriveExt], AL_BUFFER, ari.al->AudioBuffer(SOUND_GravityDriveExt));
+			alSourcei(m_AudioShip[AS_GravityDriveInt], AL_BUFFER, ari.al->AudioBuffer(SOUND_GravityDriveInt));
+			alSourcei(m_AudioShip[AS_PowerPlant], AL_BUFFER, ari.al->AudioBuffer(SOUND_PowerPlant));
+		}
 		return;
 	}
 
@@ -4296,7 +4430,18 @@ bool DaSc::CanOpenDoor(const DaSentient& who, unsigned int doorIndex) const
 	const bool withinReach = (deckDelta == 0 || deckDelta == -1) && LegacyDoorDistance2(*door, location) <= 36;
 	m_DesignLock.unlock();
 	if(!withinReach) return false;
-	if(!IsDoorLocked(doorIndex)) return true;
+	if(!IsDoorLocked(doorIndex))
+	{
+		if(IsHullDoor(doorIndex) && !(who.IsInsideSpacecraft() && who.FindParentVesselInEnv() == this))
+		{
+			// AuAtom13:18016c140 treats either empireless party as neutral.
+			const POLITICAL_STANCE stance = EmpireId() && who.EmpireId()
+				? PoliticalStance(EmpireId(), who.EmpireId()) : POL_Neutral;
+			if(stance == POL_Enemy || (LegacyRestrictNeutralAccessToNewShips && IsNew() && stance == POL_Neutral))
+				return false;
+		}
+		return true;
+	}
 	if(IsHullDoor(doorIndex) && who.IsInsideSpacecraft() && who.FindParentVesselInEnv() == this) return true;
 	return who.AgentEntity() || IsCrewOrTroop(who.Id()) || InChainOfCommand(&who);
 }
@@ -4311,7 +4456,9 @@ void DaSc::CycleCapacitor()
 	bool hadPower = (capLevel > 0) ? true : false;
 
 	// Fuel burned is modified by fuel quality. At quality 128, its 1:1. Good fuel can halve the fuel burn.
-	const float rFuelEfficiency = QualityBoostF(m_FuelQuality);
+	const float rFuelEfficiency = IsLegacyDebug() ? float(qMax<quint8>(1, m_FuelQuality)) / 128.f :
+		QualityBoostF(m_FuelQuality);
+	const float fuelIn = IsLegacyDebug() ? FuelQuantity() : 0.f;
 
 	// Generate power by burning fuel with all functioning power plants.
 	if(capIn > capMax)
@@ -4385,9 +4532,9 @@ void DaSc::CycleCapacitor()
 		powerConsumed += rPowerBurn;
 		capLevel -= rPowerBurn;
 
-		BalanceRoomAirPressures(true);
+		if(!IsLegacyDebug()) BalanceRoomAirPressures(true);
 	}
-	else if(AnyHullDoorOpen())
+	else if(!IsLegacyDebug() && AnyHullDoorOpen())
 	{
 		// Life support is off and a door is open.
 		// Equalize air pressure with outside quickly.
@@ -4395,7 +4542,7 @@ void DaSc::CycleCapacitor()
 	}
 
 	// Consume power for idling FTL drives.
-	if(HasFTLDrive())
+	if(!IsLegacyDebug() && HasFTLDrive())
 	{
 		m_FTLLock.lockForRead();
 		for(QHash<quint16, AuFTLDriveState>::const_iterator fi = m_FTLDrives.cbegin();
@@ -4569,7 +4716,7 @@ void DaSc::CycleCapacitor()
 	// cause lights and engines to change appearance. This also enables consoles
 	// and turrets to respond on the client.
 	bool hasPower = (capLevel > 0) ? true : false;
-	if(hadPower != hasPower)
+	if(hadPower != hasPower || (IsLegacyDebug() && (capIn != capLevel || fuelIn != FuelQuantity())))
 		SetModified();
 }
 
@@ -6813,9 +6960,20 @@ void DaSc::WindowSurfaceGlow(const QString& windowName, float& glowR, float& glo
 
 void DaSc::InteriorAmbientLight(const QString& roomName, float& ambientR, float& ambientG, float& ambientB, bool& sunsBlocked) const
 {
+	if(IsLegacyDebug())
+	{
+		const INTERIOR_LIGHT light = CapacitorLevel() > 0 ? InteriorLight(roomName) : INTLIGHT_Dark;
+		// AuAtom13:1800cdcf0, shared with the recovered offline renderer.
+		const float brightness = light == INTLIGHT_Bright ? 1.f : light == INTLIGHT_Dim ? .3f : .03f;
+		ambientR = .47843137f * brightness;
+		ambientG = .5f * brightness;
+		ambientB = .49019608f * brightness;
+		sunsBlocked = true;
+		return;
+	}
 	// Calculate ambient lighting from interior lights, if any.
 	INTERIOR_LIGHT interiorLight;
-	if(CapacitorLevel() || IsLegacyDebug())
+	if(CapacitorLevel() > 0)
 	{
 		interiorLight = InteriorLight(roomName);
 		if(interiorLight == INTLIGHT_Bright)
@@ -6888,6 +7046,9 @@ INTERIOR_LIGHT DaSc::InteriorLight(const QString& roomName) const
 {
 	m_RoomLightLock.lockForRead();
 	INTERIOR_LIGHT v = m_RoomLightStates.InteriorLight(roomName);
+	// Legacy lighting is ship-wide; geometry and console groups are not room names.
+	if(v == INTLIGHT_Invalid && IsLegacyDebug() && !m_RoomLightStates.isEmpty())
+		v = m_RoomLightStates.InteriorLight(m_RoomLightStates.cbegin().key());
 	if(v == INTLIGHT_Invalid)
 		v = INTLIGHT_Dark;
 	m_RoomLightLock.unlock();
@@ -7301,12 +7462,12 @@ bool DaSc::IsLegacyDebug() const
 
 bool DaSc::LifeSupportWorking() const
 {
-	return IsLegacyDebug() || DaVessel::LifeSupportWorking();
+	return DaVessel::LifeSupportWorking();
 }
 
 bool DaSc::StartMoving()
 {
-	return !IsLegacyDebug() && DaVessel::StartMoving();
+	return DaVessel::StartMoving();
 }
 
 bool DaSc::IsEthereal() const
@@ -8389,6 +8550,13 @@ bool DaSc::OpenDoor(unsigned int doorIndex)
 		const QVector<quint16> group = LegacyDoorOperationGroup(doorIndex);
 		bool changed = false;
 		m_DesignLock.lockForWrite();
+		// Direct Open Door input must not clear a jam while opening the stack.
+		for(quint16 door : group)
+			if(m_DoorStates.IsDoorJammed(door))
+			{
+				m_DesignLock.unlock();
+				return false;
+			}
 		for(quint16 door : group) changed = m_DoorStates.OpenDoor(door) || changed;
 		if(changed) { m_DoorChg.Set(); SetModified(); }
 		m_DesignLock.unlock();
@@ -11407,16 +11575,12 @@ void DaSc::TickOnClient(const AuElapsedTimer& last)
 
 void DaSc::Tick(const AuElapsedTimer& last, const AuElapsedTimer& now)
 {
-	if(IsLegacyDebug())
-		DaCapsule::Tick(last, now);
-	else
-		DaVessel::Tick(last, now);
+	DaVessel::Tick(last, now);
 }
 
 void DaSc::TickMovement(const AuElapsedTimer& last)
 {
-	if(!IsLegacyDebug())
-		DaVessel::TickMovement(last);
+	DaVessel::TickMovement(last);
 }
 
 unsigned int DaSc::IsTocker() const
@@ -11485,10 +11649,22 @@ void DaSc::Tock(const AuTime& last, const AuTime& now, const AuScripts& scripts,
 			InvalidateEnvironmentRecursive();
 			m_Tocked = true;
 		}
-		// Keep ordinary atom and occupant processing without running ship systems.
+		// Keep occupant processing and manual core operation without missions or deferred subsystems.
 		DaCapsule::Tock(last, now, scripts, tockTrans);
+		m_ConCaptAI = 0;
+		m_ConEngineerAI = m_ConEngineerPerson = 0;
+		m_ConPilotAI = m_ConPilotPerson = 0;
+		m_ConPowerRelayAI = m_ConPowerRelayPerson = 0;
+		if(!IsNormal() || InDesignEnvironment() || last.IsNull()) return;
 		// DaSpaceShip::Tock, AuAtom13:18046d6e0, closes automatic doors each world tick.
-		if(IsNormal() && !InDesignEnvironment()) CloseAutomaticDoors();
+		CloseAutomaticDoors();
+		if(StartMoving()) SetModified();
+		if(last.ElapsedSecTicks(now))
+		{
+			CycleCapacitor();
+			if(IsPilotMannedByPerson() || !IsPilotMannedByAI()) DecayMoveActions();
+		}
+		tockTrans.Add(DtTockTransaction(__FILE__, __LINE__, now));
 		return;
 	}
 
@@ -12510,9 +12686,10 @@ void DaSc::RenderAudioSources(const DaPerson* sceneAtom, const AuMatrix4x4& mode
 				alSource3f(source, AL_POSITION, epos.x, epos.y, epos.z);
 			}
 		}
-		return;
 	}
 
+	if(!IsLegacyDebug())
+	{
 	// Siren
 	alGetSourcei(m_AudioShip[AS_Siren], AL_SOURCE_STATE, &state);
 	if(!IsFuzzyZero(gain))
@@ -12827,6 +13004,8 @@ void DaSc::RenderAudioSources(const DaPerson* sceneAtom, const AuMatrix4x4& mode
 			alSourcePause(m_AudioShip[AS_Sensors]);
 	}
 
+	}
+
 	// Power Plant
 	alGetSourcei(m_AudioShip[AS_PowerPlant], AL_SOURCE_STATE, &state);
 	if(!IsFuzzyZero(gain) && PowerPlantWorking())
@@ -13006,6 +13185,8 @@ void DaSc::RenderAudioSources(const DaPerson* sceneAtom, const AuMatrix4x4& mode
 			alSourcePause(m_AudioShip[AS_GravityDriveInt]);
 	}
 
+	if(IsLegacyDebug()) return;
+
 	// Tractor beam
 	alGetSourcei(m_AudioShip[AS_TractorBeam], AL_SOURCE_STATE, &state);
 	AuPoint tpos;
@@ -13066,8 +13247,6 @@ void DaSc::RecalcSystemsHealthMax()
 
 void DaSc::InitSystems(quint8 quality)
 {
-	if(IsLegacyDebug())
-		return;
 	Q_ASSERT(quality);
 	if(g_Au.m_LogMessages & LOG_AtomCreate)
 		qDebug("DaSc::InitSystems %d quality %d", Id().GetID(), quality);
@@ -13107,15 +13286,23 @@ void DaSc::GatherSystemsDataSystemsAndDesignLocked(quint8 quality)
 
 void DaSc::ReconcileSystems()
 {
-	if(IsLegacyDebug())
-		return;
+	const bool legacy = IsLegacyDebug();
+	if(legacy) m_SystemsLock.lockForWrite();
 	m_DesignLock.lockForWrite();
-	if(m_ssaShipSystems.Reconcile(m_Design))
+	const bool changed = m_ssaShipSystems.Reconcile(m_Design);
+	if(changed)
 	{
 		m_tmSystemsUpg.Set();
 		//qDebug() << "DaSc::ReconcileSystems" << *this;
 	}
 	m_DesignLock.unlock();
+	if(legacy)
+	{
+		UpdateSystemsHealthSystemsLocked();
+		UpdateSystemsPowerSystemsLocked();
+		m_SystemsLock.unlock();
+		if(changed) SetModified();
+	}
 }
 
 void DaSc::RenderDesign(const AuMatrix4x4& model, AuAtomRenderInfo& ari, const DaPerson* sceneAtom, bool transparentPass,
@@ -13779,7 +13966,7 @@ void DaSc::SetDesign(const AuScReport& r)
 		m_RoomLightLock.lockForWrite();
 		for(QStringList::const_iterator ri = rooms.cbegin(); ri != rooms.cend(); ri++)
 		{
-			INTERIOR_LIGHT initLight = scd->RoomLight(*ri);
+			INTERIOR_LIGHT initLight = IsLegacyDebug() && !pardes ? INTLIGHT_Dark : scd->RoomLight(*ri);
 			m_RoomLightStates.insert(*ri, initLight);
 		}
 		m_RoomLightChg.Set();
@@ -17656,7 +17843,7 @@ void DaSc::RenderScShader(AuGLSLScBase* shader, AuAtomRenderInfo& ari, const AuM
 	if(legacyFrontFaces)
 	{
 		shader->SetAmbientLightUp(m_AmbientUp);
-		RenderLegacyTextures(*shader, ari, false);
+		RenderLegacyTextures(*shader, ari, model, false);
 		ari.re->glFrontFace(GL_CW);
 		return;
 	}
@@ -17820,7 +18007,7 @@ void DaSc::RenderScShaderBlend(AuGLSLScBase* shader, AuAtomRenderInfo& ari, cons
 	if(legacyFrontFaces)
 	{
 		shader->SetAmbientLightUp(m_AmbientUp);
-		RenderLegacyTextures(*shader, ari, true);
+		RenderLegacyTextures(*shader, ari, model, true);
 		ari.re->glFrontFace(GL_CW);
 		return;
 	}
@@ -18584,12 +18771,8 @@ void DaSc::ToggleDoorState(const DaSentient& who, unsigned int doorIndex)
 {
 	if(IsLegacyDebug())
 	{
-		if(IsHullDoor(doorIndex) && !IsDoorLocked(doorIndex)
-			&& !(who.IsInsideSpacecraft() && who.FindParentVesselInEnv() == this))
-		{
-			const POLITICAL_STANCE stance = PoliticalStance(EmpireId(), who.EmpireId());
-			if(stance == POL_Enemy || (IsNew() && stance == POL_Neutral)) return;
-		}
+		// CanOpenDoor applies the shared access rules for clicks and Open Door
+		// input, without requiring capacitor charge or system initialization.
 		if(CanOpenDoor(who, doorIndex))
 		{
 			if(IsDoorJammed(doorIndex))

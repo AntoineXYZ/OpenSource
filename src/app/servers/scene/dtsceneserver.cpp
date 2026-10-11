@@ -89,7 +89,7 @@ struct LegacyClientFrame
 
 LegacyMovementCheck CheckLegacyClientMovement(DaAtom& actor, DaAtom* requestedParent, const AuAtomPos& proposed,
 		const AuPose requestedPoses[DpBody::PS_Count], quint16 stationId, quint16 controlId, const AuPoint& vector,
-		const LegacyClientFrame* movingFrame = 0)
+		const LegacyClientFrame* movingFrame = 0, const DaPerson* controller = 0)
 {
 	LegacyMovementCheck result;
 	DaAtom* parent = actor.Parent();
@@ -117,8 +117,21 @@ LegacyMovementCheck CheckLegacyClientMovement(DaAtom& actor, DaAtom* requestedPa
 	if(movingShip && movingShip->IsLegacyDebug())
 	{
 		result.ship = movingShip;
-		AuAtomPos currentPosition(actor.Pos());
-		if(currentPosition != proposed || !vector.IsZero()) result.reason = QStringLiteral("stationary legacy ship");
+		result.from = actor.Location();
+		result.to = proposed.Translation();
+		if(!requestedParent || !requestedParent->IsNormal())
+			result.reason = QStringLiteral("unknown parent");
+		else if(!controller || controller->ParentControlAtom() != movingShip
+			|| !movingShip->IsControllerNoReset(controller->Id()))
+			result.reason = QStringLiteral("legacy ship helm not controlled");
+		else
+		{
+			bool finite = FiniteLegacyPoint(vector);
+			const AuMatrix4x4 transform = proposed.Transform();
+			for(int component = 0; component < 16; ++component)
+				finite = finite && std::isfinite(transform[component]);
+			if(!finite) result.reason = QStringLiteral("nonfinite movement");
+		}
 		return result;
 	}
 	if(ships.isEmpty()) return result;
@@ -205,7 +218,15 @@ LegacyMovementCheck CheckLegacyClientMovement(DaAtom& actor, DaAtom* requestedPa
 			result.reason = QStringLiteral("unrelated movement frames");
 			return result;
 		}
-		if(movesWithParent) newParentTransform *= movingFrame->position.Transform();
+		const bool movesInOwnShip = movesWithParent && movingFrame->atom == ship;
+		if(movesInOwnShip)
+		{
+			// The hull and its seated pilot move together. Its own collision
+			// geometry is evaluated in ship coordinates, independent of flight.
+			newParentTransform = AuMatrix4x4();
+		}
+		else if(movesWithParent)
+			newParentTransform *= movingFrame->position.Transform();
 		const AuMatrix4x4 newTransform = newParentTransform * proposedTransform;
 		AuBox oldOffsets(oldBody), newOffsets(candidateBody);
 		if(creature)
@@ -226,7 +247,8 @@ LegacyMovementCheck CheckLegacyClientMovement(DaAtom& actor, DaAtom* requestedPa
 		AuPoint to = newTransform.Translation();
 		// Equivalent parent-to-ship matrix compositions can round an unchanged
 		// actor origin differently. A pure turn must remain a stationary query.
-		if(parent == requestedParent && !movesWithParent && actor.Location() == proposedTransform.Translation())
+		if(parent == requestedParent && (!movesWithParent || movesInOwnShip)
+			&& actor.Location() == proposedTransform.Translation())
 			to = from;
 		if(ship != oldShip && ship != newShip)
 		{
@@ -3083,7 +3105,7 @@ void DtSceneServer::ClientPositionUpdate(bool atRest, float headTilt, AuAtomPos&
 						{
 							validatedControl = controlled;
 							legacyCheck = CheckLegacyClientMovement(*controlled, requestedControlParent, parentPos, parentPose,
-								parentStationId, parentWhichConsole, parentVec);
+								parentStationId, parentWhichConsole, parentVec, 0, person);
 							if(!legacyCheck.reason.isEmpty()) rejectedControl = controlled;
 							else
 							{

@@ -233,6 +233,8 @@ public:	// Methods
 
 	inline COMMODITYID CommandAndControlModule() const
 	{
+		if(m_LegacyStats) return m_LegacyStats->Header().scalarSlots.at(0) == 0xea
+			? CID_CommandAndControlModule : CID_Invalid;
 		return (COMMODITYID)m_CnCModule;
 	}
 
@@ -421,6 +423,7 @@ public:	// Methods
 
 	inline bool HasCapacitor() const
 	{
+		if(m_LegacyStats) return m_LegacyStats->Performance().capacitorPower > 0;
 		return m_Capacitor.Volume();
 	}
 

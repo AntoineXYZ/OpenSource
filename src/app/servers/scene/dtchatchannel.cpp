@@ -6472,7 +6472,7 @@ void DtChatChannel::SpawnLegacySc(quint32 designId, AuLegacyScProtocol::Reply& r
 	}
 	if(parent == system && personTransform.Translation().Length2() < FeetPerSolarSystem()/2 * FeetPerSolarSystem()/2)
 	{
-		// A stationary ship will not run the movement step that normally reparents
+		// A newly moored ship will not run the movement step that normally reparents
 		// it into the primary star's space, where boarding is permitted.
 		parent = system->FindPrimaryStar();
 		if(!parent || !person->GetTransformRelativeToParent(personTransform, parent))
@@ -6577,11 +6577,15 @@ void DtChatChannel::SpawnLegacySc(quint32 designId, AuLegacyScProtocol::Reply& r
 	ship->SetEmpireId(person->EmpireId());
 	ship->SetName(report.DesignName());
 	ship->SetAccessPolicy(ACCESS_Enemy);
-	ship->SetGravityDriveState(DaVessel::GD_Hold);
+	// Full neutral-quality fuel is a convenience of the authorized debug spawn.
+	// The recovered factory starts with an empty capacitor and systems off.
+	ship->Refuel(128);
+	ship->DischargeCapacitor(ship->CapacitorLevel());
+	ship->TurnPowerPlantOff();
+	ship->InteriorLightToggle(INTLIGHT_Dark);
 	// Preserve the tested orientation instead of the vessel terrain-settling step.
 	ship->DaAtom::SetAtRest();
 	ship->SetWhereMade(tr("Legacy debug spawn by %1").arg(architectName));
-	ship->SetNotNew();
 	ship->SetModified();
 	g_Au.AtomAdded(ship->Id());
 	ship->SetNormal();
@@ -6590,7 +6594,7 @@ void DtChatChannel::SpawnLegacySc(quint32 designId, AuLegacyScProtocol::Reply& r
 	reply.designId = designId;
 	reply.shipId = ship->Id().GetID();
 	reply.name = ship->Name();
-	reply.message = tr("Spawned stationary legacy ship %1 nearby.").arg(reply.shipId);
+	reply.message = tr("Spawned legacy ship %1 nearby.").arg(reply.shipId);
 	qInfo() << "Legacy spacecraft spawn:" << "design" << designId << "ship" << reply.shipId << "by" << architectId;
 	m_I->UnlockAvatar();
 }

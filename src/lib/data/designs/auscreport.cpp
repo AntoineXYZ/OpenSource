@@ -4714,26 +4714,52 @@ quint8 AuScReport::SurgeryUnitQuality(quint16 consoleId) const
 
 COMMODITYID AuScReport::LifeSupportModule() const
 {
+	if(m_LegacyStats) return m_LegacyStats->Header().scalarSlots.at(3) == 0xee
+		? CID_LifeSupportModule : CID_Invalid;
 	return m_LifeSupport.Module();
 }
 
 COMMODITYID AuScReport::HullModule() const
 {
+	if(m_LegacyStats)
+	{
+		switch(m_LegacyStats->Header().scalarSlots.at(2))
+		{
+		case 0xed: return CID_MetalHullModule;
+		case 0x118: return CID_MagmiumHullModule;
+		case 0x119: return CID_VulciumHullModule;
+		default: return CID_Invalid;
+		}
+	}
 	return m_Hull.Module();
 }
 
 COMMODITYID AuScReport::CapacitorModule() const
 {
+	// The recovered capacitor belongs to the power plant. The native module
+	// identifier is used only to describe it to existing controls.
+	if(m_LegacyStats) return CID_CapacitorModule;
 	return m_Capacitor.Module();
 }
 
 COMMODITYID AuScReport::ManeuverDriveModule() const
 {
+	if(m_LegacyStats)
+	{
+		switch(m_LegacyStats->Performance().maneuverModule)
+		{
+		case 0xeb: return CID_GravityDriveModule;
+		case 0xec: return CID_RocketDriveModule;
+		default: return CID_Invalid;
+		}
+	}
 	return m_ManeuverDrive.Module();
 }
 
 COMMODITYID AuScReport::PowerPlantModule() const
 {
+	if(m_LegacyStats) return m_LegacyStats->Header().scalarSlots.at(5) == 0xef
+		? CID_HydrogenPowerPlantModule : CID_Invalid;
 	return m_PowerPlant.Module();
 }
 
@@ -4759,6 +4785,7 @@ float AuScReport::WeaponBayPower(quint16 which, float unitsFired) const
 // Returns life support power use rate in units per real world second.
 double AuScReport::LifeSupportPowerRate() const
 {
+	if(m_LegacyStats) return m_LegacyStats->Performance().lifeSupportPowerPerSecond;
 	// Each unit uses one power unit per U day.
 	// Calculate use rate in power units per real second.
 	const double rUnitRate = (double)UDaysPerRealDay() / (double)(24 * 3600);
@@ -4780,6 +4807,7 @@ double AuScReport::FTLDrivePowerRate(quint16 partId) const
 // Only rocket drives use fuel.
 double AuScReport::ManeuverFuelRate() const
 {
+	if(m_LegacyStats) return m_LegacyStats->Performance().maneuverFuelPerSecond;
 	// Rocket drives do not use power.
 	if(m_ManeuverDrive.Module() != CID_RocketDriveModule)
 		return 0.f;
@@ -4794,6 +4822,7 @@ double AuScReport::ManeuverFuelRate() const
 // Returns maneuver drive power use rate in units per real world second.
 double AuScReport::ManeuverPowerRate() const
 {
+	if(m_LegacyStats) return m_LegacyStats->Performance().maneuverPowerPerSecond;
 	// Rocket drives do not use power.
 	if(m_ManeuverDrive.Module() == CID_RocketDriveModule)
 		return 0.f;

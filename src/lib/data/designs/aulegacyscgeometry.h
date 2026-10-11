@@ -35,11 +35,13 @@ struct TextureBinding
 AUDATA_DLL bool TextureMap(const AuLegacyScDesign& legacy, QByteArray& output, QString& error,
 	bool includeOpenHatches = false, bool includeDoors = false);
 AUDATA_DLL bool ReadTextureMap(const QByteArray& bytes, QVector<TextureBinding>& output, QString& error);
-AUDATA_DLL QImage OriginalTexture(const TextureBinding& binding);
+AUDATA_DLL QImage OriginalTexture(const TextureBinding& binding, bool illuminated = true);
 
-// Builds a derived modern blueprint for the initial stationary debug ships.
+// Builds a derived runtime blueprint with recovered geometry and core console
+// locations. Native old-style consoles own their chair/panel rendering.
 // Legacy source bytes and dense detail identities remain in their own catalog.
-// Generated parts have independent 16-bit IDs; doors and hatches start closed.
+// Generated parts have independent 16-bit IDs; doors and hatches start closed,
+// and interior lighting starts off.
 // Failure leaves output and report unchanged.
 AUDATA_DLL bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId,
 	const AuId& architectId, const QString& architectName,

@@ -19,6 +19,7 @@
 #include <QPainter>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QScopedPointer>
 #include <QSet>
 #include <algorithm>
 #include <cmath>
@@ -292,7 +293,7 @@ bool AddTriangleFaces(AuScFaceList& faces, const Vertex* triangle, const Batch& 
 				face.SetTextureIndex(quint8(tile.texture));
 				face.SetPaint(QColor(255, 255, 255, 0));
 				face.SetOpacity(tile.translucent ? std::min(.999f, batch.tint.w()) : batch.tint.w());
-				face.SetSelfIllumination(batch.interior ? std::max(.25f, batch.selfIllumination) : batch.selfIllumination);
+				face.SetSelfIllumination(batch.selfIllumination);
 				faces.AddFace(face);
 				if(batch.twoSided)
 				{
@@ -322,6 +323,23 @@ bool BlocksPathCell(int type)
 	case 10: case 14: case 16: case 18: case 23: case 24: case 32:
 	case 74: case 75: case 100: case 142: return true;
 	default: return false;
+	}
+}
+
+bool IsCoreConsoleDetail(int type)
+{
+	return type == 6 || type == 12 || type == 13 || type == 73;
+}
+
+AuScConsole* CoreConsole(int type)
+{
+	switch(type)
+	{
+	case 6: return new AuScConsoleEngineer;
+	case 12: return new AuScConsoleHelm;
+	case 13: return new AuScConsolePowerRelay;
+	case 73: return new AuScConsoleCommand;
+	default: return nullptr;
 	}
 }
 
@@ -403,6 +421,11 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 	};
 	bool foundHull = false;
 	AuScFaceList exteriorFaces;
+	QSet<quint32> coreConsoleDetails;
+	for(const Detail& detail : source.details)
+		if(IsCoreConsoleDetail(detail.detailType)
+			&& detail.deck >= MinimumDeck && detail.deck <= MaximumDeck)
+			coreConsoleDetails.insert(detail.detailId);
 	const QVector<DoorDefinition> doors = DoorDefinitions(source, mesh);
 	QHash<quint32, QVector<int>> doorBatches;
 	for(int index = 0; index < mesh.batches.size(); ++index)
@@ -476,7 +499,8 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 	for(int index = 0; index < mesh.batches.size(); ++index)
 	{
 		const Batch& batch = mesh.batches[index];
-		if(batch.doorId || batch.vertices.isEmpty()) continue;
+		if(batch.doorId || batch.vertices.isEmpty()
+			|| (batch.consoleId && coreConsoleDetails.contains(batch.consoleId))) continue;
 		AuScFaceList faces;
 		const int previousTriangles = triangleCount;
 		const Tile tile = palette.tiles.value(TextureKey(batch));
@@ -494,13 +518,14 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 		AuScMeshBase* part = batch.equipment ? static_cast<AuScMeshBase*>(&equipment)
 			: batch.interior ? static_cast<AuScMeshBase*>(&interior) : static_cast<AuScMeshBase*>(&hull);
 		part->SetFaces(faces);
-		part->SetGroupName(QStringLiteral("legacy/geometry/%1/detail/%2").arg(index).arg(batch.detailId));
+		part->SetGroupName(QStringLiteral("legacy/geometry/%1/detail/%2/interior/%3")
+			.arg(index).arg(batch.detailId).arg(int(batch.interior)));
 		if(part == &hull)
 		{
 			exteriorFaces.AddFaces(faces);
 			foundHull = true;
 		}
-		interior.SetInteriorLighting(false, INTLIGHT_Bright);
+		interior.SetInteriorLighting(false, INTLIGHT_Dark);
 		if(part != &hull && !AddPart(generated, *part))
 		{
 			error = QStringLiteral("The selected legacy design has too many generated parts.");
@@ -532,7 +557,7 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 	{
 		AuScHull hull;
 		hull.SetFaces(exteriorFaces);
-		hull.SetGroupName(QStringLiteral("legacy/debug/static/v6"));
+		hull.SetGroupName(QStringLiteral("legacy/debug/static/v7"));
 		if(!AddPart(generated, hull))
 		{
 			error = QStringLiteral("The selected legacy design has too many generated hull parts.");
@@ -591,6 +616,28 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 			return false;
 		}
 		++roomCount;
+	}
+	// Keep original source order. The recovered console interaction chooses the
+	// first eligible detail, even when its authoring hidden flag is set. Native
+	// old-style consoles own the chair/panel model and its occupied swivel pose.
+	for(const Detail& detail : source.details)
+	{
+		if(!coreConsoleDetails.contains(detail.detailId)) continue;
+		QScopedPointer<AuScConsole> console(CoreConsole(detail.detailType));
+		const QPointF point = DecodePoint(detail.packedXY);
+		const AuPoint floor = legacy.AuthorToShip(AuPoint(point.x(), point.y(),
+			detail.deck * AuLegacyShip::DeckHeight));
+		// The native icon has unequal front/back margins; compensate so its
+		// face center, and therefore the operator floor, stays at the legacy cell.
+		const double iconOffset = (console->IconFore() - console->IconBack()) / 2;
+		console->MakeIcon(floor - AuPoint(0, iconOffset, 0), 0, AuMatrix4x4());
+		console->SetGroupName(QStringLiteral("legacy/console/detail/%1/type/%2/deck/%3")
+			.arg(detail.detailId).arg(detail.detailType).arg(detail.deck));
+		if(!AddPart(generated, *console))
+		{
+			error = QStringLiteral("The selected legacy design has too many generated console parts.");
+			return false;
+		}
 	}
 	// Open panel apertures need voids through the hull's conservative silhouette;
 	// otherwise its collision margin can stop a player before entering a room.
@@ -878,13 +925,14 @@ bool ReadTextureMap(const QByteArray& bytes, QVector<TextureBinding>& output, QS
 	return true;
 }
 
-QImage OriginalTexture(const TextureBinding& binding)
+QImage OriginalTexture(const TextureBinding& binding, bool illuminated)
 {
 	QImage image;
 	if(!binding.resource.isEmpty()) image.load(binding.resource);
 	else if(binding.material >= 0 && binding.material < int(sizeof(ShipTextures) / sizeof(ShipTextures[0])))
 	{
-		const QImage atlas(QStringLiteral(":/data/legacy_txSpacecraft0Lit.png"));
+		const QImage atlas(illuminated ? QStringLiteral(":/data/legacy_txSpacecraft0Lit.png")
+			: QStringLiteral(":/data/legacy_txSpacecraft0.png"));
 		if(atlas.isNull()) return QImage();
 		const TextureRegion& region = ShipTextures[binding.material];
 		image = atlas.copy(region.x * atlas.width() / 128,

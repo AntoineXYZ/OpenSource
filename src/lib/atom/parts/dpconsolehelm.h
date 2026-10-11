@@ -13,6 +13,9 @@
 
 class AUATOM_DLL DpConsoleHelm : public DpStationHelm, public DpConsole
 {
+private:
+	bool m_LegacyControls = false;
+
 public:
 	DpConsoleHelm();
 	virtual ~DpConsoleHelm();
@@ -28,6 +31,20 @@ public:
 
 	virtual void EnumControlPanels(AuQuadArray &aControlPanels, const AuMatrix4x4 &tModel, QVector<qint16>& idPanels,
 			const DaCreature& seatedCreature) const;
+
+	virtual void EnumControlInputs(DiControlInputArray& controls) const;
+
+	virtual void ProcessControlInput(const DiControlInputArray& controls, DaPerson* person, DaVessel& ship,
+		CONTROL_CONTEXT context, const AuPoint& location);
+
+	virtual void Refresh(const DpStation* station, const DaAtom& parent);
+
+	virtual void Rx(QDataStream& in, DaCapsule& capsule);
+
+	virtual void SampleControlPanelInput(qint16 panelId, const AuPoint& panelLoc,
+		DiControlInputArray& controls, bool continuous);
+
+	virtual bool Tick(const AuElapsedTimer& last, const AuElapsedTimer& now, DaPerson* person);
 
 	// 'sceneAtom' is the atom for whom the scene is being constructed.
 	// 'seatedCreature' is the creature seated at this console, if any; may be 0.

@@ -32,8 +32,11 @@ class AUATOM_DLL DaSc : public DaVessel
 	{
 		AuScVAO vao;
 		GLuint texture = 0;
+		GLuint unlitTexture = 0;
+		QString roomName;
 		QVector2D textureInset;
 		float opacity = 1;
+		bool interior = false;
 		bool cutout = false;
 		bool translucent = false;
 		quint16 doorId = 0;
@@ -48,7 +51,7 @@ class AUATOM_DLL DaSc : public DaVessel
 	QVector<LegacyTextureDraw> m_LegacyTextureDraws;
 	bool m_LegacyTextureRequested = false;
 	bool CreateLegacyDeviceObjects(AuAtomRenderInfo& ari);
-	void RenderLegacyTextures(const AuGLSLScBase& shader, AuAtomRenderInfo& ari, bool transparent);
+	void RenderLegacyTextures(const AuGLSLScBase& shader, AuAtomRenderInfo& ari, const AuMatrix4x4& model, bool transparent);
 	mutable QMutex m_LegacyCollisionLock;
 	mutable quint32 m_LegacyCollisionDesignId = 0;
 	mutable QSharedPointer<const AuLegacyScGeometry::CollisionWorld> m_LegacyCollision;

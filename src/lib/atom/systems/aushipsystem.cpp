@@ -451,6 +451,27 @@ void AuShipSystemArray::GatherShipSystems(quint8 quality, const AuScReport& desi
 	m_PowerPlantQuality = quality;
 
 	int systemIndex = 0;
+	if(design.LegacyStats())
+	{
+		m_CapacitorModule = design.CapacitorModule();
+		m_CnCModule = design.CommandAndControlModule();
+		m_HullModule = design.HullModule();
+		m_PowerPlantModule = design.PowerPlantModule();
+
+		// Only the recovered core consumers operate at this milestone. Other
+		// subsystem counts remain in the report without allocating live systems.
+		if(design.LifeSupportHits())
+		{
+			append(AuShipSystem(SYS_LifeSupport, 0, design.LifeSupportModule(), quality,
+				design.LifeSupportHits(), systemIndex++));
+		}
+		if(design.ManeuverDriveHits())
+		{
+			append(AuShipSystem(SYS_ManeuverDrive, 0, design.ManeuverDriveModule(), quality,
+				design.ManeuverDriveHits(), systemIndex));
+		}
+		return;
+	}
 
 	if(design.LifeSupportUnits())
 	{
@@ -846,6 +867,12 @@ quint64 AuShipSystemArray::MemoryUsage() const
 
 void AuShipSystemArray::RecalcHealthMax(const AuScReport& design)
 {
+	if(design.LegacyStats())
+	{
+		for(AuShipSystem& system : *this)
+			system.SetHealthMax(design.SystemHits(system.SysId()));
+		return;
+	}
 	int systemIndex = 0;
 
 	if(design.LifeSupportUnits())
