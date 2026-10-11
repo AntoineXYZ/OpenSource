@@ -1,5 +1,6 @@
 #include "aulegacyscgeometry.h"
 #include "aulegacyscdesign.h"
+#include "aulegacyscstats.h"
 #include "aulegacyshipgeometry.h"
 #include "aulegacyshipdetails.h"
 #include "aulegacyshipmesh.h"
@@ -757,6 +758,7 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 	// computed from the accepted legacy source, and carries no working systems.
 	generated.Parts().RefreshObstructionsCache();
 	generated.SetLegacyHullVolume(quint32(std::max(1.0, std::ceil(double(legacy.Stats().hullVolume) / CubicFeetPerCubicMeter()))));
+	generated.SetLegacyStats(QSharedPointer<const AuLegacyScStats>(new AuLegacyScStats(legacy.SourceDesign(), legacy.Stats())));
 	if(generated.MemoryUsage() > MaximumGeometryMemory)
 	{
 		error = QStringLiteral("The generated legacy blueprint exceeds the debug memory limit.");

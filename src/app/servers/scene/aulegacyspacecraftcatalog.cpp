@@ -3,6 +3,7 @@
 #include "auglobal.h"
 #include "audbglobal.h"
 #include "aulegacyscdesign.h"
+#include "aulegacyscstats.h"
 #include "aulegacyscgeometry.h"
 #include "aulegacysccollision.h"
 #include "aulegacyscprotocol.h"
@@ -352,6 +353,11 @@ bool PrepareLegacySpacecraftSpawn(quint32 legacyId, const AuId& architectId,
 		}
 	}
 	preparedReport.SetLegacyDebug(true);
+	if(!preparedReport.LegacyStats() || !preparedReport.LegacyStats()->IsValid())
+	{
+		error = QStringLiteral("The legacy design has incomplete recovered statistics and cannot be spawned accurately.");
+		return false;
+	}
 	if(!transaction.Commit())
 	{
 		error = QStringLiteral("Unable to commit the runtime spacecraft blueprint. Check the server logs.");

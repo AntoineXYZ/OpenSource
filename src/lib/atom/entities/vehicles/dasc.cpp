@@ -7542,11 +7542,24 @@ void DaSc::ListSystems(QList<AuSystemInfo>& systems) const
 	const AuShipSystemArray& ssa = LockSystems();
 
 	m_DesignLock.lockForRead();
-	for(AuShipSystemArray::const_iterator ssi = ssa.constBegin(); ssi != ssa.constEnd(); ssi++)
-		if((*ssi).GetSystemType() != SYS_CommandAndControl &&
-				(*ssi).GetSystemType() != SYS_VehicleLaunch &&
-				(*ssi).GetSystemType() != SYS_VehicleLanding)
-			systems.append(AuSystemInfo(*ssi, m_Design));
+	if(m_Design.LegacyStats())
+	{
+		// Legacy quantities are authoritative without creating operational systems.
+		QSet<AuSysId> ids;
+		m_Design.SystemIds(ids, true);
+		m_Design.SystemIds(ids, false);
+		for(const AuSysId& id : ids)
+			if(id.System() != SYS_CommandAndControl && id.System() != SYS_VehicleLaunch
+				&& id.System() != SYS_VehicleLanding)
+				systems.append(AuSystemInfo(m_Design.SystemName(id), id.System(), id.Which(),
+					m_Design.Quality(), CID_Invalid));
+	}
+	else
+		for(AuShipSystemArray::const_iterator ssi = ssa.constBegin(); ssi != ssa.constEnd(); ssi++)
+			if((*ssi).GetSystemType() != SYS_CommandAndControl &&
+					(*ssi).GetSystemType() != SYS_VehicleLaunch &&
+					(*ssi).GetSystemType() != SYS_VehicleLanding)
+				systems.append(AuSystemInfo(*ssi, m_Design));
 	m_DesignLock.unlock();
 
 	UnlockSystems();
@@ -7933,6 +7946,7 @@ DaSc* DaSc::LoadSubatoms(AuEther& ether, QSqlDatabase& db, const AuId& parentId,
 			pnu->m_Strobes = switches & 0x00040000;
 			pnu->m_New = switches & 0x00080000;
 
+			bool legacyStatsUpgraded = false;
 			qvi = qv++;
 			if(!qa.value(qvi).isNull())
 			{
@@ -7941,6 +7955,17 @@ DaSc* DaSc::LoadSubatoms(AuEther& ether, QSqlDatabase& db, const AuId& parentId,
 				QDataStream in(ba);
 				in.setVersion(QDataStream::Qt_4_1);
 				in >> pnu->m_Design;
+				if(pnu->m_Design.IsLegacyDebug() && !pnu->m_Design.LegacyStats())
+				{
+					// Upgrade the saved report without resetting the ship's door states.
+					AuScDesign blueprint;
+					blueprint.Load(pnu->m_Design.DesignId(), db);
+					if(blueprint.LegacyStats() && blueprint.LegacyStats()->IsValid())
+					{
+						pnu->m_Design.SetLegacyStats(blueprint.LegacyStats());
+						legacyStatsUpgraded = true;
+					}
+				}
 			}
 
 			qvi = qv++;
@@ -8057,6 +8082,11 @@ DaSc* DaSc::LoadSubatoms(AuEther& ether, QSqlDatabase& db, const AuId& parentId,
 				pnu->SetDormant();
 			else
 				pnu->SetNormal();
+			if(legacyStatsUpgraded)
+			{
+				pnu->m_DesignChg.Set();
+				pnu->SetModified();
+			}
 
 			// Load subatoms of the nu atom AFTER adding it to its pnu parent.
 			DaAnimal::LoadSubatoms(ether, db, pnu->Id());
@@ -8651,9 +8681,23 @@ void DaSc::RenderBodyStats(float left, float bottom, float wid, float ht, bool i
 			ari.RenderSystemIcon(sysId.System(), iconleft, bottom, barht, 1,1,1,1);
 
 		// Hits Points
-		float curhp = SystemHitsRemaining(sysId);
-		float maxhp = SystemHits(sysId);
-		float frac = curhp/maxhp;
+		float curhp;
+		float maxhp;
+		if(IsLegacyDebug())
+		{
+			// Generated legacy geometry represents the whole ship, not native system parts.
+			maxhp = DesignHitsTotal();
+			m_DamageLock.lockForRead();
+			quint32 damage = m_Damage.HitsDamage();
+			m_DamageLock.unlock();
+			curhp = qMax(0.f, maxhp - damage);
+		}
+		else
+		{
+			curhp = SystemHitsRemaining(sysId);
+			maxhp = SystemHits(sysId);
+		}
+		float frac = maxhp > 0 ? curhp/maxhp : 0;
 
 		if(frac <= .1f || IsAnyConditionVisible())
 			ari.RenderBar(left,bottom, barwid,barht, frac, 0, 1.f,.2f,.2f, 1.f/2.f,.2f/2.f,.2f/2.f);	// red/red

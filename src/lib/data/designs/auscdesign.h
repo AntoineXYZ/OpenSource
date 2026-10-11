@@ -9,11 +9,13 @@
 
 #include "audesign.h"
 #include "auscmodules.h"
+#include <QSharedPointer>
 
 class AuDoorStateHash;
 class AuGLEffects;
 class AuLandingGearStateHash;
 class AuLiftHash;
+class AuLegacyScStats;
 class AuMatrix4x4;
 class AuScPartSet;
 class AuScReport;
@@ -68,6 +70,7 @@ private:
 	quint32								m_Skeleton;				// In cubic meters.
 
 	QByteArray m_LegacyTextureMap;
+	QSharedPointer<const AuLegacyScStats> m_LegacyStats;
 
 public:	// Constructors
 	AuScDesign(unsigned int idDesign, const AuId& idArchitect, const QString& architect);
@@ -84,10 +87,7 @@ public:	// Operators
 
 public:	// Methods
 	// Returns armor level in the range 0 to 10.
-	inline float ArmorLevel() const
-	{
-		return ArmorLevel(m_Armor, m_HullVolume);
-	}
+	float ArmorLevel() const;
 
 	static inline float ArmorLevel(quint32 armorVol, quint32 hullVol)
 	{
@@ -398,13 +398,12 @@ public:	// Methods
 	// Material identifiers and packed-UV rectangles; original pixels are bundled.
 	const QByteArray& LegacyTextureMap() const { return m_LegacyTextureMap; }
 	void SetLegacyTextureMap(const QByteArray& map) { m_LegacyTextureMap = map; }
+	const QSharedPointer<const AuLegacyScStats>& LegacyStats() const { return m_LegacyStats; }
+	void SetLegacyStats(const QSharedPointer<const AuLegacyScStats>& stats) { m_LegacyStats = stats; }
 	void LoadLegacyTextureMap(QSqlDatabase& db);
 	bool NeedsLegacyTextureMap() const;
 
-	inline double HullVolumeCuFt() const
-	{
-		return m_HullVolume * CubicFeetPerCubicMeter();
-	}
+	double HullVolumeCuFt() const;
 
 	bool IsInsideHull(const AuPoint& loc, const AuDoorStateHash& doorStates, const AuLandingGearStateHash& landingGearStates,
 			const AuLiftHash& liftStops) const;

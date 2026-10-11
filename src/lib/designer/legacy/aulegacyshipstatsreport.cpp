@@ -26,7 +26,7 @@ QString Volume(quint64 cubicFeet)
 
 QString Mass(double pounds)
 {
-	return QStringLiteral("%1kg").arg(Number(std::ceil(pounds / PoundsPerKilogram())));
+	return QStringLiteral("%1kg").arg(Number(std::floor(pounds / PoundsPerKilogram())));
 }
 
 QString Endurance(double fuel, double fuelPerSecond, const QString& condition)

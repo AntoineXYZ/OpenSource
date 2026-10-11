@@ -8,8 +8,10 @@
 #define AuScReport_H
 
 #include <QAtomicInt>
+#include <QSharedPointer>
 
 #include "audata.h"
+#include "aulegacyscstats.h"
 #include "auscreporthelpers.h"
 #include "demanufacturingprocess.h"
 
@@ -25,6 +27,7 @@ friend class AuScDesign;
 	quint32								m_DesignId;
 	QString								m_DesignName;
 	QAtomicInt							m_LegacyDebug;
+	QSharedPointer<const AuLegacyScStats>	m_LegacyStats;
 	AuPartArchitectHash					m_PartArchitects;		// Architects of parts that differ from the architect of the design.
 
 	// Structure
@@ -135,6 +138,13 @@ public:	// Operators
 	}
 
 public:	// Methods
+	void SetLegacyStats(const QSharedPointer<const AuLegacyScStats>& stats);
+
+	inline const QSharedPointer<const AuLegacyScStats>& LegacyStats() const
+	{
+		return m_LegacyStats;
+	}
+
 	inline bool IsLegacyDebug() const
 	{
 		return m_LegacyDebug.loadAcquire() != 0;
@@ -244,6 +254,7 @@ public:	// Methods
 
 	inline quint16 CrewBerths() const
 	{
+		if(m_LegacyStats) return quint16(m_LegacyStats->Stats().crewBerths);
 		return m_CrewBerths;
 	}
 
@@ -417,11 +428,13 @@ public:	// Methods
 
 	inline bool HasFTLDrive() const
 	{
+		if(m_LegacyStats) return m_LegacyStats->Stats().ftlUnits != 0;
 		return !m_FTLDrives.empty();
 	}
 
 	inline bool HasFuel() const
 	{
+		if(m_LegacyStats) return m_LegacyStats->Stats().roomVolumes[9] != 0;
 		return m_FuelVolume;
 	}
 
@@ -429,31 +442,37 @@ public:	// Methods
 
 	inline bool HasHold() const
 	{
+		if(m_LegacyStats) return m_LegacyStats->Stats().roomVolumes[5] != 0;
 		return m_HoldVolume;
 	}
 
 	inline bool HasLifeSupport() const
 	{
+		if(m_LegacyStats) return m_LegacyStats->Stats().lifeSupportUnits != 0;
 		return m_LifeSupport.Volume();
 	}
 
 	inline bool HasManeuverDrive() const
 	{
+		if(m_LegacyStats) return m_LegacyStats->Stats().maneuverUnits != 0;
 		return m_ManeuverDrive.Volume();
 	}
 
 	inline bool HasPowerPlant() const
 	{
+		if(m_LegacyStats) return m_LegacyStats->Stats().powerPlantUnits != 0;
 		return m_PowerPlant.Volume();
 	}
 
 	inline bool HasSensor() const
 	{
+		if(m_LegacyStats) return m_LegacyStats->Stats().sensorUnits != 0;
 		return m_Sensor.Module() != CID_Invalid && m_Sensor.Volume();
 	}
 
 	inline bool HasShield() const
 	{
+		if(m_LegacyStats) return m_LegacyStats->Stats().shieldUnits != 0;
 		return m_Shield.Module() != CID_Invalid && m_Shield.Volume();
 	}
 
@@ -461,6 +480,7 @@ public:	// Methods
 
 	inline bool HasTransporter() const
 	{
+		if(m_LegacyStats) return m_LegacyStats->Stats().transporterPads != 0;
 		return !m_Transporters.empty();
 	}
 
@@ -662,11 +682,13 @@ public:	// Methods
 
 	inline float MassKg() const
 	{
+		if(m_LegacyStats) return m_LegacyStats->Performance().massLb * KilogramsPerPound();
 		return m_MassKg;
 	}
 
 	inline float MassLbs() const
 	{
+		if(m_LegacyStats) return m_LegacyStats->Performance().massLb;
 		return m_MassKg * PoundsPerKilogram();
 	}
 
@@ -687,6 +709,7 @@ public:	// Methods
 	// Total hit points of non-structural systems at 100% health.
 	inline unsigned int NonStructureHits() const
 	{
+		if(m_LegacyStats) return quint32(m_LegacyStats->Performance().equipmentHitPoints / 10);
 		// NOTE: If you change the total hits sum calculation, be sure to
 		//       update SelectSystem so it calculates the correct system
 		//       distribution.
@@ -713,6 +736,7 @@ public:	// Methods
 
 	inline quint16 OfficerBerths() const
 	{
+		if(m_LegacyStats) return quint16(m_LegacyStats->Stats().officerBerths);
 		return m_OfficerBerths;
 	}
 
@@ -759,6 +783,7 @@ public:	// Methods
 
 	inline quint16 PassengerBerths() const
 	{
+		if(m_LegacyStats) return quint16(m_LegacyStats->Stats().passengerBerths);
 		return m_PassengerBerths;
 	}
 
@@ -1100,6 +1125,7 @@ public:	// Methods
 
 	inline quint16 TroopBerths() const
 	{
+		if(m_LegacyStats) return quint16(m_LegacyStats->Stats().troopBerths);
 		return m_TroopBerths;
 	}
 

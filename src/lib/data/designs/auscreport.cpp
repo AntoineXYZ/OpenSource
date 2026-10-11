@@ -9,12 +9,243 @@
 #include "aucombat.h"
 #include "auglobal.h"
 #include "auitem.h"
+#include "aulegacyshipcommoditydata.h"
+#include "aulegacyshipdetails.h"
 #include "auscdesign.h"
 #include "auscparts.h"
 #include "auscroute.h"
 #include "dgdata.h"
 
-#define REPORT_SERIALIZE_VER			0x13
+#include <QLocale>
+#include <algorithm>
+#include <cmath>
+
+#define REPORT_SERIALIZE_VER			0x14
+
+namespace
+{
+QString LegacyStatsListing(const AuLegacyScStats& snapshot)
+{
+	const AuLegacyShip::Header& header = snapshot.Header();
+	const AuLegacyShip::Stats& stats = snapshot.Stats();
+	const AuLegacyShip::Performance& performance = snapshot.Performance();
+	const QLocale locale;
+	const int tl = performance.techLevelUsed;
+	QString classification = AuLegacyShip::LegacyStructureName(performance.structure).toUpper();
+	if(header.streamline) classification.prepend(QStringLiteral("STREAMLINED "));
+	if(!stats.hullContiguous) classification.prepend(QStringLiteral("DISJOINT "));
+	QString html = QStringLiteral("<p style=\"margin: 0;\"><b>%1</b></p>").arg(classification.toHtmlEscaped());
+	const auto line = [&html](const QString& text, int depth = 1) {
+		html += QStringLiteral("<p style=\"margin: 0; margin-left: %1px;\">%2</p>")
+			.arg(depth * 10).arg(text.toHtmlEscaped());
+	};
+	const auto section = [&html](const QString& title) {
+		html += QStringLiteral("<hr><p style=\"margin: 0;\"><b>%1</b></p>").arg(title.toUpper().toHtmlEscaped());
+	};
+	const auto number = [&locale](double value, int precision = 0) {
+		return locale.toString(value, 'f', precision);
+	};
+	const auto count = [&line, &locale](const QString& label, quint64 value, int depth = 1) {
+		if(value) line(QStringLiteral("%1 %2").arg(locale.toString(qulonglong(value)), label), depth);
+	};
+	const auto mass = [&number](double pounds) {
+		return QStringLiteral("%1kg").arg(number(std::floor(pounds / PoundsPerKilogram())));
+	};
+	const auto volume = [&number](quint64 cubicFeet) {
+		return QStringLiteral("%1m\u00b3").arg(number(std::ceil(double(cubicFeet) / CubicFeetPerCubicMeter())));
+	};
+	const auto moduleName = [](quint16 module) {
+		const AuLegacyShip::LegacyCommodity::Data* data = AuLegacyShip::LegacyCommodity::Get(module);
+		return data ? QString::fromUtf8(data->name) : QObject::tr("Work in progress");
+	};
+	const auto moduleWithTech = [&moduleName, tl](quint16 module) {
+		return QStringLiteral("%1 TL%2").arg(moduleName(module)).arg(tl + 1);
+	};
+	const auto armor = [](const AuLegacyShip::ArmorFactors& factors) {
+		return QStringLiteral("%1% %L2hp")
+			.arg(std::min(100, int(std::ceil(factors.absorbedFraction * 100.f))))
+			.arg(int(std::ceil(factors.blockedDamage)));
+	};
+	const auto endurance = [&line, &locale](double fuel, double fuelPerSecond, const QString& condition) {
+		if(fuelPerSecond <= 0) return;
+		const float perDay = std::round(float(fuelPerSecond * 86400.0) * .028316846f * 100.f) / 100.f;
+		const float capacity = float(std::ceil(fuel * .0283168466));
+		const float days = perDay > 0 ? std::round(capacity / perDay * 10.f) / 10.f : 0;
+		line(QObject::tr("%1 days at %2m\u00b3 H\u00b2 per Real Day while %3")
+			.arg(locale.toString(days, 'g', 6), locale.toString(perDay, 'g', 6), condition), 2);
+	};
+
+	line(QObject::tr("Tech Level %1").arg(tl + 1));
+	line(QObject::tr("Armor Level %1 = TL%2").arg(header.armor).arg(performance.armorTechLevel + 1), 2);
+	line(QObject::tr("%1 Mass = TL%2").arg(mass(performance.massLb)).arg(performance.massTechLevel + 1), 2);
+	if(stats.equipmentTechLevel)
+	{
+		const QString equipment = stats.equipmentTechSource == 2
+			? QObject::tr("%1 Crew+Passenger+Troop Berths").arg(stats.crewBerths + stats.passengerBerths + stats.troopBerths)
+			: AuLegacyShip::DetailName(stats.equipmentTechSource);
+		line(QObject::tr("%1 = TL%2").arg(equipment).arg(stats.equipmentTechLevel + 1), 2);
+	}
+	line(QObject::tr("%1 = TL%2").arg(moduleName(performance.moduleTechSource
+		? performance.moduleTechSource : header.scalarSlots.at(0))).arg(performance.moduleTechLevel + 1), 2);
+
+	section(QObject::tr("HULL"));
+	line(moduleWithTech(header.scalarSlots.at(2)));
+	line((header.armor ? QObject::tr("Armor Level %1 Absorbs %2 Kinetic Damage, %3 Energy Damage").arg(header.armor)
+		: QObject::tr("Unarmored Absorbs %1 Kinetic Damage, %2 Energy Damage"))
+		.arg(armor(performance.hullKinetic), armor(performance.hullEnergy)));
+	line(QObject::tr("%1 Volume").arg(volume(stats.hullVolume)));
+	line(QObject::tr("%1m Length").arg(number(stats.length / FeetPerMeter(), 2)), 2);
+	line(QObject::tr("%1m Width").arg(number(stats.width / FeetPerMeter(), 2)), 2);
+	line(QObject::tr("%1m Height, %2 Decks").arg(number(stats.height / FeetPerMeter(), 2))
+		.arg(stats.maximumDeck - stats.minimumDeck + 1), 2);
+	line(QObject::tr("%1 Mass").arg(mass(performance.massLb)));
+	line(QObject::tr("%1 Equipment").arg(mass(performance.equipmentMassLb)), 2);
+	line(QObject::tr("%1 Fuel").arg(mass(performance.fuelMassLb)), 2);
+	line(QObject::tr("%1 Hull").arg(mass(performance.hullMassLb)), 2);
+
+	section(QObject::tr("ENGINEERING"));
+	count(QObject::tr("Maneuver Drive Units"), stats.maneuverUnits);
+	line(moduleWithTech(performance.maneuverModule), 2);
+	line(QObject::tr("%1 m/sec/sec Acceleration")
+		.arg(number(std::ceil(performance.maneuverAccelerationFeetPerSecondSquared / FeetPerMeter()))), 2);
+	line(QObject::tr("%1 m/sec/sec Vertical Acceleration")
+		.arg(number(std::ceil(performance.verticalAccelerationFeetPerSecondSquared / FeetPerMeter()))), 2);
+	count(QObject::tr("Power Plant Units"), stats.powerPlantUnits);
+	line(moduleWithTech(header.scalarSlots.at(5)), 2);
+	line(QObject::tr("Capacitor %1").arg(locale.toString(performance.capacitorPower, 'g', 6)), 2);
+	if(stats.ftlUnits)
+	{
+		count(QObject::tr("FTL Drive Units"), stats.ftlUnits);
+		line(moduleWithTech(performance.ftlModule), 2);
+		line(QObject::tr("%1 Units %2 to Engage").arg(number(performance.ftlUnitsRequired),
+			stats.ftlUnits >= performance.ftlUnitsRequired ? QObject::tr("Sufficient") : QObject::tr("NEEDED")), 2);
+		if(performance.maxWarpFactor) line(QObject::tr("Maximum Warp Factor %1").arg(performance.maxWarpFactor), 2);
+	}
+
+	section(QObject::tr("FUEL"));
+	line(QObject::tr("Fuel Cell TL%1").arg(tl + 1));
+	line(QObject::tr("%1 Hydrogen (H\u00b2)").arg(volume(performance.fuelCapacity)));
+	endurance(performance.fuelCapacity, performance.idlePowerPerSecond / 10.0 + performance.maneuverFuelPerSecond,
+		QObject::tr("Idling"));
+	line(QObject::tr("Life Support, Maneuver Drive and Sensor Powered On"), 3);
+	if(stats.shieldUnits)
+	{
+		endurance(performance.fuelCapacity, performance.idlePowerWithShieldsPerSecond / 10.0 + performance.maneuverFuelPerSecond,
+			QObject::tr("Idling with Shields Up"));
+		line(QObject::tr("Life Support, Maneuver Drive, Sensor and Shields Powered On"), 3);
+	}
+	if(performance.maneuverModule != 0xec)
+	{
+		endurance(performance.fuelCapacity, performance.holdingPowerPerSecond / 10.0, QObject::tr("Holding"));
+		line(QObject::tr("Life Support and Sensor Powered On; Maneuver Drive on Hold"), 3);
+		if(stats.shieldUnits)
+		{
+			endurance(performance.fuelCapacity, performance.holdingPowerWithShieldsPerSecond / 10.0,
+				QObject::tr("Holding with Shields Up"));
+			line(QObject::tr("Life Support, Sensor and Shields Powered On; Maneuver Drive on Hold"), 3);
+		}
+	}
+
+	section(QObject::tr("AVIONICS"));
+	line(moduleWithTech(header.scalarSlots.at(0)));
+	count(QObject::tr("Consoles"), stats.consoles, 2);
+	if(stats.consoles) line(QObject::tr("Station details: Work in progress"), 2);
+	count(QObject::tr("Game Tables"), stats.gameTables);
+	if(stats.lifeSupportUnits)
+	{
+		count(QObject::tr("Life Support Units"), stats.lifeSupportUnits);
+		line(moduleWithTech(header.scalarSlots.at(3)), 2);
+	}
+	if(stats.sensorUnits)
+	{
+		count(QObject::tr("Sensor Units"), stats.sensorUnits);
+		line(moduleWithTech(header.scalarSlots.at(6)), 2);
+		line(QObject::tr("%1m Sensor Range").arg(number(std::ceil(performance.sensorRangeFeet / FeetPerMeter()))), 2);
+	}
+	if(stats.shieldUnits)
+	{
+		count(QObject::tr("Shield Units"), stats.shieldUnits);
+		line(moduleWithTech(performance.shieldModule), 2);
+		line(QObject::tr("Absorbs %1 Kinetic Damage per Side").arg(armor(performance.shieldKinetic)), 2);
+		line(QObject::tr("Absorbs %1 Energy Damage per Side").arg(armor(performance.shieldEnergy)), 2);
+	}
+	count(QObject::tr("Surgery Units"), stats.surgeries);
+	for(auto room = stats.transporterRooms.cbegin(); room != stats.transporterRooms.cend(); ++room)
+	{
+		const int deckByte = room.key() >> 8;
+		const int deck = deckByte < 128 ? deckByte : deckByte - 256;
+		line(QObject::tr("Transporter Room %1 Deck %2").arg((room.key() & 0xff) + 1).arg(deck - stats.minimumDeck + 1));
+		quint16 module = 0xf6;
+		for(const AuLegacyShip::ModulePair& pair : header.secondPairs)
+			if(pair.first == room.key()) { module = pair.secondNormalized; break; }
+		line(moduleWithTech(module), 2);
+		count(QObject::tr("Transporter Pads"), room.value(), 2);
+	}
+	count(QObject::tr("Operable Doors/Hatches"), stats.operableDoors);
+
+	if(stats.weaponUnits || stats.turrets)
+	{
+		section(QObject::tr("ARMAMENT"));
+		for(auto bay = stats.weaponBays.cbegin(); bay != stats.weaponBays.cend(); ++bay)
+		{
+			line(QObject::tr("Weapon Bay %1, %2 Units").arg(int(bay.key()) + 1).arg(number(bay->units)));
+			const auto firing = performance.weaponBays.constFind(bay.key());
+			if(firing != performance.weaponBays.cend())
+			{
+				line(moduleWithTech(firing->module), 2);
+				count(QObject::tr("Cannon Barrels"), firing->cannons, 2);
+				count(QObject::tr("Beam Projectors"), firing->projectors, 2);
+				count(QObject::tr("Launchers"), firing->launchers, 2);
+				count(QObject::tr("Ejector Racks"), firing->ejectorRacks, 2);
+			}
+		}
+		count(QObject::tr("Turrets"), stats.turrets);
+	}
+
+	section(QObject::tr("CREW"));
+	count(QObject::tr("Officer Stations"), stats.officerStations);
+	count(QObject::tr("Crew Stations"), stats.crewStations);
+	count(QObject::tr("Drivers"), stats.drivers);
+	count(QObject::tr("Pilots"), stats.pilots);
+	count(QObject::tr("Turret Gunners"), stats.turrets);
+	count(QObject::tr("Guards"), stats.troopStations);
+	section(QObject::tr("QUARTERS"));
+	count(QObject::tr("Officer Berths"), stats.officerBerths);
+	count(QObject::tr("Crew Berths"), stats.crewBerths);
+	const QString passengerClass = stats.passengerClass == 1 ? QObject::tr("1st Class")
+		: stats.passengerClass == 2 ? QObject::tr("2nd Class") : QObject::tr("3rd Class");
+	count(QObject::tr("%1 Passenger Berths").arg(passengerClass), stats.passengerBerths);
+	count(QObject::tr("Troop Berths"), stats.troopBerths);
+	section(QObject::tr("HOLD"));
+	line(QObject::tr("%1 Storage Space").arg(volume(stats.roomVolumes[5])));
+	line(QObject::tr("Room for %1 Commodities").arg(locale.toString(qulonglong(performance.holdCapacity))));
+	if(stats.roomVolumes[13] || !stats.vehicleComplement.isEmpty())
+	{
+		section(QObject::tr("VEHICLE BAYS"));
+		line(QObject::tr("%1 Vehicle Bays").arg(volume(stats.roomVolumes[13])));
+		for(auto vehicle = stats.vehicleComplement.cbegin(); vehicle != stats.vehicleComplement.cend(); ++vehicle)
+			count(moduleName(vehicle.key()), vehicle.value());
+	}
+
+	section(QObject::tr("DAMAGE CONTROL"));
+	count(QObject::tr("Total Hit Points"), performance.totalHitPoints);
+	count(QObject::tr("Structure Hit Points"), performance.structureHitPoints, 2);
+	const int structureSystems[] = {1, 3, 4, 5};
+	const QString structureNames[] = {QObject::tr("Fuel Cell"), QObject::tr("Hold"), QObject::tr("Hull"), QObject::tr("Vehicle Bay")};
+	for(int i = 0; i < 4; ++i)
+		count(QObject::tr("hp %1").arg(structureNames[i]), performance.systemHitPoints[structureSystems[i]], 3);
+	count(QObject::tr("Equipment Hit Points"), performance.equipmentHitPoints, 2);
+	const int equipmentSystems[] = {0, 2, 6, 7, 8, 9, 10, 11, 12, 13, 14};
+	const QString equipmentNames[] = {QObject::tr("Command and Control"), QObject::tr("Maneuver Drive"),
+		QObject::tr("Life Support"), QObject::tr("Power Plant"), QObject::tr("Sensor"), QObject::tr("Shield"),
+		QObject::tr("Medical"), QObject::tr("Transporter"), QObject::tr("Turret"), QObject::tr("Weapon"), QObject::tr("FTL Drive")};
+	for(int i = 0; i < 11; ++i)
+		count(QObject::tr("hp %1").arg(equipmentNames[i]), performance.systemHitPoints[equipmentSystems[i]], 3);
+	section(QObject::tr("MANUFACTURE"));
+	line(QObject::tr("Work in progress"));
+	return html;
+}
+}
 
 AuScReport::AuScReport()
 {
@@ -142,6 +373,7 @@ AuScReport::AuScReport(const AuScReport& c) : m_PartArchitects(c.m_PartArchitect
 	m_DesignId = c.m_DesignId;
 	m_DesignName = c.m_DesignName;
 	SetLegacyDebug(c.IsLegacyDebug());
+	m_LegacyStats = c.m_LegacyStats;
 
 	// Structure
 	m_LandingOrient = c.m_LandingOrient;
@@ -225,6 +457,7 @@ const AuScReport& AuScReport::operator=(const AuScReport& c)
 	m_DesignId = c.m_DesignId;
 	m_DesignName = c.m_DesignName;
 	SetLegacyDebug(c.IsLegacyDebug());
+	m_LegacyStats = c.m_LegacyStats;
 	m_PartArchitects = c.m_PartArchitects;
 
 	// Structure
@@ -318,8 +551,21 @@ const AuScReport& AuScReport::operator=(const AuScReport& c)
 	return *this;
 }
 
+void AuScReport::SetLegacyStats(const QSharedPointer<const AuLegacyScStats>& stats)
+{
+	m_LegacyStats = stats && stats->IsValid() ? stats : QSharedPointer<const AuLegacyScStats>();
+	if(m_LegacyStats)
+	{
+		m_Streamline = m_LegacyStats->Header().streamline;
+		const int structure = m_LegacyStats->Performance().structure;
+		m_Structure = structure >= 3 ? SC_Station : quint8(structure);
+		UpdateCalculatedValues();
+	}
+}
+
 bool AuScReport::HasHelm() const
 {
+	if(m_LegacyStats) return m_LegacyStats->Stats().hasHelm;
 	for(QHash<quint16, AuScReportStation>::const_iterator ci = m_CrewStations.cbegin(); ci != m_CrewStations.cend(); ci++)
 		if((*ci).PartType() == AuScPart::Part_StationHelm || (*ci).PartType() == AuScPart::Part_ConsoleHelm)
 			return true;
@@ -1664,6 +1910,8 @@ QString AuScReport::ReportAnalysis(quint8 designState) const
 {
 	if(designState == AuDesign::Deleted)
 		return QObject::tr("Deleted Design");
+	if(m_LegacyStats)
+		return LegacyStatsListing(*m_LegacyStats);
 	else if(designState == AuDesign::Edit && !HullVolume() && !g_Au.IsWebCGI())
 		return "";		// Return an empty string. That cues the caller to provide helpful design tips in place of this report.
 
@@ -3370,6 +3618,8 @@ void AuScReport::operator>>(QDataStream& out) const
 	out << m_TriangleCount;
 	out << m_TurnRate;
 	out << IsLegacyDebug();
+	out << bool(m_LegacyStats);
+	if(m_LegacyStats) out << *m_LegacyStats;
 }
 
 void AuScReport::operator<<(QDataStream& in)
@@ -3559,6 +3809,21 @@ void AuScReport::operator<<(QDataStream& in)
 	if(ver >= 0x13)
 		in >> legacyDebug;
 	SetLegacyDebug(legacyDebug);
+	m_LegacyStats.clear();
+	if(ver >= 0x14)
+	{
+		bool hasLegacyStats = false;
+		in >> hasLegacyStats;
+		if(hasLegacyStats)
+		{
+			QSharedPointer<AuLegacyScStats> stats(new AuLegacyScStats);
+			in >> *stats;
+			if(in.status() == QDataStream::Ok && stats->IsValid())
+				SetLegacyStats(stats);
+			else
+				in.setStatus(QDataStream::ReadCorruptData);
+		}
+	}
 }
 
 bool AuScReport::operator==(const AuScReport& c) const
@@ -3575,6 +3840,9 @@ bool AuScReport::operator==(const AuScReport& c) const
 	if(m_DesignName != c.m_DesignName)
 		return false;
 	if(IsLegacyDebug() != c.IsLegacyDebug())
+		return false;
+	if(bool(m_LegacyStats) != bool(c.m_LegacyStats)
+		|| (m_LegacyStats != c.m_LegacyStats && m_LegacyStats && !(*m_LegacyStats == *c.m_LegacyStats)))
 		return false;
 	if(m_PartArchitects != c.m_PartArchitects)
 		return false;
@@ -3785,6 +4053,7 @@ QString AuScReport::StatusDisplayName(quint16 partId) const
 
 bool AuScReport::HasSurgeryUnit() const
 {
+	if(m_LegacyStats) return m_LegacyStats->Stats().surgeries != 0;
 	for(QHash<quint16, AuScReportStation>::const_iterator ci = m_CrewStations.cbegin(); ci != m_CrewStations.cend(); ci++)
 		if(ScModuleSystem((*ci).Module()) == SYS_SurgeryUnit)
 			return true;
@@ -3793,6 +4062,7 @@ bool AuScReport::HasSurgeryUnit() const
 
 quint16 AuScReport::SurgeryUnitCount() const
 {
+	if(m_LegacyStats) return quint16(m_LegacyStats->Stats().surgeries);
 	quint16 c = 0;
 	for(QHash<quint16, AuScReportStation>::const_iterator ci = m_CrewStations.cbegin(); ci != m_CrewStations.cend(); ci++)
 		if(ScModuleSystem((*ci).Module()) == SYS_SurgeryUnit)
@@ -3802,31 +4072,37 @@ quint16 AuScReport::SurgeryUnitCount() const
 
 double AuScReport::ArmorLevel() const
 {
+	if(m_LegacyStats) return m_LegacyStats->Header().armor;
 	return AuScDesign::ArmorLevel(m_ArmorVolume, HullVolume());
 }
 
 quint32 AuScReport::CapacitorHits() const
 {
+	if(m_LegacyStats) return 0;
 	return EquipmentVolumeHits(m_Capacitor.Volume());
 }
 
 quint32 AuScReport::CryoBerthHits() const
 {
+	if(m_LegacyStats) return 0;
 	return EquipmentVolumeHits(m_CryoBerthVolume);
 }
 
 quint32 AuScReport::VehicleLandingHits() const
 {
+	if(m_LegacyStats) return 0;
 	return m_VehicleLandingSystems.size() * d_VehicleLandingSystemHits;
 }
 
 quint32 AuScReport::VehicleLauncherHits() const
 {
+	if(m_LegacyStats) return 0;
 	return m_VehicleLaunchers.size() * d_VehicleLauncherHits;
 }
 
 quint32 AuScReport::FTLDriveHits() const
 {
+	if(m_LegacyStats) return quint32(m_LegacyStats->Performance().systemHitPoints[14] / 10);
 	quint32 v = 0;
 	for(AuScReportSysVolHash::const_iterator fi = m_FTLDrives.cbegin(); fi != m_FTLDrives.cend(); fi++)
 		v += EquipmentVolumeHits((*fi).Volume());
@@ -3835,6 +4111,7 @@ quint32 AuScReport::FTLDriveHits() const
 
 quint32 AuScReport::FTLDriveHits(quint16 partId) const
 {
+	if(m_LegacyStats) return partId <= 1 ? FTLDriveHits() : 0;
 	AuScReportSysVolHash::const_iterator fi = m_FTLDrives.find(partId);
 	if(fi == m_FTLDrives.cend())
 		return 0;
@@ -3858,16 +4135,19 @@ void AuScReport::SetFTLDriveQuality(quint16 partId, quint8 quality)
 
 quint32 AuScReport::FuelHits() const
 {
+	if(m_LegacyStats) return quint32(m_LegacyStats->Performance().systemHitPoints[1] / 10);
 	return HullVolumeHits(m_FuelVolume);
 }
 
 quint32 AuScReport::HoldHits() const
 {
+	if(m_LegacyStats) return quint32(m_LegacyStats->Performance().systemHitPoints[3] / 10);
 	return HullVolumeHits(m_HoldVolume);
 }
 
 quint32 AuScReport::SkeletonHits() const
 {
+	if(m_LegacyStats) return 0;
 	return HullVolumeHits(m_SkeletonVolume) * 4;
 }
 
@@ -3925,6 +4205,7 @@ quint32 AuScReport::EquipmentVolumeHits(quint32 volumeCuM)
 
 quint32 AuScReport::HullHits() const
 {
+	if(m_LegacyStats) return quint32(m_LegacyStats->Performance().structureHitPoints / 10);
 	if(SkeletonVolume())
 		return HullVolumeHits(HullVolume() - SkeletonVolume()) + SkeletonHits();
 	else
@@ -3933,6 +4214,7 @@ quint32 AuScReport::HullHits() const
 
 quint32 AuScReport::LifeSupportHits() const
 {
+	if(m_LegacyStats) return quint32(m_LegacyStats->Performance().systemHitPoints[6] / 10);
 	return EquipmentVolumeHits(m_LifeSupport.Volume()) + CryoBerthHits();
 }
 
@@ -3943,26 +4225,31 @@ COMMODITYID AuScReport::HullMaterial() const
 
 quint32 AuScReport::ManeuverDriveHits() const
 {
+	if(m_LegacyStats) return quint32(m_LegacyStats->Performance().systemHitPoints[2] / 10);
 	return EquipmentVolumeHits(m_ManeuverDrive.Volume());
 }
 
 quint32 AuScReport::PowerPlantHits() const
 {
+	if(m_LegacyStats) return quint32(m_LegacyStats->Performance().systemHitPoints[7] / 10);
 	return EquipmentVolumeHits(m_PowerPlant.Volume());
 }
 
 quint32 AuScReport::SensorHits() const
 {
+	if(m_LegacyStats) return quint32(m_LegacyStats->Performance().systemHitPoints[8] / 10);
 	return EquipmentVolumeHits(m_Sensor.Volume());
 }
 
 quint32 AuScReport::ShieldHits() const
 {
+	if(m_LegacyStats) return quint32(m_LegacyStats->Performance().systemHitPoints[9] / 10);
 	return EquipmentVolumeHits(m_Shield.Volume());
 }
 
 quint32 AuScReport::TransporterHits() const
 {
+	if(m_LegacyStats) return quint32(m_LegacyStats->Performance().systemHitPoints[11] / 10);
 	quint32 v = 0;
 	for(AuScReportTransporterStationHash::const_iterator ti = m_Transporters.cbegin(); ti != m_Transporters.cend(); ti++)
 		v += (*ti).Hits();
@@ -3971,6 +4258,7 @@ quint32 AuScReport::TransporterHits() const
 
 quint32 AuScReport::TransporterHits(quint16 partId) const
 {
+	if(m_LegacyStats) return partId ? quint32(m_LegacyStats->Stats().transporterRooms.value(partId)) : TransporterHits();
 	AuScReportTransporterStationHash::const_iterator ti = m_Transporters.find(partId);
 	return (*ti).Hits();
 }
@@ -3992,6 +4280,7 @@ void AuScReport::SetTransporterQuality(quint16 partId, quint8 quality)
 
 quint32 AuScReport::WeaponBayHits() const
 {
+	if(m_LegacyStats) return quint32(m_LegacyStats->Performance().systemHitPoints[13] / 10);
 	quint32 v = 0;
 	for(AuScReportSysVolHash::const_iterator fi = m_Bays.cbegin(); fi != m_Bays.cend(); fi++)
 		v += EquipmentVolumeHits((*fi).Volume());
@@ -4000,6 +4289,7 @@ quint32 AuScReport::WeaponBayHits() const
 
 quint32 AuScReport::WeaponBayHits(quint16 partId) const
 {
+	if(m_LegacyStats) return quint32(WeaponBayUnits(partId));
 	AuScReportSysVolHash::const_iterator fi = m_Bays.find(partId);
 	if(fi == m_Bays.cend())
 		return 0;
@@ -4047,6 +4337,12 @@ void AuScReport::SetTurretQuality(quint16 which, quint8 quality)
 
 QString AuScReport::SystemName(const AuSysId& sysId) const
 {
+	if(m_LegacyStats)
+	{
+		if(sysId.System() == SYS_Weapon && sysId.Which())
+			return QObject::tr("Weapon Bay %1").arg(sysId.Which());
+		return sysId.ScName();
+	}
 	switch(sysId.System())
 	{
 	case SYS_CommandAndControl:
@@ -4174,6 +4470,7 @@ QString AuScReport::SystemName(const AuSysId& sysId) const
 
 QString AuScReport::SystemName(const AuSysId& sysId, COMMODITYID module) const
 {
+	if(m_LegacyStats) return SystemName(sysId);
 	switch(sysId.System())
 	{
 	case SYS_CommandAndControl:
@@ -4267,12 +4564,14 @@ float AuScReport::WeaponBayRange(quint16 which) const
 
 double AuScReport::CapacitorUnits() const
 {
+	if(m_LegacyStats) return 0;
 	double cuft = m_Capacitor.Volume() * CubicFeetPerCubicMeter();
 	return cuft / 256;
 }
 
 double AuScReport::FTLDriveUnits(quint16 partId) const
 {
+	if(m_LegacyStats) return partId <= 1 ? m_LegacyStats->Stats().ftlUnits : 0;
 	AuScReportSysVolHash::const_iterator fi = m_FTLDrives.find(partId);
 	if(fi == m_FTLDrives.cend())
 		return 0;
@@ -4282,24 +4581,28 @@ double AuScReport::FTLDriveUnits(quint16 partId) const
 
 double AuScReport::LifeSupportUnits() const
 {
+	if(m_LegacyStats) return m_LegacyStats->Stats().lifeSupportUnits;
 	double cuft = m_LifeSupport.Volume() * CubicFeetPerCubicMeter();
 	return cuft / 256;
 }
 
 double AuScReport::ManeuverDriveUnits() const
 {
+	if(m_LegacyStats) return m_LegacyStats->Stats().maneuverUnits;
 	double cuft = m_ManeuverDrive.Volume() * CubicFeetPerCubicMeter();
 	return cuft / 256;
 }
 
 double AuScReport::PowerPlantUnits() const
 {
+	if(m_LegacyStats) return m_LegacyStats->Stats().powerPlantUnits;
 	double cuft = m_PowerPlant.Volume() * CubicFeetPerCubicMeter();
 	return cuft / 256;
 }
 
 double AuScReport::SensorUnits() const
 {
+	if(m_LegacyStats) return m_LegacyStats->Stats().sensorUnits;
 	double cuft = m_Sensor.Volume() * CubicFeetPerCubicMeter();
 	return cuft / 256;
 }
@@ -4311,12 +4614,18 @@ double AuScReport::ShieldCapacitor() const
 
 double AuScReport::ShieldUnits() const
 {
+	if(m_LegacyStats) return m_LegacyStats->Stats().shieldUnits;
 	double cuft = m_Shield.Volume() * CubicFeetPerCubicMeter();
 	return cuft / 256;
 }
 
 double AuScReport::WeaponBayUnits(quint16 partId) const
 {
+	if(m_LegacyStats)
+	{
+		if(!partId) return m_LegacyStats->Stats().weaponUnits;
+		return partId <= 256 ? m_LegacyStats->Stats().weaponBays.value(quint8(partId - 1)).units : 0;
+	}
 	AuScReportSysVolHash::const_iterator fi = m_Bays.find(partId);
 	if(fi == m_Bays.cend())
 		return 0;
@@ -4518,6 +4827,7 @@ double AuScReport::SensorPowerRate() const
 
 float AuScReport::Density() const
 {
+	if(m_LegacyStats) return m_LegacyStats->Performance().densityLbPerCubicFoot;
 	return MassLbs() / (float)(HullVolume() * CubicFeetPerCubicMeter());
 }
 
@@ -4932,6 +5242,30 @@ void AuScReport::SetShieldVolume(quint32 volume)
 
 void AuScReport::UpdateCalculatedValues()
 {
+	if(m_LegacyStats)
+	{
+		const AuLegacyShip::Performance& performance = m_LegacyStats->Performance();
+		m_MassEquipmentKg = performance.equipmentMassLb * KilogramsPerPound();
+		m_MassFuelKg = performance.fuelMassLb * KilogramsPerPound();
+		m_MassHullKg = performance.hullMassLb * KilogramsPerPound();
+		m_MassKg = performance.massLb * KilogramsPerPound();
+		m_FuelCapacity = quint32(performance.fuelCapacity);
+		m_HoldCapacity = quint32(performance.holdCapacity);
+		m_Acceleration = performance.maneuverAccelerationFeetPerSecondSquared;
+		m_AccelerationVert = performance.verticalAccelerationFeetPerSecondSquared;
+		m_CapacitorMax = performance.capacitorPower;
+		m_FTLDriveUnitsToEngage = performance.ftlUnitsRequired * 256;
+		m_FuelBurnRate = performance.fuelBurnPerSecond;
+		m_HoldPowerNoShields = performance.holdingPowerPerSecond;
+		m_HoldPowerWithShields = performance.holdingPowerWithShieldsPerSecond;
+		m_IdlePowerNoShields = performance.idlePowerPerSecond;
+		m_IdlePowerWithShields = performance.idlePowerWithShieldsPerSecond;
+		m_LifeSupportNeeded = 0;
+		m_ManeuverFuelRate = performance.maneuverFuelPerSecond;
+		m_SensorRange = performance.sensorRangeFeet;
+		m_TurnRate = performance.turnDegreesPerSecond * DEG2RAD;
+		return;
+	}
 	// Mass
 	m_MassEquipmentKg = round(CalcEquipmentMass() * KilogramsPerPound());
 	m_MassFuelKg = round(CalcFuelMass() * KilogramsPerPound());
@@ -5298,6 +5632,8 @@ bool AuScReport::EnginesRequireEngineer() const
 quint64 AuScReport::MemoryUsage() const
 {
 	quint64 mem = 0;
+	mem += sizeof(m_LegacyStats);
+	if(m_LegacyStats) mem += m_LegacyStats->MemoryUsage();
 	mem += sizeof(m_ArchitectId);
 	mem += StringMemoryUsage(m_ArchitectName);
 	mem += StringMemoryUsage(m_DesignDesc);
@@ -5692,6 +6028,32 @@ void AuScReport::RefitShieldVolume(quint32 volume, quint8 minQ)
 
 quint32 AuScReport::SystemHits(const AuSysId& sysId) const
 {
+	if(m_LegacyStats)
+	{
+		const auto& stats = m_LegacyStats->Stats();
+		switch(sysId.System())
+		{
+		case SYS_CommandAndControl: return sysId.Which() ? (stats.consoles ? 1 : 0) : quint32(stats.consoles);
+		case SYS_Fuel: return FuelHits();
+		case SYS_ManeuverDrive: return ManeuverDriveHits();
+		case SYS_Hold: return HoldHits();
+		case SYS_Hull: return HullSystemHits();
+		case SYS_LifeSupport: return LifeSupportHits();
+		case SYS_PowerPlant: return PowerPlantHits();
+		case SYS_Sensor: return SensorHits();
+		case SYS_Shield: return ShieldHits();
+		case SYS_SurgeryUnit: return sysId.Which() ? (stats.surgeries ? 1 : 0) : quint32(stats.surgeries);
+		case SYS_Transporter: return TransporterHits(sysId.Which());
+		case SYS_Turret: return sysId.Which() ? (stats.turrets ? 1 : 0) : quint32(stats.turrets);
+		case SYS_Weapon: return sysId.Which() ? WeaponBayHits(sysId.Which()) : WeaponBayHits();
+		case SYS_FTLDrive: return FTLDriveHits(sysId.Which());
+		case SYS_Capacitor:
+		case SYS_VehicleLaunch:
+		case SYS_VehicleLanding:
+		case SYS_Count: return 0;
+		}
+		return 0;
+	}
 	switch(sysId.System())
 	{
 	case SYS_CommandAndControl:
@@ -5772,6 +6134,12 @@ quint32 AuScReport::SystemHits(const AuSysId& sysId) const
 
 quint32 AuScReport::HullSystemHits() const
 {
+	if(m_LegacyStats)
+	{
+		// Native spacecraft have no legacy vehicle-bay damage category.
+		const auto& hits = m_LegacyStats->Performance().systemHitPoints;
+		return quint32((hits[4] + hits[5]) / 10);
+	}
 	// Subtract hits from other hull-based systems.
 	// Flight deck hits are not calculated from hull volume so they are not subtracted here.
 	return HullHits() - (FuelHits() + HoldHits() + SkeletonHits());
@@ -5779,6 +6147,28 @@ quint32 AuScReport::HullSystemHits() const
 
 void AuScReport::SystemIds(QSet<AuSysId>& sysIds, bool structural) const
 {
+	if(m_LegacyStats)
+	{
+		if(structural)
+		{
+			if(FuelHits()) sysIds.insert(SYS_Fuel);
+			if(HoldHits()) sysIds.insert(SYS_Hold);
+			if(HullSystemHits()) sysIds.insert(SYS_Hull);
+		}
+		else
+		{
+			const SYSTEM systems[] = {SYS_CommandAndControl, SYS_ManeuverDrive, SYS_LifeSupport,
+				SYS_PowerPlant, SYS_Sensor, SYS_Shield, SYS_SurgeryUnit, SYS_Turret, SYS_FTLDrive};
+			for(SYSTEM system : systems) if(SystemHits(system)) sysIds.insert(system);
+			for(auto room = m_LegacyStats->Stats().transporterRooms.cbegin();
+				room != m_LegacyStats->Stats().transporterRooms.cend(); ++room)
+				if(room.value()) sysIds.insert(AuSysId(SYS_Transporter, room.key()));
+			for(auto bay = m_LegacyStats->Stats().weaponBays.cbegin();
+				bay != m_LegacyStats->Stats().weaponBays.cend(); ++bay)
+				if(bay->units) sysIds.insert(AuSysId(SYS_Weapon, quint16(bay.key()) + 1));
+		}
+		return;
+	}
 	if(structural)
 	{
 		if(FuelVolume())
@@ -5834,6 +6224,13 @@ void AuScReport::SystemIds(QSet<AuSysId>& sysIds, bool structural) const
 
 quint32 AuScReport::SystemModuleCount(const AuSysId& sysId) const
 {
+	if(m_LegacyStats)
+	{
+		// Legacy equipment has one internal hit per physical equipment unit.
+		if(sysId.System() != SYS_Hull && sysId.System() != SYS_Fuel && sysId.System() != SYS_Hold)
+			return SystemHits(sysId);
+		return 0;
+	}
 	switch(sysId.System())
 	{
 	case SYS_CommandAndControl:

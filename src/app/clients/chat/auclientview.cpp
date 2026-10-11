@@ -1812,7 +1812,18 @@ QString AuClientView::DesignAnalysis()
 				bool isAgent = gd.ClientPlayerIsAgent();		// Show design tips to agents.
 				g_Au.UnlockData();
 
-				if(ship->WhereMade().isEmpty())
+				const DaSc* spacecraft = dynamic_cast<const DaSc*>(ship);
+				if(spacecraft && spacecraft->IsLegacyDebug())
+				{
+					da = QStringLiteral("<b>%1</b><br>%2<br>%3<br>Blueprint Number %4<br>Manufactured %5")
+						.arg(ship->Name().toHtmlEscaped(), empireName.toHtmlEscaped(),
+							ship->IsPrivatelyOwned() ? QStringLiteral("Company") : QStringLiteral("Fleet"))
+						.arg(spacecraft->DesignId())
+						.arg(ship->CreatedTime().UTC().toLocalTime().date().toString().toHtmlEscaped());
+					if(!ship->WhereMade().isEmpty()) da += QStringLiteral("<br>%1").arg(ship->WhereMade().toHtmlEscaped());
+					da += QStringLiteral("<hr>");
+				}
+				else if(ship->WhereMade().isEmpty())
 					da = QString("<b>%1</b><br>%2<br>%3<br>Manufactured %4<hr>")
 						.arg(ship->Name())
 						.arg(empireName)
