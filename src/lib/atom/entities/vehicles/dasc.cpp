@@ -3403,8 +3403,9 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 									AuLegacyScGeometry::OriginalEffectTexture(sourceFrame), GL_LINEAR, GL_LINEAR, false, 1);
 							};
 							draw.effectTextures[frame] = effectTexture(draw.effectFirstFrame + frame);
-							if(draw.effectFirstFrame == 16) draw.holdEffectTextures[frame] = effectTexture(12 + frame);
-							if(!draw.effectTextures[frame] || (draw.effectFirstFrame == 16 && !draw.holdEffectTextures[frame]))
+							// AuAtom13:1803c9950 selects 12..15 for On, 16..19 for Hold.
+							if(draw.effectFirstFrame == 16) draw.onEffectTextures[frame] = effectTexture(12 + frame);
+							if(!draw.effectTextures[frame] || (draw.effectFirstFrame == 16 && !draw.onEffectTextures[frame]))
 							{
 								error = QStringLiteral("Unable to create a legacy equipment effect texture.");
 								return false;
@@ -3501,8 +3502,8 @@ void DaSc::RenderLegacyTextures(const AuGLSLScBase& shader, AuAtomRenderInfo& ar
 		if(effectActive && draw.effectFrameCount)
 		{
 			const int frame = int(frameTime % draw.effectFrameCount);
-			effectTexture = draw.effectFirstFrame == 16 && maneuverHold
-				? draw.holdEffectTextures[frame] : draw.effectTextures[frame];
+			effectTexture = draw.effectFirstFrame == 16 && !maneuverHold
+				? draw.onEffectTextures[frame] : draw.effectTextures[frame];
 		}
 		// Each draw has one recovered effect atlas region; native vertex data
 		// still controls which surfaces receive the glowing overlay.
@@ -7030,21 +7031,17 @@ void DaSc::InteriorAmbientLight(const QString& roomName, float& ambientR, float&
 	if(IsLegacyDebug())
 	{
 		const INTERIOR_LIGHT light = CapacitorLevel() > 0 ? InteriorLight(roomName) : INTLIGHT_Dark;
-		if(light == INTLIGHT_Dark)
-		{
-			// With the interior lights off, use the ship's external environment.
-			ambientR = ambientG = ambientB = .2f;
-			sunsBlocked = false;
-			float fogDensity, fogR, fogG, fogB;
-			SceneRenderParameters(0, ambientR, ambientG, ambientB, fogDensity, fogR, fogG, fogB, false, sunsBlocked);
-			return;
-		}
-		// AuAtom13:1800cdcf0, shared with the recovered offline renderer.
-		const float brightness = light == INTLIGHT_Bright ? 1.f : .3f;
-		ambientR = .47843137f * brightness;
-		ambientG = .5f * brightness;
-		ambientB = .49019608f * brightness;
-		sunsBlocked = true;
+		// Keep the environment contribution in every mode. The 2016 shader
+		// adds solar lighting separately from the recovered interior ambient.
+		ambientR = ambientG = ambientB = .2f;
+		sunsBlocked = false;
+		float fogDensity, fogR, fogG, fogB;
+		SceneRenderParameters(0, ambientR, ambientG, ambientB, fogDensity, fogR, fogG, fogB, false, sunsBlocked);
+		const float brightness = light == INTLIGHT_Bright ? 1.f : light == INTLIGHT_Dim ? .3f : 0.f;
+		// AuAtom13:1800cdcf0 supplies the powered On/Dim contribution.
+		ambientR = std::max(0.f, std::min(1.f, ambientR + .47843137f * brightness));
+		ambientG = std::max(0.f, std::min(1.f, ambientG + .5f * brightness));
+		ambientB = std::max(0.f, std::min(1.f, ambientB + .49019608f * brightness));
 		return;
 	}
 	// Calculate ambient lighting from interior lights, if any.

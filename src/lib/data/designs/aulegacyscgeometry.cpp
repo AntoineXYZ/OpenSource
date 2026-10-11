@@ -959,13 +959,13 @@ QImage OriginalEffectTexture(int frame)
 	else return QImage();
 	static const QImage atlas(QStringLiteral(":/data/legacy_ShipEffects.png"));
 	if(atlas.isNull()) return QImage();
-	// The frame table uses 1024x128 coordinates, while the recovered image
-	// is 2048x256. Match the offline shader's normalized atlas coordinates.
-	region = QRect(region.x() * atlas.width() / 1024, region.y() * atlas.height() / 128,
+	// The table uses 1024x128 coordinates measured from the bottom of the
+	// atlas. AuGL13:180036b00 uploads QImage rows from bottom to top.
+	// Scale for the 2048x256 source and convert to QImage's top-origin rows.
+	region = QRect(region.x() * atlas.width() / 1024,
+		(128 - region.y() - region.height()) * atlas.height() / 128,
 		region.width() * atlas.width() / 1024, region.height() * atlas.height() / 128);
-	// QOpenGLTexture uploads the offline effect atlas without flipping rows.
-	// Compensate for the native texture uploader's row flip to preserve its UVs.
-	return atlas.copy(region).mirrored().convertToFormat(QImage::Format_ARGB32);
+	return atlas.copy(region).convertToFormat(QImage::Format_ARGB32);
 }
 
 QImage OriginalTexture(const TextureBinding& binding, bool illuminated)

@@ -1410,7 +1410,9 @@ public:
 		if (!effectTexture)
 		{
 			const QImage effects = QImage(":/data/legacy_ShipEffects.png");
-			effectTexture = new QOpenGLTexture(effects);
+			// Match the original native bitmap upload (AuGL13:180036b00).
+			// EffectTexture's rectangles are measured from the atlas bottom.
+			effectTexture = new QOpenGLTexture(effects.mirrored(), QOpenGLTexture::DontGenerateMipMaps);
 			effectTexture->setWrapMode(QOpenGLTexture::ClampToEdge);
 			effectTexture->setMinificationFilter(QOpenGLTexture::Linear);
 			effectTexture->setMagnificationFilter(QOpenGLTexture::Linear);

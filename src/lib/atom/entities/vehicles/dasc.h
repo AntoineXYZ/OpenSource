@@ -34,7 +34,7 @@ class AUATOM_DLL DaSc : public DaVessel
 		GLuint texture = 0;
 		GLuint unlitTexture = 0;
 		GLuint effectTextures[4] = {};
-		GLuint holdEffectTextures[4] = {};
+		GLuint onEffectTextures[4] = {};
 		int effectFirstFrame = -1;
 		int effectFrameCount = 0;
 		QString roomName;
