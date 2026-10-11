@@ -691,7 +691,8 @@ public:	// Methods
 		const AuBox* bodyOffsets = 0) const;
 	bool IsLegacyLadderAttachmentBlocked(const DaCreature& who, const AuPoint& oldOrigin,
 		const AuBox& oldOffsets, const AuPoint& oldEye, AuPoint& hitLoc, AuPoint& hitNormal);
-	void OpenLegacyAutomaticDoors(const DaAtom& who, const AuPoint& from, const AuPoint& to, const AuBox& offsets);
+	void OpenLegacyAutomaticDoors(const DaAtom& who, const AuPoint& from, const AuPoint& to, const AuBox& offsets,
+		bool proposedLadderPose = false);
 	// Server position preflight can supply bounds for the proposed pose/orientation.
 	bool IsLegacyBodyPathBlocked(const AuPoint& from, const AuPoint& to, const AuBox& bodyOffsets,
 		AuPoint& hitLoc, AuPoint& hitNormal) const;

@@ -61,6 +61,8 @@ namespace
 // Time an automatic legacy door or hatch must remain clear before closing.
 constexpr qint64 LegacyAutomaticDoorCloseDelayMSec = 2500;
 constexpr unsigned int LegacyAutomaticDoorCheckIntervalMSec = 250;
+// Open a hatch before a descending climber's feet meet its deck plane (feet).
+constexpr double LegacyHatchDescentOpenClearance = .5;
 
 void LogLegacyCollision(const QString& message)
 {
@@ -1280,16 +1282,38 @@ void DaSc::QueueLegacyDoorSound(const AuScPart& part, const AuScDoorState& door,
 	if(!info.IsHatch()) m_LegacyDoorSounds[channel].location.z += 4;
 }
 
-void DaSc::OpenLegacyAutomaticDoors(const DaAtom& who, const AuPoint& from, const AuPoint& to, const AuBox& offsets)
+void DaSc::OpenLegacyAutomaticDoors(const DaAtom& who, const AuPoint& from, const AuPoint& to, const AuBox& offsets,
+	bool proposedLadderPose)
 {
 	if(!IsLegacyDebug() || !who.OpensAutomaticDoors()) return;
+	const DaCreature* creature = dynamic_cast<const DaCreature*>(&who);
+	const bool descendingLadder = creature && (creature->IsLadderPose() || proposedLadderPose) && to.z < from.z;
+	AuPoint minimum, maximum;
+	if(descendingLadder) offsets.GetMinMax(minimum, maximum);
 	QVector<quint16> candidates;
 	m_DesignLock.lockForRead();
 	const AuScDesign* design = LockDesign();
 	const auto world = design ? LegacyCollision(*design) : QSharedPointer<const AuLegacyScGeometry::CollisionWorld>();
 	if(world && world->IsValid())
 	{
-		for(quint16 door : world->BlockedDoors(from, to, offsets, &m_DoorStates))
+		QVector<quint16> approachingDoors = world->BlockedDoors(from, to, offsets, &m_DoorStates);
+		if(descendingLadder)
+			for(auto door = m_DoorStates.cbegin(); door != m_DoorStates.cend(); ++door)
+			{
+				if(door->IsOpen()) continue;
+				const auto part = design->Parts().constFind(door.key());
+				if(part == design->Parts().cend() || !LegacyDoorInfo(**part).IsHatch()) continue;
+				const double hatchZ = door->OpLoc1().z;
+				// The collision sweep can stop at the surrounding deck before it
+				// reports the hatch panel. Only open the hatch on this ladder axis,
+				// approached from above, once the feet are close to its plane.
+				if(from.z >= hatchZ && from.z + minimum.z >= hatchZ - .05
+					&& to.z + minimum.z <= hatchZ + LegacyHatchDescentOpenClearance
+					&& LegacyDoorDistance2(*door, from) <= .05 * .05
+					&& !approachingDoors.contains(door.key()))
+					approachingDoors.append(door.key());
+			}
+		for(quint16 door : approachingDoors)
 		{
 			const auto part = design->Parts().constFind(door);
 			const auto state = m_DoorStates.constFind(door);
