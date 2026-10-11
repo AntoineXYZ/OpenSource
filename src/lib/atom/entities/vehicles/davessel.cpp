@@ -18308,8 +18308,6 @@ void DaVessel::RenderShieldBubble(const AuMatrix4x4& projection, const AuMatrix4
 	// Render shield bubble.
 	if(m_shieldTime.isValid())
 		m_fShieldTexOffset += m_shieldTime.elapsed()*(.005f);
-	else
-		m_shieldTime.restart();
 
 	// Offset to center of ship hull, which may not be the current pivot point.
 	AuPoint cen(DesignCenterOffset());
@@ -18404,6 +18402,9 @@ void DaVessel::RenderShieldBubble(const AuMatrix4x4& projection, const AuMatrix4
 		ari.re->RenderShieldBubble(projection, shieldM, eRadius.x, eRadius.y, eRadius.z, sFront, sfr, sBottom, sbo, sLeft, sle,
 				sBack, sba, sTop, sto, sRight, sri, m_fShieldTexOffset, fDivisor, m_fShieldEffect, m_fShieldDuration,
 				iShieldEffects);
+	// DaSpaceShip::RenderLast (AuAtom13:180441350) resets after each draw.
+	// Accumulating elapsed time without this reset makes scrolling accelerate.
+	m_shieldTime.start();
 }
 
 bool DaVessel::HasVehicleTransporter() const
