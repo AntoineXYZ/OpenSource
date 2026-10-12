@@ -715,7 +715,7 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 	{
 		AuScHull hull;
 		hull.SetFaces(exteriorFaces);
-		hull.SetGroupName(QStringLiteral("legacy/debug/static/v9"));
+		hull.SetGroupName(QStringLiteral("legacy/debug/static/v10"));
 		if(!AddPart(generated, hull))
 		{
 			error = QStringLiteral("The selected legacy design has too many generated hull parts.");
@@ -1093,6 +1093,46 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 	// computed from the accepted legacy source. Live switches and power state
 	// are initialized separately when the ship is spawned.
 	if(!AddBerths(legacy, generated, error)) return false;
+	// Preserve the visible batches and movement barriers. Separate invisible
+	// meshes store the authored centers used by the 2016 radius-based sight
+	// test, with runtime system identities for repair/component removal.
+	// AuAtom13:180468bf0 (SightedSystem), AuData13:180161a00 (SightType).
+	for(const Detail& detail : source.details)
+	{
+		AuSysId system;
+		switch(detail.detailType)
+		{
+		case 10: system = SYS_ManeuverDrive; break;
+		case 11: system = AuSysId(SYS_SurgeryUnit, surgeryParts.value(detail.detailId)); break;
+		case 14: system = SYS_PowerPlant; break;
+		case 16: system = SYS_Sensor; break;
+		case 18: system = SYS_Shield; break;
+		case 20: system = AuSysId(SYS_Transporter, canonicalTransporters.value(roomKey(detail))); break;
+		case 21: case 22: case 33: case 34: case 35: case 36:
+		case 37: case 38: case 39: case 40: system = SYS_Turret; break;
+		case 23: system = AuSysId(SYS_Weapon, detailBays.value(detail.detailId)); break;
+		case 24: system = AuSysId(SYS_FTLDrive, 1); break;
+		case 32: system = SYS_LifeSupport; break;
+		default: continue;
+		}
+		const AuPoint center = detailFloor(detail);
+		// This tiny face only stores the center in the existing mesh format;
+		// it is neither rendered nor used as a collision or sight surface.
+		AuScFaceList marker;
+		marker.AddFace(AuScFaceQuad(AuScPoint(center + AuPoint(-.01, -.01, 0), 0, 0, AuPoint(0, 0, 1)),
+			AuScPoint(center + AuPoint(.01, -.01, 0), 0, 0, AuPoint(0, 0, 1)),
+			AuScPoint(center + AuPoint(.01, .01, 0), 0, 0, AuPoint(0, 0, 1)),
+			AuScPoint(center + AuPoint(-.01, .01, 0), 0, 0, AuPoint(0, 0, 1))));
+		AuScMesh target;
+		target.SetFaces(marker);
+		target.SetGroupName(QStringLiteral("legacy/target/detail/%1/type/%2/system/%3/which/%4")
+			.arg(detail.detailId).arg(detail.detailType).arg(int(system.System())).arg(system.Which()));
+		if(!chargeTriangles(2) || !AddPart(generated, target))
+		{
+			if(error.isEmpty()) error = QStringLiteral("The legacy design exceeds the runtime part limit when adding subsystem targets.");
+			return false;
+		}
+	}
 	generated.Parts().RefreshObstructionsCache();
 	generated.SetLegacyHullVolume(quint32(std::max(1.0, std::ceil(double(legacy.Stats().hullVolume) / CubicFeetPerCubicMeter()))));
 	generated.SetLegacyStats(QSharedPointer<const AuLegacyScStats>(new AuLegacyScStats(legacy.SourceDesign(), legacy.Stats())));

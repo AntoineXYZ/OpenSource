@@ -774,7 +774,8 @@ void AuScDesign::LoadLegacyTextureMap(QSqlDatabase& db)
 		if(part->GroupName() == QStringLiteral("legacy/debug/static/v6")
 			|| part->GroupName() == QStringLiteral("legacy/debug/static/v7")
 			|| part->GroupName() == QStringLiteral("legacy/debug/static/v8")
-			|| part->GroupName() == QStringLiteral("legacy/debug/static/v9")) includeDoors = true;
+			|| part->GroupName() == QStringLiteral("legacy/debug/static/v9")
+			|| part->GroupName() == QStringLiteral("legacy/debug/static/v10")) includeDoors = true;
 	}
 	AuLegacyScDesign accepted;
 	QString error;
@@ -801,7 +802,8 @@ bool AuScDesign::NeedsLegacyTextureMap() const
 			|| part->GroupName() == QStringLiteral("legacy/debug/static/v6")
 			|| part->GroupName() == QStringLiteral("legacy/debug/static/v7")
 			|| part->GroupName() == QStringLiteral("legacy/debug/static/v8")
-			|| part->GroupName() == QStringLiteral("legacy/debug/static/v9")) return true;
+			|| part->GroupName() == QStringLiteral("legacy/debug/static/v9")
+			|| part->GroupName() == QStringLiteral("legacy/debug/static/v10")) return true;
 	return false;
 }
 

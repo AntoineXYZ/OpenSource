@@ -3633,7 +3633,7 @@ public:	// Methods
 	// Generic mesh that is associated with a room will be collected by the room itself.
 	virtual bool IsVisibleInFinalModel() const
 	{
-		return !AssociatedPartId();
+		return !AssociatedPartId() && !GroupName().startsWith(QStringLiteral("legacy/target/"));
 	}
 
 	virtual quint64 MemoryUsage() const;
@@ -3642,6 +3642,8 @@ public:	// Methods
 
 	virtual bool Sight(quint16 partId, const AuPoint& eyeLoc, AuPoint& sightLoc, const AuDoorStateHash& doorStates,
 			const AuLandingGearStateHash& landingGearStates, const AuLiftHash& liftStops, AuPoint& sightSurfaceNormal) const;
+
+	virtual AuSysId SightedSystem(quint16 partId) const;
 
 	virtual PART_TYPE Type() const
 	{

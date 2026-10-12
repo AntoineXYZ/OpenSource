@@ -11,6 +11,7 @@
 #include "aufilever.h"
 #include "auglobal.h"
 #include "ausegment.h"
+#include "aulegacyship.h"
 #include "auscdesign.h"
 #include "auscreport.h"
 #include "auscroute.h"
@@ -21,6 +22,7 @@
 #include <QProgressDialog>
 #include <QStringList>
 #include <QVariant>
+#include <algorithm>
 
 #define DESIGNER_MIME_PART_VER			0x01
 
@@ -7900,12 +7902,17 @@ bool AuScParts::Sight(const AuPoint& eyeLoc, AuPoint& sightLoc, quint16& sightPa
 {
 	bool hitMe = false;
 	for(const_iterator pi = cbegin(); pi != cend(); pi++)
+	{
+		// These are roster records, not physical equipment targets. Original
+		// DnDetail::SightType excludes both single and double berth models.
+		if((*pi)->GroupName().startsWith(QStringLiteral("legacy/berth/detail/"))) continue;
 		if((*pi)->Sight(pi.key(), eyeLoc, sightLoc, doorStates, landingGearStates, liftStops, sightSurfaceNormal))
 		{
 			// As we hit each face, sightLoc is shortened. By the end, sightPart will contain the closest part that was hit.
 			sightPart = pi.key();
 			hitMe = true;
 		}
+	}
 	return hitMe;
 }
 
@@ -9188,13 +9195,79 @@ bool AuScMesh::Sight(quint16 partId, const AuPoint& eyeLoc, AuPoint& sightLoc, c
 		const AuLandingGearStateHash& landingGearStates, const AuLiftHash& liftStops, AuPoint& sightSurfaceNormal) const
 {
 	Q_UNUSED(partId);
-	Q_UNUSED(eyeLoc);
-	Q_UNUSED(sightLoc);
 	Q_UNUSED(doorStates);
 	Q_UNUSED(landingGearStates);
 	Q_UNUSED(liftStops);
-	Q_UNUSED(sightSurfaceNormal);
-	return false;
+	if(IsOmitted() || !GroupName().startsWith(QStringLiteral("legacy/target/detail/"))) return false;
+	const QStringList fields = GroupName().split(QLatin1Char('/'));
+	const int typeIndex = fields.indexOf(QStringLiteral("type"));
+	if(typeIndex < 0 || typeIndex + 1 >= fields.size()) return false;
+	const int type = fields.at(typeIndex + 1).toInt();
+	// DnDetail::SightRadius (AuData13:180161900): machinery has the
+	// original generous radius; side and ceiling/floor turrets differ.
+	double radius = 1.91421356225;
+	if(type == 21 || (type >= 34 && type <= 40)) radius = .5;
+	else if(type == 22 || type == 33) radius = 1;
+	const AuPoint center = Center();
+	const AuPoint ray = sightLoc - eyeLoc;
+	double fraction = 0;
+	if(type == 20)
+	{
+		// Transporter pads use SightType 3: a sphere at the authored floor.
+		const double length2 = ray.Length2();
+		if(length2 <= 0) return false;
+		const AuPoint offset = center - eyeLoc;
+		fraction = (offset.x * ray.x + offset.y * ray.y + offset.z * ray.z) / length2;
+		fraction = qMin(1.0, fraction);
+		if(fraction <= 0 || (eyeLoc + ray * fraction).Distance2(center) >= radius * radius) return false;
+	}
+	else
+	{
+		// DaSpaceShip::SightTargetDetails (AuAtom13:180467140) projects
+		// onto the sight segment in each deck, then tests the horizontal
+		// radius. It selects the closest approach, not the visible triangles.
+		double firstFraction = 0, lastFraction = 1;
+		if(ray.z == 0)
+		{
+			if(eyeLoc.z < center.z || eyeLoc.z >= center.z + AuLegacyShip::DeckHeight) return false;
+		}
+		else
+		{
+			double deckStart = (center.z - eyeLoc.z) / ray.z;
+			double deckEnd = (center.z + AuLegacyShip::DeckHeight - eyeLoc.z) / ray.z;
+			if(deckStart > deckEnd) std::swap(deckStart, deckEnd);
+			firstFraction = qMax(firstFraction, deckStart);
+			lastFraction = qMin(lastFraction, deckEnd);
+			if(firstFraction >= lastFraction) return false;
+		}
+		const double length2 = ray.x * ray.x + ray.y * ray.y;
+		if(length2 <= 0) return false;
+		fraction = ((center.x - eyeLoc.x) * ray.x + (center.y - eyeLoc.y) * ray.y) / length2;
+		if(fraction <= firstFraction || fraction >= lastFraction) return false;
+		const AuPoint closest = eyeLoc + ray * fraction;
+		const double dx = closest.x - center.x, dy = closest.y - center.y;
+		if(dx * dx + dy * dy >= radius * radius) return false;
+	}
+	sightLoc = eyeLoc + ray * fraction;
+	sightSurfaceNormal = eyeLoc - sightLoc;
+	sightSurfaceNormal.Unit();
+	return true;
+}
+
+AuSysId AuScMesh::SightedSystem(quint16 partId) const
+{
+	if(!GroupName().startsWith(QStringLiteral("legacy/target/detail/")))
+		return AuScMeshBase::SightedSystem(partId);
+	const QStringList fields = GroupName().split(QLatin1Char('/'));
+	const int systemIndex = fields.indexOf(QStringLiteral("system"));
+	const int whichIndex = fields.indexOf(QStringLiteral("which"));
+	if(systemIndex < 0 || systemIndex + 1 >= fields.size() || whichIndex < 0 || whichIndex + 1 >= fields.size())
+		return AuSysId();
+	bool systemOk = false, whichOk = false;
+	const uint system = fields.at(systemIndex + 1).toUInt(&systemOk);
+	const uint which = fields.at(whichIndex + 1).toUInt(&whichOk);
+	if(!systemOk || !whichOk || system >= SYS_Count || which > 65535) return AuSysId();
+	return AuSysId(SYSTEM(system), quint16(which));
 }
 
 quint64 AuScMesh::MemoryUsage() const
@@ -24656,7 +24729,8 @@ bool AuScBarrier::Sight(quint16 partId, const AuPoint& eyeLoc, AuPoint& sightLoc
 		const AuLandingGearStateHash& landingGearStates, const AuLiftHash& liftStops, AuPoint& sightSurfaceNormal) const
 {
 	// Legacy panel collision is separate from the visible, operable door.
-	if(GroupName().startsWith(QStringLiteral("legacy/door-collision/"))) return false;
+	if(GroupName().startsWith(QStringLiteral("legacy/door-collision/"))
+		|| GroupName().startsWith(QStringLiteral("legacy/obstacle-chunk/"))) return false;
 	Q_UNUSED(partId);
 	Q_UNUSED(doorStates);
 	Q_UNUSED(landingGearStates);

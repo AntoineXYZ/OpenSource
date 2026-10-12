@@ -3348,7 +3348,8 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 		for(const AuScPart* part : design->Parts())
 			if(part->IsHullMesh() && (part->GroupName() == QStringLiteral("legacy/debug/static/v7")
 				|| part->GroupName() == QStringLiteral("legacy/debug/static/v8")
-				|| part->GroupName() == QStringLiteral("legacy/debug/static/v9")))
+				|| part->GroupName() == QStringLiteral("legacy/debug/static/v9")
+				|| part->GroupName() == QStringLiteral("legacy/debug/static/v10")))
 			{
 				oldForcedInteriorGlow = false;
 				break;
@@ -9230,9 +9231,10 @@ void DaSc::RenderBodyStats(float left, float bottom, float wid, float ht, bool i
 		// Hits Points
 		float curhp;
 		float maxhp;
-		if(IsLegacyDebug())
+		if(IsLegacyDebug() && sysId.System() == SYS_Hull)
 		{
-			// Generated legacy geometry represents the whole ship, not native system parts.
+			// Hull targeting retains the whole-ship overview; equipment shows
+			// the health of the selected recovered subsystem.
 			maxhp = DesignHitsTotal();
 			m_DamageLock.lockForRead();
 			quint32 damage = m_Damage.HitsDamage();
