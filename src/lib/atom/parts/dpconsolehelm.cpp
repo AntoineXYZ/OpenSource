@@ -115,13 +115,21 @@ void DpConsoleHelm::AnimateDeviceObjects(AuGLEffects& re, const DaVessel& ship, 
 			static const QImage unmoored(QStringLiteral(":data/pc_Unmoored.bmp"));
 			QImage mooring = ship.IsMoored() ? moored : unmoored;
 			texture->ReplaceSubImage(re, mooring, 236, 108);
-			// Keep the recovered crew-door slot and hull-door indicator positions.
+			// DpConsolePilot:18060b0d0 supplies separate crew/hull lock icons
+			// at these bottom-origin positions. Hull icons also show open doors.
 			static const QImage original(QStringLiteral(":data/legacy_pc_Console.bmp"));
-			QImage crewSlot = original.copy(182, original.height() - 106, 16, 16);
-			texture->ReplaceSubImage(re, crewSlot, 182, 90);
+			const DaSc& spacecraft = static_cast<const DaSc&>(ship);
+			static const QImage crewLocked(QStringLiteral(":data/pc_CrewDoorsLocked.png"));
+			static const QImage crewUnlocked(QStringLiteral(":data/pc_CrewDoorsUnlocked.png"));
+			QImage crewButton = spacecraft.LegacyDoorsLocked(false) ? crewLocked : crewUnlocked;
+			texture->ReplaceSubImage(re, crewButton, 182, 90);
 			static const QImage hullOpen(QStringLiteral(":data/pc_HullDoorsUnlockedO.png"));
 			static const QImage hullClosed(QStringLiteral(":data/pc_HullDoorsUnlocked.png"));
-			QImage hullButton = ship.AnyHullDoorOpen() ? hullOpen : hullClosed;
+			static const QImage hullLockedOpen(QStringLiteral(":data/pc_HullDoorsLockedO.png"));
+			static const QImage hullLockedClosed(QStringLiteral(":data/pc_HullDoorsLocked.png"));
+			const bool hullLocked = spacecraft.LegacyDoorsLocked(true);
+			QImage hullButton = ship.AnyHullDoorOpen() ? (hullLocked ? hullLockedOpen : hullOpen)
+				: (hullLocked ? hullLockedClosed : hullClosed);
 			texture->ReplaceSubImage(re, hullButton, 200, 90);
 			// FTL operation belongs to the original engineer console. Keep the
 			// pilot artwork where the modern panel adds FTL and landing gear.
@@ -147,6 +155,12 @@ void DpConsoleHelm::EnumControlInputs(DiControlInputArray& controls) const
 		controls.append(DiControlInput(QObject::tr("Interior Lights On/Dim/Off"), CI_UNUSED0,
 			Qt::Key_unknown, Qt::NoModifier, DiControlInput::MT_None, Qt::NoModifier,
 			DiControlInput::JT_None, 0, 100, false));
+		controls.append(DiControlInput(QObject::tr("Lock/Unlock Crew Doors"), CI_LockCrewDoors,
+			Qt::Key_unknown, Qt::NoModifier, DiControlInput::MT_None, Qt::NoModifier,
+			DiControlInput::JT_None, 0, 100, false));
+		controls.append(DiControlInput(QObject::tr("Lock/Unlock Hull Doors"), CI_LockHullDoors,
+			Qt::Key_unknown, Qt::NoModifier, DiControlInput::MT_None, Qt::NoModifier,
+			DiControlInput::JT_None, 0, 100, false));
 	}
 }
 
@@ -165,6 +179,14 @@ void DpConsoleHelm::ProcessControlInput(const DiControlInputArray& controls, DaP
 	active.RemoveId(CI_StrobesOnOff);
 	active.RemoveId(CI_NavLightsOnOff);
 	active.RemoveId(CI_GearUpDown);
+	if(context != CONTROL_Client)
+	{
+		DaSc& spacecraft = static_cast<DaSc&>(ship);
+		if(active.HasId(CI_LockCrewDoors)) spacecraft.ToggleLegacyDoorLocks(false);
+		if(active.HasId(CI_LockHullDoors)) spacecraft.ToggleLegacyDoorLocks(true);
+	}
+	active.RemoveId(CI_LockCrewDoors);
+	active.RemoveId(CI_LockHullDoors);
 	if(active.HasId(CI_UNUSED0) && !ship.IsNew())
 	{
 		if(context != CONTROL_Client)
@@ -210,6 +232,9 @@ void DpConsoleHelm::SampleControlPanelInput(qint16 panelId, const AuPoint& panel
 	const DiPanelControl legacy[] = {
 		DiPanelControl(CI_HeadlightOnOff, QRect(146, 90, 16, 16)),
 		DiPanelControl(CI_UNUSED0, QRect(164, 90, 16, 16)),
+		// DpConsolePilot::SampleControlPanelInput, AuAtom13:18060fc50.
+		DiPanelControl(CI_LockCrewDoors, QRect(182, 90, 16, 16)),
+		DiPanelControl(CI_LockHullDoors, QRect(200, 90, 16, 16)),
 		DiPanelControl(CI_CloseHullDoors, QRect(200, 83, 16, 7))
 	};
 	controls.SampleControls(panelId, pixel, continuous, legacy, sizeof(legacy) / sizeof(legacy[0]));

@@ -4684,6 +4684,60 @@ bool DaSc::CrewDoorLocked(unsigned int doorIndex) const
 	return is;
 }
 
+bool DaSc::LegacyDoorsLocked(bool hullDoors) const
+{
+	if(!IsLegacyDebug()) return false;
+	bool locked = false;
+	m_DesignLock.lockForRead();
+	const AuScDesign* design = LockDesign();
+	if(design)
+		for(auto door = m_DoorStates.cbegin(); door != m_DoorStates.cend(); ++door)
+		{
+			const auto part = design->Parts().constFind(door.key());
+			if(part == design->Parts().cend()) continue;
+			const LegacyDoorInfo info(**part);
+			if((hullDoors ? info.IsHullDoor() : info.IsCrewDoor()) && door->IsLocked())
+			{
+				locked = true;
+				break;
+			}
+		}
+	UnlockDesign();
+	m_DesignLock.unlock();
+	return locked;
+}
+
+void DaSc::ToggleLegacyDoorLocks(bool hullDoors)
+{
+	if(!IsLegacyDebug()) return;
+	const bool locked = !LegacyDoorsLocked(hullDoors);
+	// DpConsolePilot:18060e130 and CanLockCrewDoors/CanLockHullDoors:
+	// 1800c5810 require initialization, completed repairs and an officer to
+	// lock either class. Unlocking is allowed regardless of those conditions.
+	if(locked && (IsNew() || RepairSecondsRemaining() || !HasOfficers())) return;
+
+	bool changed = false;
+	m_DesignLock.lockForWrite();
+	const AuScDesign* design = LockDesign();
+	if(design)
+		for(auto door = m_DoorStates.begin(); door != m_DoorStates.end(); ++door)
+		{
+			const auto part = design->Parts().constFind(door.key());
+			if(part == design->Parts().cend()) continue;
+			const LegacyDoorInfo info(**part);
+			if(hullDoors ? info.IsHullDoor() : info.IsCrewDoor())
+				changed = door->SetLock(locked) || changed;
+		}
+	UnlockDesign();
+	if(changed)
+	{
+		// SetLock preserves open/closed positions and leaves jams untouched.
+		m_DoorChg.Set();
+		SetModified();
+	}
+	m_DesignLock.unlock();
+}
+
 bool DaSc::CanOpenDoor(const DaSentient& who, unsigned int doorIndex) const
 {
 	if(!IsLegacyDebug()) return DaVessel::CanOpenDoor(who, doorIndex);
@@ -14480,10 +14534,24 @@ void DaSc::OccupyBerth(AuRosterEntry::TYPE type, const AuId& occId, const QStrin
 		const AuScDesign* scd = LockDesign();
 		if(scd)
 		{
-			// Look for unoccupied berths of the part type, so we can dole them out in part number order.
-			QMap<quint16, bool> berthsOfTheType;
-			for(AuScParts::const_iterator pi = scd->Parts().cbegin(); pi != scd->Parts().cend(); pi++)
+			// Modern berths use part order. Legacy allocation prefers the current
+			// room, otherwise the lowest original room number (180409700).
+			QMap<quint16, quint16> berthsOfTheType;
+			QList<quint16> partIds;
+			for(auto pi = scd->Parts().cbegin(); pi != scd->Parts().cend(); ++pi)
+				if(!(*pi)->IsOmitted() && (*pi)->Type() == partType) partIds.append(pi.key());
+			if(IsLegacyDebug())
+				std::sort(partIds.begin(), partIds.end(), [&](quint16 first, quint16 second) {
+					const AuScPart& a = *scd->Parts().value(first);
+					const AuScPart& b = *scd->Parts().value(second);
+					const quint32 aRoom = LegacyStationField(a, QStringLiteral("order"));
+					const quint32 bRoom = LegacyStationField(b, QStringLiteral("order"));
+					return aRoom != bRoom ? aRoom < bRoom
+						: LegacyStationField(a, QStringLiteral("detail"), first) < LegacyStationField(b, QStringLiteral("detail"), second);
+				});
+			for(quint16 partId : partIds)
 			{
+				const auto pi = scd->Parts().constFind(partId);
 				if((*pi)->IsOmitted())
 					continue;
 				if((*pi)->Type() != partType)
@@ -14491,7 +14559,9 @@ void DaSc::OccupyBerth(AuRosterEntry::TYPE type, const AuId& occId, const QStrin
 
 				// Found the right kind of berth. Is it occupied?
 				m_RosterLock.lockForRead();
-				bool v = m_Roster.BerthOccupants(pi.key()) >= 1;	// Check single occupancy.
+				const quint32 capacity = IsLegacyDebug()
+					? qBound(quint32(1), LegacyStationField(**pi, QStringLiteral("capacity"), 1), quint32(2)) : 1;
+				bool v = m_Roster.BerthOccupants(pi.key()) >= capacity;
 				m_RosterLock.unlock();
 				if(v)
 					continue;	// The berth is full.
@@ -14499,10 +14569,19 @@ void DaSc::OccupyBerth(AuRosterEntry::TYPE type, const AuId& occId, const QStrin
 				// Found an unoccupied berth of the desired type.
 				if(occRoomId)
 				{
-					// Occupant is aboard; if they are in the same room, take the berth.
-					quint16 berthRoomId = scd->RoomVoidContainingLocLive((*pi)->Center(), .1, m_DoorStates, m_LandingGearStates,
-							m_Lifts);
-					if(berthRoomId == occRoomId)
+					bool sameRoom;
+					if(IsLegacyDebug())
+					{
+						// Use the authored room, rather than querying a floor-plane
+						// point that can also touch the room on the deck below.
+						const auto room = scd->Parts().constFind(occRoomId);
+						sameRoom = room != scd->Parts().cend() && (*room)->GroupName()
+							== QStringLiteral("Legacy room %1").arg(LegacyStationField(**pi, QStringLiteral("order")) + 1);
+					}
+					else
+						sameRoom = scd->RoomVoidContainingLocLive((*pi)->Center(), .1, m_DoorStates, m_LandingGearStates,
+							m_Lifts) == occRoomId;
+					if(sameRoom)
 					{
 						berthDetailId = pi.key();
 						break;
@@ -14510,12 +14589,13 @@ void DaSc::OccupyBerth(AuRosterEntry::TYPE type, const AuId& occId, const QStrin
 				}
 
 				// The berth is worth considering.
-				berthsOfTheType.insert(pi.key(), true);
+				const quint16 key = IsLegacyDebug() ? quint16(LegacyStationField(**pi, QStringLiteral("number"))) : pi.key();
+				berthsOfTheType.insert(key, pi.key());
 			}
 
-			// If we didn't find the perfect berth, take the first one from the map, sorted by part number.
+			// Take the first eligible room/part when no berth in the current room is free.
 			if(!berthDetailId && !berthsOfTheType.empty())
-				berthDetailId = berthsOfTheType.cbegin().key();
+				berthDetailId = berthsOfTheType.cbegin().value();
 		}
 		UnlockDesign();
 		m_DesignLock.unlock();

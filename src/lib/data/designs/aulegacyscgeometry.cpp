@@ -21,6 +21,7 @@
 #include <QMutexLocker>
 #include <QMap>
 #include <QScopedPointer>
+#include <QSharedPointer>
 #include <QSet>
 #include <algorithm>
 #include <cmath>
@@ -35,6 +36,7 @@ using namespace AuLegacyShip::Rendering;
 constexpr int MaximumTriangles = 750000;
 constexpr int MaximumGeneratedTriangles = 1000000;
 constexpr int MaximumParts = 8192;
+constexpr double LegacyBerthRotationStepRadians = .7853981633974483;
 constexpr int MaximumTileVisits = 4000000;
 constexpr int MaximumRoomRasterVisits = 500000;
 constexpr quint64 MaximumGeometryMemory = 256 * 1024 * 1024;
@@ -381,6 +383,18 @@ AuScConsole* LiveConsole(int type)
 	}
 }
 
+AuScBerth* LiveBerth(int roomType)
+{
+	switch(roomType)
+	{
+	case ROOM_Barracks: return new AuScBerthTroop;
+	case ROOM_CaptainsCabin: return new AuScBerthOfficer;
+	case ROOM_CrewCabin: return new AuScBerthCrew;
+	case ROOM_Stateroom: return new AuScBerthPassenger;
+	default: return nullptr;
+	}
+}
+
 AuPointArray Rectangle(const AuLegacyScDesign& legacy, const QPointF& a, const QPointF& b,
 	const QPointF& offset, double bottom)
 {
@@ -388,6 +402,55 @@ AuPointArray Rectangle(const AuLegacyScDesign& legacy, const QPointF& a, const Q
 	for(const QPointF& point : {a - offset, b - offset, b + offset, a + offset})
 		points.append(legacy.AuthorToShip(AuPoint(point.x(), point.y(), bottom)));
 	return points;
+}
+
+bool AddBerths(const AuLegacyScDesign& legacy, AuScDesign& design, QString& error)
+{
+	const Design& source = legacy.SourceDesign();
+	QHash<quint16, const Room*> rooms;
+	QHash<quint16, int> roomOrder;
+	for(int index = 0; index < source.rooms.size(); ++index)
+	{
+		const Room& room = source.rooms.at(index);
+		if(!rooms.contains(room.roomId))
+		{
+			rooms.insert(room.roomId, &room);
+			roomOrder.insert(room.roomId, index);
+		}
+	}
+	QVector<QSharedPointer<AuScBerth>> berths;
+	for(int index = 0; index < source.details.size(); ++index)
+	{
+		const Detail& detail = source.details.at(index);
+		const int type = CanonicalDetailType(detail.detailType);
+		if(type != 2 && type != 65) continue;
+		const Room* room = rooms.value(detail.roomId, nullptr);
+		if(!room) continue;
+		QSharedPointer<AuScBerth> berth(LiveBerth(room->roomType));
+		if(!berth) continue;
+		const QPointF point = DecodePoint(detail.packedXY);
+		const AuPoint floor = legacy.AuthorToShip(AuPoint(point.x(), point.y(), detail.deck * AuLegacyShip::DeckHeight));
+		berth->MakeIcon(floor, float((DetailRotationStep(detail.detailType) - 2) * LegacyBerthRotationStepRadians), AuMatrix4x4());
+		// OccupyBerth:180409700 chooses by room role and room number.
+		// IsBerthFull:180198190 permits two occupants for detail 2/25..31
+		// and one for 65..72. Original hidden details still count as berths.
+		berth->SetGroupName(QStringLiteral("legacy/berth/detail/%1/room/%2/number/%3/capacity/%4/order/%5")
+			.arg(legacy.DetailRecordId(index)).arg(room->roomId).arg(room->roomSubtype).arg(type == 2 ? 2 : 1)
+			.arg(roomOrder.value(room->roomId)));
+		berths.append(berth);
+	}
+	if(berths.size() + design.Parts().size() > MaximumParts)
+	{
+		error = QStringLiteral("The legacy design exceeds the runtime part limit when adding berth records.");
+		return false;
+	}
+	for(const auto& berth : berths)
+		if(!AddPart(design, *berth))
+		{
+			error = QStringLiteral("A runtime berth record could not be allocated.");
+			return false;
+		}
+	return true;
 }
 
 }
@@ -1029,6 +1092,7 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 	// Build silhouettes without the modern voxel volume pass. Volume is already
 	// computed from the accepted legacy source. Live switches and power state
 	// are initialized separately when the ship is spawned.
+	if(!AddBerths(legacy, generated, error)) return false;
 	generated.Parts().RefreshObstructionsCache();
 	generated.SetLegacyHullVolume(quint32(std::max(1.0, std::ceil(double(legacy.Stats().hullVolume) / CubicFeetPerCubicMeter()))));
 	generated.SetLegacyStats(QSharedPointer<const AuLegacyScStats>(new AuLegacyScStats(legacy.SourceDesign(), legacy.Stats())));

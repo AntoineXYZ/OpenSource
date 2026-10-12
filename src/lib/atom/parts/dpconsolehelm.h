@@ -18,6 +18,13 @@ private:
 	void SetLegacyControls(bool legacy);
 
 public:
+	// Reuse the original wire IDs reserved by the modern helm enum.
+	enum LEGACY_CONTROLINPUT
+	{
+		CI_LockCrewDoors = CI_UNUSED1,
+		CI_LockHullDoors = CI_UNUSED2,
+	};
+
 	DpConsoleHelm();
 	virtual ~DpConsoleHelm();
 	DpConsoleHelm(const DpConsoleHelm& c);

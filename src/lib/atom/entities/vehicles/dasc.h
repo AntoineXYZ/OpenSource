@@ -484,6 +484,12 @@ public:	// Methods
 	virtual unsigned int CrewBerths() const;
 
 	virtual bool CrewDoorLocked(unsigned int doorIndex) const;
+
+	// Legacy locks apply to all crew doors or all hull doors. Their states
+	// use the existing saved and replicated door hash, including manual locks.
+	bool LegacyDoorsLocked(bool hullDoors) const;
+	void ToggleLegacyDoorLocks(bool hullDoors);
+
 	virtual bool CanOpenDoor(const DaSentient& who, unsigned int doorIndex) const;
 
 	virtual quint32 CryoBerths() const;
