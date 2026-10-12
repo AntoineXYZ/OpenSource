@@ -489,8 +489,8 @@ void AuOrdnanceTransfer::OrdnanceReceived(const QByteArray& ba)
 	in >> ord;
 
 	// List ammunition.
-	m_OrdnanceTable->clearContents();
 	m_OrdnanceTable->setSortingEnabled(false);
+	m_OrdnanceTable->setRowCount(0);
 	for(AuItemHash::const_iterator ii = ord.begin(); ii != ord.end(); ii++)
 	{
 		// Filter ammo that cannot be loaded by the player's current weapon.
@@ -712,6 +712,9 @@ void AuOrdnanceTransfer::LoadSelectedOrdnance(DaVehicle::WEAPON_RACK rack)
 
 	auApp->OrdnanceLoad(rack, *item);
 	delete item;
+	// The load and list requests are processed in order, so this includes
+	// ammunition removed from the hold and any replaced ammunition returned.
+	RequestOrdnance();
 }
 
 QSize AuOrdnanceTransfer::sizeHint() const

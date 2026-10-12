@@ -8238,17 +8238,14 @@ void DtChatChannel::OrdnanceList()
 	AuId loaderId;	// 'loaderId' is the id of the atom providing the ordnance.
 	AuItemHash ordnance;
 	m_I->OrdnanceList(loaderId, ordnance);
-	if(!ordnance.empty())
-	{
-		// Send the list of ordnance to the client.
-		QByteArray ba;
-		QDataStream out(&ba, QIODevice::WriteOnly);
-		out.setVersion(QDataStream::Qt_4_1);
-		out << (quint8)DtChatChannelPacket::PI_Ordnance;
-		out << loaderId;
-		out << ordnance;
-		SendPacket(ba);
-	}
+	// An empty reply clears ammunition that is no longer in the hold.
+	QByteArray ba;
+	QDataStream out(&ba, QIODevice::WriteOnly);
+	out.setVersion(QDataStream::Qt_4_1);
+	out << (quint8)DtChatChannelPacket::PI_Ordnance;
+	out << loaderId;
+	out << ordnance;
+	SendPacket(ba);
 }
 
 void DtChatChannel::ArenaSendList()
