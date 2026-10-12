@@ -94,14 +94,15 @@ bool IsLegacyConsolePose(const AuPose& pose)
 		|| pose == AuPose::ConsoleNav || pose == AuPose::ConsoleFireControl
 		|| pose == AuPose::ConsoleSensor || pose == AuPose::ConsoleShield
 		|| pose == AuPose::ConsoleSurgery || pose == AuPose::ConsoleSurgeryUnit
-		|| pose == AuPose::ConsoleTransporter;
+		|| pose == AuPose::ConsoleTransporter
+		|| (pose.IsTurret() && !pose.IsTurretIntegrated());
 }
 
 bool ValidateLegacyConsoleAttachment(DaSc& ship, const DaCreature& creature, const AuPose& pose,
 		quint16 stationId, quint16 controlId, const AuPoint& location, QString& reason)
 {
 	AuStation station;
-	if(creature.IsConsolePose() && creature.StationId() == stationId)
+	if((creature.IsConsolePose() || creature.IsTurretPose()) && creature.StationId() == stationId)
 	{
 		// An occupied seat cannot pass the entry test again. Accept only the
 		// station mode and control already authorized on the server.
@@ -320,7 +321,7 @@ LegacyMovementCheck CheckLegacyClientMovement(DaAtom& actor, DaAtom* requestedPa
 			result.reason = QStringLiteral("legacy design unavailable");
 		else
 		{
-			// Old consoles use a fixed seat height, independent of avatar anatomy.
+			// Old consoles and turrets use a fixed seat height, independent of avatar anatomy.
 			// Feet in the seated pose may extend below the deck. Validate the native
 			// seat transition instead of interpreting that snap as walking into it.
 			if(ship == newShip && parent == ship && requestedParent == ship && creature

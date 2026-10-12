@@ -3122,6 +3122,19 @@ void DaCreature::SetupCamera(AuMatrix4x4& tCamera, double& rNearClip, double& rF
 		gp = m_Animalia->CurrentGeneralPose();
 		headTilt = m_Animalia->CurrentHeadTilt();
 	}
+	const DaSc* legacyShip = dynamic_cast<const DaSc*>(parent);
+	if(gp.IsTurret() && !gp.IsTurretIntegrated()
+		&& ((legacyShip && legacyShip->IsLegacyDebug()) || InDesignerNotPreview()))
+	{
+		// SetupCamera:1802f1450 anchors the view at WeaponLoc rather than
+		// the avatar's head. Its sight height and clip setback rotate with aim.
+		rNearClip = 3;
+		tCamera.LoadIdentity();
+		tCamera.Translate(WeaponLoc());
+		tCamera.RotateX(PI / 2 + headTilt);
+		tCamera.Translate(0, gp == AuPose::ConsoleTurretBottom ? -2.0027 : .6027011, rNearClip / 2);
+		return;
+	}
 	if(gp.IsTurretIntegrated())
 	{
 		const DaSc* sc = dynamic_cast<const DaSc*>(parent);
@@ -5535,6 +5548,16 @@ AuPoint DaCreature::WeaponLoc() const
 	const double odxy = offdist * .7071;	// xy for 45 deg angles
 	AuPoint wpnloc;
 	AuPose gp = CurrentGeneralPose();
+	const DaSc* legacyShip = dynamic_cast<const DaSc*>(Parent());
+	if(gp.IsTurret() && !gp.IsTurretIntegrated() && legacyShip && legacyShip->IsLegacyDebug())
+	{
+		// Use the occupied gun pivot, including diagonal seat offsets, with
+		// either avatar anatomy. The recovered muzzle is 6.5ft beyond it.
+		AuMatrix4x4 muzzle;
+		legacyShip->TurretMuzzleMatrix(StationId(), Rotation().z, CurrentHeadTilt(), muzzle);
+		return Transform().UnProject(muzzle.Project(AuPoint(0, 0, -6.5)));
+	}
+	const bool classicEnvironment = gp.IsTurret() && (IsInCapsule() || InDesignerNotPreview());
 	switch(gp.Pose())
 	{
 	case AuPose::Turret_Sit:
@@ -5562,44 +5585,45 @@ AuPoint DaCreature::WeaponLoc() const
 		}
 		break;
 	case AuPose::ConsoleTurret0:
-		if(IsInCapsule())
+		if(classicEnvironment)
 			return AuPoint(offdist,0,(4-(c_GunMaxZ+c_GunMinZ)/2) -GroundHeightAboveCG()).RotateZ(-Rotation().z);
 		break;
 	case AuPose::ConsoleTurret45:
-		if(IsInCapsule())
+		if(classicEnvironment)
 			return AuPoint(odxy,odxy,(4-(c_GunMaxZ+c_GunMinZ)/2) -GroundHeightAboveCG()).RotateZ(-Rotation().z);
 		break;
 	case AuPose::ConsoleTurret90:
-		if(IsInCapsule())
+		if(classicEnvironment)
 			return AuPoint(0,offdist,(4-(c_GunMaxZ+c_GunMinZ)/2) -GroundHeightAboveCG()).RotateZ(-Rotation().z);
 		break;
 	case AuPose::ConsoleTurret135:
-		if(IsInCapsule())
+		if(classicEnvironment)
 			return AuPoint(-odxy,odxy,(4-(c_GunMaxZ+c_GunMinZ)/2) -GroundHeightAboveCG()).RotateZ(-Rotation().z);
 		break;
 	case AuPose::ConsoleTurret180:
-		if(IsInCapsule())
+		if(classicEnvironment)
 			return AuPoint(-offdist,0,(4-(c_GunMaxZ+c_GunMinZ)/2) -GroundHeightAboveCG()).RotateZ(-Rotation().z);
 		break;
 	case AuPose::ConsoleTurret225:
-		if(IsInCapsule())
+		if(classicEnvironment)
 			return AuPoint(-odxy,-odxy,(4-(c_GunMaxZ+c_GunMinZ)/2) -GroundHeightAboveCG()).RotateZ(-Rotation().z);
 		break;
 	case AuPose::ConsoleTurret270:
-		if(IsInCapsule())
+		if(classicEnvironment)
 			return AuPoint(0,-offdist,(4-(c_GunMaxZ+c_GunMinZ)/2) -GroundHeightAboveCG()).RotateZ(-Rotation().z);
 		break;
 	case AuPose::ConsoleTurret315:
-		if(IsInCapsule())
+		if(classicEnvironment)
 			return AuPoint(odxy,-odxy,(4-(c_GunMaxZ+c_GunMinZ)/2) -GroundHeightAboveCG()).RotateZ(-Rotation().z);
 		break;
 	case AuPose::ConsoleTurretBottom:
-		if(IsInCapsule())
+		if(classicEnvironment)
 			return AuPoint(0,0,-c_GunMaxZ -GroundHeightAboveCG()).RotateZ(-Rotation().z);
 		break;
 	case AuPose::ConsoleTurretTop:
-		if(IsInCapsule())
-			return AuPoint(0,0,(DeckHeight()-c_GunMinZ) - GroundHeightAboveCG()).RotateZ(-Rotation().z);
+		if(classicEnvironment)
+			return AuPoint(0,0,((InDesignerNotPreview() ? AuLegacyShip::DeckHeight : DeckHeight())-c_GunMinZ)
+				- GroundHeightAboveCG()).RotateZ(-Rotation().z);
 		break;
 	default:
 		// Weapon is always in the dominant hand, even if I don't have hands.
@@ -9046,6 +9070,15 @@ bool DaCreature::ConsoleScreenQuad(AuQuad& screen) const
 
 AuPoint DaCreature::SceneCameraLocation() const
 {
+	const DaSc* legacyShip = dynamic_cast<const DaSc*>(Parent());
+	const AuPose pose = CurrentGeneralPose();
+	if(pose.IsTurret() && !pose.IsTurretIntegrated()
+		&& ((legacyShip && legacyShip->IsLegacyDebug()) || InDesignerNotPreview()))
+	{
+		// Match SetupCamera for target queries made from the scene camera.
+		return WeaponLoc() + AuPoint(0, pose == AuPose::ConsoleTurretBottom ? -2.0027 : .6027011, 1.5)
+			.RotateX(PI / 2 + CurrentHeadTilt());
+	}
 	if(IsTurretIntegratedPose())
 	{
 		const DaSc* sc = dynamic_cast<const DaSc*>(Parent());
