@@ -333,7 +333,12 @@ LegacyMovementCheck CheckLegacyClientMovement(DaAtom& actor, DaAtom* requestedPa
 			// Reports can span several native slide/ground-contact steps. Compare the previous authorized body with the
 			// candidate body, and replay a bounded local slide for unchanged-parent reports, including exterior hull peers.
 			const bool unchangedFrame = !movesWithParent || movingFrame->position.ParentId() == movingFrame->atom->ParentId();
-			const bool allowSlideReplay = parent == requestedParent && unchangedFrame;
+			// A vehicle can leave the hull frame before its rear clears the deck.
+			// Reports across that exit may include the checked floor slide followed
+			// by a short drop. Replay the same bounded route in ship coordinates.
+			const bool vehicleExit = !movesWithParent && dynamic_cast<DaVehicle*>(&actor)
+				&& parent == ship && requestedParent == ship->Parent();
+			const bool allowSlideReplay = unchangedFrame && (parent == requestedParent || vehicleExit);
 			ship->OpenLegacyAutomaticDoors(actor, from, to, oldOffsets, candidateGeneralPose.IsLadder());
 			if(candidateGeneralPose.IsLadder())
 				ship->OpenLegacyAutomaticDoors(actor, from, to, newOffsets, true);

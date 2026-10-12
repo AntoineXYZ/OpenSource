@@ -103,6 +103,35 @@ AuStation LegacyPatientStation(const AuScPart& part)
 	return AuStation(AuStation::Console_Patient, patient, AuStation::Occupant_Stand, 0);
 }
 
+AuStation LegacyBerthStation(const AuScPart& part, int bunk)
+{
+	const AuStation bed = part.OperatorStation(AuPoint(0, 0, 1));
+	AuMatrix4x4 position = bed.OpM();
+	// EnterShipConsole:18032e360 faces authored angle + pi/2. The
+	// generated berth icon faces authored angle - pi/2.
+	position.RotateZ(PI);
+	// ConsoleSeatOffset:1802e5dc0: 1.5ft along the authored X axis,
+	// 2ft above the floor for the bottom bunk, 5.5ft for the top.
+	position.Translate(0, -1.5, bunk ? 5.5 : 2);
+	return AuStation(bed.Type(), position, AuStation::Occupant_Prone, bunk);
+}
+
+bool LegacyBunkOccupied(const DaSc& ship, const AuScPart& berth, quint16 berthId, int bunk)
+{
+	const AuPoint location = LegacyBerthStation(berth, bunk).OpM().Translation();
+	DaAtomList aboard;
+	ship.ListNormalSubatoms(aboard);
+	for(const DaAtom* atom : aboard)
+	{
+		const DaCreature* creature = dynamic_cast<const DaCreature*>(atom);
+		if(!creature || !creature->IsInBerth() || creature->ConsoleSeatIndex() != unsigned(bunk)) continue;
+		// FinishSpawn sets a sleeping pose without a station ID. Recover its
+		// berth from the position as EmptyBunkInBerth:1803ea250 did.
+		if(creature->StationId() == berthId || creature->Location().FuzzyEquals(location)) return true;
+	}
+	return false;
+}
+
 void LogLegacyCollision(const QString& message)
 {
 	if(g_Au.IsSceneClient())
@@ -1721,17 +1750,31 @@ bool DaSc::CanEnterConsole(const DaPerson& who, quint16& stationId, AuStation& s
 		for(auto pi = scd->Parts().cbegin(); pi != scd->Parts().cend(); ++pi)
 		{
 			const AuScPart* console = *pi;
+			const bool berth = pi.key() == berthId && console->GroupName().startsWith(QStringLiteral("legacy/berth/detail/"));
 			const bool surgery = console->GroupName().startsWith(QStringLiteral("legacy/surgery/detail/"));
-			if(console->IsOmitted() || (!surgery && (!console->IsConsole()
+			if(console->IsOmitted() || (!berth && !surgery && (!console->IsConsole()
 				|| !console->GroupName().startsWith(QStringLiteral("legacy/console/detail/"))))) continue;
 			consoleIds.insert(LegacyStationField(*console, QStringLiteral("detail"), pi.key()), pi.key());
 		}
 		for(quint16 consoleId : consoleIds)
 		{
 			const AuScPart* console = scd->Parts().value(consoleId);
-			const AuPoint floor = console->OperatorLoc();
+			const bool berth = console->GroupName().startsWith(QStringLiteral("legacy/berth/detail/"));
+			const AuPoint floor = berth ? console->BerthLocation() : console->OperatorLoc();
 			if(who.Location().Distance2_2D(floor) >= 3 * 3
 				|| std::floor((who.Location().z - floor.z + .05) / AuLegacyShip::DeckHeight) != 0) continue;
+			if(berth)
+			{
+				// CanEnterConsole:1803ce930 permits only the avatar's assigned
+				// berth. Keep the two recovered bunks distinct when sharing it.
+				const int capacity = int(qBound(quint32(1), LegacyStationField(*console, QStringLiteral("capacity"), 1), quint32(2)));
+				int bunk = 0;
+				while(bunk < capacity && LegacyBunkOccupied(*this, *console, consoleId, bunk)) ++bunk;
+				if(bunk == capacity) continue;
+				station = LegacyBerthStation(*console, bunk);
+				stationId = which = consoleId;
+				break;
+			}
 			if(console->GroupName().startsWith(QStringLiteral("legacy/surgery/detail/")))
 			{
 				const quint16 medic = quint16(LegacyStationField(*console, QStringLiteral("medic")));
@@ -3512,7 +3555,9 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 			if(part->IsHullMesh() && (part->GroupName() == QStringLiteral("legacy/debug/static/v7")
 				|| part->GroupName() == QStringLiteral("legacy/debug/static/v8")
 				|| part->GroupName() == QStringLiteral("legacy/debug/static/v9")
-				|| part->GroupName() == QStringLiteral("legacy/debug/static/v10")))
+				|| part->GroupName() == QStringLiteral("legacy/debug/static/v10")
+				|| part->GroupName() == QStringLiteral("legacy/debug/static/v11")
+				|| part->GroupName() == QStringLiteral("legacy/debug/static/v12")))
 			{
 				oldForcedInteriorGlow = false;
 				break;
@@ -5659,7 +5704,26 @@ void DaSc::DischargeFTLDrive(quint16 whichFTL)
 
 int DaSc::EmptyBunkInBerth(const AuPoint& consoleLoc) const
 {
-	Q_UNUSED(consoleLoc);
+	if(IsLegacyDebug())
+	{
+		int bunk = 0;
+		const AuScDesign* design = LockDesign();
+		if(design)
+			for(auto part = design->Parts().cbegin(); part != design->Parts().cend(); ++part)
+				if(!(*part)->IsOmitted() && (*part)->GroupName().startsWith(QStringLiteral("legacy/berth/detail/"))
+					&& LegacyStationField(**part, QStringLiteral("capacity"), 1) == 2)
+				{
+					const AuPoint floor = (*part)->BerthLocation();
+					if(consoleLoc.Distance2_2D(floor) < 9
+						&& std::floor((consoleLoc.z - floor.z + .05) / AuLegacyShip::DeckHeight) == 0)
+					{
+						bunk = LegacyBunkOccupied(*this, **part, part.key(), 0) ? 1 : 0;
+						break;
+					}
+				}
+		UnlockDesign();
+		return bunk;
+	}
 	return 0;	// All berths in Sc designs have only one bunk.
 }
 
@@ -5989,6 +6053,40 @@ void DaSc::EnumViewPanelControls(qint16 panelId, QList<AuControlButton>& control
 
 void DaSc::FilterDestinationLoc(DaAtom* moveAtom, const AuPoint& oldLoc, AuPoint& nuLoc) const
 {
+	DaVehicle* vehicle = dynamic_cast<DaVehicle*>(moveAtom);
+	if(IsLegacyDebug() && vehicle && !vehicle->IsEthereal())
+	{
+		AuBox offsets;
+		AuMatrix4x4 bodyToShip;
+		if(!LegacyBodyOffsets(*vehicle, offsets) || !GetRelativeTransform(*vehicle, bodyToShip)) return;
+		const_cast<DaSc*>(this)->OpenLegacyAutomaticDoors(*vehicle, oldLoc, nuLoc, offsets);
+		m_DesignLock.lockForRead();
+		const AuScDesign* design = LockDesign();
+		const auto world = design ? LegacyCollision(*design) : QSharedPointer<const AuLegacyScGeometry::CollisionWorld>();
+		const AuDoorStateHash doors(m_DoorStates);
+		UnlockDesign();
+		m_DesignLock.unlock();
+		if(world && world->IsValid())
+		{
+			AuPoint normal;
+			// The center can leave the floor while the rear of the chassis still
+			// overlaps it. Cancel only motion into that support, retaining forward
+			// travel until the whole vehicle clears the deck/landing. Ground
+			// vehicles approaching from outside can take the checked nine-inch
+			// boarding step, independently of retaining height during exit sliding.
+			const bool boarding = vehicle->IsGroundVehicle() && vehicle->Parent() != this && vehicle->IsOnGround();
+			nuLoc = world->ResolveDestination(oldLoc, nuLoc, offsets,
+				bodyToShip.ProjectVector(vehicle->GravityNormal()), vehicle->GroundHeightAboveCG(), false, normal, false, &doors, boarding);
+			if(!normal.IsZero())
+			{
+				const AuPoint localNormal = bodyToShip.UnProjectVector(normal);
+				const AuPoint velocity = vehicle->Vector();
+				const double inward = velocity.Dot(localNormal);
+				if(inward < 0) vehicle->SetVector(velocity - localNormal * inward);
+			}
+		}
+		return;
+	}
 	const DaCreature* creature = dynamic_cast<const DaCreature*>(moveAtom);
 	if(IsLegacyDebug() && creature && !creature->IsEthereal() && !creature->AgentEntity())
 	{
@@ -6105,12 +6203,36 @@ bool DaSc::FloorHt(const AuPoint& loc, const AuPoint& gravityN, double& htAbvFlo
 	onStairs = false;
 	if(IsLegacyDebug())
 	{
+		const DaVehicle* vehicle = dynamic_cast<const DaVehicle*>(forWho);
+		AuBox supportOffsets;
+		const bool vehicleSupport = vehicle && vehicle->IsGroundVehicle()
+			&& LegacyBodyOffsets(*vehicle, supportOffsets);
+		const double supportHeight = vehicleSupport ? vehicle->GroundHeightAboveCG() : 0;
 		m_DesignLock.lockForRead();
 		const AuScDesign* design = LockDesign();
 		const auto world = design ? LegacyCollision(*design) : QSharedPointer<const AuLegacyScGeometry::CollisionWorld>();
 		if(world && world->IsValid())
 		{
 			htAbvFloor = world->HeightAboveFloor(loc, gravityN, stairNormal, &m_DoorStates);
+			if(vehicleSupport)
+			{
+				AuPoint up = gravityN; up.Unit();
+				// Keep traction while the rear footprint is still touching the deck
+				// or landing, even when the center is beyond it. Only accept actual
+				// support at the current height; this must not lift a vehicle onto
+				// another floor or treat a distant surface below as ground contact.
+				for(int corner = 0; corner < 4; ++corner)
+				{
+					const AuPoint offset = supportOffsets.m_fCorners[corner];
+					AuPoint normal;
+					const double floor = world->HeightAboveFloor(loc + offset - up * offset.Dot(up), up, normal, &m_DoorStates);
+					if(!normal.IsZero() && normal.Dot(up) >= .55 && std::abs(floor - supportHeight) <= .25 && floor < htAbvFloor)
+					{
+						htAbvFloor = floor;
+						stairNormal = normal;
+					}
+				}
+			}
 			const quint16 roomId = design->RoomVoidContainingLocLive(loc, .1, m_DoorStates, m_LandingGearStates, m_Lifts);
 			const auto room = design->Parts().find(roomId);
 			inGravityWell = room != design->Parts().cend() && (*room)->GravityType() == G_Zero;
@@ -15789,6 +15911,15 @@ bool DaSc::BerthPosition(const DaCreature& occupant, AuMatrix4x4& berthM) const
 	}
 	// Get the gravity normal from the room containing the berth.
 	// Current operator location and gravity normal are not needed for berth positioning; it is totally based on part orientation.
+	if(IsLegacyDebug() && (*pi)->GroupName().startsWith(QStringLiteral("legacy/berth/detail/")))
+	{
+		int bunk = 0;
+		if(LegacyStationField(**pi, QStringLiteral("capacity"), 1) == 2
+			&& LegacyBunkOccupied(*this, **pi, quint16(berthId), 0)) bunk = 1;
+		berthM = LegacyBerthStation(**pi, bunk).OpM();
+		UnlockDesign();
+		return true;
+	}
 	AuStation station = (*pi)->OperatorStation(AuPoint(0,0,1));
 	UnlockDesign();
 	berthM = station.OpM();

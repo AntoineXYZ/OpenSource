@@ -2208,7 +2208,8 @@ DaAtom::COLLISION_TYPE DaAtom::CheckCollision(const AuPoint &foldloc, const AuPo
 	// Resolve exterior hull contact after the parent has adjusted movement for
 	// terrain. The final collision check still checks every parent and peer.
 	const DaCreature* creature = dynamic_cast<const DaCreature*>(this);
-	if(resolvedDestination && creature && !AgentEntity())
+	const DaVehicle* vehicle = dynamic_cast<const DaVehicle*>(this);
+	if(resolvedDestination && (creature || vehicle) && !AgentEntity())
 	{
 		DaAtomList peers;
 		pParent->ListNormalSubatoms(peers);
@@ -2221,7 +2222,7 @@ DaAtom::COLLISION_TYPE DaAtom::CheckCollision(const AuPoint &foldloc, const AuPo
 			if(!peerBodyExtentsReady)
 			{
 				peerBodyExtents = fMoveExt;
-				creature->LegacyCollisionExtents(peerBodyExtents);
+				if(creature) creature->LegacyCollisionExtents(peerBodyExtents);
 				peerBodyExtentsReady = true;
 			}
 			const AuMatrix4x4 shipTransform = ship->Transform();
@@ -2230,8 +2231,12 @@ DaAtom::COLLISION_TYPE DaAtom::CheckCollision(const AuPoint &foldloc, const AuPo
 			AuBox shipBounds;
 			if(!ship->RoughExtents(shipBounds)) continue;
 			const AuMatrix4x4 bodyToShip = shipTransform.Inverse() * Transform();
-			const AuBox shipBodyExtents = AuLegacyScGeometry::MovementBodyOffsets(peerBodyExtents,
-				bodyToShip.ProjectVector(creature->GravityNormal()));
+			AuBox shipBodyExtents(peerBodyExtents);
+			if(creature)
+				shipBodyExtents = AuLegacyScGeometry::MovementBodyOffsets(peerBodyExtents,
+					bodyToShip.ProjectVector(creature->GravityNormal()));
+			else
+				for(AuPoint& corner : shipBodyExtents.m_fCorners) corner = bodyToShip.ProjectVector(corner);
 			AuPoint bodyMinimum, bodyMaximum, hullMinimum, hullMaximum;
 			shipBodyExtents.GetMinMax(bodyMinimum, bodyMaximum);
 			shipBounds.GetMinMax(hullMinimum, hullMaximum);

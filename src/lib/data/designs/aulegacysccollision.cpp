@@ -746,7 +746,9 @@ bool IsCollisionDesign(const AuScDesign& design)
 			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v7")
 			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v8")
 			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v9")
-			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v10"))) return true;
+			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v10")
+			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v11")
+			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v12"))) return true;
 	return false;
 }
 
@@ -758,7 +760,9 @@ CollisionWorld::CollisionWorld(const AuScDesign& design) : m_Impl(new Impl)
 			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v7")
 			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v8")
 			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v9")
-			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v10")))
+			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v10")
+			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v11")
+			|| (*part)->GroupName() == QStringLiteral("legacy/debug/static/v12")))
 			m_Impl->statefulDoors = true;
 	for(auto part = design.Parts().cbegin(); part != design.Parts().cend(); ++part)
 	{
@@ -918,7 +922,7 @@ bool CollisionWorld::IsBodyTransitionBlocked(const AuPoint& from, const AuPoint&
 	const bool newBlocked = m_Impl->Sweep(newStart, to, newSweep, newFraction, newNormal, &newTriangle, doorStates);
 	if(!oldBlocked || !newBlocked) return false;
 	const AuPoint displacement = oldTarget - from;
-	if(oldBody.SameShape(newBody) && displacement.Length2() <= MaximumReplayDistance * MaximumReplayDistance)
+	if(displacement.Length2() <= MaximumReplayDistance * MaximumReplayDistance)
 	{
 		AuPoint up = oldBody.edges[2]; up.Unit();
 		const double rise = displacement.Dot(up);
@@ -928,10 +932,17 @@ bool CollisionWorld::IsBodyTransitionBlocked(const AuPoint& from, const AuPoint&
 		{
 			// A boarding packet can span the upward step and the parent change.
 			// Validate both legs continuously, including lintels and equipment.
+			// Vehicle orientation can change slightly at the parent handoff;
+			// check both orientations instead of requiring byte-identical bounds.
 			const AuPoint raised = from + up * rise;
+			const double newRise = (to - newStart).Dot(up);
+			const AuPoint newRaised = newStart + up * newRise;
 			double fraction; AuPoint normal;
-			if(!m_Impl->Sweep(from, raised, oldSweep, fraction, normal, nullptr, doorStates)
-				&& !m_Impl->Sweep(raised, oldTarget, oldSweep, fraction, normal, nullptr, doorStates)) return false;
+			if(newRise >= 0 && newRise <= MaximumBoardingStep + 1e-8
+				&& !m_Impl->Sweep(from, raised, oldSweep, fraction, normal, nullptr, doorStates)
+				&& !m_Impl->Sweep(raised, oldTarget, oldSweep, fraction, normal, nullptr, doorStates)
+				&& !m_Impl->Sweep(newStart, newRaised, newSweep, fraction, normal, nullptr, doorStates)
+				&& !m_Impl->Sweep(newRaised, to, newSweep, fraction, normal, nullptr, doorStates)) return false;
 		}
 	}
 	if(allowSlideReplay && displacement.Length2() <= MaximumReplayDistance * MaximumReplayDistance
@@ -946,7 +957,10 @@ bool CollisionWorld::IsBodyTransitionBlocked(const AuPoint& from, const AuPoint&
 		double connectorFraction; AuPoint connectorNormal;
 		if(resolved.Distance2(oldTarget) <= GroundTolerance * GroundTolerance
 			&& !m_Impl->Sweep(resolved, oldTarget, oldSweep, connectorFraction, connectorNormal, nullptr, doorStates)) return false;
-		const AuPoint waypoints[] = {{oldTarget.x, from.y, from.z}, {from.x, oldTarget.y, from.z}};
+		// A chassis can slide horizontally until its rear clears a deck edge,
+		// then fall. The endpoints' straight chord cuts through that support.
+		const AuPoint waypoints[] = {{oldTarget.x, from.y, from.z}, {from.x, oldTarget.y, from.z},
+			{oldTarget.x, oldTarget.y, from.z}};
 		for(const AuPoint& waypoint : waypoints)
 		{
 			if(from.Distance(waypoint) + waypoint.Distance(oldTarget) > MaximumReplayDistance) continue;
@@ -965,7 +979,7 @@ bool CollisionWorld::IsBodyTransitionBlocked(const AuPoint& from, const AuPoint&
 
 AuPoint CollisionWorld::ResolveDestination(const AuPoint& from, const AuPoint& to, const AuBox& bodyOffsets,
 	const AuPoint& gravityUp, double standingHeight, bool allowGroundSnap, AuPoint& hitNormal,
-	bool preserveGroundHeight, const AuDoorStateHash* doorStates) const
+	bool preserveGroundHeight, const AuDoorStateHash* doorStates, bool allowBoardingStep) const
 {
 	hitNormal = AuPoint(0, 0, 0);
 	const Body body(bodyOffsets);
@@ -973,7 +987,7 @@ AuPoint CollisionWorld::ResolveDestination(const AuPoint& from, const AuPoint& t
 	AuPoint up = gravityUp; up.Unit();
 	if(up.IsZero()) return from;
 	AuPoint target = to;
-	if(preserveGroundHeight && std::isfinite(standingHeight) && standingHeight > 0)
+	if((preserveGroundHeight || allowBoardingStep) && std::isfinite(standingHeight) && standingHeight > 0)
 	{
 		double floor; AuPoint normal;
 		if(m_Impl->BoardingFloor(from, to, body, up, floor, normal, doorStates))

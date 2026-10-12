@@ -454,6 +454,40 @@ bool AddBerths(const AuLegacyScDesign& legacy, AuScDesign& design, QString& erro
 	return true;
 }
 
+bool AddVehicleParking(const AuLegacyScDesign& legacy, AuScDesign& design, QString& error)
+{
+	const Design& source = legacy.SourceDesign();
+	for(int index = 0; index < source.details.size(); ++index)
+	{
+		const Detail& detail = source.details.at(index);
+		if(detail.detailType < 57 || detail.detailType > 64) continue;
+		const int commodity = detail.commodityIdNormalized ? detail.commodityIdNormalized : detail.commodityIdRaw;
+		QScopedPointer<AuScIcon> spot;
+		switch(commodity)
+		{
+		case CID_SpaceRocket: spot.reset(new AuScRocketParkingSpot); break;
+		case CID_Submarine: case CID_SailBoat: spot.reset(new AuScWaterVehicleParkingSpot); break;
+		case CID_FarmMachinery: case CID_SUV: case CID_APC: case CID_DirtBike:
+			spot.reset(new AuScGroundVehicleParkingSpot); break;
+		case CID_Helicopter: case CID_SpaceFighter: case CID_SpaceTransport: case CID_AdvSpaceFighter:
+			spot.reset(new AuScSpaceVehicleParkingSpot); break;
+		default: continue;
+		}
+		const QPointF point = DecodePoint(detail.packedXY);
+		const AuPoint floor = legacy.AuthorToShip(AuPoint(point.x(), point.y(), detail.deck * AuLegacyShip::DeckHeight));
+		// ClosestVehicleParkingSpot:1803d4620 subtracts pi/2 from the authored angle.
+		spot->MakeIcon(floor, float((detail.detailType - 59) * LegacyBerthRotationStepRadians), AuMatrix4x4());
+		spot->SetGroupName(QStringLiteral("legacy/parking/detail/%1/commodity/%2")
+			.arg(legacy.DetailRecordId(index)).arg(commodity));
+		if(design.Parts().size() >= MaximumParts || !AddPart(design, *spot))
+		{
+			error = QStringLiteral("The legacy design exceeds the runtime part limit when adding vehicle parking spots.");
+			return false;
+		}
+	}
+	return true;
+}
+
 }
 
 bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& architectId,
@@ -488,6 +522,10 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 	}
 	for(int index = 0; index < source.details.size(); ++index)
 		source.details[index].detailId = legacy.DetailRecordId(index);
+	QSet<quint32> vehicleDetails;
+	for(const Detail& detail : source.details)
+		if(detail.detailType >= 57 && detail.detailType <= 64)
+			vehicleDetails.insert(detail.detailId);
 	Mesh mesh = BuildMesh(source);
 	// Legacy equipment batches can combine units from several numbered bays.
 	// Preserve their triangle provenance so each bay animates independently.
@@ -653,6 +691,7 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 	{
 		const Batch& batch = mesh.batches[index];
 		if(batch.doorId || batch.vertices.isEmpty()
+			|| vehicleDetails.contains(batch.detailId)
 			|| (batch.consoleId && liveConsoleDetails.contains(batch.consoleId))) continue;
 		AuScFaceList faces;
 		const int previousTriangles = triangleCount;
@@ -716,7 +755,7 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 	{
 		AuScHull hull;
 		hull.SetFaces(exteriorFaces);
-		hull.SetGroupName(QStringLiteral("legacy/debug/static/v10"));
+		hull.SetGroupName(QStringLiteral("legacy/debug/static/v12"));
 		if(!AddPart(generated, hull))
 		{
 			error = QStringLiteral("The selected legacy design has too many generated hull parts.");
@@ -951,8 +990,9 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 			return false;
 		}
 		// Hull spans run with the exterior on their right. Retain the exact
-		// aperture width and add a small, invisible landing outside its sill.
-		const QPointF outward(direction.y() / length * 2, -direction.x() / length * 2);
+		// aperture width and add a four-foot invisible landing outside its sill
+		// so on-foot boarding starts before the avatar reaches the hull margin.
+		const QPointF outward(direction.y() / length * 4, -direction.x() / length * 4);
 		const auto point = [&](const QPointF& position) {
 			return AuScPoint(legacy.AuthorToShip(AuPoint(position.x(), position.y(),
 				aperture.deck * AuLegacyShip::DeckHeight)), 0, 0, AuPoint(0, 0, 1));
@@ -1094,6 +1134,7 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 	// computed from the accepted legacy source. Live switches and power state
 	// are initialized separately when the ship is spawned.
 	if(!AddBerths(legacy, generated, error)) return false;
+	if(!AddVehicleParking(legacy, generated, error)) return false;
 	// Preserve the visible batches and movement barriers. Separate invisible
 	// meshes store the authored centers used by the 2016 radius-based sight
 	// test, with runtime system identities for repair/component removal.

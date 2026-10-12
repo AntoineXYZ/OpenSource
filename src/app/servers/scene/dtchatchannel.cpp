@@ -46,6 +46,7 @@
 #include <QVariant>
 #include <cmath>
 #include <memory>
+#include <vector>
 
 DtChatChannel::DtChatChannel(int socketDesc, QObject* parent) : QThread(parent)//, m_semAlive(1)
 {
@@ -6572,6 +6573,44 @@ void DtChatChannel::SpawnLegacySc(quint32 designId, AuLegacyScProtocol::Reply& r
 		return;
 	}
 
+	struct ParkedVehicle
+	{
+		COMMODITYID commodity;
+		AuMatrix4x4 floor;
+		std::unique_ptr<DaVehicle> atom;
+	};
+	std::vector<ParkedVehicle> parkedVehicles;
+	const DgData& designs = g_Au.LockScDesignsForRead();
+	const auto shipDesign = designs.m_ScDesigns->find(report.DesignId());
+	if(shipDesign != designs.m_ScDesigns->cend())
+		for(const AuScPart* part : shipDesign->second.Parts())
+		{
+			const QStringList fields = part->GroupName().split('/');
+			if(fields.size() != 6 || fields[0] != QStringLiteral("legacy") || fields[1] != QStringLiteral("parking")
+				|| fields[4] != QStringLiteral("commodity")) continue;
+			parkedVehicles.push_back(ParkedVehicle{COMMODITYID(fields[5].toInt()), part->PositionMatrix(), nullptr});
+		}
+	g_Au.UnlockScDesigns();
+	// Allocate every vehicle before announcing the ship. Failure leaves no
+	// published ship with empty parking places or decorative vehicle copies.
+	for(ParkedVehicle& parked : parkedVehicles)
+	{
+		if(g_AuDb.HasAtomIds())
+		{
+			parked.atom.reset(new DaVehicle(parked.commodity, report.Quality() ? report.Quality() : 128));
+			parked.atom->ConnectSignals();
+			parked.atom->Create();
+		}
+		if(!parked.atom || parked.atom->Id().IsNull())
+		{
+			parent->TrashSubatom(candidate->Id());
+			candidate.release();
+			m_I->UnlockAvatar();
+			reply.message = tr("The server is restocking vehicle IDs. Try spawning the ship again shortly.");
+			return;
+		}
+	}
+
 	DaSc* ship = candidate.release();
 	ship->InitSystems(report.Quality());
 	ship->SetEmpireId(person->EmpireId());
@@ -6589,6 +6628,22 @@ void DtChatChannel::SpawnLegacySc(quint32 designId, AuLegacyScProtocol::Reply& r
 	ship->SetModified();
 	g_Au.AtomAdded(ship->Id());
 	ship->SetNormal();
+	for(ParkedVehicle& parked : parkedVehicles)
+	{
+		DaVehicle* vehicle = parked.atom.release();
+		vehicle->SetPosAndOrient(AuAtomPos(ship->Id(), parked.floor));
+		ether->AddAtom(vehicle);
+		vehicle->ResetHitPoints();
+		vehicle->Refuel();
+		vehicle->SetEmpireId(ship->EmpireId());
+		vehicle->SetMotherShip(ship->Id(), ship->Name());
+		vehicle->Park(ship, parked.floor, vehicle->ParkingSpotType());
+		vehicle->SetParked(true);
+		vehicle->SetModified();
+		g_Au.AtomAdded(vehicle->Id());
+		vehicle->SetNormal();
+		vehicle->TickTock();
+	}
 	ship->TickTock();
 	g_AuDb.PostCriticalUpdates();
 	reply.designId = designId;

@@ -50,9 +50,12 @@ public:
 	// Ground adjustment is limited to nearby recovered ramps, then every segment
 	// is swept against the same collision geometry used for server validation.
 	// Exterior walking can step up at most 3/4 ft onto a hull-door landing.
+	// Ground vehicles opt into that checked step independently of preserving
+	// terrain height, so their exit slide can still cancel downward contact.
 	AuPoint ResolveDestination(const AuPoint& from, const AuPoint& to, const AuBox& bodyOffsets,
 		const AuPoint& gravityUp, double standingHeight, bool allowGroundSnap, AuPoint& hitNormal,
-		bool preserveGroundHeight = false, const AuDoorStateHash* doorStates = nullptr) const;
+		bool preserveGroundHeight = false, const AuDoorStateHash* doorStates = nullptr,
+		bool allowBoardingStep = false) const;
 
 	// Distances from the atom origin, matching the native capsule query contract.
 	// A hole has no implicit room-void floor or ceiling.
