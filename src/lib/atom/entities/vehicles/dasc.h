@@ -15,6 +15,7 @@
 #include <QMutex>
 #include <QSharedPointer>
 #include <QVector2D>
+#include <QVector4D>
 
 class AuQuad;
 class AuRefitMaterials;
@@ -24,6 +25,7 @@ class AuScRoute;
 class PsEngineTrail;
 class PsLandingSystem;
 class PsLaunchSystem;
+class AuLegacyScDeckPlan;
 namespace AuLegacyScGeometry { class CollisionWorld; }
 
 class AUATOM_DLL DaSc : public DaVessel
@@ -56,6 +58,21 @@ class AUATOM_DLL DaSc : public DaVessel
 	LegacyDoorSound m_LegacyDoorSounds[4];
 	QVector<LegacyTextureDraw> m_LegacyTextureDraws;
 	bool m_LegacyTextureRequested = false;
+	struct LegacyDeckDraw
+	{
+		AuGLVAO vao;
+		QVector4D color;
+		GLenum primitive = GL_LINES;
+	};
+	QVector<LegacyDeckDraw> m_LegacyDeckDraws;
+	AuGLVAO m_LegacyDeckIcons;
+	GLuint m_LegacyDeckAtlas = 0;
+	bool m_LegacyDeckRequested = false;
+	QSharedPointer<const AuLegacyScDeckPlan> m_LegacyRenderedDeckPlan;
+	int m_LegacyRenderedDeck = 0;
+	QSharedPointer<const AuLegacyScDeckPlan> LegacyDeckPlan() const;
+	bool RenderLegacyDeck(const AuMatrix4x4& projection, const AuMatrix4x4& model, AuAtomRenderInfo& ari);
+	void DeleteLegacyDeckObjects();
 	// Client-only warning lighting; independent of the commander's saved alert.
 	ALERT_CONDITION m_LegacyApparentAlertCondition = ConditionGreen;
 	qint64 m_LegacyAlertSecond = -1;
@@ -704,6 +721,8 @@ public:	// Methods
 	virtual bool IsInsideAirBreathable() const;
 
 	bool IsLegacyDebug() const;
+	// The selected deck is in original author coordinates, including negative decks.
+	bool IsLegacyDeckView(const DaPerson* sceneAtom, const AuAtomRenderInfo& ari) const;
 	bool LegacyBodyOffsets(const DaAtom& who, AuBox& offsets) const;
 	bool FindLegacyLadder(const AuPoint& loc, AuMatrix4x4& mLadder, QString* diagnostic = 0,
 		const AuBox* bodyOffsets = 0) const;

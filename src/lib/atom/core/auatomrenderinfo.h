@@ -51,7 +51,7 @@ public:
 	AuGLModelMaker&						mm;
 	AuGLEffects*						re;						// Created/deleted by this object.
 	float								textBrightness;			// 0..1
-	int									viewDeck;
+	int									viewDeck;				// Absolute author deck for the legacy ship tactical view.
 	bool								m_ShowHUD;
 	bool								m_ShowPaths;
 

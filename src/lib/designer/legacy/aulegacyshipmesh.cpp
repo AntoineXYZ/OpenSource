@@ -11,6 +11,7 @@
 #include <QSet>
 #include <algorithm>
 #include <cmath>
+#include <initializer_list>
 #include <limits>
 
 namespace AuLegacyShip
@@ -985,7 +986,108 @@ Mesh BuildMesh(const Design& design)
 	return builder.mesh;
 }
 
-Wireframe BuildWireframe(const Design& design, int activeDeck, bool gridVisible, quint8 gridMask)
+namespace
+{
+void AppendTacticalStairLines(const Detail& detail, Wireframe& wireframe)
+{
+	// RenderDeckTactical 18041564d..18041a40b draws ramp rails and landing
+	// outlines, rather than edges of the solid steps. Straight flights have
+	// seven cross-lines; each half of a turned or return flight has three.
+	const int orientation = DetailRotationStep(detail.detailType);
+	const int family = (detail.detailType - 101) / 8;
+	const bool diagonal = (orientation & 1) != 0;
+	const double angle = double(float(orientation * .7853981633974483));
+	const double cosine = std::cos(angle), sine = std::sin(angle);
+	const QPointF origin = DecodePoint(detail.packedXY);
+	const double grid = double(float(AuLegacyShip::GridSpacing));
+	const double height = AuLegacyShip::DeckHeight;
+	const QVector4D color(.5f, .5f, .5f, 1);
+	const auto position = [&](const AuPoint& point) {
+		return QVector3D(float(origin.x() + point.x * cosine - point.y * sine),
+			float(origin.y() + point.x * sine + point.y * cosine),
+			float(detail.deck * AuLegacyShip::DeckHeight + point.z));
+	};
+	const auto segment = [&](const AuPoint& first, const AuPoint& second) {
+		if(wireframe.vertices.size() > MaximumVertices - 2) return;
+		wireframe.vertices.append(WireframeVertex{position(first), color});
+		wireframe.vertices.append(WireframeVertex{position(second), color});
+	};
+	const auto path = [&](std::initializer_list<AuPoint> points) {
+		if(points.size() < 2) return;
+		auto previous = points.begin();
+		for(auto current = previous + 1; current != points.end(); ++current)
+		{
+			segment(*previous, *current);
+			previous = current;
+		}
+	};
+	const auto crossLines = [&](const AuPoint& firstStart, const AuPoint& firstEnd,
+		const AuPoint& secondStart, const AuPoint& secondEnd, int divisions) {
+		for(int step = 1; step < divisions; ++step)
+		{
+			const double fraction = double(step) / divisions;
+			segment(firstStart + (firstEnd - firstStart) * fraction,
+				secondStart + (secondEnd - secondStart) * fraction);
+		}
+	};
+	const AuPoint base(0, 0, 0);
+	if(family == 0)
+	{
+		const double run = diagonal ? 12.0 : grid * 2;
+		const double width = diagonal ? 4.0 : grid;
+		const AuPoint baseOuter(0, width, 0), topInner(run, 0, height), topOuter(run, width, height);
+		segment(base, topInner);
+		segment(baseOuter, topOuter);
+		crossLines(baseOuter, topOuter, base, topInner, 8);
+		return;
+	}
+	if(family == 1 || family == 2)
+	{
+		const double run = diagonal ? 8.0 : grid;
+		const double width = diagonal ? 4.0 : grid;
+		const double side = family == 1 ? 1.0 : -1.0;
+		const AuPoint baseOuter(0, side * width, 0);
+		const AuPoint landingInner(run, 0, height / 2), landingTurn(run, side * width, height / 2);
+		const AuPoint landingOuter(run + width, side * width, height / 2), landingEnd(run + width, 0, height / 2);
+		const AuPoint topInner(run, side * (run + width), height), topOuter(run + width, side * (run + width), height);
+		path({baseOuter, landingTurn, landingOuter, landingEnd, landingInner, landingTurn, topInner});
+		segment(base, landingInner);
+		segment(topOuter, landingOuter);
+		crossLines(baseOuter, landingTurn, base, landingInner, 4);
+		crossLines(landingTurn, topInner, landingOuter, topOuter, 4);
+		return;
+	}
+	const double side = family == 3 ? 1.0 : -1.0;
+	// The diagonal right-return cases 134/136/138/140 use a six-foot run
+	// (outer landing x = ten feet); left-return cases use eight/twelve feet.
+	const double run = diagonal ? (family == 3 ? 8.0 : 6.0) : grid;
+	const double width = diagonal ? 6.0 : grid;
+	const double landing = diagonal ? 4.0 : grid;
+	const AuPoint baseOuter(0, side * width, 0);
+	const AuPoint landingInner(run, 0, height / 2), landingTurn(run, side * width, height / 2);
+	const AuPoint landingOpposite(run, side * width * 2, height / 2);
+	const AuPoint landingCorner(run + landing, side * width * 2, height / 2), landingEnd(run + landing, 0, height / 2);
+	const AuPoint topInner(0, side * width, height), topOuter(0, side * width * 2, height);
+	path({baseOuter, landingTurn, landingInner, landingEnd, landingCorner, landingOpposite, landingTurn, topInner});
+	segment(base, landingInner);
+	segment(topOuter, landingOpposite);
+	crossLines(baseOuter, landingTurn, base, landingInner, 4);
+	crossLines(landingTurn, topInner, landingOpposite, topOuter, 4);
+}
+}
+
+QString RoomTypeName(quint8 type)
+{
+	static const char* roomNames[] = {
+		"None", "Barracks", "Bridge", "Brig", "Officer Cabin", "Hold", "Hall", "Crew Cabin",
+		"Engine Room", "Fuel Cell", "Galley", "Gravity Well", "", "Vehicle Bay", "Lounge",
+		"Open to Deck Below", "Sensor Room", "Shield Room", "Sickbay", "Stateroom",
+		"Transporter Room", "Weapon Bay", "Roof, Gable", "Roof, Hip", "Roof, Round"
+	};
+	return type < sizeof(roomNames) / sizeof(roomNames[0]) ? QString::fromLatin1(roomNames[type]) : QString();
+}
+
+Wireframe BuildWireframe(const Design& design, int activeDeck, bool gridVisible, quint8 gridMask, bool tactical)
 {
 	Wireframe result;
 	// DaSpaceShip::RenderDesign, AuAtom13 18041a5b0. The original float
@@ -997,12 +1099,6 @@ Wireframe BuildWireframe(const Design& design, int activeDeck, bool gridVisible,
 		{128,112,128}, {255,0,135}, {93,227,244}, {105,244,202}, {165,0,80},
 		{186,76,211}, {50,88,201}, {231,66,34}, {231,66,34}, {231,66,34}
 	};
-	static const char* roomNames[] = {
-		"None", "Barracks", "Bridge", "Brig", "Officer Cabin", "Hold", "Hall", "Crew Cabin",
-		"Engine Room", "Fuel Cell", "Galley", "Gravity Well", "", "Vehicle Bay", "Lounge",
-		"Open to Deck Below", "Sensor Room", "Shield Room", "Sickbay", "Stateroom",
-		"Transporter Room", "Weapon Bay", "Roof, Gable", "Roof, Hip", "Roof, Round"
-	};
 	const auto line = [](QVector<WireframeVertex>& output, const QVector3D& a,
 		const QVector3D& b, const QVector4D& color)
 	{
@@ -1012,6 +1108,9 @@ Wireframe BuildWireframe(const Design& design, int activeDeck, bool gridVisible,
 	};
 	for(const Room& room : design.rooms)
 	{
+		// DaSpaceShip::RenderDeckTactical, AuAtom13 1804139a0, displays
+		// only the requested deck; the designer retains its other-deck context.
+		if(tactical && room.deck != activeDeck) continue;
 		if(room.roomType >= sizeof(roomColors) / sizeof(roomColors[0])) continue;
 		const QPolygonF boundary = RoomBoundary(room);
 		if(boundary.size() < 3) continue;
@@ -1024,11 +1123,14 @@ Wireframe BuildWireframe(const Design& design, int activeDeck, bool gridVisible,
 		const QVector4D color(rgb[0] / 255.f * brightness, rgb[1] / 255.f * brightness,
 			rgb[2] / 255.f * brightness, 1);
 		const double floor = room.deck * DeckHeight;
-		if(room.deck == activeDeck)
+		// Per-room plan labels belong to the designer's RenderDesign pass.
+		// The live client's deck/room names are location-description metadata.
+		if(!tactical && room.deck == activeDeck)
 			result.labels.append(WireframeLabel{Position(boundary.first(),floor),
-				QStringLiteral("%1 %2").arg(QString::fromLatin1(roomNames[room.roomType]))
+				QStringLiteral("%1 %2").arg(RoomTypeName(room.roomType))
 					.arg(int(room.roomSubtype)+1),color,false});
 		const bool roof = room.roomType >= 22 && room.roomType <= 24;
+		const double contourHeight = tactical ? 4.0 : AuLegacyShip::DeckHeight;
 		for(int i = 0; i < boundary.size(); ++i)
 		{
 			const QPointF& a = boundary.at(i);
@@ -1038,18 +1140,19 @@ Wireframe BuildWireframe(const Design& design, int activeDeck, bool gridVisible,
 			// The deck immediately above contributes its floor contour later
 			// in RenderDesign; its ceiling contour is omitted from the first pass.
 			if(room.deck != activeDeck + 1)
-				line(result.vertices, Position(a, floor + DeckHeight), Position(b, floor + DeckHeight), color);
-			line(result.vertices, Position(a, floor), Position(a, floor + DeckHeight), color);
+				line(result.vertices, Position(a, floor + contourHeight), Position(b, floor + contourHeight), color);
+			line(result.vertices, Position(a, floor), Position(a, floor + contourHeight), color);
 		}
 		if(room.deck > activeDeck + 1 || boundary.size() > 65536) continue;
+		if(tactical && (room.roomType == 11 || room.roomType == 15)) continue;
 		AuPointArray polygon;
 		for(const QPointF& point : boundary) polygon.append(AuPoint(point.x(), point.y(), floor));
 		if(!polygon.IsClockwise()) polygon.ReverseOrder();
 		AuPointArray triangles;
 		QVector<bool> edges;
 		polygon.TriangulateBoundary(triangles, edges);
-		const float fillBrightness = room.deck == activeDeck ? 1.f : .25f;
-		const float alpha = room.deck == activeDeck ? .8f : .2f;
+		const float fillBrightness = !tactical && room.deck == activeDeck ? 1.f : .25f;
+		const float alpha = !tactical && room.deck == activeDeck ? .8f : .2f;
 		const QVector4D fill(rgb[0] / 255.f * fillBrightness, rgb[1] / 255.f * fillBrightness,
 			rgb[2] / 255.f * fillBrightness, alpha);
 		if(triangles.size() > MaximumVertices - result.triangles.size()) continue;
@@ -1057,12 +1160,19 @@ Wireframe BuildWireframe(const Design& design, int activeDeck, bool gridVisible,
 			result.triangles.append(WireframeVertex{QVector3D(float(point.x), float(point.y), float(point.z)), fill});
 	}
 	// RenderDesign queues stairs on the active deck for a separate gray 3D
-	// line pass. Reuse the recovered staircase dimensions and retain feature
+	// line pass. Tactical mode also includes the stairs leading up from below.
+	// Reuse the recovered staircase dimensions and retain feature
 	// edges while suppressing each planar face's triangulation diagonals.
 	Design stairDesign;
 	for(const Detail& detail : design.details)
-		if(detail.deck == activeDeck && detail.detailType >= 101 && detail.detailType <= 140)
+		if((detail.deck == activeDeck || (tactical && detail.deck == activeDeck - 1))
+			&& detail.detailType >= 101 && detail.detailType <= 140)
 		{
+			if(tactical)
+			{
+				AppendTacticalStairLines(detail, result);
+				continue;
+			}
 			Detail visible = detail;
 			visible.hiddenRaw = 0;
 			stairDesign.details.append(visible);
@@ -1101,6 +1211,7 @@ Wireframe BuildWireframe(const Design& design, int activeDeck, bool gridVisible,
 	{
 		const int type = detail.detailType;
 		if(detail.deck != activeDeck || type <= 0 || type > 142 || (type >= 101 && type <= 140)) continue;
+		if(tactical && ((type >= 57 && type <= 64) || type == 76 || type == 98 || type == 99 || type == 141)) continue;
 		static const float iconSizes[] = {
 			10.f,4.f,3.5f,2.f,4.f,2.f,4.f,4.f,4.f,2.f,2.8284271245f,3.5f,4.f,4.f,2.8284271245f,4.f,
 			2.8284271245f,4.f,2.8284271245f,4.f,2.8284271245f,2.f,4.f,2.8284271245f,2.8284271245f,
@@ -1147,17 +1258,34 @@ Wireframe BuildWireframe(const Design& design, int activeDeck, bool gridVisible,
 		const double angle = rotated ? DetailRotationStep(type) * .7853981633974483 : 0;
 		const double c = std::cos(angle), s = std::sin(angle);
 		const QRectF footprint = vehicle ? VehicleFootprint(detail.commodityIdNormalized) : QRectF();
-		const double halfX = footprint.isEmpty() ? size/2 : footprint.width()/2;
-		const double halfY = footprint.isEmpty() ? size/2 : footprint.height()/2;
-		const QPointF local[4] = {{-halfX,-halfY}, {-halfX,halfY}, {halfX,halfY}, {halfX,-halfY}};
+		// The tactical berth icon extends forward from its anchor, while tables
+		// use a ten-foot square. Keep the designer's existing footprints intact.
+		const double halfX = tactical && berth ? AuLegacyShip::CoordinateSpacing
+			: tactical && table ? 5.0 : footprint.isEmpty() ? size/2 : footprint.width()/2;
+		const double halfY = tactical && table ? 5.0 : footprint.isEmpty() ? size/2 : footprint.height()/2;
+		const double offsetX = tactical && berth ? AuLegacyShip::CoordinateSpacing/2 : 0;
+		const QPointF local[4] = {{offsetX-halfX,-halfY}, {offsetX-halfX,halfY},
+			{offsetX+halfX,halfY}, {offsetX+halfX,-halfY}};
 		const QVector2D uv[4] = {{tile/64.f,0}, {tile/64.f,1}, {(tile*16+15)/1024.f,1}, {(tile*16+15)/1024.f,0}};
+		const double iconHeight = detail.deck * AuLegacyShip::DeckHeight + (berth || table || vehicle ? .2 : .1);
 		QVector3D positions[4];
 		for(int i = 0; i < 4; ++i)
 			positions[i] = Position(center + QPointF(local[i].x()*c-local[i].y()*s,
-				local[i].x()*s+local[i].y()*c), detail.deck*DeckHeight + (berth || table || vehicle ? .2 : .1));
+				local[i].x()*s+local[i].y()*c), iconHeight);
 		const int indices[6] = {0,1,2,0,2,3};
-		if(result.sprites.size() > MaximumVertices - 6) break;
+		if(result.sprites.size() > MaximumVertices - (tactical ? 12 : 6)) break;
 		for(int index : indices) result.sprites.append(WireframeSpriteVertex{positions[index], uv[index]});
+		if(tactical)
+		{
+			// RenderDeckTactical makes all icons visible from both sides. Doors,
+			// hatches and turrets place the underside one tenth of a foot below
+			// the detail plane; other icons reverse their top-face winding in place.
+			const bool turret = type == 21 || type == 22 || (type >= 33 && type <= 40);
+			if(IsHatch(type) || type == 5 || type == 49 || type == 50 || turret)
+				for(QVector3D& point : positions) point.setZ(float(detail.deck * AuLegacyShip::DeckHeight - .1));
+			const int reverseIndices[6] = {3,2,1,3,0,1};
+			for(int index : reverseIndices) result.sprites.append(WireframeSpriteVertex{positions[index], uv[index]});
+		}
 	}
 	if(gridVisible)
 	{

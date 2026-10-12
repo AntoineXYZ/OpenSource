@@ -1,0 +1,86 @@
+Recovered 2016 in-world spacecraft deck view
+===========================================
+
+Evidence is from the 64-bit 2016 client programs in Ghidra. RenderDeckTactical
+also uses the complete C pseudocode supplied by the user after the MCP
+decompiler timed out; the MCP assembly and caller recovery were successful.
+
+Controls (Shores of Hazeron.exe)
+--------------------------------
+1400da300: defaults are Backspace (top-down/person), = (current deck/hull),
+           Shift + (higher deck), and - (lower deck). / changes message intensity.
+1402f5f10: deck controls require top-down view and no active drawing command.
+           = changes zero relative offset to -100000; any nonzero offset to zero.
+           Higher/lower increment/decrement without wrapping or clamping.
+1402fc090: selected author deck = avatar's spacecraft deck + relative offset.
+1402e1fe0: relative deck offset starts at zero, so top-down initially shows the
+           occupied deck. Leaving top-down preserves the deck offset.
+
+Eligibility and coordinates (AuAtom13.dll unless noted)
+-------------------------------------------------------
+180423a60: viewer must be aboard, in top-down view, outside game-table pose,
+           viewing a deck within hull bounds, and crew/troop or in command chain.
+1800ce440: crew membership includes roster type 7 (troops).
+18040a0d0: ship-local Z is translated by the legacy design origin.
+AuData13.dll 18015b510: floor((author Z + 0.05) / 8), clamped to -127..127.
+18034f930: camera uses ordinary avatar-relative top-down altitude and head pitch;
+           there is no special ship-aligned camera for this mode.
+1804260be..180426161: only units on the selected deck are dispatched. Foreign
+           nonselectable units are limited to friendly/vassal units, or prisoners
+           in the viewer's spawn-ship brig. Same-empire/selectable units qualify.
+
+Plan rendering
+--------------
+1804139a0: DaSpaceShip::RenderDeckTactical; room colour table at 180a0e620.
+Only selected-deck rooms are drawn. Boundaries retain full room colour; upper
+contours and vertical strokes stop four feet above the deck. Roof rooms omit
+upper contours and vertical strokes. Floor colour is multiplied by 0.25 with
+alpha 0.2; gravity-well and open-to-below rooms omit the floor fill, roofs retain
+it. The source does not enable blending for this fill pass.
+
+Equipment uses the original txSpacecraftDesign atlas and recovered footprints.
+Vehicle placeholders, flag poles, contrail emitters, light poles and weapon
+emitters are omitted. Icons have both face windings; door/hatch/turret underside
+planes sit 0.1 foot below the detail plane. Berths and tables retain their
+specific footprints and 0.2-foot top planes. Other icon tops are at 0.1 foot.
+
+Stairs from the selected deck and the deck below have their own gray ramp and
+landing strokes. Rise is eight feet, intermediate landings four feet. Straight
+flights have seven cross-lines; each half of turned/return flights has three.
+Diagonal right-return stairs retain the six-foot run / ten-foot landing quirk.
+The offline designer's existing solid-mesh stair outlines remain separate.
+
+Naming
+------
+RenderDeckTactical has no per-room text-label pass. The designer RenderDesign
+labels at 180421fc0..180422303 are separate. Original room type strings and
+one-based room numbering are restored in location descriptions, using
+"Deck %1 %2 %3" and deck numbering relative to the lowest hull deck. The client
+metadata builder at 1402f0ab0 supplies these strings to whereabouts/dialogs;
+140302470 persists whereabouts. No on-screen HUD was inferred from that path.
+
+Implementation boundaries
+-------------------------
+AuLegacyScDeckPlan replicates bounded original room/detail records plus the
+author origin. AuScDesign version 0x09 appends it after material/stat snapshots;
+older records remain readable. Previously derived blueprints recover it from
+the hash-verified legacy catalog source. This changes existing binary blobs and
+network streams; it does not require a database schema migration. Deploy updated
+client and server code together.
+
+Live VAOs are cached by immutable plan and selected deck. Native texture upload
+row order is compensated so the shared UVs match the designer atlas. Rendering
+state is restored after the plan pass. The normal hull/console/transparent passes
+are bypassed; ancestor hulls are bypassed when a docked child's map is active.
+
+Verification
+------------
+Source review and git diff --check only; no build or runtime test was initiated.
+User runtime checks:
+  - Manufactured legacy ship, captain/officer/crew/troop versus passenger/guest.
+  - Backspace initially shows current deck; = hull/current; +/- adjacent decks.
+  - Moving up/down stairs follows the occupied author deck, including negatives.
+  - Colours, icons, roof/open-below/gravity rooms, all stair shapes and rotations.
+  - Game-table view, leaving/reboarding, vehicles/mounts and docked child ships.
+  - Existing ship after server reload/relogin; whereabouts room/deck numbering.
+  - Modern spacecraft rendering and the offline legacy designer remain normal.

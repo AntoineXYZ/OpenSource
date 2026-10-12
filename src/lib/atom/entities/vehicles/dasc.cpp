@@ -13,6 +13,10 @@
 #include "aulegacyscgeometry.h"
 #include "aulegacysccollision.h"
 #include "aulegacyship.h"
+#include "aulegacyshipmesh.h"
+#include "aulegacyshipedit.h"
+#include "aulegacyscdeckplan.h"
+#include <QImage>
 #include <QMutexLocker>
 #include <algorithm>
 #include <cmath>
@@ -72,6 +76,12 @@ constexpr int LegacyEffectFrameMSec = 100;
 // DaSpaceShip stores one pressure byte for the entire legacy hull. Keep that
 // value in the existing saved/replicated air hash, independently of room names.
 const QString LegacyAirPressureRoom = QStringLiteral("legacy/ship-air-pressure");
+
+int LegacyAuthorDeck(double z)
+{
+	if(!std::isfinite(z)) return 0;
+	return int(qBound(-127.0, std::floor((z + .05) / AuLegacyShip::DeckHeight), 127.0));
+}
 
 quint32 LegacyStationField(const AuScPart& part, const QString& key, quint32 fallback = 0)
 {
@@ -758,6 +768,7 @@ bool DaSc::Refresh(DaAtom* pAtom, AuAtomRenderInfo* ari)
 
 	pA->m_DesignLock.lockForRead();
 	m_DesignLock.lockForWrite();
+	if(m_Design.DesignId() != pA->m_Design.DesignId()) m_LegacyDeckRequested = false;
 	m_Design = pA->m_Design;
 	m_LandingGearStates = pA->m_LandingGearStates;
 	m_Lifts = pA->m_Lifts;
@@ -1212,6 +1223,158 @@ void DaSc::UnlockDesign() const
 
 	// I am not a preview in a design studio.
 	g_Au.UnlockScDesigns();
+}
+
+QSharedPointer<const AuLegacyScDeckPlan> DaSc::LegacyDeckPlan() const
+{
+	QReadLocker guard(&m_DesignLock);
+	const AuScDesign* design = LockDesign();
+	const auto plan = design ? design->LegacyDeckPlan() : QSharedPointer<const AuLegacyScDeckPlan>();
+	UnlockDesign();
+	return plan;
+}
+
+bool DaSc::IsLegacyDeckView(const DaPerson* sceneAtom, const AuAtomRenderInfo& ari) const
+{
+	if(!sceneAtom || !ari.IsViewTopDown() || !IsLegacyDebug() || !sceneAtom->IsInSpacecraft()
+		|| sceneAtom->IsGameTablePose() || FindParentDesignerInEnv()) return false;
+	AuMatrix4x4 aboard;
+	if(!sceneAtom->GetTransformRelativeToParent(aboard, this)) return false;
+	if(!IsCrewOrTroop(sceneAtom->Id()) && !InChainOfCommand(sceneAtom)) return false;
+	QSharedPointer<const AuLegacyScStats> stats;
+	{
+		QReadLocker guard(&m_DesignLock);
+		stats = m_Design.LegacyStats();
+	}
+	if(!stats || !stats->IsValid() || ari.viewDeck < stats->Stats().minimumDeck
+		|| ari.viewDeck > stats->Stats().maximumDeck) return false;
+	const auto plan = LegacyDeckPlan();
+	return plan && plan->IsValid();
+}
+
+void DaSc::DeleteLegacyDeckObjects()
+{
+	for(LegacyDeckDraw& draw : m_LegacyDeckDraws) if(draw.vao.VAO()) draw.vao.DeleteGL();
+	m_LegacyDeckDraws.clear();
+	if(m_LegacyDeckIcons.VAO()) m_LegacyDeckIcons.DeleteGL();
+	m_LegacyRenderedDeckPlan.clear();
+}
+
+bool DaSc::RenderLegacyDeck(const AuMatrix4x4& projection, const AuMatrix4x4& model, AuAtomRenderInfo& ari)
+{
+	const auto plan = LegacyDeckPlan();
+	if(!plan || !plan->IsValid()) return false;
+	if(plan != m_LegacyRenderedDeckPlan || ari.viewDeck != m_LegacyRenderedDeck)
+	{
+		DeleteLegacyDeckObjects();
+		const auto wire = AuLegacyShip::Rendering::BuildWireframe(plan->SourceDesign(), ari.viewDeck, false, 0, true);
+		// Reuse the native unlit shader and batch by recovered room colour. These
+		// VAOs are rebuilt only when the selected deck or immutable plan changes.
+		const auto create = [&](const QVector<AuLegacyShip::Rendering::WireframeVertex>& vertices, GLenum primitive)
+		{
+			QVector<QVector4D> colors;
+			QVector<AuPointArray> points;
+			for(const auto& vertex : vertices)
+			{
+				int group = colors.indexOf(vertex.color);
+				if(group < 0)
+				{
+					group = colors.size();
+					colors.append(vertex.color);
+					points.append(AuPointArray());
+				}
+				points[group].append(AuPoint(vertex.position.x(), vertex.position.y(), vertex.position.z()));
+			}
+			for(int group = 0; group < colors.size(); ++group)
+			{
+				LegacyDeckDraw draw;
+				draw.color = colors.at(group);
+				draw.primitive = primitive;
+				draw.vao.CreateForLines(*ari.re, points.at(group), false, GL_STATIC_DRAW);
+				m_LegacyDeckDraws.append(draw);
+			}
+		};
+		create(wire.triangles, GL_TRIANGLES);
+		create(wire.vertices, GL_LINES);
+		QList<AuTriTex> icons;
+		for(int index = 0; index + 2 < wire.sprites.size(); index += 3)
+		{
+			const auto point = [&](int offset)
+			{
+				const auto& vertex = wire.sprites.at(index + offset);
+				return AuPointTex(vertex.position.x(), vertex.position.y(), vertex.position.z(), vertex.uv.x(), vertex.uv.y());
+			};
+			icons.append(AuTriTex(point(0), point(1), point(2)));
+		}
+		m_LegacyDeckIcons.CreateForTexture(*ari.re, icons, GL_STATIC_DRAW);
+		m_LegacyRenderedDeck = ari.viewDeck;
+		m_LegacyRenderedDeckPlan = plan;
+	}
+	if(!m_LegacyDeckAtlas)
+	{
+		// The native QImage uploader reverses rows; compensate so shared plan
+		// UVs address the same icon pixels as the designer's QOpenGLTexture.
+		const QImage atlas(QStringLiteral(":/data/legacy_txSpacecraftDesign.png"));
+		m_LegacyDeckAtlas = ari.re->CreateTextureFromBitmap(Id().GetID(), QStringLiteral("legacy/deck-plan-atlas"),
+			atlas.mirrored(), GL_LINEAR, GL_LINEAR, false, 1);
+	}
+
+	AuMatrix4x4 authorModel(model);
+	authorModel.Translate(-plan->AuthorCenter());
+	GLboolean depthTest, depthMask, cull, blend;
+	GLint depthFunction, sourceBlend, destinationBlend, sourceAlphaBlend, destinationAlphaBlend;
+	GLfloat lineWidth;
+	ari.re->glGetBooleanv(GL_DEPTH_TEST, &depthTest);
+	ari.re->glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask);
+	ari.re->glGetBooleanv(GL_CULL_FACE, &cull);
+	ari.re->glGetBooleanv(GL_BLEND, &blend);
+	ari.re->glGetIntegerv(GL_DEPTH_FUNC, &depthFunction);
+	ari.re->glGetIntegerv(GL_BLEND_SRC_RGB, &sourceBlend);
+	ari.re->glGetIntegerv(GL_BLEND_DST_RGB, &destinationBlend);
+	ari.re->glGetIntegerv(GL_BLEND_SRC_ALPHA, &sourceAlphaBlend);
+	ari.re->glGetIntegerv(GL_BLEND_DST_ALPHA, &destinationAlphaBlend);
+	ari.re->glGetFloatv(GL_LINE_WIDTH, &lineWidth);
+	ari.re->glEnable(GL_DEPTH_TEST);
+	ari.re->glDepthFunc(GL_LEQUAL);
+	ari.re->glDepthMask(GL_TRUE);
+	ari.re->glDisable(GL_CULL_FACE);
+	ari.re->glDisable(GL_BLEND);
+	ari.re->glLineWidth(1);
+	auto& shader = ari.re->GLSL().LineShader();
+	shader.Select();
+	shader.SetProjectionModelView(projection * authorModel);
+	for(const LegacyDeckDraw& draw : m_LegacyDeckDraws)
+	{
+		if(!draw.vao.VAO()) continue;
+		shader.SetColor(draw.color.x(), draw.color.y(), draw.color.z(), draw.color.w());
+		draw.vao.SelectGL();
+		draw.vao.DrawGL(draw.primitive);
+		draw.vao.DeselectGL();
+	}
+	shader.Deselect();
+	if(m_LegacyDeckAtlas && m_LegacyDeckIcons.VAO())
+	{
+		ari.re->glEnable(GL_CULL_FACE);
+		ari.re->glEnable(GL_BLEND);
+		ari.re->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		auto& texture = ari.re->GLSL().TextureShader();
+		texture.Select();
+		texture.SetProjectionModelView(projection * authorModel);
+		texture.SetTexture(m_LegacyDeckAtlas);
+		texture.SetColor(1, 1, 1, 1);
+		m_LegacyDeckIcons.SelectGL();
+		m_LegacyDeckIcons.DrawGL();
+		m_LegacyDeckIcons.DeselectGL();
+		texture.Deselect();
+	}
+	ari.re->glDepthFunc(depthFunction);
+	ari.re->glDepthMask(depthMask);
+	ari.re->glBlendFuncSeparate(sourceBlend, destinationBlend, sourceAlphaBlend, destinationAlphaBlend);
+	ari.re->glLineWidth(lineWidth);
+	if(depthTest) ari.re->glEnable(GL_DEPTH_TEST); else ari.re->glDisable(GL_DEPTH_TEST);
+	if(cull) ari.re->glEnable(GL_CULL_FACE); else ari.re->glDisable(GL_CULL_FACE);
+	if(blend) ari.re->glEnable(GL_BLEND); else ari.re->glDisable(GL_BLEND);
+	return true;
 }
 
 QSharedPointer<const AuLegacyScGeometry::CollisionWorld> DaSc::LegacyCollision(const AuScDesign& design) const
@@ -5193,6 +5356,9 @@ void DaSc::DamageAndDestroy(const QString& reason)
 void DaSc::DeleteDeviceObjects(AuAtomRenderInfo& ari)
 {
 	DaVessel::DeleteDeviceObjects(ari);
+	DeleteLegacyDeckObjects();
+	m_LegacyDeckAtlas = 0;
+	m_LegacyDeckRequested = false;
 	for(LegacyTextureDraw& draw : m_LegacyTextureDraws) draw.vao.DeleteGL();
 	m_LegacyTextureDraws.clear();
 
@@ -8666,7 +8832,9 @@ DaSc* DaSc::LoadSubatoms(AuEther& ether, QSqlDatabase& db, const AuId& parentId,
 
 int DaSc::LowestDeck() const
 {
-	return 0;
+	QReadLocker guard(&m_DesignLock);
+	const auto stats = m_Design.LegacyStats();
+	return stats ? stats->Stats().minimumDeck : 0;
 }
 
 float DaSc::ManeuverAcceleration() const
@@ -8919,8 +9087,10 @@ unsigned int DaSc::OfficerBerths() const
 
 int DaSc::OnDesignDeck(const AuPoint& loc) const
 {
-	Q_UNUSED(loc);
-	return 0;
+	const auto plan = LegacyDeckPlan();
+	if(!plan) return 0;
+	// OnDesignDeck:18040a0d0 and DnSpaceShip::OnDeck:18015b510.
+	return LegacyAuthorDeck(loc.z + plan->AuthorCenter().z);
 }
 
 bool DaSc::OpenDoor(unsigned int doorIndex)
@@ -9579,6 +9749,27 @@ void DaSc::RenderEnvironmentObject(const AuMatrix4x4& projection, AuAtomRenderIn
 	//qDebug() << "DaSc::RenderEnvironmentObject" << Id() << Name();
 	// Determine if the scene atom is aboard this spacecraft.
 	const AuMatrix4x4& tThis = rmod.Matrix(Id());
+	const DaSc* viewedShip = dynamic_cast<const DaSc*>(sceneAtom->FindParentVesselInEnv());
+	AuMatrix4x4 viewedShipToThis;
+	if(viewedShip && viewedShip != this && viewedShip->IsLegacyDeckView(sceneAtom, ari)
+		&& viewedShip->GetTransformRelativeToParent(viewedShipToThis, this))
+	{
+		// A docked ship's author decks belong to that ship. Reach its map
+		// through the parent hull without drawing hull surfaces over the plan.
+		DaAtomList subs;
+		ListSubatoms(subs);
+		for(DaAtom* atom : subs)
+		{
+			AuMatrix4x4 childPath;
+			if(viewedShip->GetTransformRelativeToParent(childPath, atom))
+				atom->RenderEnvironmentObject(projection, ari, rmod, sceneAtom, renderLast, pass,
+					shadSc, shadScFog, shadScGlobe, shadScGlobeFog, shadScRingworld, shadScRingworldFog);
+		}
+		RenderAudioSources(sceneAtom, tThis, ari.al, ari.fade);
+		DaVessel::RenderEnvironmentObject(projection, ari, rmod, sceneAtom, renderLast, pass,
+			shadSc, shadScFog, shadScGlobe, shadScGlobeFog, shadScRingworld, shadScRingworldFog);
+		return;
+	}
 	bool insideVisible = false;
 	bool isAboard = false;
 	if(sceneAtom->IsInSpacecraft())
@@ -9606,12 +9797,13 @@ void DaSc::RenderEnvironmentObject(const AuMatrix4x4& projection, AuAtomRenderIn
 		insideVisible = true;
 		rendership = true;
 
-		// Scene atom is aboard and in top-down view; render tactical view if the viewDeck is within the hull extents.
-		// Cannot get tactical view at a game table or unless scene atom is on the crew.
-		//if(ari.IsViewTopDown() &&
-				//ari.viewDeck >= m_DesignAnalysis.m_LowestDeck && ari.viewDeck <= m_DesignAnalysis.m_HighestDeck &&
-				//!sceneAtom->IsGameTablePose() && (IsCrewOrTroop(sceneAtom->Id()) || InChainOfCommand(sceneAtom)))
-			//renderTactical = true;
+		// Older cached blueprints acquire their plan through the existing design
+		// request; the server reconstructs it from the verified legacy catalog.
+		if(IsLegacyDebug() && ari.IsViewTopDown() && !LegacyDeckPlan() && !m_LegacyDeckRequested)
+		{
+			m_LegacyDeckRequested = true;
+			g_Au.ScDesignNeeded(DesignId());
+		}
 	}
 	else
 	{
@@ -9660,6 +9852,47 @@ void DaSc::RenderEnvironmentObject(const AuMatrix4x4& projection, AuAtomRenderIn
 		// Base atom class needs to render special effects.
 		DaVessel::RenderEnvironmentObject(projection, ari, rmod, sceneAtom, renderLast, pass, shadSc, shadScFog, shadScGlobe,
 				shadScGlobeFog, shadScRingworld, shadScRingworldFog);
+		return;
+	}
+
+	// AuAtom13:180423a60 chooses the tactical plan before hull and console
+	// rendering, and dispatches only units on the selected author-space deck.
+	if(isAboard && IsLegacyDeckView(sceneAtom, ari) && RenderLegacyDeck(projection, tThis, ari))
+	{
+		ari.re->DisableAtomLights(Id());
+		const auto plan = m_LegacyRenderedDeckPlan;
+		DaAtomList subs;
+		ListSubatoms(subs);
+		for(DaAtom* atom : subs)
+		{
+			DaUnit* unit = dynamic_cast<DaUnit*>(atom);
+			AuMatrix4x4 unitToShip;
+			if(!unit || !unit->GetTransformRelativeToParent(unitToShip, this)) continue;
+			const AuPoint author = unitToShip.Translation() + plan->AuthorCenter();
+			if(LegacyAuthorDeck(author.z) != ari.viewDeck) continue;
+			if(unit->EmpireId() != sceneAtom->EmpireId() && !unit->UnitCanBeSelected(sceneAtom, true))
+			{
+				bool ownShipPrisoner = false;
+				if(Is(sceneAtom->SpawnShip()))
+				{
+					const int room = AuLegacyShip::RoomAtPoint(plan->SourceDesign(), ari.viewDeck, QPointF(author.x, author.y));
+					ownShipPrisoner = room >= 0 && plan->SourceDesign().rooms.at(room).roomType == 3;
+				}
+				// 1804260fd..180426176 excludes foreign nonselectable units
+				// unless friendly/vassal or prisoners in the viewer's home brig.
+				if(!ownShipPrisoner)
+				{
+					const auto stance = PoliticalStance(unit->EmpireId(), sceneAtom->EmpireId());
+					if(stance != POL_Friend && stance != POL_Vassal) continue;
+				}
+			}
+			unit->RenderEnvironmentObject(projection, ari, rmod, sceneAtom, renderLast, pass,
+				shadSc, shadScFog, shadScGlobe, shadScGlobeFog, shadScRingworld, shadScRingworldFog);
+		}
+		ari.re->EnableAtomLights(Id());
+		RenderAudioSources(sceneAtom, tThis, ari.al, ari.fade);
+		DaVessel::RenderEnvironmentObject(projection, ari, rmod, sceneAtom, renderLast, pass,
+			shadSc, shadScFog, shadScGlobe, shadScGlobeFog, shadScRingworld, shadScRingworldFog);
 		return;
 	}
 
@@ -10037,6 +10270,14 @@ void DaSc::RenderLast(const AuMatrix4x4& projection, AuAtomRenderInfo& ari, AuMo
 	//qDebug() << "DaSc::RenderLast" << Id() << Name();
 	DaVessel::RenderLast(projection, ari, rmod, sceneAtom, shadSc, shadScFog, shadScGlobe, shadScGlobeFog, shadScRingworld,
 			shadScRingworldFog);
+	if(ari.IsViewTopDown())
+	{
+		if(IsLegacyDeckView(sceneAtom, ari)) return;
+		const DaSc* viewedShip = dynamic_cast<const DaSc*>(sceneAtom->FindParentVesselInEnv());
+		AuMatrix4x4 childPath;
+		if(viewedShip && viewedShip != this && viewedShip->IsLegacyDeckView(sceneAtom, ari)
+			&& viewedShip->GetTransformRelativeToParent(childPath, this)) return;
+	}
 
 	// Render transparent things that don't affect the depth mask, before rendering transparent windows.
 	const AuMatrix4x4& myM = rmod.Matrix(Id());
@@ -14772,6 +15013,26 @@ int DaSc::CallTurboLift(quint16 liftId, const QString& liftStop)
 
 QString DaSc::LocationDesc(const DaAtom& atom) const
 {
+	if(IsLegacyDebug())
+	{
+		const auto plan = LegacyDeckPlan();
+		AuMatrix4x4 atomToShip;
+		if(plan && atom.GetTransformRelativeToParent(atomToShip, this))
+		{
+			const AuPoint author = atomToShip.Translation() + plan->AuthorCenter();
+			const int deck = LegacyAuthorDeck(author.z);
+			const int roomIndex = AuLegacyShip::RoomAtPoint(plan->SourceDesign(), deck, QPointF(author.x, author.y));
+			if(roomIndex >= 0)
+			{
+				const auto& room = plan->SourceDesign().rooms.at(roomIndex);
+				// The 2016 whereabouts text numbers decks from the lowest hull
+				// deck and room subtypes from one, independently of author IDs.
+				return tr("Deck %1 %2 %3").arg(deck - LowestDeck() + 1)
+					.arg(AuLegacyShip::Rendering::RoomTypeName(room.roomType)).arg(int(room.roomSubtype) + 1);
+			}
+			return tr("Deck %1").arg(deck - LowestDeck() + 1);
+		}
+	}
 	if(!atom.ShipRoomId())
 		return QString();
 	QString desc;

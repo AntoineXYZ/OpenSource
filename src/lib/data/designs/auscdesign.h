@@ -15,6 +15,7 @@ class AuDoorStateHash;
 class AuGLEffects;
 class AuLandingGearStateHash;
 class AuLiftHash;
+class AuLegacyScDeckPlan;
 class AuLegacyScStats;
 class AuMatrix4x4;
 class AuScPartSet;
@@ -71,6 +72,7 @@ private:
 
 	QByteArray m_LegacyTextureMap;
 	QSharedPointer<const AuLegacyScStats> m_LegacyStats;
+	QSharedPointer<const AuLegacyScDeckPlan> m_LegacyDeckPlan;
 
 public:	// Constructors
 	AuScDesign(unsigned int idDesign, const AuId& idArchitect, const QString& architect);
@@ -400,8 +402,11 @@ public:	// Methods
 	void SetLegacyTextureMap(const QByteArray& map) { m_LegacyTextureMap = map; }
 	const QSharedPointer<const AuLegacyScStats>& LegacyStats() const { return m_LegacyStats; }
 	void SetLegacyStats(const QSharedPointer<const AuLegacyScStats>& stats) { m_LegacyStats = stats; }
+	const QSharedPointer<const AuLegacyScDeckPlan>& LegacyDeckPlan() const { return m_LegacyDeckPlan; }
+	void SetLegacyDeckPlan(const QSharedPointer<const AuLegacyScDeckPlan>& plan) { m_LegacyDeckPlan = plan; }
 	void LoadLegacyTextureMap(QSqlDatabase& db);
 	bool NeedsLegacyTextureMap() const;
+	bool NeedsLegacyDeckPlan() const;
 
 	double HullVolumeCuFt() const;
 

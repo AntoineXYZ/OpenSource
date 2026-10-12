@@ -181,9 +181,13 @@ struct Wireframe
 	QVector<WireframeLabel> labels;
 };
 
+// Canonical 2016 room type text shared by designer labels and live location text.
+QString RoomTypeName(quint8 type);
+
 // The line drawing uses room boundaries and vertical corners, independently
 // of the tessellation/materials in the solid model. Coordinates remain feet.
-Wireframe BuildWireframe(const Design& design, int activeDeck, bool gridVisible, quint8 gridMask);
+// Tactical mode follows the 2016 in-world current-deck filtering and shading.
+Wireframe BuildWireframe(const Design& design, int activeDeck, bool gridVisible, quint8 gridMask, bool tactical = false);
 
 // Positions retain the author's feet coordinates: x/y plan, z up. Triangle
 // winding and normals face the visible side of each exterior/interior surface.

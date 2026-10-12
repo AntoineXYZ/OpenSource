@@ -327,6 +327,18 @@ const DiControlInput s_ViewDefaults[] =
 			AuDesignerView::CI_TopDownViewToggle, Qt::Key_Backspace, Qt::NoModifier,
 			DiControlInput::MT_None, Qt::NoModifier,
 			DiControlInput::JT_None, 0, 100, false),
+	DiControlInput(QObject::tr("Spacecraft, Current Deck vs Hull View Toggle"),
+			AuDesignerView::CI_TacticalCurrentDeck, Qt::Key_Equal, Qt::NoModifier,
+			DiControlInput::MT_None, Qt::NoModifier,
+			DiControlInput::JT_None, 0, 100, false),
+	DiControlInput(QObject::tr("Spacecraft, Higher Deck"),
+			AuDesignerView::CI_TacticalDeckHigher, Qt::Key_Plus, Qt::ShiftModifier,
+			DiControlInput::MT_None, Qt::NoModifier,
+			DiControlInput::JT_None, 0, 100, false),
+	DiControlInput(QObject::tr("Spacecraft, Lower Deck"),
+			AuDesignerView::CI_TacticalDeckLower, Qt::Key_Minus, Qt::NoModifier,
+			DiControlInput::MT_None, Qt::NoModifier,
+			DiControlInput::JT_None, 0, 100, false),
 	DiControlInput(QObject::tr("Terrain, Next Info Overlay"),
 			QObject::tr("Top down view information can be cycled between 8 overlays, one of which is <i>none</i>."),
 			AuDesignerView::CI_TopDownNextInfo, Qt::Key_Backslash, Qt::NoModifier,
@@ -3052,10 +3064,16 @@ void AuDesignerView::RenderScene(DaPerson* sceneAtom)
 	// Configure scene render info.
 	m_RenderInfo->fade = m_Fade * g_Au.SoundEffectsGain();	// Fade overall sound volume with screen fade.
 	m_RenderInfo->textBrightness = (float)m_MessageIntensity/3.f;
-	if(sceneAtom->IsInCapsule())
-		m_RenderInfo->viewDeck = m_ViewDeckRel;
-	else
-		m_RenderInfo->viewDeck = 0;
+	m_RenderInfo->viewDeck = 0;
+	if(sceneAtom->IsInSpacecraft())
+	{
+		const DaSc* ship = dynamic_cast<const DaSc*>(sceneAtom->FindParentVesselInEnv());
+		AuMatrix4x4 personToShip;
+		if(ship && ship->IsLegacyDebug() && sceneAtom->GetTransformRelativeToParent(personToShip, ship))
+			m_RenderInfo->viewDeck = ship->OnDesignDeck(personToShip.Translation()) + m_ViewDeckRel;
+		else
+			m_RenderInfo->viewDeck = m_ViewDeckRel;
+	}
 	m_RenderInfo->m_ShowPaths = g_Au.m_DebugSwitches & 0x00020000;
 
 	DaAtom *pEnvironment = sceneAtom->FindEnvironmentAtom();
@@ -7693,6 +7711,15 @@ void AuDesignerView::RenderTactical(DaPerson* sceneAtom, DaAtom* pEnvironment)
 		return;
 	if(sceneAtom->RemoteCameraId())
 		return;
+	const DaSc* deckShip = dynamic_cast<const DaSc*>(sceneAtom->FindParentVesselInEnv());
+	if(deckShip && !deckShip->IsLegacyDeckView(sceneAtom, *m_RenderInfo))
+		deckShip = nullptr;
+	const auto onViewedDeck = [&](const DaAtom* atom) {
+		if(!deckShip) return true;
+		AuMatrix4x4 atomToShip;
+		return !atom->GetTransformRelativeToParent(atomToShip, deckShip)
+			|| deckShip->OnDesignDeck(atomToShip.Translation()) == m_RenderInfo->viewDeck;
+	};
 
 	// Multiply by inverse of subatom transformation (Translation, rotation, and scale.)
 	AuMatrix4x4 tsub;
@@ -7715,6 +7742,8 @@ void AuDesignerView::RenderTactical(DaPerson* sceneAtom, DaAtom* pEnvironment)
 			if(!unit)
 				continue;	// Only allow select of unit atoms.
 			if(!unit->UnitCanBeSelected(sceneAtom, m_RenderInfo->IsViewTopDown()))
+				continue;
+			if(!onViewedDeck(unit))
 				continue;
 
 			QColor color = PoliticalStanceColor(sceneAtom->EmpireId(), unit->EmpireId(), unit->IsCivilian());
@@ -7801,7 +7830,7 @@ void AuDesignerView::RenderTactical(DaPerson* sceneAtom, DaAtom* pEnvironment)
 	{
 		// Highlight selected item to manipulate.
 		DaItem* selItem = dynamic_cast<DaItem*>(m_SceneEther.FindAtom(m_ItemManipulator->ItemId()));
-		if(selItem)
+		if(selItem && onViewedDeck(selItem))
 		{
 			QColor color(255,0,255);
 			float r = color.redF() * (float)m_MessageIntensity/3.f;
@@ -7868,6 +7897,8 @@ void AuDesignerView::RenderTactical(DaPerson* sceneAtom, DaAtom* pEnvironment)
 			DaUnit* selUnit = dynamic_cast<DaUnit*>(m_SceneEther.FindAtom((*si).Id()));
 			if(!selUnit)
 				continue;	// Selected atom is no longer in the scene.
+			if(!onViewedDeck(selUnit))
+				continue;
 
 			QColor color = PoliticalStanceColor(sceneAtom->EmpireId(), selUnit->EmpireId(), selUnit->IsCivilian());
 			float r = color.redF() * (float)m_MessageIntensity/3.f;
@@ -8457,6 +8488,22 @@ void AuDesignerView::ProcessControlInput(const DiControlInputArray& aActiveContr
 				ToggleTopDownView();
 			else
 				ToggleFirstThirdPersonView();
+			break;
+
+		case CI_TacticalCurrentDeck:
+			// AuView:1402f5f10 uses an out-of-range deck to select the hull.
+			if(m_RenderInfo->IsViewTopDown() && !Command())
+				m_ViewDeckRel = m_ViewDeckRel ? 0 : -100000;
+			break;
+
+		case CI_TacticalDeckHigher:
+			if(m_RenderInfo->IsViewTopDown() && !Command())
+				++m_ViewDeckRel;
+			break;
+
+		case CI_TacticalDeckLower:
+			if(m_RenderInfo->IsViewTopDown() && !Command())
+				--m_ViewDeckRel;
 			break;
 
 		case CI_TopDownNextInfo:

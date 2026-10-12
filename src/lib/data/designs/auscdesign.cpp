@@ -11,6 +11,7 @@
 #include "auitem.h"
 #include "aulegacyscdesign.h"
 #include "aulegacyscstats.h"
+#include "aulegacyscdeckplan.h"
 #include "aulegacyscgeometry.h"
 #include "aulegacyscprotocol.h"
 #include "auscparts.h"
@@ -20,10 +21,58 @@
 #include <QSqlQuery>
 #include <QCryptographicHash>
 
-#define SCDESIGN_SERIALIZE_VER			0x08					// At present, this must fit into a nibble.
+#define SCDESIGN_SERIALIZE_VER			0x09					// At present, this must fit into a nibble.
 
 namespace
 {
+void WriteLegacyDeckPlan(QDataStream& out, const QSharedPointer<const AuLegacyScDeckPlan>& plan)
+{
+	QByteArray payload;
+	if(plan && plan->IsValid())
+	{
+		QDataStream packed(&payload, QIODevice::WriteOnly);
+		packed.setVersion(QDataStream::Qt_5_0);
+		packed << *plan;
+		if(packed.status() != QDataStream::Ok || quint32(payload.size()) > AuLegacyScDeckPlan::MaximumSerializedBytes)
+		{
+			out.setStatus(QDataStream::WriteFailed);
+			return;
+		}
+	}
+	out << quint32(payload.size());
+	out.writeRawData(payload.constData(), payload.size());
+}
+
+void ReadLegacyDeckPlan(QDataStream& in, QSharedPointer<const AuLegacyScDeckPlan>& plan)
+{
+	quint32 size = 0;
+	in >> size;
+	if(in.status() != QDataStream::Ok || size > AuLegacyScDeckPlan::MaximumSerializedBytes
+		|| !in.device() || size > quint64(in.device()->bytesAvailable()))
+	{
+		in.setStatus(QDataStream::ReadCorruptData);
+		return;
+	}
+	if(!size)
+	{
+		plan.clear();
+		return;
+	}
+	QByteArray payload;
+	payload.resize(int(size));
+	if(in.readRawData(payload.data(), int(size)) != int(size))
+	{
+		in.setStatus(QDataStream::ReadCorruptData);
+		return;
+	}
+	QDataStream packed(payload);
+	packed.setVersion(QDataStream::Qt_5_0);
+	QSharedPointer<AuLegacyScDeckPlan> accepted(new AuLegacyScDeckPlan);
+	packed >> *accepted;
+	if(packed.status() == QDataStream::Ok && packed.atEnd() && accepted->IsValid()) plan = accepted;
+	else in.setStatus(QDataStream::ReadCorruptData);
+}
+
 void WriteLegacyStats(QDataStream& out, const QSharedPointer<const AuLegacyScStats>& stats)
 {
 	const bool present = stats && stats->IsValid();
@@ -95,6 +144,7 @@ void AuScDesignHash::LoadArchitect(const AuId& idArchitect)
 		ob.SetId(qry.value(qv++).toUInt());
 		ob.SetLegacyTextureMap(QByteArray());
 		ob.m_LegacyStats.clear();
+		ob.m_LegacyDeckPlan.clear();
 		ob.SetName(qry.value(qv++).toString());
 		ob.SetArchitectId(idArchitect);
 		ob.SetArchitectName(qry.value(qv++).toString());
@@ -117,6 +167,7 @@ void AuScDesignHash::LoadArchitect(const AuId& idArchitect)
 			ob.SetThumbnail(th);
 			if(in.device()->bytesAvailable()) ReadLegacyTextureMap(in, ob.m_LegacyTextureMap);
 			if(in.device()->bytesAvailable()) ReadLegacyStats(in, ob.m_LegacyStats);
+			if(in.device()->bytesAvailable()) ReadLegacyDeckPlan(in, ob.m_LegacyDeckPlan);
 		}
 
 		// Parts
@@ -245,6 +296,9 @@ void AuScDesignHash::LoadSoloInit()
 	{
 		int qv=0;
 		ob.SetId(qry.value(qv++).toUInt());
+		ob.m_LegacyTextureMap.clear();
+		ob.m_LegacyStats.clear();
+		ob.m_LegacyDeckPlan.clear();
 		ob.SetName(qry.value(qv++).toString());
 		ob.SetArchitectId(idArchitect);
 		ob.SetArchitectName(qry.value(qv++).toString());
@@ -265,6 +319,9 @@ void AuScDesignHash::LoadSoloInit()
 			QImage th;
 			in >> th;
 			ob.SetThumbnail(th);
+			if(in.device()->bytesAvailable()) ReadLegacyTextureMap(in, ob.m_LegacyTextureMap);
+			if(in.device()->bytesAvailable()) ReadLegacyStats(in, ob.m_LegacyStats);
+			if(in.device()->bytesAvailable()) ReadLegacyDeckPlan(in, ob.m_LegacyDeckPlan);
 		}
 
 		// Parts
@@ -359,6 +416,7 @@ void AuScDesignHash::LoadSoloInit()
 
 		// Factors gleaned by design analysis
 		ob.m_HullVolume = qry.value(qv++).toUInt();
+		ob.LoadLegacyTextureMap(db);
 		//qDebug() << "AuScDesignHash::LoadSoloInit arch" << idArchitect << "loaded" << ob.Name() << ob.DescriptionOneLine();
 
 		// Insert/update the data in this hash.
@@ -534,6 +592,7 @@ AuScDesign::AuScDesign(const AuScDesign& c) : AuDesign(c), m_Modules(c.m_Modules
 {
 	m_LegacyTextureMap = c.m_LegacyTextureMap;
 	m_LegacyStats = c.m_LegacyStats;
+	m_LegacyDeckPlan = c.m_LegacyDeckPlan;
 	m_HullVolume = c.m_HullVolume;
 	m_LandingOrient = c.m_LandingOrient;
 	m_Parts = new AuScParts(*c.m_Parts);
@@ -560,6 +619,7 @@ AuScDesign& AuScDesign::operator=(const AuScDesign& c)
 	AuDesign::operator=(c);
 	m_LegacyTextureMap = c.m_LegacyTextureMap;
 	m_LegacyStats = c.m_LegacyStats;
+	m_LegacyDeckPlan = c.m_LegacyDeckPlan;
 
 	m_HullVolume = c.m_HullVolume;
 	m_LandingOrient = c.m_LandingOrient;
@@ -602,6 +662,7 @@ void AuScDesign::Load(quint32 idDesign, QSqlDatabase& db)
 {
 	m_LegacyTextureMap.clear();
 	m_LegacyStats.clear();
+	m_LegacyDeckPlan.clear();
 	if(!db.isOpen())
 		return;
 
@@ -639,6 +700,7 @@ void AuScDesign::Load(quint32 idDesign, QSqlDatabase& db)
 			SetThumbnail(th);
 			if(in.device()->bytesAvailable()) ReadLegacyTextureMap(in, m_LegacyTextureMap);
 			if(in.device()->bytesAvailable()) ReadLegacyStats(in, m_LegacyStats);
+			if(in.device()->bytesAvailable()) ReadLegacyDeckPlan(in, m_LegacyDeckPlan);
 		}
 
 		// Parts
@@ -749,13 +811,13 @@ const AuScParts& AuScDesign::Parts() const
 
 void AuScDesign::LoadLegacyTextureMap(QSqlDatabase& db)
 {
-	if(!NeedsLegacyTextureMap() && m_LegacyStats) return;
+	if(!NeedsLegacyTextureMap() && m_LegacyStats && !NeedsLegacyDeckPlan()) return;
 	bool legacyBlueprint = false;
 	for(const AuScPart* part : *m_Parts)
 		if(part->GroupName().startsWith(QStringLiteral("legacy/debug/static/v"))) legacyBlueprint = true;
 	if(!legacyBlueprint) return;
 	// Upgrade older derived blueprints from the verified catalog source. Transfer
-	// the compact material map and calculated stats, rather than the source file.
+	// compact material, numeric and deck-plan snapshots from the source file.
 	QSqlQuery query(db);
 	query.prepare("SELECT contentHash, CASE WHEN octet_length(sourceData) <= ? THEN sourceData END "
 		"FROM n_LegacyScDesign WHERE runtimeDesignId = ?");
@@ -784,10 +846,21 @@ void AuScDesign::LoadLegacyTextureMap(QSqlDatabase& db)
 		qWarning() << "Legacy ship statistics:" << Id() << error;
 		return;
 	}
+	QSharedPointer<const AuLegacyScDeckPlan> deckPlan(new AuLegacyScDeckPlan(accepted.SourceDesign(), accepted.AuthorCenter()));
+	if(deckPlan->IsValid()) m_LegacyDeckPlan = deckPlan;
+	else qWarning() << "Legacy deck plan:" << Id() << "source exceeds replicated plan limits";
 	m_LegacyStats.reset(new AuLegacyScStats(accepted.SourceDesign(), accepted.Stats()));
 	if(NeedsLegacyTextureMap()
 		&& !AuLegacyScGeometry::TextureMap(accepted, m_LegacyTextureMap, error, includeOpenHatches, includeDoors))
 		qWarning() << "Legacy texture map:" << Id() << error;
+}
+
+bool AuScDesign::NeedsLegacyDeckPlan() const
+{
+	if(m_LegacyDeckPlan && m_LegacyDeckPlan->IsValid()) return false;
+	for(const AuScPart* part : *m_Parts)
+		if(part->GroupName().startsWith(QStringLiteral("legacy/debug/static/v"))) return true;
+	return false;
 }
 
 bool AuScDesign::NeedsLegacyTextureMap() const
@@ -817,6 +890,7 @@ void AuScDesign::ClearParts()
 	m_Parts->Clear();
 	m_HullVolume = 0;
 	m_LegacyStats.clear();
+	m_LegacyDeckPlan.clear();
 }
 
 void AuScDesign::DesignLoaded(const AuDesign& design)
@@ -827,6 +901,7 @@ void AuScDesign::DesignLoaded(const AuDesign& design)
 		const AuScDesign& c = dynamic_cast<const AuScDesign&>(design);
 		m_LegacyTextureMap = c.m_LegacyTextureMap;
 		m_LegacyStats = c.m_LegacyStats;
+		m_LegacyDeckPlan = c.m_LegacyDeckPlan;
 		m_HullVolume = c.m_HullVolume;
 		m_LandingOrient = c.m_LandingOrient;
 		m_Modules = c.m_Modules;
@@ -896,12 +971,14 @@ void AuScDesign::operator>>(QDataStream& out) const
 	out << m_Skeleton;
 	WriteLegacyTextureMap(out, m_LegacyTextureMap);
 	WriteLegacyStats(out, m_LegacyStats);
+	WriteLegacyDeckPlan(out, m_LegacyDeckPlan);
 }
 
 void AuScDesign::operator<<(QDataStream& in)
 {
 	m_LegacyTextureMap.clear();
 	m_LegacyStats.clear();
+	m_LegacyDeckPlan.clear();
 	AuDesign::operator<<(in);
 
 	quint8 ver;
@@ -1023,6 +1100,7 @@ void AuScDesign::operator<<(QDataStream& in)
 	}
 	if(ver >= 0x07) ReadLegacyTextureMap(in, m_LegacyTextureMap);
 	if(ver >= 0x08) ReadLegacyStats(in, m_LegacyStats);
+	if(ver >= 0x09) ReadLegacyDeckPlan(in, m_LegacyDeckPlan);
 }
 
 void AuScDesign::Insert(QSqlDatabase& db) const
@@ -1055,6 +1133,7 @@ void AuScDesign::Insert(QSqlDatabase& db) const
 		out << Thumbnail();
 		WriteLegacyTextureMap(out, m_LegacyTextureMap);
 		WriteLegacyStats(out, m_LegacyStats);
+		WriteLegacyDeckPlan(out, m_LegacyDeckPlan);
 
 		qa.addBindValue(ba);
 	}
@@ -1157,6 +1236,7 @@ void AuScDesign::Update(QSqlDatabase& db) const
 		out << Thumbnail();
 		WriteLegacyTextureMap(out, m_LegacyTextureMap);
 		WriteLegacyStats(out, m_LegacyStats);
+		WriteLegacyDeckPlan(out, m_LegacyDeckPlan);
 
 		qa.addBindValue(ba);
 	}
@@ -1281,6 +1361,7 @@ void AuScDesign::Tx(QDataStream& out) const
 	out << m_Skeleton;
 	WriteLegacyTextureMap(out, m_LegacyTextureMap);
 	WriteLegacyStats(out, m_LegacyStats);
+	WriteLegacyDeckPlan(out, m_LegacyDeckPlan);
 }
 
 // NOTE: This function is also used when loading from a file.
@@ -1288,6 +1369,7 @@ void AuScDesign::Rx(QDataStream& in)
 {
 	m_LegacyTextureMap.clear();
 	m_LegacyStats.clear();
+	m_LegacyDeckPlan.clear();
 	AuDesign::Rx(in);
 
 	quint8 ver;
@@ -1422,6 +1504,7 @@ void AuScDesign::Rx(QDataStream& in)
 	}
 	if(ver >= 0x07) ReadLegacyTextureMap(in, m_LegacyTextureMap);
 	if(ver >= 0x08) ReadLegacyStats(in, m_LegacyStats);
+	if(ver >= 0x09) ReadLegacyDeckPlan(in, m_LegacyDeckPlan);
 }
 
 void AuScDesign::SetArmorVolume(quint32 armor)
@@ -1913,6 +1996,7 @@ void AuScDesign::SetProperties(const AuDesign& design)
 	{
 		const AuScDesign& c = dynamic_cast<const AuScDesign&>(design);
 		m_LegacyStats = c.m_LegacyStats;
+		m_LegacyDeckPlan = c.m_LegacyDeckPlan;
 
 		m_HullVolume = c.m_HullVolume;
 		m_LandingOrient = c.m_LandingOrient;
@@ -3266,6 +3350,7 @@ quint64 AuScDesign::MemoryUsage() const
 	quint64 mem = AuDesign::MemoryUsage();
 	mem += m_LegacyTextureMap.size();
 	if(m_LegacyStats) mem += m_LegacyStats->MemoryUsage();
+	if(m_LegacyDeckPlan) mem += m_LegacyDeckPlan->MemoryUsage();
 	mem += sizeof(m_HullVolume);
 	mem += sizeof(m_LandingOrient);
 	mem += sizeof(m_Modules);
