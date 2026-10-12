@@ -111,7 +111,7 @@ private:
 	QSemaphore	m_semLogout;			// Send a logout packet before closing the connection.
 	unordered_map<AuId, bool, AuIdHash>	m_SyncLastAtomIds;	// Ids of non-permanent atoms that belong in the scene.
 	bool		m_SceneRemovalPending;	// Retry removal after retained child atoms have moved or departed.
-	QSet<AuId>	m_LegacyMissingShips;	// Avoid repeated destruction diagnostics while removal is postponed.
+	QSet<AuId>	m_LegacyMissingShips;	// Restore boarding/collision if a retained ship reappears in the server scene.
 	// Keep server position separate from local boarding prediction between packets in a scene sync.
 	struct ServerAvatarPosition
 	{

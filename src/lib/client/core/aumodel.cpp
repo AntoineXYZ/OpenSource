@@ -9,13 +9,11 @@
 #include "auapp.h"
 #include "auclientglobal.h"
 #include "auframe.h"
-#include "aulegacydestructiontrace.h"
 #include "auview.h"
 #include "daatomlist.h"
 #include "dabd.h"
 #include "dagalaxy.h"
 #include "daperson.h"
-#include "dasc.h"
 #include "dasector.h"
 #include "dasolarsystem.h"
 #include "davehicle.h"
@@ -389,10 +387,6 @@ void AuModel::SyncRemove(const AuId& parentId, const DaAtom* pSceneAtom)
 
 		// Scene is notified after we clean up root's copy of the atom.
 		g_AuClient.SyncAtomDeparted(atomId);
-		const DaSc* ship = dynamic_cast<const DaSc*>(atom);
-		if(ship && ship->IsLegacyDebug())
-			AuLegacyDestructionTrace::Log(QStringLiteral("client-model-departure-queued"), atomId,
-				QStringLiteral("queue=%1").arg(g_AuClient.SyncAtomCount()));
 	}
 }
 

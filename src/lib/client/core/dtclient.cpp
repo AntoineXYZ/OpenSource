@@ -11,7 +11,6 @@
 #include "auframe.h"
 #include "augear.h"
 #include "auglobal.h"
-#include "aulegacydestructiontrace.h"
 #include "aumission.h"
 #include "aumodel.h"
 #include "daanimal.h"
@@ -40,7 +39,6 @@
 #include "dgdata.h"
 #include "dtsspacket.h"
 #include <QDataStream>
-#include <QStringList>
 
 DtClient::DtClient(QObject* parent) : QThread(parent), m_semAlive(1)
 {
@@ -855,23 +853,9 @@ void DtClient::ReconcileAtomsInScene()
 		const bool legacyShip = ship && ship->IsLegacyDebug();
 		if(m_SyncLastAtomIds.find((*mai)->Id()) == m_SyncLastAtomIds.end())
 		{
-			if(legacyShip && !m_LegacyMissingShips.contains(ship->Id()))
-			{
-				m_LegacyMissingShips.insert(ship->Id());
-				DaAtomList children;
-				ship->ListSubatoms(children);
-				QStringList childIds;
-				for(const DaAtom* child : children)
-					if(childIds.size() < 10)
-						childIds.append(QStringLiteral("%1:%2").arg(child->Id().GetID()).arg(child->AtomTypeName()));
-				const DaAtom* avatar = ether.FindAtom(auApp->AvatarId());
-				AuLegacyDestructionTrace::Log(QStringLiteral("client-server-removed"), ship->Id(),
-					QStringLiteral("children=%1 childIds=%2 avatarParent=%3")
-						.arg(children.size()).arg(childIds.join(QLatin1Char(',')))
-						.arg(avatar ? avatar->ParentId().GetID() : 0));
-			}
 			if(legacyShip)
 			{
+				m_LegacyMissingShips.insert(ship->Id());
 				// A ship absent from the completed server scene cannot accept local
 				// boarding or collisions while its remaining children are reconciled.
 				ship->SetTraveling();
@@ -905,9 +889,6 @@ void DtClient::ReconcileAtomsInScene()
 					avatar->InvalidateEnvironmentRecursive();
 					if(model)
 						model->PreserveScenePosition(avatar);
-					AuLegacyDestructionTrace::Log(QStringLiteral("client-ejection-restored"), ship->Id(),
-						QStringLiteral("avatar=%1 parent=%2 pose=%3")
-							.arg(avatar->Id().GetID()).arg(avatar->ParentId().GetID()).arg(server.pose.Pose()));
 				}
 			}
 			// The non-permanent atom must be removed from the scene.
@@ -934,16 +915,10 @@ void DtClient::ReconcileAtomsInScene()
 			else
 				ether.TrashAtom((*mai)->Id());
 			if(legacyShip)
-			{
-				AuLegacyDestructionTrace::Log(QStringLiteral("client-root-removed"), (*mai)->Id());
 				m_LegacyMissingShips.remove((*mai)->Id());
-			}
 		}
 		else if(legacyShip && m_LegacyMissingShips.remove(ship->Id()))
-		{
 			ship->SetNormal();
-			AuLegacyDestructionTrace::Log(QStringLiteral("client-server-restored"), ship->Id());
-		}
 	}
 
 #if !defined(QT_NO_DEBUG)

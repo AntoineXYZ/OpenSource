@@ -354,7 +354,6 @@ private:
 	GALAXY								m_SyncGalaxy;			// Scene atom's parent galaxy at last sync.
 	unsigned int						m_SyncLastAtoms[c_SyncHistory];	// Qty of atoms sent in last c_SyncHistory refreshes.
 	unordered_map<AuId,bool, AuIdHash>	m_SyncLastAtomIds;		// Hash of non-permanent atoms ids sent with the previous sync.
-	QSet<AuId>							m_LegacySceneShips;		// Legacy ship ids in the previous sync, for destruction diagnostics.
 	unsigned int						m_SyncLastBytes[c_SyncHistory];	// Qty of bytes sent in last c_SyncHistory refreshes.
 	AuId								m_SyncSector;			// Scene atom's sector at last sync. (Locked by m_muTxBuffer)
 	unsigned int						m_SyncTotalAtoms;		// Total atoms sent in all refreshes.

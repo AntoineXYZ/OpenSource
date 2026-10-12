@@ -5,7 +5,6 @@
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
 #include "daatom.h"
-#include "aulegacydestructiontrace.h"
 //
 #include "auatomrenderinfo.h"
 #include "aubox.h"
@@ -312,13 +311,8 @@ void DaAtom::RxUpdateBase(QDataStream& fromServer, AuAtomPos* receivedPosition)
 		pos.Rx(fromServer);
 		if(receivedPosition)
 			*receivedPosition = pos;
-		const DaSc* oldShip = AtomType() == ATOM_Avatar ? dynamic_cast<const DaSc*>(Parent()) : 0;
-		const AuId oldShipId = oldShip && oldShip->IsLegacyDebug() ? oldShip->Id() : AuId();
 		ChangePos(pos);
 		InvalidateEnvironment();
-		if(!oldShipId.IsNull() && pos.ParentId() != oldShipId)
-			AuLegacyDestructionTrace::Log(QStringLiteral("client-avatar-reparented"), oldShipId,
-				QStringLiteral("avatar=%1 parent=%2").arg(Id().GetID()).arg(ParentId().GetID()));
 	}
 
 	m_State = Normal;	// Server does not send abnormal atoms.
@@ -337,11 +331,7 @@ void DaAtom::RxUpdateBase(QDataStream& fromServer, AuAtomPos* receivedPosition)
 		while(effcount)
 		{
 			effect << fromServer;
-			if(m_Effects->AddIfUnique(effect) && effect.Visual() == VISUAL_ExplodeSpacecraft)
-				AuLegacyDestructionTrace::Log(QStringLiteral("client-explosion-received"), AuId(),
-					QStringLiteral("effect=%1 parent=%2 startMSec=%3 ageMSec=%4")
-						.arg(Id().GetID()).arg(ParentId().GetID()).arg(effect.StartTime().MSecsSinceEpoch())
-						.arg(effect.StartTime().MSecsTo(g_Au.CoordinatedTime())));
+			m_Effects->AddIfUnique(effect);
 			effcount--;
 		}
 	}

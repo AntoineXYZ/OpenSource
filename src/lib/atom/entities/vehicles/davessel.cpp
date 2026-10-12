@@ -13,7 +13,6 @@
 #include "audesign.h"
 #include "audialog.h"
 #include "augame.h"
-#include "aulegacydestructiontrace.h"
 #include "auscreport.h"
 #include "ausensorblip.h"
 #include "ausound.h"
@@ -16965,10 +16964,7 @@ void DaVessel::DestroyShip(const QString& reason)
 {
 	const DaSc* sc = dynamic_cast<const DaSc*>(this);
 	const bool deferExplosion = sc && sc->IsLegacyDebug() && !InDesignEnvironment();
-	if(deferExplosion)
-		AuLegacyDestructionTrace::Log(QStringLiteral("server-begin"), Id(),
-			QStringLiteral("parent=%1 reason=%2").arg(ParentId().GetID()).arg(reason));
-	const auto createExplosion = [this, deferExplosion]() {
+	const auto createExplosion = [this]() {
 		// Keep the effect independent of the ship so it survives removal.
 		DaAtom* parent = Parent();
 		if(!parent) return;
@@ -16998,9 +16994,6 @@ void DaVessel::DestroyShip(const QString& reason)
 					SOUND_ExplodeSpacecraft, gain, 1, VISUAL_ExplodeSpacecraft);
 			explode->AddEffect(effect);
 		}
-		if(deferExplosion)
-			AuLegacyDestructionTrace::Log(QStringLiteral("server-explosion"), Id(),
-				QStringLiteral("effect=%1 parent=%2").arg(explode->Id().GetID()).arg(parent->Id().GetID()));
 	};
 	if(!deferExplosion) createExplosion();
 
@@ -17272,11 +17265,6 @@ void DaVessel::DestroyShip(const QString& reason)
 					// from position. Ejection must also release its old station pose.
 					person->SyncController(AuSyncPose(person->CurrentGeneralPose(), person->CurrentHeadTilt(),
 						person->StationId(), person->VehicleSeatIndex()));
-					if(deferExplosion)
-						AuLegacyDestructionTrace::Log(QStringLiteral("server-ejected"), Id(),
-							QStringLiteral("avatar=%1 parent=%2 pose=%3")
-								.arg(person->Id().GetID()).arg(person->ParentId().GetID())
-								.arg(person->CurrentGeneralPose().Pose()));
 				}
 				atom->SetModified();
 			}
@@ -17300,9 +17288,6 @@ void DaVessel::DestroyShip(const QString& reason)
 		GoDormant();
 	else
 		Kill();										// Destroy this ship and everything still aboard.
-	if(deferExplosion)
-		AuLegacyDestructionTrace::Log(QStringLiteral("server-finished"), Id(),
-			QStringLiteral("state=%1 children=%2").arg(int(AtomState())).arg(HasSubatoms()));
 }
 
 void DaVessel::GoDormant()
