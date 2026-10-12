@@ -1000,6 +1000,18 @@ void DaSc::AnimateDeviceObjects(AuAtomRenderInfo& ari, const DaPerson* sceneAtom
 	//qDebug() << "DaSc::AnimateDeviceObjects" << Id() << Name();
 	DaVessel::AnimateDeviceObjects(ari, sceneAtom, lastAnim);
 
+	if(IsLegacyDebug())
+	{
+		// AuAtom13:1803c9950 alternates normal lighting on even seconds with
+		// the assessed system/structure warning on odd seconds.
+		const qint64 second = AuTime::CurrentSecsSinceEpoch();
+		if(second != m_LegacyAlertSecond)
+		{
+			m_LegacyAlertSecond = second;
+			m_LegacyApparentAlertCondition = (second & 1) ? AlertCondition() : ConditionGreen;
+		}
+	}
+
 	AnimateRenderStates();
 
 	if(!m_OwnTextures.empty())
@@ -1111,6 +1123,9 @@ bool DaSc::AnyHullDoorOpen() const
 
 bool DaSc::AnyHullDoorOpenInRoom(const QString& roomName) const
 {
+	// Legacy pressure is shared by the whole hull, so an open hull door
+	// equalizes every room. Its pressure path does not populate m_DoorRooms.
+	if(IsLegacyDebug()) return AnyHullDoorOpen();
 	m_DesignLock.lockForRead();
 	for(QHash<quint16, QString>::const_iterator dri = m_DoorRooms.cbegin(); dri != m_DoorRooms.cend(); dri++)
 	{
@@ -3591,6 +3606,8 @@ void DaSc::RenderLegacyTextures(const AuGLSLScBase& shader, AuAtomRenderInfo& ar
 {
 	const GLuint effects[EFF_Count] = {};
 	const bool powered = CapacitorLevel() > 0;
+	// AuAtom13:1803c9950 gates berth, life-support and surgery overlays with
+	// life-support allocation alone, even when the capacitor is empty.
 	const bool lifeSupportAllocated = GetPowerConsumption(SYS_LifeSupport) > 0;
 	const bool powerPlantWorking = PowerPlantWorking();
 	const bool maneuverWorking = GravityDriveWorking();
@@ -7237,10 +7254,31 @@ void DaSc::InteriorAmbientLight(const QString& roomName, float& ambientR, float&
 		float fogDensity, fogR, fogG, fogB;
 		SceneRenderParameters(0, ambientR, ambientG, ambientB, fogDensity, fogR, fogG, fogB, false, sunsBlocked);
 		const float brightness = light == INTLIGHT_Bright ? 1.f : light == INTLIGHT_Dim ? .3f : 0.f;
-		// AuAtom13:1800cdcf0 supplies the powered On/Dim contribution.
-		ambientR = std::max(0.f, std::min(1.f, ambientR + .47843137f * brightness));
-		ambientG = std::max(0.f, std::min(1.f, ambientG + .5f * brightness));
-		ambientB = std::max(0.f, std::min(1.f, ambientB + .49019608f * brightness));
+		float interiorR = .47843137f * brightness;
+		float interiorG = .5f * brightness;
+		float interiorB = .49019608f * brightness;
+		// AuAtom13:1800cdcf0 supplies these warning colors even with lights
+		// Off or an empty capacitor. Pressure outside 30..170/200 triggers
+		// red via AlertConditionOfSystems (1803c6290). Berth frames stay 0..3;
+		// their surfaces change appearance with the rest of the interior.
+		switch(m_LegacyApparentAlertCondition)
+		{
+		case ConditionRed:
+			interiorR = .47843137f;
+			interiorG = .05f;
+			interiorB = .04901961f;
+			break;
+		case ConditionYellow:
+			interiorR = .47843137f;
+			interiorG = .375f;
+			interiorB = .04901961f;
+			break;
+		case ConditionGreen:
+			break;
+		}
+		ambientR = std::max(0.f, std::min(1.f, ambientR + interiorR));
+		ambientG = std::max(0.f, std::min(1.f, ambientG + interiorG));
+		ambientB = std::max(0.f, std::min(1.f, ambientB + interiorB));
 		return;
 	}
 	// Calculate ambient lighting from interior lights, if any.

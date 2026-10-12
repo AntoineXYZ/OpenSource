@@ -3326,14 +3326,23 @@ void DaPerson::RenderAudioSources(const DaPerson* sceneAtom, const AuMatrix4x4& 
 			float shipWindForce = 0;
 			float shipWindGain = 0;
 			float shipWindPitch = 0;
+			bool legacyPressureSound = false;
 			if(IsInsideCapsule())
 			{
 				const DaCapsule* ship = FindParentCapsuleInEnv();
 				if(ship)
 				{
+					const DaSc* spacecraft = dynamic_cast<const DaSc*>(ship);
+					legacyPressureSound = spacecraft && spacecraft->IsLegacyDebug();
 					float insideAir = ship->AirPressure(CapsuleRoomName());	// 0..1
 					float outsideAir;
-					if(ship->CapacitorLevel() > 0 && ship->LifeSupportWorking())
+					if(legacyPressureSound)
+					{
+						// AuAtom13:180341530: one hull-wide pressure differential,
+						// audible only through an open hull door, regardless of power.
+						outsideAir = ship->AnyHullDoorOpen() ? ship->AirDensity() : insideAir;
+					}
+					else if(ship->CapacitorLevel() > 0 && ship->LifeSupportWorking())
 					{
 						// Life support functioning.
 						if(ship->AnyHullDoorOpenInRoom(CapsuleRoomName()))
@@ -3367,11 +3376,12 @@ void DaPerson::RenderAudioSources(const DaPerson* sceneAtom, const AuMatrix4x4& 
 					}
 
 					// Wind gain is the differential between the two pressures.
-					if(!FuzzyEquals(outsideAir, insideAir))
+					if(legacyPressureSound ? fabs(outsideAir - insideAir) > 1e-5f : !FuzzyEquals(outsideAir, insideAir))
 					{
 						// Air pressure is equalizing between inside and outside.
 						float windForce = fabs(outsideAir - insideAir) * 2;	// 0..2
-						windForce = AuNoiseF::Linear_Interpolate(m_ShipWindForce, windForce, .1f);	// Change wind sound gradually.
+						if(!legacyPressureSound)
+							windForce = AuNoiseF::Linear_Interpolate(m_ShipWindForce, windForce, .1f);	// Change wind sound gradually.
 						shipWindForce = windForce;
 						shipWindPitch = windForce * 2;			// 0..4
 						if(shipWindPitch > 2)
@@ -3422,7 +3432,7 @@ void DaPerson::RenderAudioSources(const DaPerson* sceneAtom, const AuMatrix4x4& 
 
 			// Combine the wind sound sources.
 			float windGain = MAX(envWindGain, shipWindGain);
-			if(helmetClosed)
+			if(helmetClosed && !legacyPressureSound)
 				windGain *= .5f;	// Closed environment suit helmet cuts wind noise.
 
 			float windPitch = MAX(envWindPitch, shipWindPitch);
