@@ -7,13 +7,16 @@
 #ifndef DtClient_H
 #define DtClient_H
 
+#include "auatompos.h"
 #include "auclientlib.h"
 #include "aucommpacket.h"
 #include "auelapsedtimer.h"
 #include "auid.h"
+#include "aupose.h"
 #include "auspecies.h"
 #include <QImage>
 #include <QSemaphore>
+#include <QSet>
 #include <QTcpSocket>
 #include <QThread>
 
@@ -107,6 +110,21 @@ private:
 	QSemaphore	m_semAlive;				// Used to know when I'm supposed to die.
 	QSemaphore	m_semLogout;			// Send a logout packet before closing the connection.
 	unordered_map<AuId, bool, AuIdHash>	m_SyncLastAtomIds;	// Ids of non-permanent atoms that belong in the scene.
+	bool		m_SceneRemovalPending;	// Retry removal after retained child atoms have moved or departed.
+	QSet<AuId>	m_LegacyMissingShips;	// Avoid repeated destruction diagnostics while removal is postponed.
+	// Keep server position separate from local boarding prediction between packets in a scene sync.
+	struct ServerAvatarPosition
+	{
+		AuId id;
+		AuAtomPos pos;
+		AuPoint vec;
+		AuPose pose;
+		bool atRest = false;
+		float headTilt = 0;
+		quint16 stationId = 0;
+		quint8 seatIndex = 0;
+	};
+	ServerAvatarPosition m_ServerAvatarPosition;
 	bool		m_EmpireDataIncoming;	// true while we are receiving a batch of empire data.
 	quint32		m_ClientUnitEmpire;		// client unit empire id
 	bool		m_HasClientUnitEmpire;	// true if we have received the client unit's empire record

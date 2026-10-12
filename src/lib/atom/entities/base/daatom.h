@@ -1773,7 +1773,7 @@ public:
 	// properties. A bitmask byte can then be put in the buffer to indicate
 	// what is being updated.
 	void RxUpdateId(QDataStream& fromServer);	// Rx atom id only
-	void RxUpdateBase(QDataStream& fromServer);	// Rx remainder of DaAtom
+	void RxUpdateBase(QDataStream& fromServer, AuAtomPos* receivedPosition=0);	// Rx remainder of DaAtom
 												// portion only
 	// Rx the rest, after parenting
 	virtual void RxUpdate(QDataStream& /*fromServer*/, bool /*isFirstUpdate*/)
@@ -2908,9 +2908,9 @@ public:
 
 	// Collects current controller sync requirements. This is the client side, picking up server-applied SyncController values.
 	// Changes passed values to reflect current controller sync requirements.
-	// Clears my sync controller queue.
+	// Clears my sync controller queue unless consume is false, which reads a copy.
 	void ControllerSync(AuAtomPos& pos, bool& atRest, AuPoint& vec, float& headTilt, AuPose& pose, quint16& stationId,
-			quint8& seatIndex);
+			quint8& seatIndex, bool consume=true);
 
 	// Adds a 'sync' for some change that must be propagated to the controller of this atom (scene atom or driver).
 	// This is the server side, called when some control must be syncronized with the client and not overridden by client-side

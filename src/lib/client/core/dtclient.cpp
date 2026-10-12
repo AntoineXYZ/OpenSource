@@ -11,7 +11,9 @@
 #include "auframe.h"
 #include "augear.h"
 #include "auglobal.h"
+#include "aulegacydestructiontrace.h"
 #include "aumission.h"
+#include "aumodel.h"
 #include "daanimal.h"
 #include "daarena.h"
 #include "daasteroid.h"
@@ -38,6 +40,7 @@
 #include "dgdata.h"
 #include "dtsspacket.h"
 #include <QDataStream>
+#include <QStringList>
 
 DtClient::DtClient(QObject* parent) : QThread(parent), m_semAlive(1)
 {
@@ -49,6 +52,7 @@ DtClient::DtClient(QObject* parent) : QThread(parent), m_semAlive(1)
 	m_isConnected = false;
 	m_PacketSize = 0;
 	m_PacketSizeBytesLeft = 0;
+	m_SceneRemovalPending = false;
 	m_semAlive.acquire(1);			// I live...
 }
 
@@ -552,9 +556,9 @@ bool DtClient::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 					m_SyncLastAtomIds.clear();
 				}
 
-				// When 'hasAtomIds' is 2, we are reusing the list from the last scene sync.
-				// There is no need to reconcile the scene again since the list didn't change.
-				if(hasAtomIds != 2)
+				// An unchanged scene list can still finish a postponed removal after
+				// an avatar or another child has left a destroyed ship.
+				if(hasAtomIds != 2 || m_SceneRemovalPending)
 					ReconcileAtomsInScene();
 
 				// Send the SyncComplete packet back to the server for ping time calculation.
@@ -608,13 +612,14 @@ bool DtClient::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 	atom->RxUpdateId(block);	// Pull in only the id and modify time.
 
 	AuEther& ether = g_Au.LockEtheriumDelete();
+	AuAtomPos receivedPosition;
 	DaAtom* exa = ether.FindAtom(atom->Id());
 	if(exa)
 	{
 		// The atom exists in the local data.
 		// Verify proper parenting.
 		exa->SetModifyTime(atom->ModifyTime());
-		exa->RxUpdateBase(block);							// May load new parent id.
+		exa->RxUpdateBase(block, &receivedPosition);		// May load new parent id.
 
 		// The nu atom is no longer needed and is discarded.
 		delete atom;
@@ -634,7 +639,7 @@ bool DtClient::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 	else
 	{
 		// The atom does not exist in the local data.
-		atom->RxUpdateBase(block);	// May load new parent id.
+		atom->RxUpdateBase(block, &receivedPosition);	// May load new parent id.
 		atom->ConnectSignals();
 		ether.AddAtom(atom);
 
@@ -655,6 +660,29 @@ bool DtClient::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 		// Receive the remainder of the update data now that parent is correct.
 		// 'exa' is non-zero if we are updating an existing atom; 'exa' will be 0 the first time we receive an atom.
 		atom->RxUpdate(block, exa?false:true);
+
+		DaPerson* avatar = dynamic_cast<DaPerson*>(atom);
+		if(avatar && avatar->Is(auApp->AvatarId()))
+		{
+			// Movement can reboard a departing ship before P_SyncComplete arrives.
+			// Save the actual server position, including forced ejection velocity/pose,
+			// without consuming the corrections needed by ordinary movement smoothing.
+			ServerAvatarPosition server;
+			server.id = avatar->Id();
+			server.pos = receivedPosition;
+			server.vec = avatar->Vector();
+			server.pose = avatar->CurrentGeneralPose();
+			server.atRest = avatar->IsAtRest();
+			server.headTilt = avatar->CurrentHeadTilt();
+			server.stationId = avatar->StationId();
+			server.seatIndex = avatar->VehicleSeatIndex();
+			avatar->ControllerSync(server.pos, server.atRest, server.vec, server.headTilt, server.pose,
+				server.stationId, server.seatIndex, false);
+			// An update may omit the ordinary position but still contain a forced
+			// position correction. Neither case should copy a locally predicted parent.
+			if(!server.pos.ParentId().IsNull())
+				m_ServerAvatarPosition = server;
+		}
 
 		atomId = atom->Id();
 		empireId = atom->EmpireId();
@@ -806,6 +834,7 @@ void DtClient::ReconcileAtomsInScene()
 	}
 	DaAtomList myAtoms;
 	univ->ListSubatomsRecursive(myAtoms);	// This gets them in descending order, top of tree to leaves.
+	m_SceneRemovalPending = false;
 	for(DaAtomList::iterator mai = myAtoms.end()-1; mai != myAtoms.begin()-1; mai--)
 	{
 		/*DHH This is also done in aumodel. Why is it done here?
@@ -822,11 +851,73 @@ void DtClient::ReconcileAtomsInScene()
 		// Skip atoms that are permanent in the scene. The server does not send us their ids over and over again.
 		if((*mai)->IsPermanentInScene())
 			continue;
+		DaSc* ship = dynamic_cast<DaSc*>(*mai);
+		const bool legacyShip = ship && ship->IsLegacyDebug();
 		if(m_SyncLastAtomIds.find((*mai)->Id()) == m_SyncLastAtomIds.end())
 		{
+			if(legacyShip && !m_LegacyMissingShips.contains(ship->Id()))
+			{
+				m_LegacyMissingShips.insert(ship->Id());
+				DaAtomList children;
+				ship->ListSubatoms(children);
+				QStringList childIds;
+				for(const DaAtom* child : children)
+					if(childIds.size() < 10)
+						childIds.append(QStringLiteral("%1:%2").arg(child->Id().GetID()).arg(child->AtomTypeName()));
+				const DaAtom* avatar = ether.FindAtom(auApp->AvatarId());
+				AuLegacyDestructionTrace::Log(QStringLiteral("client-server-removed"), ship->Id(),
+					QStringLiteral("children=%1 childIds=%2 avatarParent=%3")
+						.arg(children.size()).arg(childIds.join(QLatin1Char(',')))
+						.arg(avatar ? avatar->ParentId().GetID() : 0));
+			}
+			if(legacyShip)
+			{
+				// A ship absent from the completed server scene cannot accept local
+				// boarding or collisions while its remaining children are reconciled.
+				ship->SetTraveling();
+				DaPerson* avatar = dynamic_cast<DaPerson*>(ether.FindAtom(auApp->AvatarId()));
+				const ServerAvatarPosition& server = m_ServerAvatarPosition;
+				DaAtom* destination = ether.FindNormalAtom(server.pos.ParentId());
+				AuModel* model = auApp->Model();
+				bool aboard = false;
+				for(DaAtom* parent = avatar ? avatar->Parent() : 0; parent; parent = parent->Parent())
+					if(parent == ship)
+					{
+						aboard = true;
+						break;
+					}
+				const bool cachedAboard = avatar && model && model->ScenePositionUsesParent(avatar->Id(), ship->Id());
+				if(avatar && (aboard || cachedAboard) && avatar->Is(server.id) && destination && destination != ship
+					&& !ship->FindIdRecursive(destination->Id()))
+				{
+					// Undo prediction that put us back aboard after the ejection packet.
+					avatar->ChangePosAndOrient(server.pos);
+					avatar->SetGeneralPose(server.pose, server.stationId, false);
+					avatar->TiltHeadTo(server.headTilt);
+					avatar->SetVehicleSeatIndex(server.seatIndex);
+					if(server.atRest)
+						avatar->SetAtRest();
+					else
+					{
+						avatar->SetInMotion();
+						avatar->SetVector(server.vec);
+					}
+					avatar->InvalidateEnvironmentRecursive();
+					if(model)
+						model->PreserveScenePosition(avatar);
+					AuLegacyDestructionTrace::Log(QStringLiteral("client-ejection-restored"), ship->Id(),
+						QStringLiteral("avatar=%1 parent=%2 pose=%3")
+							.arg(avatar->Id().GetID()).arg(avatar->ParentId().GetID()).arg(server.pose.Pose()));
+				}
+			}
 			// The non-permanent atom must be removed from the scene.
 			if((*mai)->HasSubatoms())
-				continue;	// Ignore this one. It's children could be later in the list and we'll die if it deletes them too.
+			{
+				// Keep its children safe, but retry on the next sync even if
+				// the server reuses the same list of scene atom ids.
+				m_SceneRemovalPending = true;
+				continue;
+			}
 
 			DaBd* bd = dynamic_cast<DaBd*>(*mai);
 			if(bd && bd->HasEnclosedEnvironment())
@@ -842,6 +933,16 @@ void DtClient::ReconcileAtomsInScene()
 			}
 			else
 				ether.TrashAtom((*mai)->Id());
+			if(legacyShip)
+			{
+				AuLegacyDestructionTrace::Log(QStringLiteral("client-root-removed"), (*mai)->Id());
+				m_LegacyMissingShips.remove((*mai)->Id());
+			}
+		}
+		else if(legacyShip && m_LegacyMissingShips.remove(ship->Id()))
+		{
+			ship->SetNormal();
+			AuLegacyDestructionTrace::Log(QStringLiteral("client-server-restored"), ship->Id());
 		}
 	}
 

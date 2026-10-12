@@ -11,6 +11,7 @@
 #include "audbglobal.h"
 #include "aulogincomm.h"
 #include "aulegacysccollision.h"
+#include "aulegacydestructiontrace.h"
 #include "auplayeronlinestatus.h"
 #include "ausceneserverapp.h"
 #include "austarmapdata.h"
@@ -1812,10 +1813,13 @@ void DtSceneServer::SyncClient()
 
 	// Transmit the atoms to the client.
 	unordered_map<AuId,bool, AuIdHash> atomsInScene;			// Non-permanent atoms that belong in the scene.
+	QSet<AuId> legacySceneShips;
 	unsigned int numsync = 0;
 	for(DaAtomList::const_iterator it = sceneAtoms.begin(); it != sceneAtoms.end(); it++)
 	{
 		DaAtom* pa = *it;
+		const DaSc* legacyShip = dynamic_cast<const DaSc*>(pa);
+		if(legacyShip && legacyShip->IsLegacyDebug()) legacySceneShips.insert(pa->Id());
 
 		// Reset atom scene flag when it appears in a scene.
 		pa->SetInScene();
@@ -1939,6 +1943,12 @@ void DtSceneServer::SyncClient()
 	}
 	SendPacket(ba, false, false);		// No mutex lock because it's already locked. This insures that the entire sync is not
 										// interrupted by other packets.
+	for(const AuId& shipId : m_LegacySceneShips)
+		if(!legacySceneShips.contains(shipId))
+			AuLegacyDestructionTrace::Log(QStringLiteral("server-removal-queued"), shipId,
+				QStringLiteral("avatar=%1 syncMSec=%2")
+					.arg(m_idUnit.GetID()).arg(syncStartTime.MSecsSinceEpoch()));
+	m_LegacySceneShips = legacySceneShips;
 
 	// This is the end of the scene sync data stream.
 	int bufendsz = m_TxBuffer.count();
@@ -3113,7 +3123,7 @@ void DtSceneServer::ClientPositionUpdate(bool atRest, float headTilt, AuAtomPos&
 		// Locate the person unit.
 		DaPerson* person = dynamic_cast<DaPerson*>(system->FindIdRecursive(m_idUnit));
 		DaAtom* requestedParent = system->FindIdRecursive(pos.ParentId());
-		if(person && (requestedParent || LegacyShipAncestor(person->Parent())))
+		if(person)
 		{
 			person->SetControlled(m_idUnit);
 			bool checkCollision = false;	// Set true if CheckCollision must be called
@@ -3176,12 +3186,16 @@ void DtSceneServer::ClientPositionUpdate(bool atRest, float headTilt, AuAtomPos&
 				legacyCheck.ship = LegacyShipAncestor(parent);
 				legacyCheck.reason = QStringLiteral("unknown parent");
 			}
-			if(!legacyCheck.reason.isEmpty())
+			if(!legacyCheck.reason.isEmpty() || (!requestedParent && parent && parent->IsNormal()
+				&& !person->NeedsInit() && !dynamic_cast<DaTeleporter*>(parent)))
 			{
+				// A missing requested parent must also correct an already-ejected avatar.
+				// Otherwise its reports are silently ignored until client control expires.
 				// Controller sync is required because normal atom updates preserve a client's locally controlled position.
 				person->ForcePosMove(person->Pos(), person->Vector());
 				person->SyncController(AuSyncPose(person->CurrentGeneralPose(), person->CurrentHeadTilt(),
 					person->StationId(), person->VehicleSeatIndex()));
+				person->SetModified();
 				if(validatedControl)
 				{
 					validatedControl->ForcePosMove(validatedControl->Pos(), validatedControl->Vector());
@@ -3189,7 +3203,7 @@ void DtSceneServer::ClientPositionUpdate(bool atRest, float headTilt, AuAtomPos&
 					if(mount) mount->SyncController(AuSyncPose(mount->CurrentGeneralPose(), mount->CurrentHeadTilt(),
 						mount->StationId(), mount->VehicleSeatIndex()));
 				}
-				if(!m_tmLegacyMovementLog.isValid() || m_tmLegacyMovementLog.elapsed() >= 1000)
+				if(!legacyCheck.reason.isEmpty() && (!m_tmLegacyMovementLog.isValid() || m_tmLegacyMovementLog.elapsed() >= 1000))
 				{
 					m_tmLegacyMovementLog.start();
 					DaAtom* rejectedActor = rejectedControl ? static_cast<DaAtom*>(rejectedControl) : person;

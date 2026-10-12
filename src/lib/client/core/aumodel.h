@@ -112,6 +112,9 @@ public:
 
 	void RestoreScenePosition(DaPerson* sceneAtom);
 
+	// Does the saved movement frame still depend on a departing parent?
+	bool ScenePositionUsesParent(const AuId& sceneId, const AuId& parentId) const;
+
 protected:
 	virtual void run();
 

@@ -9,15 +9,18 @@
 #include "auapp.h"
 #include "auclientglobal.h"
 #include "auframe.h"
+#include "aulegacydestructiontrace.h"
 #include "auview.h"
 #include "daatomlist.h"
 #include "dabd.h"
 #include "dagalaxy.h"
 #include "daperson.h"
+#include "dasc.h"
 #include "dasector.h"
 #include "dasolarsystem.h"
 #include "davehicle.h"
 #include "daworldll.h"
+#include <QMutexLocker>
 
 #define d_SyncInterval					10						// millisecs between syncronizations with data
 
@@ -386,6 +389,10 @@ void AuModel::SyncRemove(const AuId& parentId, const DaAtom* pSceneAtom)
 
 		// Scene is notified after we clean up root's copy of the atom.
 		g_AuClient.SyncAtomDeparted(atomId);
+		const DaSc* ship = dynamic_cast<const DaSc*>(atom);
+		if(ship && ship->IsLegacyDebug())
+			AuLegacyDestructionTrace::Log(QStringLiteral("client-model-departure-queued"), atomId,
+				QStringLiteral("queue=%1").arg(g_AuClient.SyncAtomCount()));
 	}
 }
 
@@ -623,6 +630,13 @@ void AuModel::PreserveScenePosition(DaPerson* sceneAtom)
 		m_PosParentWhichConsole = 0;
 	}
 	m_PosLock.unlock();
+}
+
+bool AuModel::ScenePositionUsesParent(const AuId& sceneId, const AuId& parentId) const
+{
+	QMutexLocker lock(&m_PosLock);
+	return m_PosValid && m_PosId == sceneId && (m_Pos.ParentId() == parentId
+		|| (m_PosParentValid && m_PosParent.ParentId() == parentId));
 }
 
 void AuModel::RestoreScenePosition(DaPerson* sceneAtom)

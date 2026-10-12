@@ -29,6 +29,7 @@
 #include "aufilever.h"
 #include "aufinalizereportdlg.h"
 #include "augame.h"
+#include "aulegacydestructiontrace.h"
 #include "auglmodelmaker.h"
 #include "auimagedialog.h"
 #include "auitdesignprops.h"
@@ -6592,9 +6593,20 @@ void AuDesignerView::AtomAdded(DaAtom* atom)
 void AuDesignerView::AtomDeparted(const AuId& atomId)
 {
 	DaAtom* sub = m_SceneEther.FindAtom(atomId);
+	const DaSc* ship = dynamic_cast<const DaSc*>(sub);
+	const bool legacyShip = ship && ship->IsLegacyDebug();
+	AuElapsedTimer cleanupTime;
+	if(legacyShip)
+	{
+		cleanupTime.start();
+		AuLegacyDestructionTrace::Log(QStringLiteral("client-view-removal-start"), atomId);
+	}
 	if(sub)
 		sub->DeleteDeviceObjects(*m_RenderInfo);	// Clean up the atom's rendering resources recursively.
 	m_SceneEther.TrashAtom(atomId);
+	if(legacyShip)
+		AuLegacyDestructionTrace::Log(QStringLiteral("client-view-removal-finished"), atomId,
+			QStringLiteral("cleanupMSec=%1").arg(cleanupTime.elapsed()));
 }
 
 void AuDesignerView::AtomParentChanged(const DaAtom* atom)

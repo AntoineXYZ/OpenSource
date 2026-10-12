@@ -5,6 +5,7 @@
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
 #include "daatom.h"
+#include "aulegacydestructiontrace.h"
 //
 #include "auatomrenderinfo.h"
 #include "aubox.h"
@@ -300,7 +301,7 @@ void DaAtom::RxUpdateId(QDataStream& fromServer)
 // DaAtom Id and ParentId data is received during RxUpdateBase. The atom is then
 // connected to the proper parent before RxUpdate is called to get the rest of
 // the data.
-void DaAtom::RxUpdateBase(QDataStream& fromServer)
+void DaAtom::RxUpdateBase(QDataStream& fromServer, AuAtomPos* receivedPosition)
 {
 	quint8 hasWhat;
 	fromServer >> hasWhat;
@@ -309,8 +310,15 @@ void DaAtom::RxUpdateBase(QDataStream& fromServer)
 	{
 		AuAtomPos pos;
 		pos.Rx(fromServer);
+		if(receivedPosition)
+			*receivedPosition = pos;
+		const DaSc* oldShip = AtomType() == ATOM_Avatar ? dynamic_cast<const DaSc*>(Parent()) : 0;
+		const AuId oldShipId = oldShip && oldShip->IsLegacyDebug() ? oldShip->Id() : AuId();
 		ChangePos(pos);
 		InvalidateEnvironment();
+		if(!oldShipId.IsNull() && pos.ParentId() != oldShipId)
+			AuLegacyDestructionTrace::Log(QStringLiteral("client-avatar-reparented"), oldShipId,
+				QStringLiteral("avatar=%1 parent=%2").arg(Id().GetID()).arg(ParentId().GetID()));
 	}
 
 	m_State = Normal;	// Server does not send abnormal atoms.
@@ -329,7 +337,11 @@ void DaAtom::RxUpdateBase(QDataStream& fromServer)
 		while(effcount)
 		{
 			effect << fromServer;
-			m_Effects->AddIfUnique(effect);
+			if(m_Effects->AddIfUnique(effect) && effect.Visual() == VISUAL_ExplodeSpacecraft)
+				AuLegacyDestructionTrace::Log(QStringLiteral("client-explosion-received"), AuId(),
+					QStringLiteral("effect=%1 parent=%2 startMSec=%3 ageMSec=%4")
+						.arg(Id().GetID()).arg(ParentId().GetID()).arg(effect.StartTime().MSecsSinceEpoch())
+						.arg(effect.StartTime().MSecsTo(g_Au.CoordinatedTime())));
 			effcount--;
 		}
 	}
@@ -10570,12 +10582,15 @@ void DaAtom::ClearSync()
 }
 
 void DaAtom::ControllerSync(AuAtomPos& pos, bool& atRest, AuPoint& vec, float& headTilt, AuPose& pose, quint16& stationId,
-		quint8& seatIndex)
+		quint8& seatIndex, bool consume)
 {
-	// Take my syncs.
+	// Take my syncs, or read a copy without consuming the movement controller's queue.
 	m_ControlLock.lockForWrite();
 	AuSyncControllerList* d = m_SyncController;
-	m_SyncController = 0;
+	if(consume)
+		m_SyncController = 0;
+	else if(d)
+		d = new AuSyncControllerList(*d);
 	m_ControlLock.unlock();
 	if(!d)
 		return;

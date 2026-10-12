@@ -13,9 +13,11 @@
 #include "audesign.h"
 #include "audialog.h"
 #include "augame.h"
+#include "aulegacydestructiontrace.h"
 #include "auscreport.h"
 #include "ausensorblip.h"
 #include "ausound.h"
+#include "ausynccontroller.h"
 #include "ausphere.h"
 #include "autractorbeam.h"
 #include "daanimal.h"
@@ -29,6 +31,7 @@
 #include "damissile.h"
 #include "danpc.h"
 #include "daperson.h"
+#include "dasc.h"
 #include "dasector.h"
 #include "dasolarsystem.h"
 #include "dateleporter.h"
@@ -16960,11 +16963,17 @@ AuRosterEntry::TYPE DaVessel::CaptainsBerthType() const
 
 void DaVessel::DestroyShip(const QString& reason)
 {
-	// Create an effect atom to carry the explosion effect.
-	DaAtom* parent = Parent();
-	if(parent)
-	{
+	const DaSc* sc = dynamic_cast<const DaSc*>(this);
+	const bool deferExplosion = sc && sc->IsLegacyDebug() && !InDesignEnvironment();
+	if(deferExplosion)
+		AuLegacyDestructionTrace::Log(QStringLiteral("server-begin"), Id(),
+			QStringLiteral("parent=%1 reason=%2").arg(ParentId().GetID()).arg(reason));
+	const auto createExplosion = [this, deferExplosion]() {
+		// Keep the effect independent of the ship so it survives removal.
+		DaAtom* parent = Parent();
+		if(!parent) return;
 		DaEffect* explode = parent->CreateEffect();
+		if(!explode) return;
 
 		// Add the explosion effect to the effect atom.
 		// Loudness/size based on my size.
@@ -16989,7 +16998,11 @@ void DaVessel::DestroyShip(const QString& reason)
 					SOUND_ExplodeSpacecraft, gain, 1, VISUAL_ExplodeSpacecraft);
 			explode->AddEffect(effect);
 		}
-	}
+		if(deferExplosion)
+			AuLegacyDestructionTrace::Log(QStringLiteral("server-explosion"), Id(),
+				QStringLiteral("effect=%1 parent=%2").arg(explode->Id().GetID()).arg(parent->Id().GetID()));
+	};
+	if(!deferExplosion) createExplosion();
 
 	if(InDesignEnvironment())
 	{
@@ -17253,6 +17266,18 @@ void DaVessel::DestroyShip(const QString& reason)
 				AuPoint spreadVec = atomT.Project(AuPoint(0,0));	// Location relative to this ship is their spread vector.
 				spreadVec.Unit(g_Au.Dice().Roll(1,50));				// Random vector length up to 50 feet per second
 				atom->ForcePosMove(AuAtomPos(ParentId(), Transform() * atomT), Vector() + spreadVec);
+				if(person)
+				{
+					// The client preserves its locally controlled pose separately
+					// from position. Ejection must also release its old station pose.
+					person->SyncController(AuSyncPose(person->CurrentGeneralPose(), person->CurrentHeadTilt(),
+						person->StationId(), person->VehicleSeatIndex()));
+					if(deferExplosion)
+						AuLegacyDestructionTrace::Log(QStringLiteral("server-ejected"), Id(),
+							QStringLiteral("avatar=%1 parent=%2 pose=%3")
+								.arg(person->Id().GetID()).arg(person->ParentId().GetID())
+								.arg(person->CurrentGeneralPose().Pose()));
+				}
 				atom->SetModified();
 			}
 			else
@@ -17267,10 +17292,17 @@ void DaVessel::DestroyShip(const QString& reason)
 					AuPoint(0,0,0));
 	}
 
+	// AuAtom13:1803e5e00 creates the legacy explosion after ejecting occupants,
+	// immediately before going dormant or dying. Publishing it earlier lets
+	// clients see the blast while their avatar is still attached to the ship.
+	if(deferExplosion) createExplosion();
 	if(goDormant)
 		GoDormant();
 	else
 		Kill();										// Destroy this ship and everything still aboard.
+	if(deferExplosion)
+		AuLegacyDestructionTrace::Log(QStringLiteral("server-finished"), Id(),
+			QStringLiteral("state=%1 children=%2").arg(int(AtomState())).arg(HasSubatoms()));
 }
 
 void DaVessel::GoDormant()
