@@ -1348,9 +1348,9 @@ public:
 
 	virtual bool RoughExtents(AuBox &fExt) const;
 
-	// Legacy ship movement uses the creature's anatomy and stance, independently of the render animation clock.
+	// Legacy ship movement preserves anatomy and posture while excluding
+	// held-item arm poses and the render animation clock.
 	bool LegacyCollisionExtents(AuBox& extents) const;
-	bool LegacyCollisionExtents(AuBox& extents, bool hasItemInHand) const;
 
 	void SetupCamera(AuMatrix4x4& camera, double& nearClip, double& farClip, AuAtomRenderInfo& ari) const;
 

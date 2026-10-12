@@ -232,11 +232,12 @@ LegacyMovementCheck CheckLegacyClientMovement(DaAtom& actor, DaAtom* requestedPa
 			}
 			if(candidate->HasDNA3()) candidate->SetPoses3(requestedPoses, stationId, controlId);
 			else candidate->SetPoses4(requestedPoses, stationId, controlId);
-			// Creature copies omit the item in hand; preserve its arm animation when deriving the candidate body.
+			// Preserve the candidate's animation; movement bounds independently
+			// exclude the held-item arm pose while retaining its body posture.
 			candidate->AnimatePose(creature->HasItemInHand(), creature->MovementSpeedMod());
 			// Bounds need the destination parent's vehicle/seat origin convention. This read does not alter the ether tree.
 			copy->SetEther(actor.Ether());
-			const bool haveCandidateBounds = candidate->LegacyCollisionExtents(candidateBody, creature->HasItemInHand());
+			const bool haveCandidateBounds = candidate->LegacyCollisionExtents(candidateBody);
 			copy->SetEther(0);
 			if(!haveCandidateBounds)
 			{
