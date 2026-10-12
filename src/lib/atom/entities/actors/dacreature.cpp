@@ -16,6 +16,7 @@
 #include "augleffects.h"
 #include "auglmodelmaker.h"
 #include "auglobal.h"
+#include "aulegacyship.h"
 #include "ausound.h"
 #include "ausynccontroller.h"
 #include "daanimal.h"
@@ -2118,12 +2119,30 @@ void DaCreature::ExitConsole()
 	}
 
 	// Get information based on my current pose before changing my pose.
+	const DaSc* legacyShip = dynamic_cast<const DaSc*>(Parent());
+	const bool legacyTurret = IsTurretPose() && legacyShip && legacyShip->IsLegacyDebug();
 	const double oldHt = GroundHeightAboveCG();		// Sitting ht
 
 	// Change my pose to standing and get the change in Z so I can adjust my body perfectly.
 	Stand();
 	const double nuHt = GroundHeightAboveCG();		// Standing ht
 	const double zAdj = nuHt - oldHt;				// Stand portion of move vec
+	if(legacyTurret)
+	{
+		// ExitConsole:1802e92e0 tries in place, aft, left, then right.
+		const double step = AuLegacyShip::CoordinateSpacing;
+		const AuPoint exits[] = {AuPoint(0, 0, zAdj), AuPoint(0, -step, zAdj),
+			AuPoint(-step, 0, zAdj), AuPoint(step, 0, zAdj)};
+		for(const AuPoint& offset : exits)
+			if(Move(offset, 0))
+			{
+				ForceMotion();
+				m_ControlId = 0;
+				InvalidateEnvironment();
+				SetModified();
+				return;
+			}
+	}
 
 	// Sitting at a console or somehow unable to exit a turret.
 	if(!Move(AuPoint(0,0,zAdj), 0))						// try standing in place
@@ -2229,7 +2248,10 @@ float DaCreature::GroundHeightAboveCG() const
 	if(pose == AuPose::ConsoleTurretBottom)
 		return AuStation::SeatHeight() - 1;		// Seat is sunken down into the bottom turret by 1'.
 	else if(pose == AuPose::ConsoleTurretTop)
-		return DeckHeight() - DpBody::SeatDrop();	// Seat dangles 2.5' below the ceiling turret.
+	{
+		const DaSc* ship = dynamic_cast<const DaSc*>(Parent());
+		return (ship && ship->IsLegacyDebug() ? AuLegacyShip::DeckHeight : DeckHeight()) - DpBody::SeatDrop();
+	}
 	return CGHeight();
 }
 
@@ -2625,6 +2647,8 @@ void DaCreature::RenderEnvironmentObject(const AuMatrix4x4& projection, AuAtomRe
 void DaCreature::RenderItemInHand(const AuMatrix4x4& projection, const AuMatrix4x4& model, AuAtomRenderInfo& ari, int pass,
 			const DaAtom* sceneAtom, AuRenderLastMap* renderLast)
 {
+	const DaSc* legacyShip = dynamic_cast<const DaSc*>(Parent());
+	if(IsTurretPose() && legacyShip && legacyShip->IsLegacyDebug()) return;
 	bool isLefty;
 	AuPose gp;
 	if(m_Body)
@@ -5607,6 +5631,13 @@ AuMatrix4x4 DaCreature::WeaponMatrix() const
 // Location for weapon muzzle flash effect.
 AuPoint DaCreature::WeaponMuzzleLoc() const
 {
+	const DaSc* legacyShip = dynamic_cast<const DaSc*>(Parent());
+	if(IsTurretPose() && legacyShip && legacyShip->IsLegacyDebug())
+	{
+		AuMatrix4x4 muzzle;
+		legacyShip->TurretMuzzleMatrix(StationId(), Rotation().z, CurrentHeadTilt(), muzzle);
+		return Transform().UnProject(muzzle.Translation());
+	}
 	if(HasDNA3())
 	{
 		switch(ItemInHandCID())
@@ -5640,6 +5671,13 @@ AuPoint DaCreature::WeaponMuzzleLoc() const
 
 AuPoint DaCreature::WeaponMuzzleVec() const
 {
+	const DaSc* legacyShip = dynamic_cast<const DaSc*>(Parent());
+	if(IsTurretPose() && legacyShip && legacyShip->IsLegacyDebug())
+	{
+		AuMatrix4x4 muzzle;
+		legacyShip->TurretMuzzleMatrix(StationId(), Rotation().z, CurrentHeadTilt(), muzzle);
+		return Transform().UnProjectVector(muzzle.ProjectVector(0, 0, 1));
+	}
 	AuPose gp = CurrentGeneralPose();
 	switch(gp.Pose())
 	{

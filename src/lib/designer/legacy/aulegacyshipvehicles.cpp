@@ -351,7 +351,13 @@ void TurretGun(Appender& append, const Detail& detail, const QVector3D& location
 	QMatrix4x4 transform;
 	transform.translate(position);
 	transform.rotate(angle, 0, 0, 1);
+	const int first = append.mesh.batches.size();
 	append.AddModel(gun, transform, detail.detailType == 22 ? detail.deck - 1 : detail.deck);
+	for(int i = first; i < append.mesh.batches.size(); ++i)
+	{
+		append.mesh.batches[i].turretId = detail.detailId;
+		append.mesh.batches[i].rotationPivot = position;
+	}
 }
 }
 

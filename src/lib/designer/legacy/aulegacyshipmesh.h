@@ -81,6 +81,8 @@ struct Batch
 	quint32 doorId = 0;
 	// Occupied consoles use the native renderer instead of these static batches.
 	quint32 consoleId = 0;
+	// Only the gun model, not the fixed dome, follows a turret operator.
+	quint32 turretId = 0;
 	// Sight ownership is independent of collision and console animation.
 	quint32 detailId = 0;
 	// Procedural equipment shares draw batches; one owner per triangle.

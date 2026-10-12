@@ -28,6 +28,7 @@
 #include "dpconsolehelm.h"
 #include "dpconsoleengineer.h"
 #include "dasc.h"
+#include "auscparts.h"
 #include "aucommpacket.h"
 #include "ausound.h"
 #include "auquad.h"
@@ -450,6 +451,28 @@ class LegacyRenderPerson : public DaPerson
 public:
 	using DaPerson::DaPerson;
 
+	float GroundHeightAboveCG() const override
+	{
+		return CurrentGeneralPose() == AuPose::ConsoleTurretTop
+			? float(AuLegacyShip::DeckHeight - DpBody::SeatDrop()) : DaPerson::GroundHeightAboveCG();
+	}
+
+	void ExitConsole() override
+	{
+		if(!IsTurretPose()) { DaPerson::ExitConsole(); return; }
+		const float previousHeight = GroundHeightAboveCG();
+		Stand();
+		const double adjustment = GroundHeightAboveCG() - previousHeight;
+		const double step = AuLegacyShip::CoordinateSpacing;
+		const AuPoint exits[] = {AuPoint(0, 0, adjustment), AuPoint(0, -step, adjustment),
+			AuPoint(-step, 0, adjustment), AuPoint(step, 0, adjustment),
+			AuPoint(2, 0, adjustment), AuPoint(-2, 0, adjustment),
+			AuPoint(0, 2, adjustment), AuPoint(0, -2, adjustment)};
+		for(const AuPoint& offset : exits) if(Move(offset, 0)) break;
+		ForceMotion();
+		InvalidateEnvironment();
+	}
+
 	AuPoint Acceleration() const override
 	{
 		const DaDesignBase* designer = FindParentDesignBaseInEnv();
@@ -859,7 +882,7 @@ public:
 		const WalkEnvironment sample = SampleEnvironment(character.feet, person->CGHeight());
 		character.inShip = sample.inShip;
 		character.gravityActive = sample.gravity && !sample.gravityWell
-			&& !sample.aboveOpenHatch && !character.ladderEngaged;
+			&& !sample.aboveOpenHatch && !character.ladderEngaged && !character.consoleType;
 		character.gravitySuspended = !character.gravityActive;
 		character.grounded = character.gravityActive && !character.ladderEngaged && sample.fallDistance < .25f;
 		character.onLadder = character.ladderEngaged;
@@ -896,11 +919,31 @@ public:
 		case 15: pose = AuPose::ConsoleSensor; break;
 		case 17: pose = AuPose::ConsoleShield; break;
 		case 19: pose = AuPose::ConsoleTransporter; break;
+		case 21: pose = AuPose::ConsoleTurret0; break;
+		case 22: pose = AuPose::ConsoleTurretTop; break;
+		case 33: pose = AuPose::ConsoleTurretBottom; break;
+		case 34: pose = AuPose::ConsoleTurret45; break;
+		case 35: pose = AuPose::ConsoleTurret90; break;
+		case 36: pose = AuPose::ConsoleTurret135; break;
+		case 37: pose = AuPose::ConsoleTurret180; break;
+		case 38: pose = AuPose::ConsoleTurret225; break;
+		case 39: pose = AuPose::ConsoleTurret270; break;
+		case 40: pose = AuPose::ConsoleTurret315; break;
 		case 73: pose = AuPose::ConsoleCommand; break;
 		default: break;
 		}
 		person->ClearMovementInput();
 		person->SetGeneralPose(pose);
+		if(person->IsTurretPose())
+		{
+			AuScTurret turret;
+			turret.SetGroupName(QStringLiteral("legacy/turret/detail/%1/type/%2")
+				.arg(character.consoleId).arg(character.consoleType));
+			const AuStation::TYPE type = turret.StationType();
+			const AuPoint offset = person->ConsolePoseOffset(type, AuStation::Occupant_Sit,
+				person->CGHeightStanding(), person->TorsoThickness(), 0);
+			character.feet = character.consoleAnchor + Vector3(offset) - QVector3D(0, 0, person->CGHeight());
+		}
 		PlaceCharacter();
 	}
 
@@ -914,7 +957,7 @@ public:
 
 	void RenderConsole(AuAtomRenderInfo& ari, const QMatrix4x4& projection, const QMatrix4x4& view)
 	{
-		if(!character.consoleType) return;
+		if(!character.consoleType || person->IsTurretPose()) return;
 		AuGLEffects& re = *ari.re;
 		AuMatrix4x4 p, model;
 		for(int i = 0; i < 16; ++i)
@@ -1187,6 +1230,23 @@ public:
 			}
 		visibleChunks.fill(0, chunks.size());
 		visibleBatches.clear();
+		for(int source = 0; source < mesh.batches.size(); ++source)
+		{
+			const Batch& batch = mesh.batches[source];
+			if(!batch.turretId) continue;
+			transforms[source].setToIdentity();
+			if(batch.turretId != character.consoleId) continue;
+			AuScTurret turret;
+			turret.SetGroupName(QStringLiteral("legacy/turret/detail/%1/type/%2")
+				.arg(batch.turretId).arg(character.consoleType));
+			turret.SetGunPivot(Point3(batch.rotationPivot));
+			const double angle = character.consoleType == 22 || character.consoleType == 33 ? PI / 2
+				: (character.consoleType == 21 ? 0 : character.consoleType - 33) * PI / 4;
+			turret.SetGunEmitVec(AuPoint(std::cos(angle), std::sin(angle), 0));
+			AuMatrix4x4 transform;
+			turret.TurretGunMatrix(person->Rotation().z, person->CurrentHeadTilt(), transform);
+			for(int entry = 0; entry < 16; ++entry) transforms[source].data()[entry] = float(transform[entry]);
+		}
 		for(int i = 0; i < chunks.size(); ++i)
 		{
 			const DrawChunk& chunk = chunks[i];
@@ -1876,13 +1936,16 @@ void AuLegacyShipRender::Tick()
 		bool changed = false;
 		if(m_Impl->character.consoleType)
 		{
+			const bool turret = m_Impl->person->IsTurretPose();
 			m_Impl->ExitConsole();
-			m_Impl->interaction = QStringLiteral("Left console.");
+			m_Impl->interaction = turret ? QStringLiteral("Released turret.") : QStringLiteral("Left console.");
 		}
 		else if(m_Impl->solid && !m_Impl->character.ladderEngaged && m_Impl->world.EnterConsole(m_Impl->design,
-			m_Impl->character, m_Impl->person->CGHeight()))
+			m_Impl->character, m_Impl->person->CGHeight(), m_Impl->person->CurrentHeadTilt()))
 		{
-			m_Impl->interaction = QStringLiteral("Seated at console.");
+			m_Impl->interaction = m_Impl->character.consoleType == 21 || m_Impl->character.consoleType == 22
+				|| (m_Impl->character.consoleType >= 33 && m_Impl->character.consoleType <= 40)
+				? QStringLiteral("Operating turret.") : QStringLiteral("Seated at console.");
 			changed = true;
 		}
 		else if(m_Impl->world.ToggleLadder(m_Impl->character))
@@ -1896,7 +1959,7 @@ void AuLegacyShipRender::Tick()
 			}
 			changed = true;
 		}
-		else m_Impl->interaction = QStringLiteral("Move within 3 feet of a console or 6 feet of a ladder.");
+		else m_Impl->interaction = QStringLiteral("Move within 3 feet of a console or turret, or 6 feet of a ladder. Look up or down to enter a ceiling or floor turret.");
 		if(changed) m_Impl->SetInteractionPose();
 		m_Impl->interactionUntil = now + 2500;
 	}

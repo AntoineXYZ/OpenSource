@@ -4709,7 +4709,13 @@ void DaSentient::OperateTurret(DaVessel* ship)
 		// Calculate target vector in my space.
 		AuPoint targetVec;
 		DaSc* sc = dynamic_cast<DaSc*>(ship);
-		if(sc)
+		if(sc && sc->IsLegacyDebug())
+		{
+			// OperateTurret:180398a60 aims directly from the classic muzzle,
+			// in the gunner's space. Integrated turret aiming uses another frame.
+			targetVec = EnvTransform().UnProject(targetSysLoc) - WeaponMuzzleLoc();
+		}
+		else if(sc)
 		{
 			// I am operating a remote turret gun in an Sc design ship.
 			float baseRot = Rotation().z;

@@ -792,11 +792,11 @@ bool WalkWorld::FindSpawn(const Design& design, int deck, WalkState& state) cons
 	return false;
 }
 
-bool WalkWorld::EnterConsole(const Design& design, WalkState& state, float cgHeight) const
+bool WalkWorld::EnterConsole(const Design& design, WalkState& state, float cgHeight, float headTilt) const
 {
 	if(state.consoleType || state.ladderEngaged || !Finite(state.feet) || !std::isfinite(cgHeight)
 		|| !m_Impl->InShip(state.feet)) return false;
-	const int deck = int(std::floor((state.feet.z() + cgHeight + .05f) / DeckHeight));
+	const int deck = int(std::floor((state.feet.z() + cgHeight + .05f) / AuLegacyShip::DeckHeight));
 	// AuAtom13!DaSpaceShip::CanEnterConsole: first eligible detail, same
 	// deck at the avatar's CG, strictly less than three feet in XY.
 	// Hidden is not tested.
@@ -806,18 +806,25 @@ bool WalkWorld::EnterConsole(const Design& design, WalkState& state, float cgHei
 		{
 		case 1: case 4: case 6: case 7: case 12: case 13:
 		case 15: case 17: case 19: case 73:
+		case 21: case 22: case 33: case 34: case 35: case 36:
+		case 37: case 38: case 39: case 40:
 			break;
 		default: continue;
 		}
-		if(detail.deck != deck) continue;
+		if(detail.detailType == 22)
+		{
+			if(detail.deck != deck + 1 || headTilt < .7853981633974483f) continue;
+		}
+		else if(detail.deck != deck || (detail.detailType == 33 && headTilt > -.7853981633974483f)) continue;
 		const QPointF point = DecodePoint(detail.packedXY);
-		const QVector3D seat(float(point.x()), float(point.y()), float(deck * DeckHeight));
+		const QVector3D seat(float(point.x()), float(point.y()), float(detail.deck * AuLegacyShip::DeckHeight));
 		const QVector3D delta = seat - state.feet;
 		if(delta.x() * delta.x() + delta.y() * delta.y() >= 9.f) continue;
 		state.feet = seat;
 		state.velocity = QVector3D();
 		state.consoleType = detail.detailType;
 		state.consoleId = detail.detailId;
+		state.consoleAnchor = seat;
 		state.grounded = false;
 		state.gravityActive = false;
 		state.gravitySuspended = true;

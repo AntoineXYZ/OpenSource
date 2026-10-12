@@ -33,6 +33,7 @@ struct WalkState
 	bool inShip = false;
 	int consoleType = 0;
 	quint32 consoleId = 0;
+	QVector3D consoleAnchor;
 	QVector<quint32> blockedDoors;
 };
 
@@ -72,7 +73,7 @@ public:
 	// Attach to the nearest reachable hatch axis, or release the current ladder.
 	// ladderFacing is the initial camera azimuth in degrees, not a look constraint.
 	bool ToggleLadder(WalkState& state) const;
-	bool EnterConsole(const Design& design, WalkState& state, float cgHeight) const;
+	bool EnterConsole(const Design& design, WalkState& state, float cgHeight, float headTilt) const;
 	void SetConsoleRotation(quint32 consoleId, const QVector3D& floorPoint, float facing);
 	bool FindSpawn(const Design& design, int deck, WalkState& state) const;
 	WalkEnvironment Environment(const QVector3D& feet, bool studioGravity, float bodyOriginHeight) const;

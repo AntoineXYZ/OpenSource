@@ -485,6 +485,8 @@ void AuShipSystemArray::GatherShipSystems(quint8 quality, const AuScReport& desi
 		for(auto transporter = design.Transporters().cbegin(); transporter != design.Transporters().cend(); ++transporter)
 			if(transporter->Pads()) append(AuShipSystem(SYS_Transporter, transporter.key(), transporter->Module(),
 				quality, transporter->Pads(), systemIndex++));
+		for(auto turret = design.Turrets().cbegin(); turret != design.Turrets().cend(); ++turret)
+			append(AuShipSystem(SYS_Turret, turret.key(), turret->Module(), quality, 1, systemIndex++));
 		return;
 	}
 

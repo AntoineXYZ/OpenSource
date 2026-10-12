@@ -23,6 +23,7 @@
 #include <QStringList>
 #include <QVariant>
 #include <algorithm>
+#include <cmath>
 
 #define DESIGNER_MIME_PART_VER			0x01
 
@@ -20411,6 +20412,14 @@ AuSysId AuScTurret::SightedSystem(quint16 partId) const
 
 AuStation AuScTurret::OperatorStation(const AuPoint& gravityUp) const
 {
+	if(StationType() != AuStation::Turret_Integrated)
+	{
+		// Legacy stations are anchored at the authored cell. Their recovered
+		// seat offset is applied by AttemptConsoleEntry, before preserving yaw.
+		AuMatrix4x4 station;
+		station.Translate(OperatorLoc());
+		return AuStation(StationType(), station, AuStation::Occupant_Sit, 0);
+	}
 	QHash<quint8, AuScFaceList>::const_iterator mi = m_StateMeshes.find(GunnerScreen);
 	if(mi == m_StateMeshes.cend())
 		return AuStation();
@@ -20482,6 +20491,27 @@ void AuScTurret::TurretBaseMatrix(float baseRot, AuMatrix4x4& m) const
 
 void AuScTurret::TurretGunMatrix(float baseRot, float gunRot, AuMatrix4x4& m) const
 {
+	if(StationType() != AuStation::Turret_Integrated)
+	{
+		// RenderItemInHand:1802ee090 uses body yaw, head pitch and a 90deg
+		// model rotation. The mesh is already placed in its empty-turret pose.
+		AuPoint pivot(m_GunPivot);
+		const AuStation::TYPE type = StationType();
+		if(type >= AuStation::Turret_45 && type <= AuStation::Turret_315)
+		{
+			const int step = int(type) - int(AuStation::Turret_0);
+			const double offsets[][2] = {{0,0}, {.00375,.00375}, {0,0}, {-.00375,.00375},
+				{0,0}, {-.00375,-.00375}, {0,0}, {.00375,-.00375}};
+			pivot += AuPoint(offsets[step][0], offsets[step][1], 0);
+		}
+		m.LoadIdentity();
+		m.Translate(pivot);
+		m.RotateZ(baseRot);
+		m.RotateX(gunRot);
+		m.RotateZ(PI / 2 - std::atan2(m_GunEmitVec.y, m_GunEmitVec.x));
+		m.Translate(-m_GunPivot);
+		return;
+	}
 	m.LoadIdentity();
 	m.Translate(m_BasePivot);
 	m.RotateAxis(baseRot, m_BaseAxis);
@@ -20536,6 +20566,17 @@ void AuScTurret::TurretAimMatrix(float baseRot, AuMatrix4x4& m) const
 
 void AuScTurret::TurretMuzzleMatrix(float baseRot, float gunRot, AuMatrix4x4& m) const
 {
+	if(StationType() != AuStation::Turret_Integrated)
+	{
+		AuMatrix4x4 gun;
+		TurretGunMatrix(baseRot, gunRot, gun);
+		const AuPoint z = gun.ProjectVector(m_GunEmitVec);
+		const AuPoint x = AuPoint(1, 0, 0).RotateZ(baseRot);
+		m.LoadIdentity();
+		m.Translate(gun.Project(m_GunEmitLoc));
+		m.RotateToPlane(x, z.Cross(x));
+		return;
+	}
 	AuMatrix4x4 emitM;
 	emitM.Translate(m_BasePivot);
 	emitM.RotateAxis(baseRot, m_BaseAxis);

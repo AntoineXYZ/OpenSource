@@ -687,10 +687,75 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 			return false;
 		}
 	}
+	// Native turret parts supply persistent station, ammunition and system IDs.
+	// Keep the recovered gun mesh; the fixed dome remains in the hull batches.
+	QHash<quint32, quint16> turretParts;
+	QHash<quint32, QVector<int>> turretBatches;
+	for(int index = 0; index < mesh.batches.size(); ++index)
+		if(mesh.batches[index].turretId) turretBatches[mesh.batches[index].turretId].append(index);
+	for(const Detail& detail : source.details)
+	{
+		if(detail.detailType != 21 && detail.detailType != 22
+			&& (detail.detailType < 33 || detail.detailType > 40)) continue;
+		if(detail.deck < MinimumDeck || detail.deck > MaximumDeck || !sourceRooms.contains(detail.roomId)) continue;
+		AuScFaceList faces;
+		AuPoint pivot;
+		const int previousTriangles = triangleCount;
+		for(int index : turretBatches.value(detail.detailId))
+		{
+			const Batch& batch = mesh.batches[index];
+			pivot = legacy.AuthorToShip(Point(batch.rotationPivot));
+			const Tile tile = palette.tiles.value(TextureKey(batch));
+			for(int vertex = 0; vertex + 2 < batch.vertices.size(); vertex += 3)
+				if(!AddTriangleFaces(faces, &batch.vertices[vertex], batch, legacy, tile, triangleCount, tileVisits))
+				{
+					error = QStringLiteral("The selected legacy design exceeds the turret geometry processing limit.");
+					return false;
+				}
+		}
+		if(!chargeTriangles(triangleCount - previousTriangles)) return false;
+		if(faces.isEmpty()) continue;
+		const QPointF xy = DecodePoint(detail.packedXY);
+		const AuPoint floor = legacy.AuthorToShip(AuPoint(xy.x(), xy.y(), detail.deck * AuLegacyShip::DeckHeight));
+		const double angle = detail.detailType == 22 || detail.detailType == 33 ? PI / 2
+			: (detail.detailType == 21 ? 0 : detail.detailType - 33) * PI / 4;
+		AuScTurret turret;
+		turret.SetGroupName(QStringLiteral("legacy/turret/detail/%1/type/%2/deck/%3")
+			.arg(detail.detailId).arg(detail.detailType).arg(detail.deck));
+		turret.SetGunner(AuScTurret::Gunner_Sit, floor, floor + AuPoint(0, 1, 0));
+		turret.SetBasePivot(pivot);
+		turret.SetBaseAxis(AuPoint(0, 0, 1));
+		turret.SetGunPivot(pivot);
+		turret.SetGunAxis(AuPoint(1, 0, 0));
+		const AuPoint direction(std::cos(angle), std::sin(angle), 0);
+		turret.SetGunEmitVec(direction);
+		turret.SetGunEmitLoc(pivot + direction * 6.5);
+		turret.SetGunSightLoc(pivot);
+		COMMODITYID module = CID_Invalid;
+		switch(detail.commodityIdNormalized)
+		{
+		case 248: case 249: module = CID_EnergyWeaponTurretModule; break;
+		case 250: case 251: module = CID_WeaponLauncherTurretModule; break;
+		case 262: module = CID_BallisticWeaponTurretModule; break;
+		default: break;
+		}
+		turret.SetModule(module);
+		turret.AddState(AuScTurret::Gun);
+		turret.SetState(AuScTurret::Gun);
+		turret.SetFaces(faces);
+		const quint16 partId = AddPart(generated, turret);
+		if(!partId)
+		{
+			error = QStringLiteral("The selected legacy design has too many generated turret parts.");
+			return false;
+		}
+		turretParts.insert(detail.detailId, partId);
+	}
 	for(int index = 0; index < mesh.batches.size(); ++index)
 	{
 		const Batch& batch = mesh.batches[index];
 		if(batch.doorId || batch.vertices.isEmpty()
+			|| turretParts.contains(batch.turretId)
 			|| vehicleDetails.contains(batch.detailId)
 			|| (batch.consoleId && liveConsoleDetails.contains(batch.consoleId))) continue;
 		AuScFaceList faces;
@@ -1151,7 +1216,8 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 		case 18: system = SYS_Shield; break;
 		case 20: system = AuSysId(SYS_Transporter, canonicalTransporters.value(roomKey(detail))); break;
 		case 21: case 22: case 33: case 34: case 35: case 36:
-		case 37: case 38: case 39: case 40: system = SYS_Turret; break;
+		case 37: case 38: case 39: case 40:
+			system = AuSysId(SYS_Turret, turretParts.value(detail.detailId)); break;
 		case 23: system = AuSysId(SYS_Weapon, detailBays.value(detail.detailId)); break;
 		case 24: system = AuSysId(SYS_FTLDrive, 1); break;
 		case 32: system = SYS_LifeSupport; break;

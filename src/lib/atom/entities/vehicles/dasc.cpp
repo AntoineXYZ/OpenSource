@@ -1752,7 +1752,8 @@ bool DaSc::CanEnterConsole(const DaPerson& who, quint16& stationId, AuStation& s
 			const AuScPart* console = *pi;
 			const bool berth = pi.key() == berthId && console->GroupName().startsWith(QStringLiteral("legacy/berth/detail/"));
 			const bool surgery = console->GroupName().startsWith(QStringLiteral("legacy/surgery/detail/"));
-			if(console->IsOmitted() || (!berth && !surgery && (!console->IsConsole()
+			const bool turret = console->IsTurret() && console->GroupName().startsWith(QStringLiteral("legacy/turret/detail/"));
+			if(console->IsOmitted() || (!berth && !surgery && !turret && (!console->IsConsole()
 				|| !console->GroupName().startsWith(QStringLiteral("legacy/console/detail/"))))) continue;
 			consoleIds.insert(LegacyStationField(*console, QStringLiteral("detail"), pi.key()), pi.key());
 		}
@@ -1761,8 +1762,15 @@ bool DaSc::CanEnterConsole(const DaPerson& who, quint16& stationId, AuStation& s
 			const AuScPart* console = scd->Parts().value(consoleId);
 			const bool berth = console->GroupName().startsWith(QStringLiteral("legacy/berth/detail/"));
 			const AuPoint floor = berth ? console->BerthLocation() : console->OperatorLoc();
+			const AuStation::TYPE stationType = console->StationType();
+			// CanEnterConsole:1803ce930 distinguishes ceiling and floor turrets
+			// by CG deck and head tilt, rather than the modern station distance.
+			const bool ceilingTurret = stationType == AuStation::Turret_Top;
+			if((ceilingTurret && who.CurrentHeadTilt() < PIf / 4)
+				|| (stationType == AuStation::Turret_Bottom && who.CurrentHeadTilt() > -PIf / 4)) continue;
 			if(who.Location().Distance2_2D(floor) >= 3 * 3
-				|| std::floor((who.Location().z - floor.z + .05) / AuLegacyShip::DeckHeight) != 0) continue;
+				|| std::floor((who.Location().z - floor.z + .05) / AuLegacyShip::DeckHeight)
+					!= (ceilingTurret ? -1 : 0)) continue;
 			if(berth)
 			{
 				// CanEnterConsole:1803ce930 permits only the avatar's assigned
@@ -2029,7 +2037,8 @@ quint16 DaSc::AttemptConsoleEntry(const DaPerson& who, bool whoInCoC, quint16 co
 {
 	// Console's operator position matrix relative to the ship.
 	const bool legacyConsole = console.GroupName().startsWith(QStringLiteral("legacy/console/detail/"))
-		|| console.GroupName().startsWith(QStringLiteral("legacy/surgery/detail/"));
+		|| console.GroupName().startsWith(QStringLiteral("legacy/surgery/detail/"))
+		|| console.GroupName().startsWith(QStringLiteral("legacy/turret/detail/"));
 	if(!legacyConsole) station = console.ClosestStation(who.Location(), gravityN);
 	if(station.Type() == AuStation::TYPE_Count)
 		return 0;
@@ -3566,7 +3575,8 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 		for(auto partIterator = design->Parts().cbegin(); partIterator != design->Parts().cend(); ++partIterator)
 		{
 			const AuScPart* part = *partIterator;
-			if(part->IsOmitted() || !part->IsVisibleInFinalModel()) continue;
+			const bool isTurret = part->IsTurret() && part->GroupName().startsWith(QStringLiteral("legacy/turret/detail/"));
+			if(part->IsOmitted() || (!part->IsVisibleInFinalModel() && !isTurret)) continue;
 			const bool isDoor = part->IsDoor();
 			const QString roomName = part->GroupName();
 			int effectFirstFrame = -1;
@@ -3616,9 +3626,11 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 			const quint8 frames[] = {AuScDoor::Closed, AuScDoor::Open50, AuScDoor::Open};
 			for(int frame = 0; frame < (isDoor ? 3 : 1); ++frame)
 			{
-				const quint32 stateKey = isDoor ? (quint32(partIterator.key()) << 8) | frames[frame] : 0;
+				const quint32 stateKey = isDoor ? (quint32(partIterator.key()) << 8) | frames[frame]
+					: isTurret ? (quint32(partIterator.key()) << 8) | AuScTurret::Gun : 0;
 				AuScTriRenderList opaque, transparent;
 				if(isDoor) part->RenderTrianglesState(opaque, transparent, colors, frames[frame]);
+				else if(isTurret) part->RenderTrianglesState(opaque, transparent, colors, AuScTurret::Gun);
 				else part->RenderTriangles(opaque, transparent, colors);
 				opaque.Insert(transparent);
 				for(const AuScTriRender& original : opaque)
@@ -3746,10 +3758,12 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 				for(auto group = states.value().at(index).cbegin(); group != states.value().at(index).cend(); ++group)
 				{
 					LegacyTextureDraw draw;
-					draw.doorId = quint16((states.key() >> 9) & 0xffff);
+					draw.roomName = roomNames.value(states.key());
+					if(draw.roomName.startsWith(QStringLiteral("legacy/turret/detail/")))
+						draw.turretId = quint16((states.key() >> 9) & 0xffff);
+					else draw.doorId = quint16((states.key() >> 9) & 0xffff);
 					draw.doorState = quint8((states.key() >> 1) & 0xff);
 					draw.interior = states.key() & 1;
-					draw.roomName = roomNames.value(states.key());
 					draw.textureInset = binding.textureInset;
 					draw.cutout = binding.cutout;
 					draw.opacity = group.key();
@@ -3837,6 +3851,24 @@ void DaSc::RenderLegacyTextures(const AuGLSLScBase& shader, AuAtomRenderInfo& ar
 	m_BayLock.unlock();
 	const qint64 frameTime = AuTime::CurrentMSecsSinceEpoch() / LegacyEffectFrameMSec;
 	const bool exteriorLightEnabled = m_MyExtLight >= 0 && ari.re->Light(m_MyExtLight).m_bEnabled;
+	QHash<quint16, AuMatrix4x4> turretModels;
+	DaAtomList gunners;
+	FindGunners(gunners);
+	if(!gunners.isEmpty())
+	{
+		const AuScDesign* design = LockDesign();
+		if(design)
+			for(const DaAtom* atom : gunners)
+			{
+				const DaCreature* gunner = static_cast<const DaCreature*>(atom);
+				const AuScPart* turret = design->Parts().value(gunner->StationId(), nullptr);
+				if(!turret || !turret->GroupName().startsWith(QStringLiteral("legacy/turret/detail/"))) continue;
+				AuMatrix4x4 gun;
+				turret->TurretGunMatrix(gunner->Rotation().z, gunner->CurrentHeadTilt(), gun);
+				turretModels.insert(gunner->StationId(), model * gun);
+			}
+		UnlockDesign();
+	}
 	shader.SetEffectTexture(0, 0);
 	if(transparent)
 	{
@@ -3903,8 +3935,10 @@ void DaSc::RenderLegacyTextures(const AuGLSLScBase& shader, AuAtomRenderInfo& ar
 		// Each draw has one recovered effect atlas region; native vertex data
 		// still controls which surfaces receive the glowing overlay.
 		shader.SetEffectTexture(effectTexture, effectTexture ? 2 : 0);
+		shader.SetModelView(turretModels.value(draw.turretId, model));
 		draw.vao.DrawSc(shader, effects, 0);
 	}
+	shader.SetModelView(model);
 	shader.SetEffectTexture(0, 0);
 	shader.SetLegacySurface(0);
 	shader.SetGlowDiscard(0, 0, 0, .01f);
@@ -16097,7 +16131,23 @@ void DaSc::OperateLifts()
 
 AuPoint DaSc::TurretHemiVector(const AuPose& pose, quint16 which) const
 {
-	Q_UNUSED(pose);
+	if(IsLegacyDebug())
+	{
+		switch(pose.Pose())
+		{
+		case AuPose::ConsoleTurretTop: return AuPoint(0, 0, 1);
+		case AuPose::ConsoleTurretBottom: return AuPoint(0, 0, -1);
+		case AuPose::ConsoleTurret0: return AuPoint(1, 0, 0);
+		case AuPose::ConsoleTurret45: return AuPoint(.7071, .7071, 0);
+		case AuPose::ConsoleTurret90: return AuPoint(0, 1, 0);
+		case AuPose::ConsoleTurret135: return AuPoint(-.7071, .7071, 0);
+		case AuPose::ConsoleTurret180: return AuPoint(-1, 0, 0);
+		case AuPose::ConsoleTurret225: return AuPoint(-.7071, -.7071, 0);
+		case AuPose::ConsoleTurret270: return AuPoint(0, -1, 0);
+		case AuPose::ConsoleTurret315: return AuPoint(.7071, -.7071, 0);
+		default: break;
+		}
+	}
 	AuPoint hemiVec;
 	const AuScDesign* scd = LockDesign();
 	if(scd)
@@ -18530,7 +18580,8 @@ bool DaSc::Station(const DaCreature& who, AuStation& station) const
 			// Console's operator position matrix relative to the ship.
 			const bool legacyStation = IsLegacyDebug()
 				&& ((*pi)->GroupName().startsWith(QStringLiteral("legacy/console/detail/"))
-					|| (*pi)->GroupName().startsWith(QStringLiteral("legacy/surgery/detail/")));
+					|| (*pi)->GroupName().startsWith(QStringLiteral("legacy/surgery/detail/"))
+					|| (*pi)->GroupName().startsWith(QStringLiteral("legacy/turret/detail/")));
 			if(legacyStation)
 				station = who.CurrentGeneralPose() == AuPose::ConsoleSurgeryUnit
 					? LegacyPatientStation(**pi) : (*pi)->OperatorStation(gN);

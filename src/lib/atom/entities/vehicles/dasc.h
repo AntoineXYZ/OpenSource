@@ -46,6 +46,7 @@ class AUATOM_DLL DaSc : public DaVessel
 		bool cutout = false;
 		bool translucent = false;
 		quint16 doorId = 0;
+		quint16 turretId = 0;
 		quint16 weaponBayId = 0;
 		quint16 transporterId = 0;
 		quint8 doorState = 0;

@@ -6343,8 +6343,11 @@ void AuScReport::SystemIds(QSet<AuSysId>& sysIds, bool structural) const
 		else
 		{
 			const SYSTEM systems[] = {SYS_CommandAndControl, SYS_ManeuverDrive, SYS_LifeSupport,
-				SYS_PowerPlant, SYS_Sensor, SYS_Shield, SYS_Turret};
+				SYS_PowerPlant, SYS_Sensor, SYS_Shield};
 			for(SYSTEM system : systems) if(SystemHits(system)) sysIds.insert(system);
+			for(auto turret = m_Turrets.cbegin(); turret != m_Turrets.cend(); ++turret)
+				sysIds.insert(AuSysId(SYS_Turret, turret.key()));
+			if(m_Turrets.isEmpty() && SystemHits(SYS_Turret)) sysIds.insert(SYS_Turret);
 			if(FTLDriveHits()) sysIds.insert(AuSysId(SYS_FTLDrive, 1));
 			for(quint16 surgery : SurgeryUnitIds()) sysIds.insert(AuSysId(SYS_SurgeryUnit, surgery));
 			for(auto room = m_Transporters.cbegin(); room != m_Transporters.cend(); ++room)

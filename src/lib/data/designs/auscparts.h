@@ -14,6 +14,7 @@
 #include "auscsilhouette.h"
 #include "austation.h"
 #include "dbcommodity.h"
+#include <QStringList>
 
 using namespace std;
 
@@ -9927,6 +9928,15 @@ public:	// Methods
 
 	virtual AuStation::TYPE StationType() const
 	{
+		if(GroupName().startsWith(QStringLiteral("legacy/turret/detail/")))
+		{
+			const QStringList fields = GroupName().split('/');
+			const int type = fields.value(fields.indexOf(QStringLiteral("type")) + 1).toInt();
+			if(type == 22) return AuStation::Turret_Top;
+			if(type == 33) return AuStation::Turret_Bottom;
+			if(type == 21) return AuStation::Turret_0;
+			if(type >= 34 && type <= 40) return AuStation::TYPE(AuStation::Turret_45 + type - 34);
+		}
 		return AuStation::Turret_Integrated;
 	}
 
