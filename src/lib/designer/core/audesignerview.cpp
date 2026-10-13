@@ -15490,6 +15490,16 @@ void AuDesignerView::PositionControlButtons()
 	LockSceneAtom(&sceneAtom);
 	if(sceneAtom)
 	{
+		const DaSc* ship = dynamic_cast<const DaSc*>(sceneAtom->FindParentVesselInEnv());
+		if(ship && ship->IsLegacyDebug())
+		{
+			// The 2016 client had no contextual side buttons. Suppress both
+			// targeted-panel and avatar actions, including aboard vehicles.
+			m_ControlButtonAt = AuControlButton();
+			m_ControlButtonPressed = AuControlButton();
+			UnlockSceneAtom();
+			return;
+		}
 		QPoint pxFind(rect().center());
 		qint16 idPanel;
 		AuPoint panelLoc;
@@ -15650,6 +15660,13 @@ void AuDesignerView::ControlButtonClicked(const AuControlButton& button)
 	LockSceneAtom(&sceneAtom);
 	if(sceneAtom)
 	{
+		const DaSc* ship = dynamic_cast<const DaSc*>(sceneAtom->FindParentVesselInEnv());
+		if(ship && ship->IsLegacyDebug())
+		{
+			// A button pressed before boarding must not dispatch a cached action.
+			UnlockSceneAtom();
+			return;
+		}
 		DaAtom* env = sceneAtom->FindEnvironmentAtom();
 		if(env)
 		{
