@@ -623,7 +623,7 @@ public:
 	}
 
 	AuPoint Slide(const AuPoint& from, const AuPoint& to, const Body& body, const AuPoint& up, AuPoint& hitNormal,
-		bool preserveGroundHeight, const AuDoorStateHash* doorStates) const
+		bool preserveGroundHeight, const AuDoorStateHash* doorStates, QVector<MovementContact>* contacts = nullptr) const
 	{
 		AuPoint current = from, target = to;
 		for(int iteration = 0; iteration < 4; ++iteration)
@@ -634,6 +634,7 @@ public:
 			AuPoint displacement = target - current;
 			const double backoff = displacement.Length() > Skin ? Skin / displacement.Length() : 0;
 			current += displacement * std::max(0.0, fraction - backoff);
+			if(contacts) contacts->append({current, normal});
 			AuPoint remaining = target - current;
 			const double requestedVertical = remaining.Dot(up);
 			const double allowedRise = std::max(0.0, requestedVertical);
@@ -979,9 +980,11 @@ bool CollisionWorld::IsBodyTransitionBlocked(const AuPoint& from, const AuPoint&
 
 AuPoint CollisionWorld::ResolveDestination(const AuPoint& from, const AuPoint& to, const AuBox& bodyOffsets,
 	const AuPoint& gravityUp, double standingHeight, bool allowGroundSnap, AuPoint& hitNormal,
-	bool preserveGroundHeight, const AuDoorStateHash* doorStates, bool allowBoardingStep) const
+	bool preserveGroundHeight, const AuDoorStateHash* doorStates, bool allowBoardingStep,
+	QVector<MovementContact>* contacts) const
 {
 	hitNormal = AuPoint(0, 0, 0);
+	if(contacts) contacts->clear();
 	const Body body(bodyOffsets);
 	if(!IsValid() || !body.valid || !Finite(from) || !Finite(to) || !Finite(gravityUp)) return from;
 	AuPoint up = gravityUp; up.Unit();
@@ -1004,8 +1007,12 @@ AuPoint CollisionWorld::ResolveDestination(const AuPoint& from, const AuPoint& t
 				if(rise <= MaximumBoardingStep && !m_Impl->Sweep(from, raised, body, fraction, obstructionNormal, nullptr, doorStates))
 				{
 					target = candidate;
-					const AuPoint accepted = m_Impl->Slide(raised, target, body, up, hitNormal, true, doorStates);
-					if(hitNormal.IsZero()) hitNormal = normal;
+					const AuPoint accepted = m_Impl->Slide(raised, target, body, up, hitNormal, true, doorStates, contacts);
+					if(hitNormal.IsZero())
+					{
+						hitNormal = normal;
+						if(contacts) contacts->append({accepted, normal});
+					}
 					return accepted;
 				}
 			}
@@ -1026,7 +1033,7 @@ AuPoint CollisionWorld::ResolveDestination(const AuPoint& from, const AuPoint& t
 			&& newNormal.Dot(up) >= .55 && adjustment >= -.75 && adjustment <= probeLift)
 			target += up * adjustment;
 	}
-	return m_Impl->Slide(from, target, body, up, hitNormal, preserveGroundHeight, doorStates);
+	return m_Impl->Slide(from, target, body, up, hitNormal, preserveGroundHeight, doorStates, contacts);
 }
 
 double CollisionWorld::HeightAboveFloor(const AuPoint& loc, const AuPoint& gravityUp, AuPoint& floorNormal,

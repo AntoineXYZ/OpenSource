@@ -25,6 +25,12 @@ AUDATA_DLL AuBox MovementBodyOffsets(const AuBox& anatomy, const AuPoint& gravit
 class AUDATA_DLL CollisionWorld
 {
 public:
+	struct MovementContact
+	{
+		AuPoint location;
+		AuPoint normal;
+	};
+
 	explicit CollisionWorld(const AuScDesign& design);
 	~CollisionWorld();
 	bool IsValid() const;
@@ -52,10 +58,12 @@ public:
 	// Exterior walking can step up at most 3/4 ft onto a hull-door landing.
 	// Ground vehicles opt into that checked step independently of preserving
 	// terrain height, so their exit slide can still cancel downward contact.
+	// Optional contacts retain every slide obstruction in ship coordinates,
+	// so velocity response does not lose an earlier wall to a later floor hit.
 	AuPoint ResolveDestination(const AuPoint& from, const AuPoint& to, const AuBox& bodyOffsets,
 		const AuPoint& gravityUp, double standingHeight, bool allowGroundSnap, AuPoint& hitNormal,
 		bool preserveGroundHeight = false, const AuDoorStateHash* doorStates = nullptr,
-		bool allowBoardingStep = false) const;
+		bool allowBoardingStep = false, QVector<MovementContact>* contacts = nullptr) const;
 
 	// Distances from the atom origin, matching the native capsule query contract.
 	// A hole has no implicit room-void floor or ceiling.

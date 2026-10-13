@@ -658,11 +658,37 @@ void DaAtom::TickMovement(const AuElapsedTimer& last)
 		tmove = vector * rsec;			// Calculate move vector in this time period
 
 	AuId oldParentId = ParentId();		// Watch for parent change resulting from the move, possible even if vec = 0.
+	// Legacy avatar contact can resolve a slide and change velocity while Move
+	// still succeeds. Publish this tick's velocity before contact, then retain
+	// its response rather than restoring the pre-contact local vector below.
+	bool legacyAvatarMovement = false;
+	if(dynamic_cast<const DaCreature*>(this) && !IsEthereal() && !AgentEntity())
+	{
+		DaAtom* movementParent = Parent();
+		const DaSc* ship = dynamic_cast<const DaSc*>(movementParent);
+		legacyAvatarMovement = ship && ship->IsLegacyDebug();
+		if(!legacyAvatarMovement && movementParent)
+		{
+			DaAtomList peers;
+			movementParent->ListNormalSubatoms(peers);
+			for(const DaAtom* peer : peers)
+			{
+				ship = dynamic_cast<const DaSc*>(peer);
+				if(ship && ship->IsLegacyDebug() && ship->IsObstacle(this))
+				{
+					legacyAvatarMovement = true;
+					break;
+				}
+			}
+		}
+	}
+	if(legacyAvatarMovement) SetVector(vector);
 	bool moved = Move(tmove, msElapsed);
 	if(moved)
 	{
-		// Parent change may have modified my movement vector. e.g. exiting a moving spacecraft
-		if(oldParentId != ParentId())
+		// Retain legacy contact response and parent-change velocity, e.g.
+		// exiting a moving spacecraft.
+		if(legacyAvatarMovement || oldParentId != ParentId())
 			vector = Vector();	// Get my nu movement vector.
 	}
 	else

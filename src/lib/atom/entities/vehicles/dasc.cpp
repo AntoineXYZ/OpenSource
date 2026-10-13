@@ -5876,11 +5876,14 @@ void DaSc::FilterDestinationLoc(DaAtom* moveAtom, const AuPoint& oldLoc, AuPoint
 			{
 				const AuPoint requested = nuLoc;
 				AuPoint contactNormal;
+				QVector<AuLegacyScGeometry::CollisionWorld::MovementContact> contacts;
 				const double standingHeight = creature->GroundHeightAboveCG();
 				const bool boardingGround = !aboard && walking && (grounded
 					|| world->IsOnBoardingStep(oldLoc, gravityUp, standingHeight, &doors));
+				AuPoint up = gravityUp; up.Unit();
+				const bool inGravity = creature->IsInGravity();
 				nuLoc = world->ResolveDestination(oldLoc, nuLoc, offsets, gravityUp,
-					standingHeight, followGround, contactNormal, boardingGround, &doors);
+					standingHeight, followGround, contactNormal, boardingGround, &doors, false, &contacts);
 				if(boardingGround && world->IsOnBoardingStep(nuLoc, gravityUp, standingHeight, &doors))
 				{
 					// The world remains the parent until the doorway is crossed.
@@ -5891,12 +5894,31 @@ void DaSc::FilterDestinationLoc(DaAtom* moveAtom, const AuPoint& oldLoc, AuPoint
 					const double falling = velocity.Dot(localUp);
 					if(falling < 0) moveAtom->SetVector(velocity - localUp * falling);
 				}
-				if(!contactNormal.IsZero())
+				for(const auto& contact : contacts)
 				{
-					const AuPoint localNormal = bodyToShip.UnProjectVector(contactNormal);
-					AuPoint velocity = moveAtom->Vector();
+					AuPoint localNormal = bodyToShip.UnProjectVector(contact.normal); localNormal.Unit();
+					const AuPoint velocity = moveAtom->Vector();
 					const double inward = velocity.Dot(localNormal);
-					if(inward < 0) moveAtom->SetVector(velocity - localNormal * inward);
+					if(inward >= 0) continue;
+					// Keep floor support from bouncing an avatar under gravity.
+					// Walls retain the native outward reflection/momentum response recovered
+					// at DaAtom::MovementBlocked:180210f90 and invoked by
+					// DaSpaceShip::MoveSubatom:1804087f0 in the 2016 client.
+					if(inGravity && contact.normal.Dot(up) >= .55)
+						moveAtom->SetVector(velocity - localNormal * inward);
+					else
+					{
+						moveAtom->MovementBlocked(const_cast<DaSc*>(this), contact.location, localNormal, false);
+						// Native momentum exchange damps the whole vector against
+						// a heavy hull. Preserve the incoming tangent so a wall
+						// contact does not also brake movement along that wall.
+						// Clamp the outward response: the native axis-angle
+						// reflection can degenerate at a head-on hit.
+						const AuPoint reflected = moveAtom->Vector();
+						const double outward = std::max(0.0, reflected.Dot(localNormal));
+						const AuPoint tangent = velocity - localNormal * inward;
+						moveAtom->SetVector(tangent + localNormal * outward);
+					}
 				}
 				if(nuLoc.Distance2(requested) > 1e-8 && qEnvironmentVariableIsSet("HAZERON_LEGACY_COLLISION_STATS"))
 				{
