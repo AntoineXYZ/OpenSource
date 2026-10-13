@@ -1,6 +1,10 @@
 #include "aulegacyscdeckplan.h"
+#include "aulegacyshippaths.h"
 
 #include <QIODevice>
+#include <QDebug>
+#include <QMutex>
+#include <QMutexLocker>
 #include <cmath>
 #include <utility>
 
@@ -17,7 +21,19 @@ bool HasBytes(QDataStream& in, quint64 count)
 }
 }
 
+struct AuLegacyScDeckPlan::PathCache
+{
+	QMutex mutex;
+	bool attempted = false;
+	QSharedPointer<const AuLegacyShip::Paths::Graph> graph;
+};
+
+AuLegacyScDeckPlan::AuLegacyScDeckPlan() : m_PathCache(new PathCache)
+{
+}
+
 AuLegacyScDeckPlan::AuLegacyScDeckPlan(const AuLegacyShip::Design& design, const AuPoint& authorCenter)
+	: AuLegacyScDeckPlan()
 {
 	if(design.rooms.size() > int(MaximumRooms) || design.details.size() > int(MaximumDetails)) return;
 	for(const AuLegacyShip::Room& room : design.rooms)
@@ -37,6 +53,29 @@ AuLegacyScDeckPlan::AuLegacyScDeckPlan(const AuLegacyShip::Design& design, const
 	m_AuthorCenter = authorCenter;
 	m_Valid = Validate();
 	if(!m_Valid) m_SourceDesign = AuLegacyShip::Design();
+}
+
+QSharedPointer<const AuLegacyShip::Paths::Graph> AuLegacyScDeckPlan::PathGraph() const
+{
+	if(!m_Valid || !m_PathCache) return {};
+	QMutexLocker guard(&m_PathCache->mutex);
+	if(!m_PathCache->attempted)
+	{
+		m_PathCache->attempted = true;
+		QSharedPointer<AuLegacyShip::Paths::Graph> graph(new AuLegacyShip::Paths::Graph);
+		// Runtime door metadata uses one-based source-record identities, as
+		// AuLegacyScGeometry::Build does. File detail IDs may have gaps or
+		// duplicates and cannot identify the generated door parts. Keep the
+		// replicated deck view's original records intact; normalize this copy
+		// for both newly generated and reloaded runtime blueprints.
+		AuLegacyShip::Design runtimeSource = m_SourceDesign;
+		for(int index = 0; index < runtimeSource.details.size(); ++index)
+			runtimeSource.details[index].detailId = quint32(index) + 1;
+		QString error;
+		if(graph->Build(runtimeSource, error)) m_PathCache->graph = graph;
+		else qWarning() << "Legacy spacecraft path graph:" << error;
+	}
+	return m_PathCache->graph;
 }
 
 bool AuLegacyScDeckPlan::Validate() const

@@ -17,6 +17,7 @@
 #include "aulegacyship.h"
 #include "aulegacyshipmesh.h"
 #include "aulegacyshipedit.h"
+#include "aulegacyshippaths.h"
 #include "aulegacyscdeckplan.h"
 #include <QImage>
 #include <QMutexLocker>
@@ -2140,7 +2141,7 @@ bool DaSc::CanGrabLadder(const DaAtom& who, const AuPoint& loc, AuMatrix4x4& mLa
 }
 
 bool DaSc::FindLegacyLadder(const AuPoint& loc, AuMatrix4x4& mLadder, QString* diagnostic,
-	const AuBox* bodyOffsets) const
+	const AuBox* bodyOffsets, const AuPoint* routeTarget) const
 {
 	if(diagnostic) diagnostic->clear();
 	struct HatchLadder { AuPoint anchor, facing; };
@@ -2167,6 +2168,21 @@ bool DaSc::FindLegacyLadder(const AuPoint& loc, AuMatrix4x4& mLadder, QString* d
 		// Preserve the body origin's height when attaching on this deck or the next.
 		if(loc.z < ladder.anchor.z - AuLegacyShip::DeckHeight - .05
 			|| loc.z >= ladder.anchor.z + AuLegacyShip::DeckHeight - .05) continue;
+		if(routeTarget)
+		{
+			// Legacy routes place the body origin above each deck floor. Select
+			// the requested hatch column and keep the origin between its two
+			// corresponding route endpoints, including on stacked ladders.
+			if(std::abs(routeTarget->x - ladder.anchor.x) > .05
+				|| std::abs(routeTarget->y - ladder.anchor.y) > .05
+				|| routeTarget->z < ladder.anchor.z - AuLegacyShip::DeckHeight - .05
+				|| routeTarget->z >= ladder.anchor.z + AuLegacyShip::DeckHeight - .05) continue;
+			const double topOriginZ = routeTarget->z < ladder.anchor.z - .05
+				? routeTarget->z + AuLegacyShip::DeckHeight : routeTarget->z;
+			// Allow the same one-foot attachment tolerance as modern ladders.
+			if(loc.z < topOriginZ - AuLegacyShip::DeckHeight - 1
+				|| loc.z > topOriginZ + 1) continue;
+		}
 		++onDeck;
 		const AuPoint target(ladder.anchor.x, ladder.anchor.y, loc.z);
 		const double distance = loc.Distance2(target);
@@ -6037,9 +6053,16 @@ bool DaSc::FloorHt(const AuPoint& loc, const AuPoint& gravityN, double& htAbvFlo
 					}
 				}
 			}
-			const quint16 roomId = design->RoomVoidContainingLocLive(loc, .1, m_DoorStates, m_LandingGearStates, m_Lifts);
-			const auto room = design->Parts().find(roomId);
-			inGravityWell = room != design->Parts().cend() && (*room)->GravityType() == G_Zero;
+			const auto plan = design->LegacyDeckPlan();
+			const auto graph = plan ? plan->PathGraph() : QSharedPointer<const AuLegacyShip::Paths::Graph>();
+			if(graph)
+				inGravityWell = graph->IsInGravityWell(loc + plan->AuthorCenter());
+			else
+			{
+				const quint16 roomId = design->RoomVoidContainingLocLive(loc, .1, m_DoorStates, m_LandingGearStates, m_Lifts);
+				const auto room = design->Parts().find(roomId);
+				inGravityWell = room != design->Parts().cend() && (*room)->GravityType() == G_Zero;
+			}
 			// The native query must receive the fall distance even over a hole,
 			// where no floor normal exists. It otherwise defaults to grounded.
 			if(stairNormal.IsZero()) stairNormal = gravityN;
@@ -10730,14 +10753,18 @@ double DaSc::RoughRadius() const
 
 bool DaSc::Route(AuScRoute& route, const AuPoint& fromLoc, const AuPoint& toLoc, const DaAtom* toWho, bool isCrew) const
 {
-	Q_UNUSED(toWho);
+	const bool legacy = IsLegacyDebug();
+	const DaCreature* creature = legacy ? dynamic_cast<const DaCreature*>(toWho) : nullptr;
+	const double bodyHeight = creature ? creature->CGHeightStanding() : 4;
+	const bool hasGravity = !legacy || Gravity(0) > 0;
 	if(Name() == "AtlantisT")
 		g_Au.m_LogMessages |= LOG_Path;
 	bool foundRoute;
 	m_DesignLock.lockForRead();
 	const AuScDesign* scd = LockDesign();
 	if(scd)
-		foundRoute = scd->Route(route, fromLoc, toLoc, isCrew, m_DoorStates, m_LandingGearStates, m_Lifts);
+		foundRoute = scd->Route(route, fromLoc, toLoc, isCrew, m_DoorStates, m_LandingGearStates, m_Lifts,
+			bodyHeight, hasGravity);
 	else
 		foundRoute = false;
 	UnlockDesign();
@@ -19506,6 +19533,12 @@ LANDING_ORIENT DaSc::LandingOrientation() const
 
 bool DaSc::IsOnLadderTo(const AuPoint& fromLoc, const AuPoint& ladderPathLoc) const
 {
+	if(IsLegacyDebug())
+	{
+		AuMatrix4x4 mLadder;
+		return FindLegacyLadder(fromLoc, mLadder, 0, 0, &ladderPathLoc)
+			&& fromLoc.Distance2(mLadder.Translation()) < 1;
+	}
 	// Find a room with that exact name.
 	bool foundIt;
 	m_DesignLock.lockForRead();
@@ -19521,6 +19554,12 @@ bool DaSc::IsOnLadderTo(const AuPoint& fromLoc, const AuPoint& ladderPathLoc) co
 
 bool DaSc::CanGrabLadderAt(const DaAtom& who, const AuPoint& ladderPathLoc, AuMatrix4x4& mLadder)
 {
+	if(IsLegacyDebug())
+	{
+		AuBox offsets;
+		if(!LegacyBodyOffsets(who, offsets)) return false;
+		return FindLegacyLadder(who.Location(), mLadder, 0, &offsets, &ladderPathLoc);
+	}
 	// Find closest ladder path to 'who' with an end point at 'ladderPathLoc'.
 	bool foundLadder;
 	m_DesignLock.lockForRead();

@@ -203,6 +203,7 @@ bool ExtractOpenings(const Design& design, QVector<Opening>& openings, QString& 
 		const RoomGeometry* owner = Find(rooms, detail.roomId);
 		if(!owner) continue;
 		Opening opening;
+		opening.detailId = detail.detailId;
 		opening.deck = detail.deck; opening.room1 = detail.roomId;
 		opening.center = DecodePoint(detail.packedXY);
 		opening.first = opening.second = opening.center;

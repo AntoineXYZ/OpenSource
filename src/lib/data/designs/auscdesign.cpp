@@ -14,8 +14,10 @@
 #include "aulegacyscdeckplan.h"
 #include "aulegacyscgeometry.h"
 #include "aulegacyscprotocol.h"
+#include "aulegacyshippaths.h"
 #include "auscparts.h"
 #include "auscreport.h"
+#include "auscroute.h"
 #include "hashpack.h"
 #include <QProgressDialog>
 #include <QSqlQuery>
@@ -3231,8 +3233,32 @@ quint16 AuScDesign::VoidContainingLoc(const AuPoint& loc, const AuDoorStateHash&
 }
 
 bool AuScDesign::Route(AuScRoute& route, const AuPoint& fromLoc, const AuPoint& toLoc, bool canUnlockDoors,
-		const AuDoorStateHash& doorStates, const AuLandingGearStateHash& landingGearStates, const AuLiftHash& liftStops) const
+		const AuDoorStateHash& doorStates, const AuLandingGearStateHash& landingGearStates, const AuLiftHash& liftStops,
+		double bodyHeight, bool hasGravity) const
 {
+	if(m_LegacyDeckPlan || NeedsLegacyDeckPlan())
+	{
+		route.clear();
+		if(!m_LegacyDeckPlan || !m_LegacyDeckPlan->IsValid()) return false;
+		const auto graph = m_LegacyDeckPlan->PathGraph();
+		if(!graph) return false;
+		QHash<quint32, quint16> doorPartIds;
+		const QString prefix = QStringLiteral("legacy/door/detail/");
+		for(auto part = m_Parts->cbegin(); part != m_Parts->cend(); ++part)
+		{
+			if(!(*part)->IsDoor() || (*part)->IsOmitted()) continue;
+			const QString& group = (*part)->GroupName();
+			if(!group.startsWith(prefix)) continue;
+			const int end = group.indexOf(QLatin1Char('/'), prefix.size());
+			if(end < 0) continue;
+			bool valid = false;
+			const quint32 detailId = group.mid(prefix.size(), end - prefix.size()).toUInt(&valid);
+			if(valid && detailId) doorPartIds.insert(detailId, part.key());
+		}
+		const AuPoint& center = m_LegacyDeckPlan->AuthorCenter();
+		return graph->Route(route, fromLoc + center, toLoc + center, center, canUnlockDoors, doorStates, doorPartIds,
+			bodyHeight, hasGravity);
+	}
 	return m_Parts->Route(route, fromLoc, toLoc, LandingOrientation(), canUnlockDoors, doorStates, landingGearStates, liftStops);
 }
 

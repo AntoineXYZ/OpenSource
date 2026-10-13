@@ -7,8 +7,11 @@
 #include "auscroute.h"
 //
 #include "aumatrix4x4.h"
+#include "aulegacyship.h"
 #include "auscreport.h"
 #include <QDebug>
+#include <algorithm>
+#include <cmath>
 
 QDebug operator<<(QDebug dbg, const AuScRouteLoc& c)
 {
@@ -30,6 +33,20 @@ bool AuScRouteLoc::HasArrived(const AuPoint& loc, double cgHt, const AuPoint& up
 		if(m_LiftStop != atStop)
 			return false;				// The lift is not at the correct stop.
 		return true;
+	}
+
+	// The original legacy follower consumed a walking waypoint after entering
+	// its half-grid cell. Keep that check when releasing a ladder as well.
+	if(m_LegacyCell && !m_Ladder)
+	{
+		if(std::max(std::abs(x - loc.x), std::abs(y - loc.y))
+			>= AuLegacyShip::CoordinateSpacing / 2) return false;
+		const double feetAboveFloor = (loc - upVec * cgHt).z - m_LegacyFloor;
+		// Release only after the feet clear the destination deck. The normal
+		// ladder radius can otherwise let go while still below the hatch sill.
+		if((climbingLadder || m_LegacyRequireFloor) && feetAboveFloor < -.05) return false;
+		// Stair bands are two feet tall; allow normal floor contact clearance.
+		return std::abs(feetAboveFloor) <= 2.1;
 	}
 
 	if(m_Ladder || climbingLadder)

@@ -12,6 +12,7 @@
 #include "aucity.h"
 #include "aucombat.h"
 #include "aucommpacket.h"
+#include "aulegacyship.h"
 #include "auscroute.h"
 #include "auskill.h"
 #include "austory.h"
@@ -32,6 +33,8 @@
 #include "dgdata.h"
 #include "dpconsolesurgery.h"
 #include "dpconsoleweapon.h"
+#include <algorithm>
+#include <cmath>
 
 // This id is traced by various pathing functions. It can be used to follow an individual citizen's pathing decisions.
 static AuId 							s_PathTrace(1);
@@ -4321,6 +4324,23 @@ void DaSentient::MoveInsideCapsule(DaCapsule* ship, bool isCrew)
 			// Grab the ladder that is there, if any.
 			if(isLadder && !IsLadderPose() && GrabLadderOnMyShipAt(routeLoc))
 				pose = CurrentGeneralPose();	// Close enough to grab the ladder.
+			else if(sc && sc->IsLegacyDebug() && !isLadder && !IsLadderPose()
+				&& (IsInGravityWell() || !IsInGravity())
+				&& std::max(std::abs(moveVec.x), std::abs(moveVec.y)) < AuLegacyShip::CoordinateSpacing / 2
+				&& std::abs(moveVec.z) > .1)
+			{
+				// MoveInsideShip:18038df60 floats vertically after aligning with
+				// a shaft; only actual hatch doors use the ladder handoff above.
+				headTilt = moveVec.z > 0 ? PI / 2 : -PI / 2;
+				pose = AuPose::StandWalk;
+				m_SentientLock.lockForWrite();
+				m_MoveDistLimit = std::min(m_MoveDistLimit, float(FeetPerMeter()));
+				m_SentientLock.unlock();
+				// Vertical travel has no heading. Preserve the current facing
+				// instead of turning toward an arbitrary atan2(0,0) result.
+				moveVec.x = 0;
+				moveVec.y = .01;
+			}
 		}
 
 #if !defined(QT_NO_DEBUG)

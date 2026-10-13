@@ -740,7 +740,8 @@ public:	// Methods
 	// 'canUnlockDoors' is true if the locked state of doors can be ignored.
 	// Returns true if a route is found.
 	bool Route(AuScRoute& route, const AuPoint& fromLoc, const AuPoint& toLoc, bool canUnlockDoors,
-			const AuDoorStateHash& doorStates, const AuLandingGearStateHash& landingGearStates, const AuLiftHash& liftStops) const;
+			const AuDoorStateHash& doorStates, const AuLandingGearStateHash& landingGearStates, const AuLiftHash& liftStops,
+			double bodyHeight = 4, bool hasGravity = true) const;
 
 	// Ranges of sensors in feet.
 	double SensorRange(quint8 sensorQ) const;

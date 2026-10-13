@@ -49,6 +49,13 @@ static bool								s_GameTableExt = false;	// true when we have the extents.
 static AuPoint							s_GameTableBase, s_GameTableMax, s_GameTableMin;
 static int								s_MinBounty = 10000;
 
+static double BerthSpawnHeight(const DaVessel& vessel, const DaCreature& creature)
+{
+	const DaSc* ship = dynamic_cast<const DaSc*>(&vessel);
+	// 2016 berths are floor locations; the standing body's origin sits above them.
+	return ship && ship->IsLegacyDebug() ? creature.CGHeightStanding() : .1;
+}
+
 
 DaVessel::DaVessel(const QString& name, int idEmpire) : DaCapsule(name, idEmpire)
 {
@@ -2684,8 +2691,7 @@ DaNpc* DaVessel::LoadPirateOfficer(quint32 pirateEmpire, const AuSpecies& specie
 	AuPoint berthLoc = BerthLocation(officer->Id());
 
 	// Position the atom in the environment.
-	//berthLoc.z += officer->GroundHeightAboveCG();
-	berthLoc.z += .1;
+	berthLoc.z += BerthSpawnHeight(*this, *officer);
 	AuMatrix4x4 t;
 	t.Translate(berthLoc);									// Move to location in spacecraft.
 	officer->SetPosAndOrient(AuAtomPos(Id(), t));
@@ -2728,8 +2734,7 @@ DaNpc* DaVessel::LoadPirateCrew(quint32 pirateEmpire, const AuSpecies& species)
 	AuPoint berthLoc = BerthLocation(crew->Id());
 
 	// Position the atom in the environment.
-	//berthLoc.z += crew->GroundHeightAboveCG();
-	berthLoc.z += .1;
+	berthLoc.z += BerthSpawnHeight(*this, *crew);
 	AuMatrix4x4 t;
 	t.Translate(berthLoc);									// Move to location in spacecraft.
 	crew->SetPosAndOrient(AuAtomPos(Id(), t));
@@ -2772,8 +2777,7 @@ DaNpc* DaVessel::LoadPirateTroop(quint32 pirateEmpire, const AuSpecies& species)
 	AuPoint berthLoc = BerthLocation(troop->Id());
 
 	// Position the atom in the environment.
-	//berthLoc.z += troop->GroundHeightAboveCG();
-	berthLoc.z += .1;
+	berthLoc.z += BerthSpawnHeight(*this, *troop);
 	AuMatrix4x4 t;
 	t.Translate(berthLoc);									// Move to location in spacecraft.
 	troop->SetPosAndOrient(AuAtomPos(Id(), t));
@@ -2824,8 +2828,7 @@ DaNpc* DaVessel::LoadPiratePassenger(quint32 pirateEmpire, const AuSpecies& spec
 	AuPoint berthLoc = BerthLocation(passenger->Id());
 
 	// Position the atom in the environment.
-	//berthLoc.z += passenger->GroundHeightAboveCG();
-	berthLoc.z += .1;
+	berthLoc.z += BerthSpawnHeight(*this, *passenger);
 	AuMatrix4x4 t;
 	t.Translate(berthLoc);									// Move to location in spacecraft.
 	passenger->SetPosAndOrient(AuAtomPos(Id(), t));
@@ -5464,8 +5467,7 @@ bool DaVessel::SpawnTroop(DaBd* bd)
 	AuPoint berthLoc = BerthLocation(troop->Id());
 
 	// Position the atom in the environment.
-	//berthLoc.z += troop->GroundHeightAboveCG();
-	berthLoc.z += .1;
+	berthLoc.z += BerthSpawnHeight(*this, *troop);
 	AuMatrix4x4 t;
 	t.Translate(berthLoc);	// Move to location in spacecraft.
 
@@ -6117,8 +6119,7 @@ DaNpc* DaVessel::BoardTroop(quint32 empireId, const QList<AuSpecies>& species, A
 	AuPoint berthLoc = BerthLocation(troop->Id());
 
 	// Position the atom in the environment.
-	//berthLoc.z += troop->GroundHeightAboveCG();
-	berthLoc.z += .1;
+	berthLoc.z += BerthSpawnHeight(*this, *troop);
 	AuMatrix4x4 t;
 	t.Translate(berthLoc);	// Move to location in spacecraft.
 
@@ -6265,7 +6266,7 @@ void DaVessel::TransferColonists(DaVessel* fromShip, int howMany)
 
 		// A location was found inside the hull to place the passenger.
 		npc->Stand();
-		berthLoc.z += .1;
+		berthLoc.z += BerthSpawnHeight(*this, *npc);
 		AuMatrix4x4 t;
 		t.Translate(berthLoc);
 		double zRot = g_Au.Dice().Roll(1,360,-1) * DEG2RAD;
@@ -6310,8 +6311,7 @@ void DaVessel::TransferTroops(DaVessel* fromShip, int howMany)
 
 		// A location was found inside the hull to place the passenger.
 		troop->Stand();
-		//berthLoc.z += troop->GroundHeightAboveCG();
-		berthLoc.z += .1;
+		berthLoc.z += BerthSpawnHeight(*this, *troop);
 		AuMatrix4x4 t;
 		t.Translate(berthLoc);
 		double zRot = g_Au.Dice().Roll(1,360,-1) * DEG2RAD;
@@ -6424,8 +6424,7 @@ DaNpc* DaVessel::BoardOfficer(const DaWorldLL& llworld, quint32 empireId, const 
 	AuPoint berthLoc = BerthLocation(officer->Id());
 
 	// Position the atom in the environment.
-	//berthLoc.z += officer->GroundHeightAboveCG();
-	berthLoc.z += .1;
+	berthLoc.z += BerthSpawnHeight(*this, *officer);
 	AuMatrix4x4 t;
 	t.Translate(berthLoc);	// Move to location in spacecraft.
 
@@ -6484,8 +6483,7 @@ DaNpc* DaVessel::BoardCrew(quint32 empireId, const QList<AuSpecies>& species, Au
 	AuPoint berthLoc = BerthLocation(crew->Id());
 
 	// Position the atom in the environment.
-	//berthLoc.z += crew->GroundHeightAboveCG();
-	berthLoc.z += .1;
+	berthLoc.z += BerthSpawnHeight(*this, *crew);
 	AuMatrix4x4 t;
 	t.Translate(berthLoc);	// Move to location in spacecraft.
 
@@ -6558,8 +6556,7 @@ DaNpc* DaVessel::BoardColonist(const AuId& fromAirport, const DaWorld* fromWorld
 	AuPoint berthLoc = BerthLocation(colonist->Id());
 
 	// Position the atom in the environment.
-	//berthLoc.z += colonist->GroundHeightAboveCG();
-	berthLoc.z += .1;
+	berthLoc.z += BerthSpawnHeight(*this, *colonist);
 	AuMatrix4x4 t;
 	t.Translate(berthLoc);	// Move to location in spacecraft.
 

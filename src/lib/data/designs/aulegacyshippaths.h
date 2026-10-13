@@ -2,10 +2,14 @@
 #define AuLegacyShipPaths_H
 
 #include "aulegacyship.h"
+#include "aupoint.h"
 #include <QBitArray>
 #include <QHash>
 #include <QSet>
 #include <functional>
+
+class AuDoorStateHash;
+class AuScRoute;
 
 namespace AuLegacyShip
 {
@@ -15,6 +19,7 @@ namespace Paths
 // center are in feet; cellType and flags retain AuPath's original numbers.
 struct Opening
 {
+	quint32 detailId = 0;
 	QPointF first;
 	QPointF second;
 	QPointF center;
@@ -40,6 +45,12 @@ public:
 	bool CanReach(const QPointF& from, int fromDeck, const QPointF& to,
 		int toDeck, bool crew = true) const;
 	bool CanReachOutside(const QPointF& from, int fromDeck, bool crew = true) const;
+	bool IsInGravityWell(const AuPoint& authorLoc) const;
+	// Runtime routes use live door states and native part IDs. The graph remains
+	// immutable, so ships sharing a deck plan can request routes concurrently.
+	bool Route(AuScRoute& route, const AuPoint& fromAuthor, const AuPoint& toAuthor,
+		const AuPoint& authorCenter, bool canUnlockDoors, const AuDoorStateHash& doorStates,
+		const QHash<quint32, quint16>& doorPartIds, double bodyHeight = 4, bool hasGravity = true) const;
 	bool IsEmpty() const { return m_Cells.isEmpty(); }
 	void SetCancelCheck(const std::function<bool()>& cancel) { m_CancelCheck = cancel; m_Canceled = false; }
 	bool WasCanceled() const { return m_Canceled; }
@@ -53,6 +64,7 @@ private:
 		quint16 room2 = 0;
 		quint8 type = 0;
 		quint8 stairs = 0;
+		quint32 doorDetailId = 0;
 		int index = -1;
 	};
 	struct ReachCache
@@ -64,6 +76,8 @@ private:
 	QHash<quint32, quint8> m_Extant;
 	QHash<quint32, QVector<quint16>> m_ExtantRooms;
 	QHash<quint16, QPolygonF> m_RoomBoundaries;
+	QHash<quint16, quint8> m_RoomTypes;
+	QHash<quint16, int> m_RoomDecks;
 	QSet<quint32> m_Entrances;
 	QSet<quint32> m_PortalFootprint;
 	QSet<quint32> m_Portals;
@@ -80,7 +94,7 @@ private:
 	void PaintStairs(const Detail& detail, QByteArray* floor, int pass);
 	void TrimVerticalConnections();
 	QVector<quint32> TerminalCells(const QPointF& point, int deck, bool crew,
-		bool& outside) const;
+		bool& outside, const std::function<bool(const Cell&)>& usable = {}) const;
 	bool Reach(quint32 from, const QSet<quint32>& targets, bool crew) const;
 };
 }

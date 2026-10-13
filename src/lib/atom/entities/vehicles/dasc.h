@@ -711,7 +711,7 @@ public:	// Methods
 	bool IsLegacyDeckView(const DaPerson* sceneAtom, const AuAtomRenderInfo& ari) const;
 	bool LegacyBodyOffsets(const DaAtom& who, AuBox& offsets) const;
 	bool FindLegacyLadder(const AuPoint& loc, AuMatrix4x4& mLadder, QString* diagnostic = 0,
-		const AuBox* bodyOffsets = 0) const;
+		const AuBox* bodyOffsets = 0, const AuPoint* routeTarget = 0) const;
 	bool IsLegacyLadderAttachmentBlocked(const DaCreature& who, const AuPoint& oldOrigin,
 		const AuBox& oldOffsets, const AuPoint& oldEye, AuPoint& hitLoc, AuPoint& hitNormal);
 	void OpenLegacyAutomaticDoors(const DaAtom& who, const AuPoint& from, const AuPoint& to, const AuBox& offsets,

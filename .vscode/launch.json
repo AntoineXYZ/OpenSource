@@ -15,7 +15,7 @@
       },
       "presentation": {
         "group": "Legacy spacecraft",
-        "order": 1
+        "order": 2
       },
       "windows": {
         "presentation": {
@@ -42,7 +42,7 @@
       },
       "presentation": {
         "group": "Legacy spacecraft",
-        "order": 2
+        "order": 1
       },
       "linux": {
         "program": "//wsl.localhost/${env:WSL_DISTRO_NAME}${workspaceFolder}/build/windows-debug/bin/AuSceneClient.exe",

@@ -1,11 +1,15 @@
 #include "aulegacyshippaths.h"
 #include "aulegacyshipgeometry.h"
 #include "aupoint.h"
+#include "auscreporthelpers.h"
+#include "auscroute.h"
 
 #include <QPoint>
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <queue>
+#include <vector>
 
 namespace AuLegacyShip
 {
@@ -149,7 +153,7 @@ bool Graph::Build(const Design& design, QString& error,
 	const std::function<bool(int, int)>& progress)
 {
 	m_Cells.clear(); m_Extant.clear(); m_ExtantRooms.clear(); m_Entrances.clear();
-	m_RoomBoundaries.clear();
+	m_RoomBoundaries.clear(); m_RoomTypes.clear(); m_RoomDecks.clear();
 	m_PortalFootprint.clear(); m_Portals.clear();
 	m_CellKeys.clear(); m_ReachCache.clear(); m_CacheClock = 0; m_Canceled = false;
 	error.clear();
@@ -161,6 +165,8 @@ bool Graph::Build(const Design& design, QString& error,
 		const QPolygonF boundary = RoomBoundary(room);
 		if(!m_RoomBoundaries.contains(room.roomId))
 			m_RoomBoundaries.insert(room.roomId, boundary);
+		if(!m_RoomTypes.contains(room.roomId)) m_RoomTypes.insert(room.roomId, room.roomType);
+		if(!m_RoomDecks.contains(room.roomId)) m_RoomDecks.insert(room.roomId, room.deck);
 		// AnalyzeDesign only includes nonempty non-roof rooms in ship extents.
 		if(boundary.isEmpty() || (room.roomType >= 22 && room.roomType <= 24)) continue;
 		if(!hasHull) m_MinimumDeck = m_MaximumDeck = room.deck;
@@ -236,6 +242,7 @@ bool Graph::Build(const Design& design, QString& error,
 				const quint32 key = Key(x, y, deck);
 				Cell& cell = m_Cells[key];
 				cell.type = quint8(opening.cellType); cell.flags = opening.flags;
+				cell.doorDetailId = opening.flags & 32 ? opening.detailId : 0;
 				cell.room1 = opening.room1; cell.room2 = opening.room2;
 				m_PortalFootprint.insert(key);
 				floor[x * 256 + y] = char(cell.type);
@@ -481,7 +488,8 @@ void Graph::TrimVerticalConnections()
 	}
 }
 
-QVector<quint32> Graph::TerminalCells(const QPointF& point, int deck, bool crew, bool& outside) const
+QVector<quint32> Graph::TerminalCells(const QPointF& point, int deck, bool crew, bool& outside,
+	const std::function<bool(const Cell&)>& usable) const
 {
 	QVector<quint32> result;
 	outside = false;
@@ -491,7 +499,11 @@ QVector<quint32> Graph::TerminalCells(const QPointF& point, int deck, bool crew,
 	const QPoint grid = Grid(point);
 	if(!InGrid(grid.x(), grid.y())) return result;
 	const quint32 key = Key(grid.x(), grid.y(), deck);
-	if(m_Cells.contains(key)) { result.append(key); return result; }
+	if(m_Cells.contains(key))
+	{
+		if(!usable || usable(m_Cells.value(key))) result.append(key);
+		return result;
+	}
 	if(!m_Extant.contains(key))
 	{
 		outside = true;
@@ -502,6 +514,7 @@ QVector<quint32> Graph::TerminalCells(const QPointF& point, int deck, bool crew,
 		for(quint32 entrance : m_Entrances)
 		{
 			if(!m_Cells.contains(entrance)) continue;
+			if(usable && !usable(m_Cells.value(entrance))) continue;
 			const int dx = X(entrance) - grid.x(), dy = Y(entrance) - grid.y();
 			const int dz = Deck(entrance) - deck;
 			const int candidate = dx * dx + dy * dy + dz * dz;
@@ -547,7 +560,11 @@ QVector<quint32> Graph::TerminalCells(const QPointF& point, int deck, bool crew,
 		// A hatch, a cell without a door, or an open door qualifies regardless
 		// of crew permission. Here design-check doors are closed; the remaining
 		// branch permits regular doors according to crew access.
-		if(!(cell->flags & 8) && (cell->flags & 32)
+		if(usable)
+		{
+			if(!usable(*cell)) continue;
+		}
+		else if(!(cell->flags & 8) && (cell->flags & 32)
 			&& (cell->type == 4 || (!crew && (cell->flags & 2)))) continue;
 		const double dx = (X(adjacent) - 128) * CoordinateSpacing - point.x();
 		const double dy = (Y(adjacent) - 128) * CoordinateSpacing - point.y();
@@ -696,6 +713,343 @@ bool Graph::CanReachOutside(const QPointF& from, int fromDeck, bool crew) const
 	for(const QPointF& point : outside) if(CanReach(from, fromDeck, point, 0, crew)) return true;
 	return false;
 }
+
+bool Graph::IsInGravityWell(const AuPoint& authorLoc) const
+{
+	if(!std::isfinite(authorLoc.x) || !std::isfinite(authorLoc.y) || !std::isfinite(authorLoc.z)
+		|| std::abs(authorLoc.x) > 128 * CoordinateSpacing
+		|| std::abs(authorLoc.y) > 128 * CoordinateSpacing) return false;
+	const double deckNumber = std::floor((authorLoc.z + .05) / AuLegacyShip::DeckHeight);
+	if(deckNumber < MinimumDeck - 1 || deckNumber > MaximumDeck + 1) return false;
+	const int deck = int(deckNumber);
+	const QPoint grid = Grid(QPointF(authorLoc.x, authorLoc.y));
+	if(!InGrid(grid.x(), grid.y())) return false;
+	// FloorHt/DeckBelow consult the raw cell flags. ConnectBelow carries
+	// gravity-well flag 4 into the ordinary room immediately below the shaft.
+	const auto cell = m_Cells.constFind(Key(grid.x(), grid.y(), deck));
+	if(cell != m_Cells.constEnd()) return cell->flags & 4;
+	// A room boundary or occupied detail may have no path cell. Only then
+	// recover membership from the actual gravity-well room polygon.
+	const AuPoint floorLoc(authorLoc.x, authorLoc.y, deck * AuLegacyShip::DeckHeight);
+	for(auto room = m_RoomTypes.cbegin(); room != m_RoomTypes.cend(); ++room)
+	{
+		if(*room != 11 || m_RoomDecks.value(room.key()) != deck) continue;
+		AuPointArray boundary;
+		for(const QPointF& point : m_RoomBoundaries.value(room.key()))
+			boundary.append(AuPoint(point.x(), point.y(), floorLoc.z));
+		if(boundary.PointInBoundary(floorLoc) || boundary.PointOnBoundary_2D(floorLoc)) return true;
+	}
+	return false;
+}
+
+bool Graph::Route(AuScRoute& route, const AuPoint& fromAuthor, const AuPoint& toAuthor,
+	const AuPoint& authorCenter, bool canUnlockDoors, const AuDoorStateHash& doorStates,
+	const QHash<quint32, quint16>& doorPartIds, double bodyHeight, bool hasGravity) const
+{
+	route.clear();
+	if(m_Cells.isEmpty() || !std::isfinite(fromAuthor.x) || !std::isfinite(fromAuthor.y)
+		|| !std::isfinite(toAuthor.x) || !std::isfinite(toAuthor.y)
+		|| std::abs(fromAuthor.x) > 128 * CoordinateSpacing || std::abs(fromAuthor.y) > 128 * CoordinateSpacing
+		|| std::abs(toAuthor.x) > 128 * CoordinateSpacing || std::abs(toAuthor.y) > 128 * CoordinateSpacing
+		|| !std::isfinite(fromAuthor.z) || !std::isfinite(toAuthor.z)
+		|| !std::isfinite(bodyHeight) || bodyHeight <= 0 || bodyHeight >= AuLegacyShip::DeckHeight) return false;
+	// DnBuilding::OnDeck (18015b510) tolerates a point just below the floor.
+	const double sourceDeck = std::floor((fromAuthor.z + .05) / AuLegacyShip::DeckHeight);
+	const double targetDeck = std::floor((toAuthor.z + .05) / AuLegacyShip::DeckHeight);
+	if(sourceDeck < MinimumDeck - 1 || sourceDeck > MaximumDeck + 1
+		|| targetDeck < MinimumDeck - 1 || targetDeck > MaximumDeck + 1) return false;
+	const int fromDeck = int(sourceDeck), toDeck = int(targetDeck);
+	const QPoint sourceGrid = Grid(QPointF(fromAuthor.x, fromAuthor.y));
+	bool allowHullExit = false;
+	const QVector<quint16> sourceRooms = m_ExtantRooms.value(Key(sourceGrid.x(), sourceGrid.y(), fromDeck));
+	const AuPoint sourceFloor(fromAuthor.x, fromAuthor.y, fromDeck * AuLegacyShip::DeckHeight);
+	for(int i = 0; i < std::min(8, int(sourceRooms.size())); ++i)
+	{
+		const quint16 room = sourceRooms.at(i);
+		if(!room || m_RoomTypes.value(room) == 9) continue;
+		AuPointArray boundary;
+		for(const QPointF& point : m_RoomBoundaries.value(room))
+			boundary.append(AuPoint(point.x(), point.y(), sourceFloor.z));
+		if(boundary.PointInBoundary(sourceFloor) || boundary.PointOnBoundary_2D(sourceFloor))
+			{ allowHullExit = true; break; }
+	}
+	bool hullDoorsUsable = true;
+	auto usable = [&](const Cell& cell)
+	{
+		if(cell.type == 18 || (hasGravity && (cell.flags & 16) && !(cell.flags & 0xff00))) return false;
+		if(!(cell.flags & 32)) return true;
+		const auto door = doorStates.constFind(doorPartIds.value(cell.doorDetailId));
+		if(door == doorStates.cend()) return false;
+		if(door->IsOpen()) return true;
+		if(door->IsJammed()) return false;
+		if(door->IsHullDoor() && !hullDoorsUsable) return false;
+		// Like CanOpenDoor and the NPC follower, permit leaving a hull door
+		// from inside even when its outside lock is set.
+		if(door->IsHullDoor() && allowHullExit) return true;
+		return canUnlockDoors || !door->IsLocked();
+	};
+	bool fromOutside = false, toOutside = false;
+	const QVector<quint32> starts = TerminalCells(QPointF(fromAuthor.x, fromAuthor.y), fromDeck,
+		canUnlockDoors, fromOutside, usable);
+	if(starts.isEmpty()) return false;
+	auto floorHeight = [&](quint32 key)
+	{
+		double height = Deck(key) * AuLegacyShip::DeckHeight;
+		const quint16 flags = m_Cells.value(key).flags;
+		quint16 bands = flags & 0xf000;
+		if(!bands && (flags & 0xf00))
+		{
+			bands = quint16((flags & 0xf00) << 4);
+			height -= AuLegacyShip::DeckHeight;
+		}
+		for(int band = 0; band < 4; ++band)
+			if(bands & (0x1000 << band)) { height += band * AuLegacyShip::DeckHeight / 4; break; }
+		return height;
+	};
+	auto floating = [&](quint32 key) { return !hasGravity || (m_Cells.value(key).flags & 4); };
+	auto location = [&](quint32 key, bool ladder)
+	{
+		// RouteBacktrack (1800fb730) uses the middle of the deck for walking.
+		// The modern ladder follower compares body origins in 3D instead of
+		// encoded decks, so its ladder endpoints need the caller's CG height.
+		const double height = ladder ? Deck(key) * AuLegacyShip::DeckHeight + bodyHeight
+			: floating(key) ? floorHeight(key) + bodyHeight + .75 : Deck(key) * AuLegacyShip::DeckHeight + 4;
+		return AuPoint((X(key) - 128) * CoordinateSpacing, (Y(key) - 128) * CoordinateSpacing, height) - authorCenter;
+	};
+	auto append = [&](quint32 key, bool ladder, quint16 doorId)
+	{
+		AuScRouteLoc point(location(key, ladder));
+		point.SetLadder(ladder);
+		point.SetDoorId(doorId);
+		if(!ladder)
+		{
+			// Match the old cell-based arrival instead of consuming a half-grid
+			// step at the modern two-foot radius, before leaving a blocked cell.
+			point.SetLegacyCell(floorHeight(key) - authorCenter.z, floating(key));
+		}
+		route.append(point);
+	};
+	auto releaseLadder = [&](quint32 key)
+	{
+		// Keep climbing until the feet clear the sill. The modern follower
+		// stops its climbing pose within half a foot of the next point.
+		AuScRouteLoc point(location(key, true) + AuPoint(0, 0, .75));
+		point.SetLegacyCell(floorHeight(key) - authorCenter.z, true);
+		route.append(point);
+	};
+	if(!fromOutside && !m_Cells.contains(Key(sourceGrid.x(), sourceGrid.y(), fromDeck)))
+	{
+		// StepToPathableSpacecraft (1801023a0) first steps off a blocked
+		// source, then the AI requests another route from the adjacent cell.
+		append(starts.first(), false, doorPartIds.value(m_Cells.value(starts.first()).doorDetailId));
+		return true;
+	}
+	QVector<quint32> finishes = TerminalCells(QPointF(toAuthor.x, toAuthor.y), toDeck,
+		canUnlockDoors, toOutside, usable);
+	if(finishes.isEmpty()) return false;
+	const QPoint targetGrid = Grid(QPointF(toAuthor.x, toAuthor.y));
+	const bool targetPathable = m_Cells.contains(Key(targetGrid.x(), targetGrid.y(), toDeck));
+	hullDoorsUsable = fromOutside || toOutside;
+	for(quint32 finish : finishes)
+		if(m_Cells.value(finish).type == 4 || m_Cells.value(finish).type == 6) hullDoorsUsable = true;
+	if(fromOutside && toOutside)
+	{
+		route.append(AuScRouteLoc(toAuthor - authorCenter));
+		return true;
+	}
+	// RouteAcrossSpacecraftRoom first tests the actual line between two points
+	// on the same deck. A line entirely on ordinary floor needs no grid turns.
+	if(!fromOutside && !toOutside && targetPathable && fromDeck == toDeck)
+	{
+		const Cell start = m_Cells.value(starts.first()), finish = m_Cells.value(finishes.first());
+		if(start.type == 2 && finish.type == 2 && start.room1 == finish.room1 && !start.flags && !finish.flags)
+		{
+			const double length = std::hypot(toAuthor.x - fromAuthor.x, toAuthor.y - fromAuthor.y);
+			const int samples = std::max(1, int(std::ceil(length * 4 / CoordinateSpacing)));
+			quint32 previous = starts.first();
+			bool clear = true;
+			for(int sample = 1; sample <= samples && clear; ++sample)
+			{
+				const double fraction = double(sample) / samples;
+				const QPoint point = Grid(QPointF(fromAuthor.x + fraction * (toAuthor.x - fromAuthor.x),
+					fromAuthor.y + fraction * (toAuthor.y - fromAuthor.y)));
+				const quint32 key = Key(point.x(), point.y(), fromDeck);
+				const auto cell = m_Cells.constFind(key);
+				clear = cell != m_Cells.constEnd() && cell->type == 2 && !cell->flags && cell->room1 == start.room1;
+				if(clear && key != previous)
+				{
+					clear = false;
+					for(int i = 0; i < 8; ++i)
+						if(Neighbor(previous, Directions[i]) == key && (m_Cells.value(previous).directions & Directions[i].mask))
+							{ clear = true; break; }
+				}
+				previous = key;
+			}
+			if(clear)
+			{
+				route.append(AuScRouteLoc(toAuthor - authorCenter));
+				return true;
+			}
+		}
+	}
+	auto moveCost = [](int type)
+	{
+		// AuPathableCell::MoveCost, AuData13.dll:180074dd0.
+		switch(type)
+		{
+		case 3: case 4: return 30;
+		case 8: case 9: case 10: case 13: return 20;
+		case 11: return 50;
+		case 12: return 40;
+		case 14: case 75: case 76: return 150;
+		case 16: return 10;
+		case 17: return 100;
+		default: return 0;
+		}
+	};
+	auto directionCost = [](const Direction& d)
+	{
+		// Costs stored alongside the 26 direction masks at 18039f050.
+		if(!d.deck) return d.x && d.y ? 14 : 10;
+		if(!d.x && !d.y) return d.deck > 0 ? 12 : 11;
+		return d.x && d.y ? 34 : 28;
+	};
+	struct Pending
+	{
+		int cost, state;
+		quint64 order;
+		Pending(int c, int s, quint64 o) : cost(c), state(s), order(o) {}
+	};
+	struct Later
+	{
+		bool operator()(const Pending& a, const Pending& b) const
+		{
+			return a.cost != b.cost ? a.cost > b.cost : a.order > b.order;
+		}
+	};
+	const int infinity = std::numeric_limits<int>::max();
+	QVector<int> costs, predecessors;
+	int destination = -1;
+	auto search = [&](bool avoidStairs)
+	{
+		costs.fill(infinity, m_CellKeys.size() * 2);
+		predecessors.fill(-1, m_CellKeys.size() * 2);
+		std::priority_queue<Pending, std::vector<Pending>, Later> pending;
+		quint64 order = 0;
+		QSet<int> targets;
+		for(quint32 key : finishes)
+		{
+			const Cell cell = m_Cells.value(key);
+			targets.insert(cell.index * 2);
+			if(m_PortalFootprint.contains(key)) targets.insert(cell.index * 2 + 1);
+		}
+		auto add = [&](int state, int cost, int previous)
+		{
+			if(cost >= costs.at(state)) return;
+			costs[state] = cost;
+			predecessors[state] = previous;
+			pending.push(Pending(cost, state, order++));
+		};
+		for(quint32 key : starts)
+		{
+			const Cell cell = m_Cells.value(key);
+			add(cell.index * 2, 0, -1);
+			if(m_PortalFootprint.contains(key)) add(cell.index * 2 + 1, 0, -1);
+		}
+		while(!pending.empty())
+		{
+			const Pending next = pending.top(); pending.pop();
+			if(next.cost != costs.at(next.state)) continue;
+			if(targets.contains(next.state)) { destination = next.state; return true; }
+			const quint32 key = m_CellKeys.at(next.state / 2);
+			const Cell cell = m_Cells.value(key);
+			const quint16 room = next.state & 1 ? cell.room2 : cell.room1;
+			if(m_Portals.contains(key) && cell.room1 != cell.room2 && usable(cell))
+				add(next.state ^ 1, next.cost, next.state);
+			const int roomType = m_RoomTypes.value(room);
+			const bool squareTurns = roomType == 8 || roomType == 16 || roomType == 17 || roomType == 21;
+			// Keep the original direction order on ties, preferring cardinal
+			// steps in rooms that request square turns without losing diagonals.
+			for(int pass = 0; pass < (squareTurns ? 2 : 1); ++pass)
+				for(const Direction& d : Directions)
+				{
+					if(squareTurns && ((pass == 0) != (!d.deck && !(d.x && d.y)))) continue;
+					if(!(cell.directions & d.mask) || !InGrid(X(key) + d.x, Y(key) + d.y)) continue;
+					const auto neighbor = m_Cells.constFind(Neighbor(key, d));
+					if(neighbor == m_Cells.constEnd() || !usable(*neighbor)) continue;
+					const int slot = neighbor->room1 == room ? 0 : 1;
+					if(slot && (!m_PortalFootprint.contains(neighbor.key()) || neighbor->room2 != room)) continue;
+					if(hasGravity && !StepOk(cell.flags, neighbor->flags, d.deck)) continue;
+					if(avoidStairs && (neighbor->flags & 0xff00) && !(cell.flags & 0xff00)) continue;
+					add(neighbor->index * 2 + slot, next.cost + directionCost(d) + moveCost(neighbor->type), next.state);
+				}
+		}
+		return false;
+	};
+	bool avoidStairs = hasGravity && fromDeck == toDeck;
+	for(quint32 key : starts) if(m_Cells.value(key).flags & 0xff00) avoidStairs = false;
+	for(quint32 key : finishes) if(m_Cells.value(key).flags & 0xff00) avoidStairs = false;
+	if(!search(avoidStairs) && (!avoidStairs || !search(false))) return false;
+	QVector<quint32> path;
+	for(int state = destination; state >= 0; state = predecessors.at(state))
+	{
+		const quint32 key = m_CellKeys.at(state / 2);
+		if(path.isEmpty() || path.last() != key) path.append(key);
+	}
+	std::reverse(path.begin(), path.end());
+	// Hatch endpoints must retain the door ID even on the lower floor, where
+	// the door cell itself is on the deck above the caller.
+	QVector<bool> ladders(path.size(), false);
+	QVector<quint16> pathDoors(path.size(), 0);
+	for(int i = 0; i < path.size(); ++i)
+		pathDoors[i] = doorPartIds.value(m_Cells.value(path.at(i)).doorDetailId);
+	for(int i = 1; i < path.size(); ++i)
+	{
+		const quint32 a = path.at(i - 1), b = path.at(i);
+		if(Deck(a) == Deck(b) || X(a) != X(b) || Y(a) != Y(b)) continue;
+		const Cell upper = m_Cells.value(Deck(a) > Deck(b) ? a : b);
+		if((upper.flags & 0xff00) || !(upper.flags & 8) || !upper.doorDetailId) continue;
+		const quint16 doorId = doorPartIds.value(upper.doorDetailId);
+		ladders[i - 1] = ladders[i] = true;
+		if(doorId) pathDoors[i - 1] = pathDoors[i] = doorId;
+	}
+	for(int i = 0; i < path.size(); ++i)
+	{
+		const quint32 key = path.at(i);
+		if(i > 0 && i + 1 < path.size() && !ladders.at(i) && !pathDoors.at(i))
+		{
+			const quint32 previous = path.at(i - 1), following = path.at(i + 1);
+			const Cell cell = m_Cells.value(key);
+			if(!ladders.at(i - 1) && !ladders.at(i + 1) && !pathDoors.at(i - 1) && !pathDoors.at(i + 1)
+				&& Deck(previous) == Deck(key) && Deck(following) == Deck(key)
+				&& m_Cells.value(previous).flags == cell.flags && m_Cells.value(following).flags == cell.flags
+				&& X(key) - X(previous) == X(following) - X(key)
+				&& Y(key) - Y(previous) == Y(following) - Y(key)) continue;
+		}
+		// Walking past a ladder endpoint releases the ladder before turning.
+		if(i && ladders.at(i - 1) && !ladders.at(i))
+			releaseLadder(path.at(i - 1));
+		append(key, ladders.at(i), pathDoors.at(i));
+		// SpacecraftRoute returns short routes; the existing AI replans when
+		// it consumes the last waypoint. Never append the final target here.
+		if(route.size() >= 10 && i + 1 < path.size())
+		{
+			if(ladders.at(i) && !ladders.at(i + 1)) releaseLadder(key);
+			return true;
+		}
+	}
+	if(ladders.last()) releaseLadder(path.last());
+	// An unpathable destination (equipment/wall) stays snapped to its adjacent
+	// cell, as ClosestPathableSpacecraft does. Normal stations retain toLoc.
+	if(targetPathable || toOutside)
+	{
+		AuScRouteLoc endpoint(toAuthor - authorCenter);
+		endpoint.SetDoorId(pathDoors.last());
+		if(route.isEmpty() || route.last().Loc() != endpoint.Loc()) route.append(endpoint);
+	}
+	return !route.isEmpty();
+}
+
 void Graph::ConnectOpening(quint32 key)
 {
 	for(int i = 0; i < 8; ++i)

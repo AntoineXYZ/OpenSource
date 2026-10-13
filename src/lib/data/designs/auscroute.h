@@ -22,6 +22,9 @@ class AUDATA_DLL AuScRouteLoc : public AuPoint
 private:
 	quint16								m_DoorId;				// Part id in AuScParts of design. 0 if none.
 	bool								m_Ladder;				// Movement to this loc requires a laddder.
+	bool								m_LegacyCell;			// Walking must enter this legacy half-grid cell.
+	bool								m_LegacyRequireFloor;	// Floating exits must clear the destination floor.
+	double								m_LegacyFloor;			// Deck or stair surface height in spacecraft coordinates.
 	quint16								m_LiftId;				// Part id in AuScParts of design. 0 if none.
 	QString								m_LiftStop;				// Movement requires a lift to be moved to a stop.
 
@@ -30,6 +33,9 @@ public:	// Constructors
 	{
 		m_DoorId = 0;
 		m_Ladder = false;
+		m_LegacyCell = false;
+		m_LegacyRequireFloor = false;
+		m_LegacyFloor = 0;
 		m_LiftId = 0;
 	}
 
@@ -37,6 +43,9 @@ public:	// Constructors
 	{
 		m_DoorId = 0;
 		m_Ladder = false;
+		m_LegacyCell = false;
+		m_LegacyRequireFloor = false;
+		m_LegacyFloor = 0;
 		m_LiftId = 0;
 	}
 
@@ -44,6 +53,9 @@ public:	// Constructors
 	{
 		m_DoorId = c.m_DoorId;
 		m_Ladder = c.m_Ladder;
+		m_LegacyCell = c.m_LegacyCell;
+		m_LegacyRequireFloor = c.m_LegacyRequireFloor;
+		m_LegacyFloor = c.m_LegacyFloor;
 		m_LiftId = c.m_LiftId;
 		m_LiftStop = c.m_LiftStop;
 	}
@@ -102,6 +114,13 @@ public:	// Methods
 	inline void SetLadder(bool isLadder)
 	{
 		m_Ladder = isLadder;
+	}
+
+	inline void SetLegacyCell(double floorHeight, bool requireFloor = false)
+	{
+		m_LegacyCell = true;
+		m_LegacyFloor = floorHeight;
+		m_LegacyRequireFloor = requireFloor;
 	}
 
 	inline void SetLoc(const AuPoint& loc)
