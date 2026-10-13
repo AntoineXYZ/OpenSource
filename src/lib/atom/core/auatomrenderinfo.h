@@ -12,6 +12,7 @@
 #include "auscface.h"
 #include "dbcommodity.h"
 #include <QOpenGLWidget>
+#include <QHash>
 
 class Au3dsGLSLModelDefinition;
 class Au3dsGLSLModelInstance;
@@ -19,6 +20,9 @@ class AuGLModelInstance;
 class AuGLModelMaker;
 class AuGLModelCache;
 class AuSound;
+class DaCreature;
+class DaPerson;
+class DaSc;
 
 class AUATOM_DLL AuAtomRenderInfo
 {
@@ -57,6 +61,18 @@ public:
 
 private:
 	AuGLModelCache&						m_ModelCache;			// Cache of 3d models.
+	const DaPerson* m_NpcScene = nullptr;
+	AuMatrix4x4 m_NpcProjection, m_NpcCamera;
+	struct NpcView { AuPoint eye; AuMatrix4x4 clip; };
+	struct NpcResult { AuMatrix4x4 transform; bool visible = true; };
+	mutable QHash<const DaSc*, NpcView> m_NpcViews;
+	mutable QHash<const DaCreature*, NpcResult> m_NpcResults;
+public:
+	// Set after positioning the camera; refresh again before rendering.
+	void BeginLegacyNpcFrame(const AuMatrix4x4& projection, const AuMatrix4x4& camera, const DaPerson* scene);
+	void DisableLegacyNpcFrame() { m_NpcScene = nullptr; }
+	bool HasLegacyNpcViews(const DaPerson* scene) const { return m_NpcScene == scene && !m_NpcViews.isEmpty(); }
+	bool LegacyNpcVisible(const DaCreature& creature) const;
 
 	// Designer
 private:

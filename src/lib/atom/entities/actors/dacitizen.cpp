@@ -575,6 +575,7 @@ void DaCitizen::AnimateDeviceObjects(AuAtomRenderInfo& ari, const DaPerson* scen
 
 	// Citizens are about the size of a human. This enables us to guess at a good distance to cull them.
 	m_Culled = 0;
+	if(LegacyAnimationHidden()) return;
 
 	// Only animate if my current pose is not 'stand', which is inanimate.
 	if(CurrentGeneralPose().Pose() != AuPose::Stand)

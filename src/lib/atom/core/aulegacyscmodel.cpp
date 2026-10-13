@@ -12,6 +12,20 @@
 
 namespace
 {
+bool FullyOpaque(const QImage& image)
+{
+	if(image.isNull()) return false;
+	if(!image.hasAlphaChannel()) return true;
+	const QImage pixels = image.convertToFormat(QImage::Format_ARGB32);
+	for(int row = 0; row < pixels.height(); ++row)
+	{
+		const QRgb* scan = reinterpret_cast<const QRgb*>(pixels.constScanLine(row));
+		for(int column = 0; column < pixels.width(); ++column)
+			if(qAlpha(scan[column]) != 255) return false;
+	}
+	return true;
+}
+
 class LegacyScBuildTask : public QRunnable
 {
 	QSharedPointer<AuLegacyScModel> m_Model;
@@ -271,6 +285,8 @@ void AuLegacyScModel::Prepare()
 						return false;
 					}
 				}
+				const bool occluderMaterial = binding.tint.w() == 1 && binding.material != 26 && binding.material != 28
+					&& FullyOpaque(material.image) && (material.unlit.isNull() || FullyOpaque(material.unlit));
 				for(auto states = triangles.cbegin(); states != triangles.cend(); ++states)
 				{
 					for(auto group = states.value().at(index).cbegin(); group != states.value().at(index).cend(); ++group)
@@ -313,6 +329,11 @@ void AuLegacyScModel::Prepare()
 								if(draw.effectFirstFrame == 47 && !prepareEffect(43 + frame)) return false;
 							}
 						}
+						// Only fully opaque, static surfaces or closed door panels can
+						// block NPCs. Cutout atlas flags alone do not imply transparency.
+						if(occluderMaterial && draw.opacity == 1 && !draw.turretId
+							&& (!draw.doorId || draw.doorState == AuScDoor::Closed))
+							m_NpcOcclusion.Add(group.value(), draw.doorId);
 						AuScVAO::Prepare(group.value(), prepared.vertices);
 						for(const AuScVertexData& vao : prepared.vertices)
 							m_VertexBytes += quint64(vao.Vertices()) * 24 * sizeof(GLfloat);
@@ -320,6 +341,7 @@ void AuLegacyScModel::Prepare()
 					}
 				}
 			}
+			m_NpcOcclusion.Build();
 			return !m_PreparedDraws.isEmpty();
 		};
 		success = build();

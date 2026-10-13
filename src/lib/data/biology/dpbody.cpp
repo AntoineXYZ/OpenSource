@@ -4610,6 +4610,7 @@ bool DpBody::PoseEatOffGround()
 // Position body based on poses of each section.
 void DpBody::AnimatePose(bool bendDominantArm, float speedEnc)
 {
+	if(!m_PoseAnimationEnabled) return;
 	if(isEmpty())
 		return;
 	m_BendArm = bendDominantArm;

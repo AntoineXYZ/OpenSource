@@ -858,6 +858,9 @@ public:
 	// Returns the unit vector that corresponds to GroundOrientation.
 	AuPoint GroundUpVector() const;
 
+	// Culling may inspect cached bounds, but must never load a model.
+	bool HasRenderModel() const { return m_Model != nullptr; }
+
 	inline bool HasRenderEffects() const
 	{
 		switch(CommodityId())

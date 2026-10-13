@@ -27,6 +27,7 @@ private:
 	AuTime								m_LastSpecUse;			// Time special attack was last used.
 
 	// Render states.
+	bool m_PoseAnimationEnabled = true;
 	bool								m_BendDominantArm;
 	AuClothing							m_Clothing;
 	AuHairStyle::STYLE					m_Haircut;
@@ -70,6 +71,7 @@ public:	// Methods
 
 	// 'id' is used to offset things so all creatures don't move in sync.
 	void AnimatePose(const AuId& id, const AuElapsedTimer& when);
+	void SetPoseAnimationEnabled(bool enabled) { m_PoseAnimationEnabled = enabled; }
 
 	// Dying pose returns the corresponding dead pose within 3 seconds of actual death. So the body looks really dead briefly.
 	AuPose ApparentSectionPose(AuAnimalPart::SECTION ps) const;

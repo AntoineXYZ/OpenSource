@@ -59,6 +59,10 @@ class AUATOM_DLL DaSc : public DaVessel
 	qint64 m_LegacyAlertSecond = -1;
 	bool CreateLegacyDeviceObjects(AuAtomRenderInfo& ari);
 	void RenderLegacyTextures(const AuGLSLScBase& shader, AuAtomRenderInfo& ari, const AuMatrix4x4& model, bool transparent);
+
+public:
+	bool LegacyNpcOccluded(const AuBox& bounds, const AuPoint& eye) const;
+private:
 	mutable QMutex m_LegacyCollisionLock;
 	mutable quint32 m_LegacyCollisionDesignId = 0;
 	mutable QSharedPointer<const AuLegacyScGeometry::CollisionWorld> m_LegacyCollision;

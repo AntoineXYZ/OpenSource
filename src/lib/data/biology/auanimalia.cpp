@@ -237,6 +237,7 @@ void AuAnimalia::PoseMouth(const AuId& id, const AuPose& pose)
 // Position body based on poses of each section.
 void AuAnimalia::AnimatePose(const AuId& id, const AuElapsedTimer& when)
 {
+	if(!m_PoseAnimationEnabled) return;
 	for(iterator mpi=begin(); mpi != end(); mpi++)
 		if((*mpi)->AnimatePose(id, when, *this))
 		{

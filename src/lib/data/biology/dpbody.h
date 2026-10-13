@@ -914,6 +914,10 @@ public:
 
 	// 'bendDominantArm' is true to bend the dominant arm as if holding something, like a gun. Does not affect wings.
 	void AnimatePose(bool bendDominantArm, float speedEnc);
+	void SetPoseAnimationEnabled(bool enabled) { m_PoseAnimationEnabled = enabled; }
+private:
+	bool m_PoseAnimationEnabled = true;
+public:
 
 	// Distance from body pivot point to food for eating.
 	float BiteRange() const;

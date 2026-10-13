@@ -5,6 +5,8 @@
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
 #include "dacreature.h"
+#include <algorithm>
+#include <cmath>
 //
 #include "auanimalia.h"
 #include "auatomrenderinfo.h"
@@ -2409,10 +2411,27 @@ void DaCreature::RenderEnvironmentObject(const AuMatrix4x4& projection, AuAtomRe
 	AuMatrix4x4 tThis = rmod.Matrix(Id());
 	const AuPoint& pv = rmod.ViewLoc(Id());
 	AuMatrix4x4 tThisBody(tThis);
+	const bool legacyVisible = ari.LegacyNpcVisible(*this);
+	if(legacyVisible && (m_LegacyAnimationHidden || m_LegacyDevicesDeferred))
+	{
+		const bool resume = m_LegacyAnimationHidden;
+		if(resume) SetLegacyAnimationHidden(false);
+		if(m_LegacyDevicesDeferred) CreateDeviceObjects(ari);
+		if(resume) AnimatePose(HasItemInHand(), MovementSpeedMod());
+	}
+	if(!legacyVisible)
+	{
+		// A hidden creature does not hide a separately visible rider/child.
+		DaAtomList subs;
+		ListSubatoms(subs);
+		for(DaAtom* atom : subs)
+			atom->RenderEnvironmentObject(projection, ari, rmod, sceneAtom, renderLast, pass,
+				shadSc, shadScFog, shadScGlobe, shadScGlobeFog, shadScRingworld, shadScRingworldFog);
+	}
 
 	// Determine if this creature is in front of the camera plane.
 	//qDebug() << "DaCreature::RenderEnvironmentObject" << Id() << Name() << "pv.z" << pv.z;
-	if(pv.z < 0 || pv.Length2() < 10*10)
+	if(legacyVisible && (pv.z < 0 || pv.Length2() < 10*10))
 	{
 		// Set current ambient light and fog states.
 		float ambientR, ambientG, ambientB, fogDensity, fogR, fogG, fogB;
@@ -3341,6 +3360,12 @@ void DaCreature::SetupCamera(AuMatrix4x4& tCamera, double& rNearClip, double& rF
 void DaCreature::CreateDeviceObjects(AuAtomRenderInfo& ari)
 {
 	DaUnit::CreateDeviceObjects(ari);
+	if(!ari.LegacyNpcVisible(*this))
+	{
+		m_LegacyDevicesDeferred = true;
+		return; // No clothing, equipment, environment or body-model checks.
+	}
+	m_LegacyDevicesDeferred = false;
 
 	COMMODITYID armor = Armor();
 	COMMODITYID helmet = Helmet();
@@ -3415,6 +3440,10 @@ void DaCreature::CreateDeviceObjects(AuAtomRenderInfo& ari)
 void DaCreature::AnimateDeviceObjects(AuAtomRenderInfo& ari, const DaPerson* sceneAtom, const AuElapsedTimer& lastAnim)
 {
 	DaUnit::AnimateDeviceObjects(ari, sceneAtom, lastAnim);
+	const bool wasHidden = m_LegacyAnimationHidden;
+	SetLegacyAnimationHidden(!ari.LegacyNpcVisible(*this));
+	if(m_LegacyAnimationHidden) return;
+	if(wasHidden) AnimatePose(HasItemInHand(), MovementSpeedMod());
 	m_BodyLock.lockForWrite();
 	if(m_Animalia)
 	{
@@ -3423,6 +3452,14 @@ void DaCreature::AnimateDeviceObjects(AuAtomRenderInfo& ari, const DaPerson* sce
 		//qDebug() << "DaCreature::AnimateDeviceObjects" << *this << "weaponLoc" << l;
 	}
 	m_BodyLock.unlock();
+}
+
+void DaCreature::SetLegacyAnimationHidden(bool hidden)
+{
+	m_LegacyAnimationHidden = hidden;
+	QWriteLocker bodyGuard(&m_BodyLock);
+	if(m_Body) m_Body->SetPoseAnimationEnabled(!hidden);
+	if(m_Animalia) m_Animalia->SetPoseAnimationEnabled(!hidden);
 }
 
 void DaCreature::DeleteDeviceObjects(AuAtomRenderInfo& ari)
@@ -3847,6 +3884,94 @@ bool DaCreature::LegacyCollisionExtents(AuBox& extents) const
 		BodyPoseAdjustTransform(bodyTransform);
 	bodyTransform.Translate(offset);
 	extents.Transform(bodyTransform);
+	return true;
+}
+
+struct DaCreature::LegacyStandingShape
+{
+	QSharedPointer<DpBody> body;
+	QSharedPointer<AuAnimalia> animalia;
+	AuPoint minimum, maximum;
+	GROWTHSTAGE stage = Mature;
+};
+
+bool DaCreature::LegacyStandingExtents(AuBox& extents) const
+{
+	// Riders and procedural attachments can extend beyond standing anatomy.
+	if(dynamic_cast<const DaCreature*>(Parent())) return false;
+	QSharedPointer<const LegacyStandingShape> shape;
+	{
+		QReadLocker bodyGuard(&m_BodyLock);
+		if(!m_Body && !m_Animalia) return false;
+		QMutexLocker shapeGuard(&m_LegacyStandingLock);
+		bool matches = m_LegacyStandingShape && m_LegacyStandingShape->stage == GrowthStage();
+		if(matches && m_Body)
+		{
+			const DpBody* standing = m_LegacyStandingShape->body.data();
+			matches = standing && standing->DNA() == m_Body->DNA() && standing->Sex() == m_Body->Sex()
+				&& standing->IsLeftHanded() == m_Body->IsLeftHanded();
+		}
+		else if(matches)
+		{
+			const AuAnimalia* standing = m_LegacyStandingShape->animalia.data();
+			matches = standing && standing->DNA() == m_Animalia->DNA()
+				&& standing->Chromatid() == m_Animalia->Chromatid() && standing->Handedness() == m_Animalia->Handedness();
+		}
+		if(!matches)
+		{
+			QSharedPointer<LegacyStandingShape> replacement(new LegacyStandingShape);
+			replacement->stage = GrowthStage();
+			if(m_Body)
+			{
+				DhDNA dna(m_Body->DNA());
+				dna.FreezePoseRhythm();
+				replacement->body.reset(new DpBody(m_Body->Sex(), m_Body->IsLeftHanded(), dna));
+				replacement->body->Pose(AuPose::Stand, false, 0);
+				replacement->body->RoughExtents(replacement->minimum, replacement->maximum);
+			}
+			else
+			{
+				replacement->animalia.reset(new AuAnimalia(m_Animalia->DNA(), m_Animalia->Chromatid(),
+					m_Animalia->Handedness(), GrowthStage()));
+				replacement->animalia->Pose(Id(), AuPose::Stand, false, 0);
+				replacement->animalia->SightExtents(replacement->minimum, replacement->maximum);
+			}
+			m_LegacyStandingShape = replacement;
+		}
+		shape = m_LegacyStandingShape;
+	}
+	const bool aboardVehicle = dynamic_cast<const DaVehicle*>(Parent()) != nullptr;
+	const AuPoint offset = shape->body
+		? CGOffset(*shape->body, m_MinutesToFullGrown, GrowthTime(), aboardVehicle)
+		: CGOffset(*shape->animalia, m_MinutesToFullGrown, GrowthTime(), aboardVehicle);
+	AuMatrix4x4 placement;
+	placement.Translate(offset);
+	if(!IsFullGrown()) placement.Scale(GrowthScaleBody());
+	extents.SetFromMinMax(shape->minimum, shape->maximum);
+	extents.Transform(placement);
+	double padding = 1; // Anatomy bounds plus clothing/helmet clearance.
+	{
+		QReadLocker itemGuard(&m_ItemInHandLock);
+		if(m_ItemInHand)
+		{
+			const COMMODITYID cid = m_ItemInHand->CommodityId();
+			AuPoint minimum, maximum;
+			if(cid == CID_Head || cid == CID_Animal || DbCommodity::IsFlowerPot(cid)
+				|| m_ItemInHand->HasRenderEffects() || dynamic_cast<const AuItemPicture*>(m_ItemInHand)
+				|| !m_ItemInHand->HasRenderModel() || !m_ItemInHand->ModelExtents(minimum, maximum)) return false;
+			if(!std::isfinite(minimum.x) || !std::isfinite(minimum.y) || !std::isfinite(minimum.z)
+				|| !std::isfinite(maximum.x) || !std::isfinite(maximum.y) || !std::isfinite(maximum.z)) return false;
+			const AuBox itemBounds(minimum, maximum);
+			double radius = 0;
+			for(const AuPoint& point : itemBounds.m_fCorners) radius = std::max(radius, point.Length());
+			if(!std::isfinite(radius)) return false;
+			padding += radius; // Standing hands lie inside the anatomy bounds.
+		}
+	}
+	AuPoint minimum, maximum;
+	extents.GetMinMax(minimum, maximum);
+	const AuPoint margin(padding, padding, padding);
+	extents.SetFromMinMax(minimum - margin, maximum + margin);
 	return true;
 }
 
@@ -9331,6 +9456,7 @@ DaAtom::ATOM_TYPE DaCreature::AtomType() const
 
 void DaCreature::AnimatePose(bool bendDominantArm, float speedEnc)
 {
+	if(m_LegacyAnimationHidden) return;
 	m_BodyLock.lockForWrite();
 	if(m_Body)
 		m_Body->AnimatePose(bendDominantArm, speedEnc);

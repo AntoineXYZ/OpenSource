@@ -4,6 +4,7 @@
 #include "auatom.h"
 #include "auglsl.h"
 #include "aulegacyscgeometry.h"
+#include "aulegacyscnpcocclusion.h"
 #include <QPointer>
 #include <QSharedPointer>
 #include <QOpenGLContext>
@@ -53,6 +54,8 @@ public:
 	bool Ready() const { return m_Ready && m_Context && !m_Cancelled.load(std::memory_order_acquire); }
 	quint64 VertexBytes() const;
 	QVector<AuLegacyScDraw>& Draws() { return m_Draws; }
+	bool NpcOccluded(const AuBox& bounds, const AuPoint& eye, const QSet<quint16>& closedDoors) const
+		{ return Ready() && m_NpcOcclusion.Occluded(bounds, eye, closedDoors); }
 
 private:
 	struct Material
@@ -79,6 +82,7 @@ private:
 	QVector<Material> m_Materials;
 	QMap<int, QImage> m_Effects;
 	QVector<PreparedDraw> m_PreparedDraws;
+	AuLegacyScNpcOcclusion m_NpcOcclusion;
 	quint64 m_VertexBytes = 0;
 	// Render-thread state, accessed only after acquire of m_State.
 	QPointer<QOpenGLContext> m_Context;

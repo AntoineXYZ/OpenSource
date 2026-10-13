@@ -2399,6 +2399,7 @@ void AuDesignerView::AnimateScene()
 
 	// GL context is already current.
 	bool fadeToDeath = false;
+	bool deferLegacyAnimation = false;
 	DaPerson* sceneAtom;
 	LockSceneAtom(&sceneAtom);
 
@@ -2410,8 +2411,23 @@ void AuDesignerView::AnimateScene()
 	{
 		//qDebug() << "animate scene atom" << sceneAtom->Id() << sceneAtom->Name()
 			//<< "inDesign" << sceneAtom->InDesignEnvironment();
+		deferLegacyAnimation = m_RenderInfo->HasLegacyNpcViews(sceneAtom);
+		for(const DaAtom* parent = sceneAtom->Parent(); parent; parent = parent->Parent())
+		{
+			const DaSc* ship = dynamic_cast<const DaSc*>(parent);
+			if(ship && ship->IsLegacyDebug()) deferLegacyAnimation = true;
+		}
+		m_RenderInfo->DisableLegacyNpcFrame();
 		if(!m_GLThread)
-			AnimateSceneAtoms(sceneAtom, lastAnim);
+		{
+			if(deferLegacyAnimation && s_Animate)
+			{
+				// The player's current pose is needed to position the camera.
+				sceneAtom->SetLegacyAnimationHidden(false);
+				sceneAtom->AnimatePose(sceneAtom->HasItemInHand(), sceneAtom->MovementSpeedMod());
+			}
+			else AnimateSceneAtoms(sceneAtom, lastAnim);
+		}
 
 		if(sceneAtom->IsBodyDyingOrDead())
 		{
@@ -2480,6 +2496,18 @@ void AuDesignerView::AnimateScene()
 				}
 			}
 		}
+	}
+
+	if(deferLegacyAnimation && !m_GLThread)
+	{
+		LockSceneAtom(&sceneAtom);
+		if(sceneAtom)
+		{
+			SetupProjection();
+			m_RenderInfo->BeginLegacyNpcFrame(m_tProjection, m_tCamera.Inverse(), sceneAtom);
+			AnimateSceneAtoms(sceneAtom, lastAnim);
+		}
+		UnlockSceneAtom();
 	}
 
 	if(!m_idSceneAtom.IsNull())
@@ -3071,6 +3099,7 @@ void AuDesignerView::RenderScene(DaPerson* sceneAtom)
 {
 	// Setup scene projection matrices.
 	SetupProjection();
+	m_RenderInfo->BeginLegacyNpcFrame(m_tProjection, m_tCamera.Inverse(), sceneAtom);
 
 	// Configure scene render info.
 	m_RenderInfo->fade = m_Fade * g_Au.SoundEffectsGain();	// Fade overall sound volume with screen fade.
@@ -3136,18 +3165,7 @@ void AuDesignerView::RenderScene(DaPerson* sceneAtom)
 			sceneAtom->RenderScene(m_tProjection, m_tFarProjection, m_tCamera.Inverse(), *m_RenderInfo, targetAtom, targetLevel,
 					targetLoc, targetPart, targetStance, tDevicePersp, tDeviceOrtho, g_AuClient.HUDIntensity());
 
-		if(!m_SceneAtomImgTime.isValid() || m_SceneAtomImgTime.elapsed() > 1000)
-		{
-			// The self portrait image is used mainly by the bio window. It only updates itself every 1000ms so I don't
-			// need to update the image any more often than that.
-			m_SceneImgLock.lockForWrite();
-			m_SceneAtomImage = sceneAtom->SelfPortrait(*m_RenderInfo, QSize(512, 512), QColor(0,0,0,0));
-			m_SceneImgLock.unlock();
-			//m_SceneAtomImage.save(QString("minime%1-%2.png")
-					//.arg(QTime::currentTime().minute())
-					//.arg(QTime::currentTime().second()));
-			m_SceneAtomImgTime.restart();
-		}
+		// The broken 512x512 bio self-portrait capture is disabled until restored.
 	}
 
 	// Add "cursor" objects to the scene.

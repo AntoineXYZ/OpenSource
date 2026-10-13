@@ -740,7 +740,6 @@ private:
     DiControlInputArray*				m_pControlsUI;			// Control inputs for current UI.
 
 private:
-	AuElapsedTimer						m_SceneAtomImgTime;		// So we don't make one in every frame.
 	mutable QReadWriteLock				m_SceneImgLock;
 	QImage								m_SceneAtomImage;
 

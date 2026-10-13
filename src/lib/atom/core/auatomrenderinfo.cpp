@@ -10,6 +10,89 @@
 #include "auglmodel.h"
 #include "auglobal.h"
 #include "ausound.h"
+#include "dacreature.h"
+#include "danpc.h"
+#include "daperson.h"
+#include "dasc.h"
+#include <cmath>
+
+void AuAtomRenderInfo::BeginLegacyNpcFrame(const AuMatrix4x4& projection,
+	const AuMatrix4x4& camera, const DaPerson* scene)
+{
+	m_NpcScene = scene;
+	m_NpcProjection = projection;
+	m_NpcCamera = scene ? camera * scene->EnvTransform().Inverse() : camera;
+	m_NpcViews.clear();
+	m_NpcResults.clear();
+}
+
+bool AuAtomRenderInfo::LegacyNpcVisible(const DaCreature& creature) const
+{
+	if(!m_NpcScene || IsViewTopDown() || creature.IsMini() || &creature == m_NpcScene
+		|| !dynamic_cast<const DaNpc*>(&creature)) return true;
+	const DaSc* ship = nullptr;
+	for(const DaAtom* parent = creature.Parent(); parent; parent = parent->Parent())
+	{
+		if(parent->IsMini()) return true;
+		ship = dynamic_cast<const DaSc*>(parent);
+		if(ship && ship->IsLegacyDebug()) break;
+		ship = nullptr;
+		if(parent->CanRenderEnvironment()) break;
+	}
+	if(!ship || creature.AgentEntity() || creature.IsAnyConditionVisible()
+		|| (creature.EffectsOnClient() && !creature.EffectsOnClient()->m_Effects.isEmpty())) return true;
+	AuMatrix4x4 creatureToShip;
+	if(!creature.GetTransformRelativeToParent(creatureToShip, ship)) return true;
+	auto view = m_NpcViews.constFind(ship);
+	if(view == m_NpcViews.cend())
+	{
+		// Match RenderEnvironment and CollectModelMatrices, including the
+		// viewer-relative origin and ancestor multiplication order.
+		QVector<const DaAtom*> ancestors;
+		const DaAtom* environment = m_NpcScene->FindEnvironmentAtom();
+		const DaAtom* parent = ship;
+		for(; parent && parent != environment; parent = parent->Parent()) ancestors.append(parent);
+		if(!environment || parent != environment) return true;
+		AuMatrix4x4 model = m_NpcCamera;
+		for(int index = ancestors.size() - 1; index >= 0; --index) model = model * ancestors[index]->Transform();
+		NpcView prepared;
+		prepared.eye = model.UnProject(0, 0, 0);
+		prepared.clip = m_NpcProjection * model;
+		m_NpcViews.insert(ship, prepared);
+		view = m_NpcViews.constFind(ship);
+	}
+	// Keep a generous occupied/adjacent compartment allowance.
+	if(creatureToShip.Translation().Distance2(view->eye) <= 16 * 16) return true;
+	const auto cached = m_NpcResults.constFind(&creature);
+	if(cached != m_NpcResults.cend() && cached->transform == creatureToShip) return cached->visible;
+	AuBox bounds;
+	if(!creature.LegacyStandingExtents(bounds)) return true;
+	bounds.Transform(creatureToShip);
+	const double* matrix = view->clip.GLMatrix();
+	unsigned outside = 0x3f;
+	for(const AuPoint& point : bounds.m_fCorners)
+	{
+		const double x = matrix[0]*point.x + matrix[4]*point.y + matrix[8]*point.z + matrix[12];
+		const double y = matrix[1]*point.x + matrix[5]*point.y + matrix[9]*point.z + matrix[13];
+		const double z = matrix[2]*point.x + matrix[6]*point.y + matrix[10]*point.z + matrix[14];
+		const double w = matrix[3]*point.x + matrix[7]*point.y + matrix[11]*point.z + matrix[15];
+		if(!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z) || !std::isfinite(w)) return true;
+		const double allowance = .1 * std::abs(w);
+		unsigned planes = 0;
+		if(x < -w - allowance) planes |= 1;
+		if(x > w + allowance) planes |= 2;
+		if(y < -w - allowance) planes |= 4;
+		if(y > w + allowance) planes |= 8;
+		if(z < -w - allowance) planes |= 16;
+		if(z > w + allowance) planes |= 32;
+		outside &= planes;
+	}
+	NpcResult result;
+	result.transform = creatureToShip;
+	result.visible = !outside && !ship->LegacyNpcOccluded(bounds, view->eye);
+	m_NpcResults.insert(&creature, result);
+	return result.visible;
+}
 
 AuAtomRenderInfo::AuAtomRenderInfo(QOpenGLWidget* pglw, AuSound* pal, AuGLModelMaker& pmm, AuGLModelCache& mc,
 		const QFont& atomFont) : al(pal), font(atomFont), glw(pglw), mm(pmm), m_ModelCache(mc)

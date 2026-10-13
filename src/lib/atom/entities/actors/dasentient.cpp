@@ -2428,7 +2428,9 @@ bool DaSentient::AnimateTurn(unsigned int msElapsed)
 		rMaxTurn = TurretTurnRate() * rsec;			// Max turn in this time period based on turret turn rate.
 	else
 		rMaxTurn = TurnRate() * rsec;				// Max turn in this time period based on physiology.
-	if(!IsInSpacecraft() && !AIIsAlert())
+	// A hidden legacy NPC's parent chain already proves ship membership.
+	// Keep turning without rebuilding its room/floor query for this test.
+	if(!LegacyAnimationHidden() && !IsInSpacecraft() && !AIIsAlert())
 	{
 		// Turn rate outside spacecraft can be lazy.
 		switch(Order())

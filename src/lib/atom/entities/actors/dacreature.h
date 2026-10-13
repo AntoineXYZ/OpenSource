@@ -46,6 +46,11 @@ private:
 	struct LegacyCollisionShape;
 	mutable QMutex m_LegacyCollisionShapeLock;
 	mutable QSharedPointer<const LegacyCollisionShape> m_LegacyCollisionShape;
+	struct LegacyStandingShape;
+	mutable QMutex m_LegacyStandingLock;
+	mutable QSharedPointer<const LegacyStandingShape> m_LegacyStandingShape;
+	bool m_LegacyAnimationHidden = false;
+	bool m_LegacyDevicesDeferred = false;
 	AuAnimalia*							m_Animalia;				// Constructed from DNA. Only DNA is serialized.
 	DpBody*								m_Body;					// Constructed from DNA. Only DNA is serialized.
 	AuHairStyle::STYLE					m_Haircut;
@@ -1347,6 +1352,9 @@ public:
 			DaAtomList& shadScRingworldFog);
 
 	virtual bool RoughExtents(AuBox &fExt) const;
+	bool LegacyStandingExtents(AuBox& extents) const;
+	bool LegacyAnimationHidden() const { return m_LegacyAnimationHidden; }
+	void SetLegacyAnimationHidden(bool hidden);
 
 	// Legacy ship movement preserves anatomy and posture while excluding
 	// held-item arm poses and the render animation clock.

@@ -1045,6 +1045,7 @@ float DaSc::AirPressure(const QString& roomName) const
 void DaSc::AnimateDeviceObjects(AuAtomRenderInfo& ari, const DaPerson* sceneAtom, const AuElapsedTimer& lastAnim)
 {
 	//qDebug() << "DaSc::AnimateDeviceObjects" << Id() << Name();
+	if(IsLegacyDebug()) AnimateRenderStates(); // Current door panels before NPC visibility checks.
 	DaVessel::AnimateDeviceObjects(ari, sceneAtom, lastAnim);
 
 	if(IsLegacyDebug())
@@ -1059,7 +1060,7 @@ void DaSc::AnimateDeviceObjects(AuAtomRenderInfo& ari, const DaPerson* sceneAtom
 		}
 	}
 
-	AnimateRenderStates();
+	if(!IsLegacyDebug()) AnimateRenderStates();
 
 	if(!m_OwnTextures.empty())
 	{
@@ -3570,6 +3571,22 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 	const bool ready = ari.mm.LegacySc(*ari.re, *design, m_LegacyScModel);
 	UnlockDesign();
 	return ready;
+}
+
+bool DaSc::LegacyNpcOccluded(const AuBox& bounds, const AuPoint& eye) const
+{
+	if(!IsLegacyDebug() || !m_LegacyScModel || !m_LegacyScModel->Ready()) return false;
+	QSet<quint16> closedDoors;
+	for(auto door = m_DoorStates.cbegin(); door != m_DoorStates.cend(); ++door)
+	{
+		const quint8 rendered = m_DoorRenderState.value(door.key(), door->State());
+		const auto closed = [](quint8 state)
+		{
+			return state == AuScDoor::Closed || state == AuScDoor::LockedClosed || state == AuScDoor::StuckClosed;
+		};
+		if(closed(door->State()) && closed(rendered)) closedDoors.insert(door.key());
+	}
+	return m_LegacyScModel->NpcOccluded(bounds, eye, closedDoors);
 }
 
 void DaSc::RenderLegacyTextures(const AuGLSLScBase& shader, AuAtomRenderInfo& ari, const AuMatrix4x4& model, bool transparent)
