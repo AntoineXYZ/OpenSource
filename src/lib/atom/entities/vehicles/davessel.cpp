@@ -11235,9 +11235,22 @@ void DaVessel::TestHullStress()
 		}
 	}
 
-	// Atmospheric hull is immune to buckling under atmospheric pressure.
-	if(!IsCGSubmerged() && !IsUnderGround() && HullStreamline() < SLINE_Atmospheric && AirDensity() > .95f)
+	const DaSc* ship = dynamic_cast<const DaSc*>(this);
+	const bool legacy = ship && ship->IsLegacyDebug();
+	const float airDensity = AirDensity();
+	// AuAtom13:18046c2c0: legacy pressure damage is specific to gas giants,
+	// regardless of streamlining. The modern hull-pressure rules remain separate.
+	const bool pressureDamage = legacy
+		? airDensity > .75f && dynamic_cast<const DaWorldGasGiant*>(FindParentPlanetInEnv()) != nullptr
+		: !IsCGSubmerged() && !IsUnderGround() && HullStreamline() < SLINE_Atmospheric && airDensity > .95f;
+	if(pressureDamage)
 	{
+		if(legacy && airDensity > .9f)
+		{
+			DamageAndDestroy(tr("Crushed by extreme atmospheric pressure."));
+			SetModified();
+			return;
+		}
 		if(!IsPirateWithFreeWill())
 		{
 			// I am not a pirate. Notify the crew.

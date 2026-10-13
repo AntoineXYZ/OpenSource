@@ -67,6 +67,8 @@ class AUATOM_DLL DaSc : public DaVessel
 	QVector<quint16> LegacyDoorOperationGroup(unsigned int doorIndex) const;
 	int ClosestLegacyDoor(const AuPoint& location, double& distance, int openState, const DaSentient* who) const;
 	void QueueLegacyDoorSound(const AuScPart& part, const AuScDoorState& door, bool opening);
+	void ApplyLegacyEnvironmentalDamage(const AuTime& last, const AuTime& now);
+	bool LegacyDecaySheltered() const;
 protected:
 	enum AUDIO_SOURCE
 	{

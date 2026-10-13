@@ -4734,6 +4734,9 @@ double AuScReport::WeaponBayUnits(quint16 partId) const
 
 float AuScReport::MaxDrag() const
 {
+	// DaSpaceShip::HullStress / MaxAtmosphereSpeed, AuAtom13:1803f54e0
+	// and 180403350: every nonzero legacy streamline value uses 512.
+	if(m_LegacyStats) return m_LegacyStats->Header().streamline ? 512.f : 256.f;
 	float maxDrag[SLINE_Count] =
 	{
 		256,		// SLINE_None,						// Not streamlined.

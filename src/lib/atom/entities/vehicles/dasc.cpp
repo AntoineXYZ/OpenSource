@@ -11,6 +11,7 @@
 #include "aubox.h"
 #include "aucommpacket.h"
 #include "augame.h"
+#include "augeologicalfeature.h"
 #include "aulegacyscgeometry.h"
 #include "aulegacysccollision.h"
 #include "aulegacyship.h"
@@ -5833,6 +5834,7 @@ void DaSc::FilterDestinationLoc(DaAtom* moveAtom, const AuPoint& oldLoc, AuPoint
 		if(world && world->IsValid())
 		{
 			AuPoint normal;
+			QVector<AuLegacyScGeometry::CollisionWorld::MovementContact> contacts;
 			// The center can leave the floor while the rear of the chassis still
 			// overlaps it. Cancel only motion into that support, retaining forward
 			// travel until the whole vehicle clears the deck/landing. Ground
@@ -5840,7 +5842,23 @@ void DaSc::FilterDestinationLoc(DaAtom* moveAtom, const AuPoint& oldLoc, AuPoint
 			// boarding step, independently of retaining height during exit sliding.
 			const bool boarding = vehicle->IsGroundVehicle() && vehicle->Parent() != this && vehicle->IsOnGround();
 			nuLoc = world->ResolveDestination(oldLoc, nuLoc, offsets,
-				bodyToShip.ProjectVector(vehicle->GravityNormal()), vehicle->GroundHeightAboveCG(), false, normal, false, &doors, boarding);
+				bodyToShip.ProjectVector(vehicle->GravityNormal()), vehicle->GroundHeightAboveCG(), false, normal, false, &doors, boarding, &contacts);
+			// Low-speed boarding keeps its sliding response. At collision speeds,
+			// preserve the incoming velocity until native momentum/damage is applied.
+			const double collisionSpeed = 15 * FeetPerMeter();
+			const double collisionSpeed2 = collisionSpeed * collisionSpeed;
+			if(vehicle->Vector().Length2() >= collisionSpeed2 || Vector().Length2() >= collisionSpeed2)
+			{
+				AuPoint up = bodyToShip.ProjectVector(vehicle->GravityNormal()); up.Unit();
+				for(const auto& contact : contacts)
+				{
+					AuPoint localNormal = bodyToShip.UnProjectVector(contact.normal); localNormal.Unit();
+					// Gravity-supported floor contact is not a crash in the 2016 mover.
+					if(vehicle->Parent() == this && Gravity(0) != 0 && contact.normal.Dot(up) >= .55) continue;
+					if(vehicle->Vector().Dot(localNormal) < 0)
+						vehicle->MovementBlocked(const_cast<DaSc*>(this), contact.location, localNormal, false);
+				}
+			}
 			if(!normal.IsZero())
 			{
 				const AuPoint localNormal = bodyToShip.UnProjectVector(normal);
@@ -12172,6 +12190,175 @@ unsigned int DaSc::IsTocker() const
 	return ms;
 }
 
+bool DaSc::LegacyDecaySheltered() const
+{
+	if(!IsOnGround() || !HasOfficers()) return false;
+	// AuAtom13:1800cf9c0 / 1802049a0: only completed road SLABS shelter
+	// occupied ships. EB_AtGeo alone also includes ordinary roads and worksites.
+	if(IsAtGeo() && InIndustry() == IID_Road)
+	{
+		const DaWorldLL* world = dynamic_cast<const DaWorldLL*>(FindParentPlanetInEnv());
+		if(world)
+		{
+			const AuGlobeLLF location = InIndustryLL();
+			const AuGeologicalFeatures& features = world->LockGeologicalFeatures();
+			const AuGeologicalFeature* feature = features.Find(location);
+			const bool slab = feature && feature->IsSlab() && feature->IsRoad() && !feature->IsUnderConstruction();
+			world->UnlockGeologicalFeatures();
+			if(slab) return true;
+		}
+	}
+	// Native airport sites are the current representation of sheltered landing
+	// facilities; retain their existing protection alongside recovered slabs.
+	const INDUSTRYID industry = InIndustry();
+	return industry == IID_AirportTerminal || industry == IID_BaseAirTerminal || industry == IID_AirportRepairShop;
+}
+
+void DaSc::ApplyLegacyEnvironmentalDamage(const AuTime& last, const AuTime& now)
+{
+	// DaSpaceShip::Tock, AuAtom13:18046d6e0. This is raw damage before
+	// the recovered hull durability conversion in CombatApplyDamage.
+	// Newly manufactured ships return before decay in the original Tock.
+	if(IsNew() || !g_Au.m_EnableUnitDecay) return;
+	const bool elapsedSecond = last.ElapsedSecTicks(now) > 0;
+	// Door checks can cross an id-offset hour boundary within one second.
+	// Check those boundaries on every Tock without multiplying liquid damage.
+	if(!elapsedSecond && !last.IsNewPeriod(now, d_MSecPerHr, Id().GetID())) return;
+	if(InArena())
+	{
+		if(InArenaOutsideBounds()) DamageAndDestroy(tr("Departed Arena Bounds."));
+		return;
+	}
+	if(IsInsideCapsule())
+	{
+		if(CapsuleRoomType() == ROOM_Fuel) DamageAndDestroy(tr("Invalid location inside fuel cell."));
+		return;
+	}
+	if(IsInAtmosphere())
+	{
+		if(LegacyDecaySheltered()) return;
+	}
+	else if(CapacitorLevel() != 0) return;
+
+	const quint32 maxHits = DesignHitsTotal();
+	WEAPONEFFECT liquidEffect = WE_None;
+	COMMODITYID liquidCID = CID_Invalid;
+	COMMODITYID atmosphereCID = CID_Invalid;
+	quint32 liquidDamage = 0;
+	QString reason;
+	if(elapsedSecond && IsInVisibleWater())
+	{
+		// The old client classifies liquids by orbit zone, without the modern
+		// sea-surface/submersible protection tiers or gas-giant cold exception.
+		if(OrbitZone() == OZONE_Inferno)
+		{
+			liquidEffect = WE_Heat;
+			liquidDamage = maxHits / 10 + 1;
+			reason = tr("lava");
+			liquidCID = CID_Magma;
+			atmosphereCID = CID_InfernoAtmosphere;
+		}
+		else if(OrbitZone() == OZONE_Frigid)
+		{
+			liquidEffect = WE_Cold;
+			liquidDamage = maxHits / 20 + 1;
+			reason = tr("supercooled liquid");
+			liquidCID = CID_SupercooledLiquid;
+			atmosphereCID = CID_FrigidAtmosphere;
+		}
+		else if(last.ElapsedMinTicks(now) > 0)
+		{
+			liquidEffect = WE_Corrosion;
+			liquidDamage = maxHits / 50 + 1;
+			reason = tr("water");
+			liquidCID = CID_Hydrographics;
+			atmosphereCID = CID_Atmosphere;
+		}
+	}
+
+	WEAPONEFFECT atmosphereEffect = WE_None;
+	quint32 atmosphereDamage = 0;
+	QString atmosphereReason;
+	// The 2016 client also applies atmosphere/weather while submerged.
+	if(IsInVacuum())
+	{
+		if(last.IsNewPeriod(now, 2 * d_MSecPerHr, Id().GetID()))
+		{
+			atmosphereEffect = WE_Bludgeon;
+			atmosphereDamage = maxHits / 100 + 1;
+			atmosphereReason = tr("meteor");
+			atmosphereCID = CID_Ore;
+		}
+	}
+	else
+	{
+		// R12D is initialized to WE_Acid at 18046e49c and retained by the
+		// corrosive/insidious branches; only ordinary weather changes it to
+		// WE_Corrosion at 1804702dd. Check assembly, not just the shared tail.
+		switch(InAtmosphereType())
+		{
+		case ATMTYPE_Standard: case ATMTYPE_Tainted: case ATMTYPE_Exotic:
+			if(last.IsNewPeriod(now, d_MSecPerHr, Id().GetID()))
+			{
+				atmosphereEffect = WE_Corrosion;
+				atmosphereDamage = quint32(float(maxHits / 100) * AirDensity()) + 1;
+				atmosphereReason = tr("weather");
+			}
+			break;
+		case ATMTYPE_Corrosive:
+			if(last.ElapsedMinTicks(now) > 0)
+			{
+				atmosphereEffect = WE_Acid;
+				atmosphereDamage = quint32(float(maxHits / 50) * AirDensity()) + 1;
+				atmosphereReason = tr("corrosive atmosphere");
+			}
+			break;
+		case ATMTYPE_Insidious:
+			if(elapsedSecond)
+			{
+				atmosphereEffect = WE_Acid;
+				atmosphereDamage = quint32(float(maxHits / 100) * AirDensity()) + 1;
+				atmosphereReason = tr("insidious atmosphere");
+			}
+			break;
+		case ATMTYPE_Count:
+			break;
+		}
+	}
+	if(atmosphereEffect == WE_None && liquidEffect == WE_None) return;
+	if(!atmosphereReason.isEmpty())
+		reason = reason.isEmpty() ? atmosphereReason : tr("%1 and %2").arg(reason).arg(atmosphereReason);
+	if(!IsPirateWithFreeWill())
+	{
+		// The original sends each event to the crew, without the modern
+		// SendEnvDamage throttle or an officer-presence requirement.
+		const QString text = tr("%1 damage from %2.")
+			.arg(EffectName(atmosphereEffect != WE_None ? atmosphereEffect : liquidEffect)).arg(reason);
+		AuCommChat message(text, AuCommStdChannel::CrewChannelName(), Id(), Name(), FindParentSector()->Id(),
+			Galaxy(), AuCommStdChannel::SolarSystem, AuCommStdChannel::CrewMates);
+		message.SetScopeData(Id().GetID());
+		g_Au.SendAtomChat(message);
+	}
+	AuCombatAttacker attacker(reason);
+	AuCombatWeapon weapon(WM_Internal);
+	AuCombatResult result;
+	if(atmosphereEffect != WE_None)
+	{
+		weapon.m_CID = atmosphereCID;
+		weapon.m_w1.m_Effect = atmosphereEffect;
+		weapon.m_w2.m_Effect = liquidEffect;
+		result.m_Damage1 = atmosphereDamage;
+		result.m_Damage2 = liquidDamage;
+	}
+	else
+	{
+		weapon.m_CID = liquidCID;
+		weapon.m_w1.m_Effect = liquidEffect;
+		result.m_Damage1 = liquidDamage;
+	}
+	CombatApplyDamage(attacker, weapon, AuPoint(0,0), AuPoint(0,0), result);
+}
+
 void DaSc::Tock(const AuTime& last, const AuTime& now, const AuScripts& scripts, DtTockTransactions& tockTrans)
 {
 	// Tocking depends on this ship's design geometry. It will be delayed until the database thread has loaded the design.
@@ -12213,6 +12400,7 @@ void DaSc::Tock(const AuTime& last, const AuTime& now, const AuScripts& scripts,
 			}
 			if(IsPilotMannedByPerson() || !IsPilotMannedByAI()) DecayMoveActions();
 		}
+		ApplyLegacyEnvironmentalDamage(last, now);
 		tockTrans.Add(DtTockTransaction(__FILE__, __LINE__, now));
 		return;
 	}

@@ -4538,6 +4538,24 @@ bool DaAtom::WeaponOnCollision(AuCombatAttacker& attacker, AuCombatWeapon& weapo
 void DaAtom::Collide(const AuPoint& myChange, const AuPoint& myHitLoc, DaAtom* hit, const AuPoint& hitChange,
 		const AuPoint& hitFromLoc, const AuPoint& hitResultVec, bool hitShield)
 {
+	const auto legacyDamage = [](DaAtom* victim, const DaAtom* collider, double kineticEnergy,
+		const AuPoint& location, AuCombatResult& result) {
+		const DaSc* ship = dynamic_cast<const DaSc*>(victim);
+		if(!ship || !ship->IsLegacyDebug()) return false;
+		// DaAtom::Collide, AuAtom13:180203da0: damage is floor(K / 50000),
+		// capped at 0x3fffffff, applied directly with no armor/hit roll.
+		if(kineticEnergy > 50000.)
+		{
+			AuCombatAttacker attacker(tr("collision with %1").arg(collider->Name()));
+			AuCombatWeapon weapon(WM_Contact);
+			weapon.m_CID = CID_Collision;
+			weapon.m_w1.m_Effect = WE_Bludgeon;
+			const double damage = kineticEnergy / 50000.;
+			result.m_Damage1 = damage > 0x3fffffff ? 0x3fffffff : quint32(damage);
+			victim->CombatApplyDamage(attacker, weapon, location, location, result);
+		}
+		return true;
+	};
 	if(!IsNoncombatant())
 	{
 		// Apply damage due to absorption of kinetic energy required to make the change in movement vector.
@@ -4551,11 +4569,12 @@ void DaAtom::Collide(const AuPoint& myChange, const AuPoint& myHitLoc, DaAtom* h
 			//<< "myK" << myK << "hitsDamage" << (double)(myK/khp);
 		AuCombatAttacker attacker;
 		AuCombatWeapon weapon(WM_Contact);
-		if(hit->WeaponOnCollision(attacker, weapon, hitShield ? 1 : 0, myK))
+		AuCombatResult result;
+		if(!legacyDamage(this, hit, myK, myHitLoc, result)
+			&& hit->WeaponOnCollision(attacker, weapon, hitShield ? 1 : 0, myK))
 		{
 			// Damage this atom due to the collision with 'hit'.
 			AuCombatDefender defendCrash(this, hitFromLoc, false, 0);
-			AuCombatResult result;
 			hit->AttackTarget(attacker, defendCrash, weapon, true, result);
 		}
 	}
@@ -4573,14 +4592,15 @@ void DaAtom::Collide(const AuPoint& myChange, const AuPoint& myHitLoc, DaAtom* h
 			//<< "vel" << hitChange.Length() << "hitK" << hitK << "hitsDamage" << (double)(hitK/khp);
 		AuCombatAttacker attacker;
 		AuCombatWeapon weapon(WM_Contact);
-		if(WeaponOnCollision(attacker, weapon, hitShield ? 2 : 0, hitK))
+		AuCombatResult result;
+		if(!legacyDamage(hit, this, hitK, hitFromLoc, result)
+			&& WeaponOnCollision(attacker, weapon, hitShield ? 2 : 0, hitK))
 		{
 			AuCombatDefender defendCrash(hit, myHitLoc, hitShield, 0);
-			AuCombatResult result;
 			AttackTarget(attacker, defendCrash, weapon, true, result);
-			if(result.m_IsDestroyed)
-				return;
 		}
+		if(result.m_IsDestroyed)
+			return;
 
 		// Induce motion in the atom that was hit, unless its shield was hit.
 		// Only certain atoms can move.
