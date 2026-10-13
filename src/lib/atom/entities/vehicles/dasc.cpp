@@ -7927,6 +7927,50 @@ bool DaSc::LifeSupportWorking() const
 
 bool DaSc::StartMoving()
 {
+	if(IsLegacyDebug() && IsNormal() && !InDesignEnvironment())
+	{
+		const DaWorldLL* world = dynamic_cast<const DaWorldLL*>(Parent());
+		if(world)
+		{
+			const AuElapsedTimer terrainChange = world->GeologyChangeTime();
+			if(m_LegacyTerrainWorldId != world->Id()
+				|| m_LegacyTerrainChangeTime.isValid() != terrainChange.isValid()
+				|| (terrainChange.isValid() && !(m_LegacyTerrainChangeTime == terrainChange)))
+			{
+				m_LegacyTerrainWorldId = world->Id();
+				m_LegacyTerrainChangeTime = terrainChange;
+				// AuAtom13:18052d2c0 wakes movable atmospheric subatoms when
+				// surfaces change. The current environment cache also needs
+				// invalidating before physics can fall or lift out of terrain.
+				InvalidateEnvironmentRecursive();
+				if(IsAtRest() && !IsMoored() && IsInAtmosphere())
+				{
+					SetInMotion();
+					return !IsAtRest();
+				}
+			}
+			if(IsMoored() && IsInAtmosphere() && IsInGravity() && !CanBeUnderGround())
+			{
+				// A moored ship never reaches TickMovement's ground correction.
+				// Apply the same upward correction without releasing its moorings
+				// or moving it down when terrain support is removed.
+				const double fallDistance = FallDistance();
+				if(FuzzyLessThan(fallDistance, 0))
+				{
+					AuAtomPos pos = Pos();
+					pos.Translate(GravityNormal() * -fallDistance);
+					ForcePos(pos);
+					InvalidateEnvironmentRecursive();
+					SetModified();
+				}
+			}
+		}
+		else
+		{
+			m_LegacyTerrainWorldId = AuId();
+			m_LegacyTerrainChangeTime.invalidate();
+		}
+	}
 	return DaVessel::StartMoving();
 }
 

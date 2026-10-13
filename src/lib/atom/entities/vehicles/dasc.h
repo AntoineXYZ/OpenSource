@@ -63,6 +63,9 @@ class AUATOM_DLL DaSc : public DaVessel
 	mutable quint32 m_LegacyCollisionDesignId = 0;
 	mutable QSharedPointer<const AuLegacyScGeometry::CollisionWorld> m_LegacyCollision;
 	mutable AuElapsedTimer m_LegacyCollisionLogTime;
+	// Runtime terrain observations; independent of movement and saved ship state.
+	AuId m_LegacyTerrainWorldId;
+	AuElapsedTimer m_LegacyTerrainChangeTime;
 	QSharedPointer<const AuLegacyScGeometry::CollisionWorld> LegacyCollision(const AuScDesign& design) const;
 	QVector<quint16> LegacyDoorOperationGroup(unsigned int doorIndex) const;
 	int ClosestLegacyDoor(const AuPoint& location, double& distance, int openState, const DaSentient* who) const;
