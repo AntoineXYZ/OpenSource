@@ -5,8 +5,11 @@
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
 #include "auglmodelmaker.h"
+#include "aulegacyscmodel.h"
+#include "augleffects.h"
 //
 #include "aubddesign.h"
+#include "auscdesign.h"
 #include "aufilever.h"
 #include "auglobal.h"
 #include "daatomlist.h"
@@ -51,6 +54,7 @@ AuGLModelMaker::AuGLModelMaker(bool cacheEnabled)
 
 AuGLModelMaker::~AuGLModelMaker()
 {
+	ClearLegacySc();
 	// Deletion of these objects causes the thread pool to crash if they are still being processed.
 	// It's better to just let the memory leak on the ones that are still running, to be cleaned up by the OS.
 #if !defined(QT_NO_DEBUG)
@@ -910,6 +914,11 @@ AuGLModelMaker::~AuGLModelMaker()
 
 bool AuGLModelMaker::IsBusy() const
 {
+	for(const auto& entry : m_LegacyScModels)
+	{
+		const auto model = entry.toStrongRef();
+		if(model && model->IsBusy()) return true;
+	}
 	{
 		for(unordered_multimap<AuId, AuAnimaliaModel*, AuIdHash>::const_iterator tmi = m_Animalia.begin(); tmi != m_Animalia.end();
 				tmi++)
@@ -1064,6 +1073,11 @@ bool AuGLModelMaker::IsBusy() const
 int AuGLModelMaker::BusyThreadCount() const
 {
 	int busyThreads = 0;
+	for(const auto& entry : m_LegacyScModels)
+	{
+		const auto model = entry.toStrongRef();
+		if(model && model->IsBusy()) ++busyThreads;
+	}
 
 	for(unordered_multimap<AuId, AuAnimaliaModel*, AuIdHash>::const_iterator tmi = m_Animalia.cbegin(); tmi != m_Animalia.cend();
 			tmi++)
@@ -1416,6 +1430,64 @@ bool AuGLModelMaker::Bd(AuOpenGLFunctions& GLf, quint32 designId, quint32 empire
 		QThreadPool::globalInstance()->start(gm, 0);			// Lower priority than terrain so terrain gets made first.
 		return false;
 	}
+}
+
+bool AuGLModelMaker::LegacySc(AuGLEffects& re, const AuScDesign& design, QSharedPointer<AuLegacyScModel>& output)
+{
+	auto model = m_LegacySc.value(design.Id()).toStrongRef();
+	if(!model || !model->Matches(design))
+	{
+		if(model) DeleteLegacySc(design.Id());
+		model.reset(new AuLegacyScModel(design));
+		for(auto i = m_LegacySc.begin(); i != m_LegacySc.end();)
+			if(i.value().isNull()) i = m_LegacySc.erase(i); else ++i;
+		m_LegacySc.insert(design.Id(), model.toWeakRef());
+		for(auto i = m_LegacyScModels.begin(); i != m_LegacyScModels.end();)
+			if(i->isNull()) i = m_LegacyScModels.erase(i); else ++i;
+		m_LegacyScModels.append(model.toWeakRef());
+		AuLegacyScModel::Start(model);
+	}
+	output = model;
+	const bool ready = model->Upload(re, m_LegacyScUploadBudget);
+	RetainLegacySc(model);
+	return ready;
+}
+
+void AuGLModelMaker::RetainLegacySc(const QSharedPointer<AuLegacyScModel>& model)
+{
+	// Pending work is pinned by its ships/task. If all ships disappear before
+	// upload, let it expire instead of keeping an unfinished busy model forever.
+	if(!model->Ready()) return;
+	// Ships and workers pin their own models. These references keep recently
+	// used designs warm after the last ship disappears, within a soft byte cap.
+	m_LegacyScKeepAlive.removeAll(model);
+	m_LegacyScKeepAlive.append(model);
+	quint64 bytes = 0;
+	for(const auto& retained : m_LegacyScKeepAlive) bytes += retained->VertexBytes();
+	while(!m_LegacyScKeepAlive.isEmpty() && (m_LegacyScKeepAlive.size() > 8 || bytes > 256 * 1024 * 1024))
+		bytes -= m_LegacyScKeepAlive.takeFirst()->VertexBytes();
+}
+
+void AuGLModelMaker::DeleteLegacySc(quint32 designId)
+{
+	const auto model = m_LegacySc.take(designId).toStrongRef();
+	if(model)
+	{
+		model->Cancel();
+		m_LegacyScKeepAlive.removeAll(model);
+	}
+}
+
+void AuGLModelMaker::ClearLegacySc()
+{
+	for(const auto& entry : m_LegacyScModels)
+	{
+		const auto model = entry.toStrongRef();
+		if(model) model->DeleteGL();
+	}
+	m_LegacySc.clear();
+	m_LegacyScKeepAlive.clear();
+	m_LegacyScModels.clear();
 }
 
 bool AuGLModelMaker::BdFrame(AuOpenGLFunctions& GLf, quint32 designId, COMMODITYID hullMaterial, int percentComplete,

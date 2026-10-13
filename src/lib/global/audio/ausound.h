@@ -299,6 +299,11 @@ public:
 	// The buffer is loaded if this is the first reference to it.
 	ALuint AudioBuffer(SOUND_EFFECT sound);
 
+	// Warm the five shared spacecraft loop buffers without creating sources or
+	// playing audio. Call on the owning thread after InitializeAudio/settings.
+	// Returns the number of buffers available; zero if audio is not initialized.
+	int PreloadSpacecraftSounds();
+
 	// Restores a sound to its default settings.
 	void ClearSoundOverride(SOUND_EFFECT sound);
 

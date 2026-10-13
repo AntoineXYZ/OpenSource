@@ -200,15 +200,20 @@ void AuGLVAO::CreateForSpriteSizeColor(AuOpenGLFunctions& GLf, const QList<AuScP
 
 void AuGLVAO::CreateForSc(AuOpenGLFunctions& GLf, const AuScTriRenderList& tris, GLenum usage, quint8 effect)
 {
+	if(tris.isEmpty() || VAO()) return;
+	AuScVertexData data;
+	PrepareForSc(tris, effect, data);
+	CreateForSc(GLf, data, usage);
+	for(auto& buffer : data.buffers) buffer.clear();
+}
+
+void AuGLVAO::PrepareForSc(const AuScTriRenderList& tris, quint8 effect, AuScVertexData& data)
+{
+	data = AuScVertexData();
 	//if(s_DebugGLSL)
 		//qDebug() << "AuGLVAO::CreateForSc tris" << tris.count();
 	if(tris.isEmpty())
 		return;
-
-	if(VAO())
-		return;
-
-	m_GLf = &GLf;
 
 	// Count triangles that will be used.
 	int triCount = 0;
@@ -222,12 +227,18 @@ void AuGLVAO::CreateForSc(AuOpenGLFunctions& GLf, const AuScTriRenderList& tris,
 	int vertices = triCount*3;
 
 	// Copy surface triangles into gl array buffers.
-	GLfloat* positionShine = new GLfloat[vertices*4];
-	GLfloat* normalReflect = new GLfloat[vertices*4];
-	GLfloat* texCoordIndex = new GLfloat[vertices*4];
-	GLfloat* texEffectAppl = new GLfloat[vertices*4];
-	GLfloat* paintBuf = new GLfloat[vertices*4];
-	GLfloat* glowBuf = new GLfloat[vertices*4];
+	data.buffers[0].resize(vertices*4);
+	GLfloat* positionShine = data.buffers[0].data();
+	data.buffers[1].resize(vertices*4);
+	GLfloat* normalReflect = data.buffers[1].data();
+	data.buffers[2].resize(vertices*4);
+	GLfloat* texCoordIndex = data.buffers[2].data();
+	data.buffers[3].resize(vertices*4);
+	GLfloat* texEffectAppl = data.buffers[3].data();
+	data.buffers[4].resize(vertices*4);
+	GLfloat* paintBuf = data.buffers[4].data();
+	data.buffers[5].resize(vertices*4);
+	GLfloat* glowBuf = data.buffers[5].data();
 
 	unsigned int pidx = 0;
 	unsigned int nidx = 0;
@@ -348,7 +359,13 @@ void AuGLVAO::CreateForSc(AuOpenGLFunctions& GLf, const AuScTriRenderList& tris,
 		glowBuf[gidx++] = (*ti).V2().Glow().blueF();
 		glowBuf[gidx++] = (*ti).SelfIllumination();
 	}
+}
 
+void AuGLVAO::CreateForSc(AuOpenGLFunctions& GLf, const AuScVertexData& data, GLenum usage)
+{
+	const int vertices = data.Vertices();
+	if(!vertices || VAO()) return;
+	m_GLf = &GLf;
 	// Generate vertex array object with a buffer for each array.
 	CreateGL(GLf, vertices, 6);
 
@@ -356,45 +373,37 @@ void AuGLVAO::CreateForSc(AuOpenGLFunctions& GLf, const AuScTriRenderList& tris,
 
 	// bind buffer for positions and copy data into buffer.
 	GLf.glBindBuffer(GL_ARRAY_BUFFER, Buffer(0));
-	GLf.glBufferData(GL_ARRAY_BUFFER, pidx*sizeof(GLfloat), positionShine, usage);
+	GLf.glBufferData(GL_ARRAY_BUFFER, data.buffers[0].size()*sizeof(GLfloat), data.buffers[0].constData(), usage);
 	GLf.glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);		// Describe the data in the buffer.
 
 	// bind buffer for normals and copy data into buffer.
 	GLf.glBindBuffer(GL_ARRAY_BUFFER, Buffer(1));
-	GLf.glBufferData(GL_ARRAY_BUFFER, nidx*sizeof(GLfloat), normalReflect, usage);
+	GLf.glBufferData(GL_ARRAY_BUFFER, data.buffers[1].size()*sizeof(GLfloat), data.buffers[1].constData(), usage);
 	GLf.glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, 0);		// Describe the data in the buffer.
 
 	// bind buffer for texture coords, shininess and topFace and copy data into buffer.
 	GLf.glBindBuffer(GL_ARRAY_BUFFER, Buffer(2));
-	GLf.glBufferData(GL_ARRAY_BUFFER, tidx*sizeof(GLfloat), texCoordIndex, usage);
+	GLf.glBufferData(GL_ARRAY_BUFFER, data.buffers[2].size()*sizeof(GLfloat), data.buffers[2].constData(), usage);
 	GLf.glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 0, 0);		// Describe the data in the buffer.
 
 	// bind buffer for effect texture coords and copy data into buffer.
 	GLf.glBindBuffer(GL_ARRAY_BUFFER, Buffer(3));
-	GLf.glBufferData(GL_ARRAY_BUFFER, eidx*sizeof(GLfloat), texEffectAppl, usage);
+	GLf.glBufferData(GL_ARRAY_BUFFER, data.buffers[3].size()*sizeof(GLfloat), data.buffers[3].constData(), usage);
 	GLf.glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, 0, 0);		// Describe the data in the buffer.
 
 	// bind buffer for paint and copy data into buffer.
 	GLf.glBindBuffer(GL_ARRAY_BUFFER, Buffer(4));
-	GLf.glBufferData(GL_ARRAY_BUFFER, aidx*sizeof(GLfloat), paintBuf, usage);
+	GLf.glBufferData(GL_ARRAY_BUFFER, data.buffers[4].size()*sizeof(GLfloat), data.buffers[4].constData(), usage);
 	GLf.glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, 0, 0);		// Describe the data in the buffer.
 
 	// bind buffer for glow and copy data into buffer.
 	GLf.glBindBuffer(GL_ARRAY_BUFFER, Buffer(5));
-	GLf.glBufferData(GL_ARRAY_BUFFER, gidx*sizeof(GLfloat), glowBuf, usage);
+	GLf.glBufferData(GL_ARRAY_BUFFER, data.buffers[5].size()*sizeof(GLfloat), data.buffers[5].constData(), usage);
 	GLf.glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, 0, 0);		// Describe the data in the buffer.
 
 	GLf.glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	DeselectGL();
-
-	// OpenGL has the data now. I can discard my local buffers.
-	delete [] positionShine;
-	delete [] normalReflect;
-	delete [] texCoordIndex;
-	delete [] texEffectAppl;
-	delete [] paintBuf;
-	delete [] glowBuf;
 }
 
 void AuGLVAO::CreateForBody(AuOpenGLFunctions& GLf, const QList<AuTriBody>& tris, GLenum usage)
@@ -804,6 +813,28 @@ void AuScVAO::Create(AuOpenGLFunctions& GLf, const AuScTriRenderList& tris, GLen
 		vao.CreateForSc(GLf, tris, usage, effect);
 		if(vao.VAO())
 			m_VAOs.insert(effect, vao);
+	}
+}
+
+void AuScVAO::Prepare(const AuScTriRenderList& tris, AuScVertexDataMap& data)
+{
+	data.clear();
+	for(quint8 effect = EFF_None; effect < EFF_Count; ++effect)
+	{
+		AuScVertexData packed;
+		AuGLVAO::PrepareForSc(tris, effect, packed);
+		if(packed.Vertices()) data.insert(effect, packed);
+	}
+}
+
+void AuScVAO::Create(AuOpenGLFunctions& GLf, const AuScVertexDataMap& data, GLenum usage)
+{
+	if(!m_VAOs.empty()) return;
+	for(auto i = data.cbegin(); i != data.cend(); ++i)
+	{
+		AuGLVAO vao;
+		vao.CreateForSc(GLf, i.value(), usage);
+		if(vao.VAO()) m_VAOs.insert(i.key(), vao);
 	}
 }
 

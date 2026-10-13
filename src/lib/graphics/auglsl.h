@@ -12,6 +12,8 @@
 #include "aumatrix4x4.h"
 #include "auscface.h"
 #include "autriangle.h"
+#include <QMap>
+#include <QVector>
 
 #define MAX_POINT_LIGHTS 80				// Max point/spot light sources supported by this code. Shaders can be configured for less.
 										// On Romulus, 93 caused a shader compile error; 92 was ok. 80 allows for a margin.
@@ -28,6 +30,14 @@
 class AuGLEffects;
 class AuGLSLScBase;
 class AuScTriRenderList;
+
+// CPU-only spacecraft attributes. Workers can pack these without a GL context.
+struct AuScVertexData
+{
+	QVector<GLfloat> buffers[6];
+	int Vertices() const { return buffers[0].size() / 4; }
+};
+typedef QMap<quint8, AuScVertexData> AuScVertexDataMap;
 
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 // Texture palette supported by Sc shaders.
@@ -248,6 +258,8 @@ public:
 	// 'effect' is an AuScFace::EFFECT. Only triangles with the effect are used to build the VAO. If none, resulting VAO will be 0.
 	// DOES NOTHING if this VAO has already been created or if 'tris' is empty.
 	void CreateForSc(AuOpenGLFunctions& GLf, const AuScTriRenderList& tris, GLenum usage, quint8 effect);
+	static void PrepareForSc(const AuScTriRenderList& tris, quint8 effect, AuScVertexData& data);
+	void CreateForSc(AuOpenGLFunctions& GLf, const AuScVertexData& data, GLenum usage);
 
 	// Creates this vertex array object from a list of points.
 	// The target shader for this VAO is 'SpriteSize'.
@@ -418,6 +430,8 @@ public:
 	}
 
 	void Create(AuOpenGLFunctions& GLf, const AuScTriRenderList& tris, GLenum usage);
+	static void Prepare(const AuScTriRenderList& tris, AuScVertexDataMap& data);
+	void Create(AuOpenGLFunctions& GLf, const AuScVertexDataMap& data, GLenum usage);
 
 	// 'hullEffAppl' says how to apply the EFF_Hull effect: 0=not at all, 1=lit by environment, 2=glow
 	void DrawSc(const AuGLSLScBase& shader, const GLuint effectTex[EFF_Count], int hullEffAppl);

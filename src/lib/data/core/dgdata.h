@@ -760,6 +760,8 @@ public:
 
 	// Replaces existing record with the same id.
 	void ScDesignAdd(const AuScDesign& design);
+	// Takes ownership of parts; an updated design's old parts remain in 'design'.
+	void ScDesignAdd(AuScDesign&& design);
 
 	void ScDesignAddDesigns(const AuScDesignHash& designs);
 

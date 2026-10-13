@@ -12,6 +12,7 @@
 #include "auglobal.h"
 #include "auitreport.h"
 #include "aulegacyscprotocol.h"
+#include <utility>
 #include "aumission.h"
 #include "auscreport.h"
 #include "ausensorblip.h"
@@ -406,7 +407,15 @@ bool DtClientChat::ReadPacket(const QByteArray& ba, QTcpSocket& /*tcpSocket*/)
 			AuScDesign rec;
 			rec.Rx(block);
 
-			emit ScDesign(rec);
+			if(rec.IsReadOnly() && !rec.LegacyTextureMap().isEmpty())
+			{
+				// Both records own independent parts. Create the disk-writer copy
+				// here, before queued delivery, instead of cloning on the UI thread.
+				AuScDesignPtr cacheDesign(new AuScDesign(rec));
+				AuScDesignPtr design(new AuScDesign(std::move(rec)));
+				emit ScDesignOwned(design, cacheDesign);
+			}
+			else emit ScDesign(rec);
 		}
 		break;
 

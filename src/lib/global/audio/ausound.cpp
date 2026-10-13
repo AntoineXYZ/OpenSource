@@ -497,6 +497,20 @@ ALuint AuSound::AudioBuffer(SOUND_EFFECT sound)
 	return m_AudioBufferCurrent[sound];
 }
 
+int AuSound::PreloadSpacecraftSounds()
+{
+	if(!m_ALContext || alcGetCurrentContext() != m_ALContext)
+		return 0;
+	const SOUND_EFFECT sounds[] = {
+		SOUND_GravityDriveExt, SOUND_GravityDriveInt, SOUND_PowerPlant,
+		SOUND_Telemetry, SOUND_TractorBeam
+	};
+	int available = 0;
+	for(SOUND_EFFECT sound : sounds)
+		if(AudioBuffer(sound)) ++available;
+	return available;
+}
+
 void AuSound::Play(unsigned int& audioSource, SOUND_EFFECT& curSound, SOUND_EFFECT sound, float posX, float posY, float posZ,
 		float gain, float pitch, bool loopSound, float referenceDistance, float rolloffFactor, float secOffset)
 {

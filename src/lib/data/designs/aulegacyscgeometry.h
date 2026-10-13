@@ -35,7 +35,11 @@ struct TextureBinding
 AUDATA_DLL bool TextureMap(const AuLegacyScDesign& legacy, QByteArray& output, QString& error,
 	bool includeOpenHatches = false, bool includeDoors = false);
 AUDATA_DLL bool ReadTextureMap(const QByteArray& bytes, QVector<TextureBinding>& output, QString& error);
-AUDATA_DLL QImage OriginalTexture(const TextureBinding& binding, bool illuminated = true);
+// RAM image keys also identify the corresponding context-owned GPU texture.
+// Only source/material, fixed tint and atlas variant are cached, not lighting.
+AUDATA_DLL QString OriginalTextureKey(const TextureBinding& binding, bool illuminated = true);
+AUDATA_DLL QImage OriginalTexture(const TextureBinding& binding, bool illuminated = true,
+	bool* transparent = nullptr);
 // Subsystem and FTL hull animation frames from the recovered 2016 effect atlas.
 AUDATA_DLL QImage OriginalEffectTexture(int frame);
 

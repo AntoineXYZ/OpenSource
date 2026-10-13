@@ -107,6 +107,7 @@ signals:
 	void ItLibraryUpdated();
 
 	void ScDesign(AuScDesign rec);
+	void ScDesignOwned(AuScDesignPtr design, AuScDesignPtr cacheDesign);
 	void ScDesignDelete(quint32 designId);
 	void ScDesignNeeded(quint32 designId, quint8 designState);
 

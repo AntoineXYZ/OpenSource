@@ -13,12 +13,17 @@
 #include "dabd.h"
 #include "daworldll.h"
 #include <QRunnable>
+#include <QElapsedTimer>
+#include <QSharedPointer>
 
 class AuId;
 class Au3dsModelInstance;
 class DaWorldSphere;
 class DaWorldRingSection;
 class DePlanetFlora;
+class AuLegacyScModel;
+class AuScDesign;
+class AuGLEffects;
 
 //-+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
@@ -483,6 +488,13 @@ public:
 
 	bool Bd(AuOpenGLFunctions& GLf, quint32 designId, quint32 empireId, AuBdRender& bdRender); 
 
+	// Prepares once on a worker, uploads in bounded render-thread steps, then
+	// shares the immutable model. Output retains pending/ready model ownership.
+	bool LegacySc(AuGLEffects& re, const AuScDesign& design, QSharedPointer<AuLegacyScModel>& model);
+	void BeginLegacyScFrame() { m_LegacyScUploadBudget.invalidate(); }
+	void DeleteLegacySc(quint32 designId);
+	void ClearLegacySc(); // Call with the owning GL context current before teardown.
+
 	bool BdFrame(AuOpenGLFunctions& GLf, quint32 designId, COMMODITYID hullMaterial, int percentComplete, AuBdRender& bdRender); 
 
 	// Query for 3ds model corresponding to a creature body.
@@ -605,6 +617,12 @@ private:
 
 	unordered_multimap<quint32, AuBdModel*, AuDesignIdHash>	m_Bd;				// Bd models, key is design id
 	QList<AuBdModel*>					m_BdToDelete;
+
+	QHash<quint32, QWeakPointer<AuLegacyScModel>> m_LegacySc;
+	QList<QSharedPointer<AuLegacyScModel>> m_LegacyScKeepAlive;
+	QList<QWeakPointer<AuLegacyScModel>> m_LegacyScModels;
+	QElapsedTimer m_LegacyScUploadBudget;
+	void RetainLegacySc(const QSharedPointer<AuLegacyScModel>& model);
 
 	unordered_multimap<quint32, AuBdFrame*, AuDesignIdHash>	m_BdFrame;			// Bd under construction models, key is design id
 	QList<AuBdFrame*>					m_BdFrameToDelete;

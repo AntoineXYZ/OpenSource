@@ -51,6 +51,88 @@
 #include <QFile>
 #include <QMessageBox>
 #include <QSysInfo>
+#include <QRunnable>
+#include <QThreadPool>
+#include <QSaveFile>
+#include <QPointer>
+#include <QTimer>
+#include <atomic>
+#include <utility>
+
+struct AuScDesignCacheLoad
+{
+	std::unique_ptr<AuScDesign> design;
+	std::atomic<bool> ready { false };
+};
+
+namespace
+{
+class ScDesignCacheLoadTask : public QRunnable
+{
+	std::shared_ptr<AuScDesignCacheLoad> m_Result;
+	QString m_FileName;
+	quint32 m_DesignId;
+	int m_State;
+public:
+	ScDesignCacheLoadTask(const std::shared_ptr<AuScDesignCacheLoad>& result, const QString& fileName, quint32 id, int state)
+		: m_Result(result), m_FileName(fileName), m_DesignId(id), m_State(state) {}
+	void run() override
+	{
+		{
+			std::unique_ptr<AuDesign> loaded(AuDesign::LoadFromFile(m_FileName, SHIP_DESIGN_CACHE));
+			AuScDesign* design = dynamic_cast<AuScDesign*>(loaded.get());
+			if(design && design->Id() == m_DesignId && !design->NeedsLegacyTextureMap() && !design->NeedsLegacyDeckPlan()
+				&& (m_State < 0 || int(design->State()) == m_State))
+			{
+				m_Result->design.reset(static_cast<AuScDesign*>(loaded.release()));
+			}
+		}
+		// Publication is the last access to the payload on this worker.
+		m_Result->ready.store(true, std::memory_order_release);
+	}
+};
+
+class ScDesignCacheCleanupTask : public QRunnable
+{
+	std::unique_ptr<AuScDesign> m_Design;
+public:
+	explicit ScDesignCacheCleanupTask(std::unique_ptr<AuScDesign>&& design) : m_Design(std::move(design)) {}
+	void run() override
+	{
+		m_Design.reset();
+	}
+};
+
+class LegacyScCacheWriteTask : public QRunnable
+{
+	AuScDesign m_Design;
+	QString m_Directory;
+public:
+	LegacyScCacheWriteTask(AuScDesign&& design, const QString& directory)
+		: m_Design(std::move(design)), m_Directory(directory) {}
+	void run() override
+	{
+		// No application/global pointers or cache locks are held by this job.
+		// The design and path remain valid if the user logs out or closes the UI.
+		QDir directory(m_Directory);
+		if(!directory.exists() && !directory.mkpath(QStringLiteral(".")))
+		{
+			return;
+		}
+		const QString fileName = directory.absoluteFilePath(QString("D%1").arg(m_Design.Id()));
+		// Readers must see either the previous complete cache or the new one,
+		// even if another request arrives while this background write is running.
+		QSaveFile file(fileName);
+		bool saved = file.open(QIODevice::WriteOnly);
+		if(saved)
+		{
+			QDataStream out(&file);
+			saved = m_Design.SaveToDataStream(out, SHIP_DESIGN_CACHE) && file.commit();
+		}
+		if(!saved) qWarning() << "Failed to cache legacy spacecraft design" << m_Design.Id();
+	}
+};
+}
 
 #define d_AtlantisDesignId				655903
 
@@ -63,6 +145,7 @@ static const QString				s_UniversePrefix("sU.");	// Prefix for checkpoint save u
 
 AuApp::AuApp(int& argc, char** argv) : QApplication(argc, argv), m_KeyFilter(this)
 {
+	qRegisterMetaType<AuScDesignPtr>("AuScDesignPtr");
 	// Create 'client mode' global data object independent of app object.
 	m_Data = new DgData;
 	m_Etherium = new AuEther("Hazeron");
@@ -1465,6 +1548,7 @@ void AuApp::ConnectionEstablished()
 
 void AuApp::SceneLogout()
 {
+	m_ScDesignCacheLoads.clear();
 	//qDebug("AuApp::SceneLogout");
 	if(g_Au.m_LogMessages & LOG_ConnectDisconnect)
 		g_Au.Log(g_Au.CacheApp() + "/soh.txt", QString("App: Sending logout TCP packet."));
@@ -1777,6 +1861,7 @@ void AuApp::ConnectUdp()
 
 void AuApp::ConnectChat()
 {
+	m_ScDesignCacheLoads.clear();
 	emit LegacyScTransportReset();
 	// Disconnect chat channel from previous scene server.
 	if(m_tChatChannel)
@@ -1855,6 +1940,7 @@ void AuApp::ConnectChat()
 			connect(m_tChatChannel, SIGNAL(ItDesignNeeded(quint32, quint8)), SLOT(ItDesignNeeded(quint32, quint8)));
 
 			connect(m_tChatChannel, SIGNAL(ScDesign(AuScDesign)), SLOT(ScDesign(AuScDesign)));
+			connect(m_tChatChannel, &DtClientChat::ScDesignOwned, this, &AuApp::ScDesignOwned, Qt::QueuedConnection);
 			connect(m_tChatChannel, SIGNAL(LegacyScReplyReceived(QByteArray)),
 					SIGNAL(LegacyScReplyReceived(QByteArray)), Qt::QueuedConnection);
 			connect(m_tChatChannel, SIGNAL(ScDesignDelete(quint32)), SLOT(ScDesignDelete(quint32)));
@@ -2456,6 +2542,50 @@ void AuApp::RequestAvatars()
 	}
 }
 
+void AuApp::LoadScDesignCache(quint32 designId, int designState)
+{
+	const quint64 key = (quint64(designId) << 8) | quint64(designState < 0 ? 255 : designState);
+	if(m_ScDesignCacheLoads.contains(key)) return;
+	const auto result = std::make_shared<AuScDesignCacheLoad>();
+	m_ScDesignCacheLoads.insert(key, result);
+	const QPointer<DtClientChat> channel(m_tChatChannel);
+	QTimer* poll = new QTimer(this);
+	connect(poll, &QTimer::timeout, this, [this, result, key, designId, designState, channel, poll]() {
+		const bool ready = result->ready.load(std::memory_order_acquire);
+		const bool current = m_ScDesignCacheLoads.value(key) == result && channel && channel.data() == m_tChatChannel
+			&& g_Au.IsSceneClient() && RunState() != NotLoggedIn;
+		if(current && !ready) return;
+		poll->stop();
+		poll->deleteLater();
+		if(m_ScDesignCacheLoads.value(key) == result) m_ScDesignCacheLoads.remove(key);
+		if(current)
+		{
+			DgData& data = g_Au.LockScDesignsForWrite();
+			const auto existing = data.m_ScDesigns->find(designId);
+			// Preserve a complete design received while the disk load was pending.
+			if(result->design && (existing == data.m_ScDesigns->end() || existing->second.NeedsLegacyTextureMap()
+				|| existing->second.NeedsLegacyDeckPlan()))
+				data.ScDesignAdd(std::move(*result->design));
+			const auto actual = data.m_ScDesigns->find(designId);
+			const bool available = actual != data.m_ScDesigns->end() && !actual->second.NeedsLegacyTextureMap()
+				&& !actual->second.NeedsLegacyDeckPlan() && (designState < 0 || int(actual->second.State()) == designState);
+			g_Au.UnlockScDesigns();
+			QByteArray packet;
+			QDataStream out(&packet, QIODevice::WriteOnly);
+			out.setVersion(QDataStream::Qt_4_1);
+			out << quint8(available ? DtChatChannelPacket::PD_ScDesignHere : DtChatChannelPacket::PD_ScDesign);
+			out << designId;
+			QueueChatPacket(packet);
+		}
+		// Only inspect/move the payload after acquiring the worker's ready flag.
+		if(ready && result->design)
+			QThreadPool::globalInstance()->start(new ScDesignCacheCleanupTask(std::move(result->design)), -1);
+	});
+	poll->start(16);
+	const QString fileName = QDir(g_Au.CacheGame()).absoluteFilePath(QString("D%1").arg(designId));
+	QThreadPool::globalInstance()->start(new ScDesignCacheLoadTask(result, fileName, designId, designState));
+}
+
 // Scene says I need a design.
 void AuApp::ScDesignNeeded(quint32 designId)
 {
@@ -2467,6 +2597,11 @@ void AuApp::ScDesignNeeded(quint32 designId)
 	g_Au.UnlockScDesigns();
 	if(hasDesign)
 		return;													// We have the design now.
+	if(g_Au.IsSceneClient() && m_tChatChannel)
+	{
+		LoadScDesignCache(designId);
+		return;
+	}
 
 	// We do not have the design.
 	// Try to load the design from a cache file.
@@ -2528,6 +2663,11 @@ void AuApp::ScDesignNeeded(quint32 designId, quint8 designState)
 
 	if(!hasDesign)
 	{
+		if(g_Au.IsSceneClient() && m_tChatChannel)
+		{
+			LoadScDesignCache(designId, designState);
+			return;
+		}
 		// We do not have the design.
 		// Try to load the design from a cache file.
 		QDir cacheDir(g_Au.CacheGame());
@@ -2603,6 +2743,13 @@ void AuApp::ScDesign(AuScDesign rec)
 	// A design in progress in the design studio will not be read-only so it will not be cached, fortunately.
 	if(rec.IsReadOnly())
 	{
+		if(!rec.LegacyTextureMap().isEmpty())
+		{
+			// The published cache has its own copy. Transfer the received parts
+			// to the writer so scheduling does not clone them again on the UI thread.
+			QThreadPool::globalInstance()->start(new LegacyScCacheWriteTask(std::move(rec), g_Au.CacheGame()), -1);
+			return;
+		}
 		// The design can be stored to a cache file.
 		//qDebug() << "AuApp::ScDesign" << rec.m_id << rec.m_name << "storing into cache file";
 		// Insure the cache folder exists.
@@ -2615,6 +2762,34 @@ void AuApp::ScDesign(AuScDesign rec)
 		}
 		//qDebug() << "AuApp::ScDesign" << rec.m_id << rec.m_name << "storing into cache file, done.";
 	}
+}
+
+void AuApp::ScDesignOwned(AuScDesignPtr design, AuScDesignPtr cacheDesign)
+{
+	if(!design) return;
+	// A queued delivery may outlive the connection that produced it.
+	if(sender() != m_tChatChannel || !g_Au.IsSceneClient() || RunState() == NotLoggedIn)
+	{
+		if(design)
+			QThreadPool::globalInstance()->start(new ScDesignCacheCleanupTask(
+				std::unique_ptr<AuScDesign>(new AuScDesign(std::move(*design)))), -1);
+		if(cacheDesign)
+			QThreadPool::globalInstance()->start(new ScDesignCacheCleanupTask(
+				std::unique_ptr<AuScDesign>(new AuScDesign(std::move(*cacheDesign)))), -1);
+		return;
+	}
+	DgData& data = g_Au.LockScDesignsForWrite();
+	data.ScDesignAdd(std::move(*design));
+	g_Au.UnlockScDesigns();
+	if(cacheDesign)
+	{
+		QThreadPool::globalInstance()->start(new LegacyScCacheWriteTask(std::move(*cacheDesign), g_Au.CacheGame()), -1);
+	}
+	// Move assignment leaves any replaced mesh in the delivered wrapper.
+	// Dispose of that geometry off the main thread as well.
+	if(!design->Parts().empty())
+		QThreadPool::globalInstance()->start(new ScDesignCacheCleanupTask(
+			std::unique_ptr<AuScDesign>(new AuScDesign(std::move(*design)))), -1);
 }
 
 void AuApp::ScDesignDelete(quint32 designId)

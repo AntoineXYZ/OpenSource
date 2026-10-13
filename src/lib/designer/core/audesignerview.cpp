@@ -5,6 +5,7 @@
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
 #include "audesignerview.h"
+#include <QOpenGLContext>
 //
 #include "aubddesignprops.h"
 #include "aubdfinalizedlg.h"
@@ -1943,6 +1944,11 @@ AuDesignerView::~AuDesignerView()
 	if(m_pControlsUI)
 		delete m_pControlsUI;
 
+	// The model cache owns shared legacy VAOs. Release them before destroying
+	// the GL function table; queued CPU jobs are cancelled without waiting.
+	if(context()) disconnect(context(), nullptr, this, nullptr);
+	if(isValid()) makeCurrent();
+	m_MM->ClearLegacySc();
 	delete m_RenderInfo;
 	delete m_ModelCache;
 	delete m_MM;
@@ -1963,6 +1969,10 @@ void AuDesignerView::StopThreads()
 
 void AuDesignerView::initializeGL()
 {
+	connect(context(), &QOpenGLContext::aboutToBeDestroyed, this, [this]() {
+		makeCurrent();
+		m_MM->ClearLegacySc();
+	});
 	//qDebug("AuDesignerView::initializeGL");
 
 	//QSurfaceFormat fmt = format();
@@ -2250,6 +2260,7 @@ void AuDesignerView::RenderScene()
 {
 	if(m_RenderPaused)
 		return;
+	m_RenderInfo->mm.BeginLegacyScFrame();
 	SyncScene();									// Sync in this thread, with current gl context.
 	AnimateScene();									// Position everybody for the snapshot and reset the scene animate time.
 	DaPerson* sceneAtom;

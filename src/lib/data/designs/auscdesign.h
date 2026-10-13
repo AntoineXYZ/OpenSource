@@ -79,9 +79,13 @@ public:	// Constructors
 	AuScDesign();
 	virtual ~AuScDesign();
 	AuScDesign(const AuScDesign &c);
+	// Transfer the owned parts without cloning their geometry. The source keeps
+	// an empty parts collection and remains safe to destroy or assign to.
+	AuScDesign(AuScDesign&& c);
 
 public:	// Operators
 	virtual AuScDesign& operator=(const AuScDesign &c);
+	AuScDesign& operator=(AuScDesign&& c);
 
 	virtual void operator>>(QDataStream& out) const;
 
@@ -981,6 +985,10 @@ inline QDataStream& operator>>(QDataStream& in, AuScDesign& o)
 }
 
 Q_DECLARE_METATYPE(AuScDesign)	// Needed to use this class in queued signal/slot connections. Must also call qRegisterMetaType.
+
+// Queued legacy delivery shares the record wrapper without cloning its parts.
+typedef QSharedPointer<AuScDesign> AuScDesignPtr;
+Q_DECLARE_METATYPE(AuScDesignPtr)
 
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 

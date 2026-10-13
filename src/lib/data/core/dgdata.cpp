@@ -5,6 +5,8 @@
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
 #include "dgdata.h"
+#include <tuple>
+#include <utility>
 //
 #include "aubddesign.h"
 #include "aubddesignexchange.h"
@@ -2664,9 +2666,20 @@ void DgData::ScDesignAdd(const AuScDesign& design)
 {
 	AuScDesignHash::iterator it = m_ScDesigns->find(design.Id());
 	if(it == m_ScDesigns->end())
-		m_ScDesigns->insert(pair<quint32, AuScDesign>(design.Id(), design));
+		// Construct in the map instead of cloning into a temporary pair first.
+		m_ScDesigns->emplace(std::piecewise_construct, std::forward_as_tuple(design.Id()), std::forward_as_tuple(design));
 	else if(!(*it).second.IsDeleted())	// Don't overwrite a deleted design; the incoming design might not be deleted.
 		(*it).second = design;
+}
+
+void DgData::ScDesignAdd(AuScDesign&& design)
+{
+	const quint32 id = design.Id();
+	const auto existing = m_ScDesigns->find(id);
+	if(existing == m_ScDesigns->end())
+		m_ScDesigns->emplace(std::piecewise_construct, std::forward_as_tuple(id), std::forward_as_tuple(std::move(design)));
+	else if(!existing->second.IsDeleted())
+		existing->second = std::move(design);
 }
 
 void DgData::ScDesignRemove(quint32 designId)

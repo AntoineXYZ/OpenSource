@@ -9,9 +9,17 @@
 #include "auclientglobal.h"
 #include "auframe.h"
 #include "dgdata.h"
+#include "ausound.h"
 
 AuClientApp::AuClientApp(int& argc, char** argv) : AuDesignerApp(argc, argv, "Shores of Hazeron", "Shores of Hazeron", false)
 {
+	// The base constructor has initialized audio and applied overrides. Warm
+	// these common buffers before the first window/gameplay frame is shown,
+	// so a spacecraft's first render does not read/decompress the sound archive.
+	if(Sound())
+	{
+		Sound()->PreloadSpacecraftSounds();
+	}
 	//g_Au.m_LogMessages |= LOG_Story;
 	//g_Au.m_LogMessages |= LOG_Spawn;
 	//g_Au.m_LogMessages |= LOG_Etherium;

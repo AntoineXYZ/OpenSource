@@ -23,6 +23,7 @@
 #include "dzspecies.h"
 #include <QApplication>
 #include <QUdpSocket>
+#include <memory>
 
 class AuClientInterface;
 class AuCommPacket;
@@ -36,6 +37,7 @@ class AuPlayerOnlineStatusVector;
 class AuScPart;
 class AuScParts;
 class AuSound;
+struct AuScDesignCacheLoad;
 class AuSpecies;
 class AuWarCriteria;
 class DgData;
@@ -99,6 +101,7 @@ private:
 	QUdpSocket 							m_SceneUdpSocket;		// Scene outgoing udp datagram socket.
 	quint16								m_UdpSequence;			// Helps the server discard bad packets.
 	quint32 m_LegacyScNextToken = 0;
+	QHash<quint64, std::shared_ptr<AuScDesignCacheLoad>> m_ScDesignCacheLoads;
 	bool								m_wasConnected;			// true if we are ever connected to the server
 
 	// EstFirstEmpire data that must be resent when deferred.
@@ -1508,6 +1511,7 @@ public slots:
 	void SaveSolitaireUniverseFile(QFile& file) const;
 
 	void ScDesign(AuScDesign rec);
+	void ScDesignOwned(AuScDesignPtr design, AuScDesignPtr cacheDesign);
 
 	void ScDesignDelete(quint32 designId);
 
@@ -1729,6 +1733,7 @@ private:
 			const AuId& joinSectorId, const QString& newEmpireName, const QImage& newEmpireFlag);
 
 	void ForgetEmpireRequests();
+	void LoadScDesignCache(quint32 designId, int designState = -1);
 
 	bool InitCitizenOfTheGalaxy(AuEther& ether, DaPerson* person, quint32 joinEmpire, GALAXY galaxy, const AuId& joinSectorId);
 

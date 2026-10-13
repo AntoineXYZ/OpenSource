@@ -7,6 +7,7 @@
 #include "dasc.h"
 //
 #include "auatomrenderinfo.h"
+#include "auglmodelmaker.h"
 #include "aubox.h"
 #include "aucommpacket.h"
 #include "augame.h"
@@ -797,7 +798,11 @@ bool DaSc::Refresh(DaAtom* pAtom, AuAtomRenderInfo* ari)
 
 	pA->m_DesignLock.lockForRead();
 	m_DesignLock.lockForWrite();
-	if(m_Design.DesignId() != pA->m_Design.DesignId()) m_LegacyDeckRequested = false;
+	if(m_Design.DesignId() != pA->m_Design.DesignId())
+	{
+		m_LegacyDeckRequested = false;
+		m_LegacyTextureRequested = false;
+	}
 	m_Design = pA->m_Design;
 	m_LandingGearStates = pA->m_LandingGearStates;
 	m_Lifts = pA->m_Lifts;
@@ -1230,7 +1235,9 @@ const AuScDesign* DaSc::LockDesign() const
 	// Get my parent design environment, if any. I could be a preview of a design in progress.
 	DaDesigner* pardes = (DaDesigner*)FindParentDesignerInEnv();	// Cast away constness.
 	if(pardes)
+	{
 		return dynamic_cast<const AuScDesign*>(pardes->LockDesignForRead());	// I am a preview in a design studio.
+	}
 
 	// I am not a preview in a design studio.
 	const DgData& sdd = g_Au.LockScDesignsForRead();
@@ -3529,11 +3536,13 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 	if(!design)
 	{
 		UnlockDesign();
+		m_LegacyScModel.clear();
 		return false;
 	}
 	if(design->LegacyTextureMap().isEmpty())
 	{
 		UnlockDesign();
+		m_LegacyScModel.clear();
 		if(!m_LegacyTextureRequested)
 		{
 			m_LegacyTextureRequested = true;
@@ -3541,292 +3550,14 @@ bool DaSc::CreateLegacyDeviceObjects(AuAtomRenderInfo& ari)
 		}
 		return false;
 	}
-	QVector<LegacyTextureDraw> draws;
-	QString error;
-	const auto build = [&]() {
-		QVector<AuLegacyScGeometry::TextureBinding> bindings;
-		if(!AuLegacyScGeometry::ReadTextureMap(design->LegacyTextureMap(), bindings, error)) return false;
-		const int side = bindings.first().packedTile.width();
-		QHash<quint32, int> tiles;
-		QMap<quint64, QVector<QMap<float, AuScTriRenderList>>> triangles;
-		QHash<quint64, QString> roomNames;
-		for(int index = 0; index < bindings.size(); ++index)
-		{
-			const auto& binding = bindings[index];
-			const quint32 key = (quint32(binding.paletteIndex) << 16)
-				| (quint32(binding.packedTile.x()) << 8) | quint32(binding.packedTile.y());
-			tiles.insert(key, index);
-		}
-		QColor colors[AuScFace::THEME_Count];
-		for(QColor& color : colors) color = Qt::white;
-		bool oldForcedInteriorGlow = true;
-		for(const AuScPart* part : design->Parts())
-			if(part->IsHullMesh() && (part->GroupName() == QStringLiteral("legacy/debug/static/v7")
-				|| part->GroupName() == QStringLiteral("legacy/debug/static/v8")
-				|| part->GroupName() == QStringLiteral("legacy/debug/static/v9")
-				|| part->GroupName() == QStringLiteral("legacy/debug/static/v10")
-				|| part->GroupName() == QStringLiteral("legacy/debug/static/v11")
-				|| part->GroupName() == QStringLiteral("legacy/debug/static/v12")))
-			{
-				oldForcedInteriorGlow = false;
-				break;
-			}
-		int count = 0;
-		for(auto partIterator = design->Parts().cbegin(); partIterator != design->Parts().cend(); ++partIterator)
-		{
-			const AuScPart* part = *partIterator;
-			const bool isTurret = part->IsTurret() && part->GroupName().startsWith(QStringLiteral("legacy/turret/detail/"));
-			if(part->IsOmitted() || (!part->IsVisibleInFinalModel() && !isTurret)) continue;
-			const bool isDoor = part->IsDoor();
-			const QString roomName = part->GroupName();
-			int effectFirstFrame = -1;
-			quint16 weaponBayId = 0;
-			quint16 transporterId = 0;
-			const QStringList fields = roomName.split('/');
-			const int effectField = fields.indexOf(QStringLiteral("effect"));
-			if(effectField >= 0)
-			{
-				bool valid = false;
-				effectFirstFrame = fields.value(effectField + 1).toInt(&valid);
-				if(!valid || (effectFirstFrame != 0 && effectFirstFrame != 8 && effectFirstFrame != 16
-					&& effectFirstFrame != 20 && effectFirstFrame != 24 && effectFirstFrame != 27 && effectFirstFrame != 31
-					&& effectFirstFrame != 40 && effectFirstFrame != 47 && effectFirstFrame != 51 && effectFirstFrame != 55))
-				{
-					error = QStringLiteral("Legacy mesh has invalid equipment effect metadata.");
-					return false;
-				}
-			}
-			const int bayField = fields.indexOf(QStringLiteral("bay"));
-			if(bayField >= 0)
-			{
-				bool valid = false;
-				const int id = fields.value(bayField + 1).toInt(&valid);
-				if(!valid || id < 1 || id > 256 || effectFirstFrame != 51)
-				{
-					error = QStringLiteral("Legacy mesh has invalid weapon bay effect metadata.");
-					return false;
-				}
-				weaponBayId = quint16(id);
-			}
-			const int transporterField = fields.indexOf(QStringLiteral("transporter"));
-			if(transporterField >= 0)
-			{
-				bool valid = false;
-				const int id = fields.value(transporterField + 1).toInt(&valid);
-				if(!valid || id < 1 || id > 65535 || effectFirstFrame != 47)
-				{
-					error = QStringLiteral("Legacy mesh has invalid transporter effect metadata.");
-					return false;
-				}
-				transporterId = quint16(id);
-			}
-			const bool partInterior = roomName.endsWith(QStringLiteral("/interior/1"))
-				|| (!roomName.endsWith(QStringLiteral("/interior/0"))
-					&& (part->IsRoomMesh() || (!part->IsHullMesh() && !isDoor)));
-			const quint8 frames[] = {AuScDoor::Closed, AuScDoor::Open50, AuScDoor::Open};
-			for(int frame = 0; frame < (isDoor ? 3 : 1); ++frame)
-			{
-				const quint32 stateKey = isDoor ? (quint32(partIterator.key()) << 8) | frames[frame]
-					: isTurret ? (quint32(partIterator.key()) << 8) | AuScTurret::Gun : 0;
-				AuScTriRenderList opaque, transparent;
-				if(isDoor) part->RenderTrianglesState(opaque, transparent, colors, frames[frame]);
-				else if(isTurret) part->RenderTrianglesState(opaque, transparent, colors, AuScTurret::Gun);
-				else part->RenderTriangles(opaque, transparent, colors);
-				opaque.Insert(transparent);
-				for(const AuScTriRender& original : opaque)
-				{
-					// Hull faces are combined in the final static hull part, so their
-					// effect comes from the native face rather than equipment metadata.
-					const int triangleEffectFrame = original.Effect() == EFF_Hull ? 31 : effectFirstFrame;
-					if(++count > 1000000)
-					{
-						error = QStringLiteral("Legacy render geometry exceeds its triangle limit.");
-						return false;
-					}
-					const float u = (original.V0().m_Tx + original.V1().m_Tx + original.V2().m_Tx) / 3;
-					const float v = (original.V0().m_Ty + original.V1().m_Ty + original.V2().m_Ty) / 3;
-					if(!std::isfinite(u) || !std::isfinite(v) || u < 0 || u >= 1 || v <= 0 || v > 1)
-					{
-						error = QStringLiteral("Legacy mesh has invalid texture coordinates.");
-						return false;
-					}
-					const int x = int(std::floor(u * 256 / side)) * side;
-					const int y = int(std::floor((1 - v) * 256 / side)) * side;
-					const quint32 key = (quint32(original.TextureIndex()) << 16) | (quint32(x) << 8) | quint32(y);
-					const auto tile = tiles.constFind(key);
-					if(tile == tiles.constEnd())
-					{
-						error = QStringLiteral("Legacy mesh texture coordinates do not match its material map.");
-						return false;
-					}
-					const auto& binding = bindings.at(tile.value());
-					// Hull doors use exterior materials on the outside and crew/interior
-					// materials on the inside. Keep those lighting passes independent.
-					const bool hullDoorMaterial = (binding.material >= 8 && binding.material <= 10)
-						|| (binding.material >= 19 && binding.material <= 24);
-					const bool interior = isDoor ? !hullDoorMaterial : partInterior;
-					// Low 25 bits retain door state and lighting; upper bits separate
-					// effect batches, including berth sides from their plain tops.
-					const quint64 lightingKey = (quint64(stateKey) << 1) | quint64(interior)
-						| (quint64(triangleEffectFrame + 1) << 25) | (quint64(weaponBayId) << 32)
-						| (quint64(transporterId) << 41);
-					if(!triangles.contains(lightingKey))
-					{
-						triangles.insert(lightingKey, QVector<QMap<float, AuScTriRenderList>>(bindings.size()));
-						roomNames.insert(lightingKey, roomName);
-					}
-					float opacity = original.Opacity();
-					// The palette adapter forced partly transparent images into the
-					// blend pass. Direct sampling classifies each texel instead.
-					if(opacity == .999f && binding.tint.w() == 1) opacity = 1;
-					if(!std::isfinite(opacity) || opacity < 0 || opacity > 1)
-					{
-						error = QStringLiteral("Legacy mesh has invalid surface opacity.");
-						return false;
-					}
-					const auto vertex = [&](const AuScPoint& point) {
-						AuScPoint result(point);
-						result.m_Tx = (point.m_Tx * 256 - binding.packedTile.x() - .5f) / (side - 1);
-						result.m_Ty = 1 - ((1 - point.m_Ty) * 256 - binding.packedTile.y() - .5f) / (side - 1);
-						if(triangleEffectFrame >= 0)
-						{
-							const int width = triangleEffectFrame == 0 ? 128 : triangleEffectFrame == 40 ? 64 : 32;
-							const int height = triangleEffectFrame == 24 || triangleEffectFrame == 40 ? 128 : 32;
-							result.SetEffectCoord((.5f + point.EffectTx() * (width - 1)) / width,
-								(.5f + point.EffectTy() * (height - 1)) / height);
-						}
-						return result;
-					};
-					AuScTri triangle(vertex(original.V0()), vertex(original.V1()), vertex(original.V2()));
-					// Earlier runtime blueprints forced a minimum glow on interior
-					// faces. It would keep those rooms bright with their lights off.
-					const float selfIllumination = oldForcedInteriorGlow && interior && original.SelfIllumination() == .25f
-						? 0.f : original.SelfIllumination();
-					AuScTriRender rendered(triangle, 0, QColor(0, 0, 0, 0), original.Reflectivity(), original.Shine(),
-						selfIllumination, 1, original.Effect());
-					triangles[lightingKey][tile.value()][opacity].insert(original.Effect(), rendered);
-				}
-			}
-		}
-		for(int index = 0; index < bindings.size(); ++index)
-		{
-			bool used = false;
-			for(auto states = triangles.cbegin(); states != triangles.cend(); ++states)
-				if(!states.value().at(index).isEmpty()) { used = true; break; }
-			if(!used) continue;
-			const auto& binding = bindings[index];
-			const QImage image = AuLegacyScGeometry::OriginalTexture(binding);
-			if(image.isNull())
-			{
-				error = QStringLiteral("A bundled legacy texture is unavailable: %1.").arg(binding.resource);
-				return false;
-			}
-			bool transparentTexture = false;
-			for(int y = 0; y < image.height() && !transparentTexture; ++y)
-			{
-				const QRgb* pixels = reinterpret_cast<const QRgb*>(image.constScanLine(y));
-				for(int x = 0; x < image.width(); ++x)
-					if(qAlpha(pixels[x]) < 255) { transparentTexture = true; break; }
-			}
-			const QString key = QStringLiteral("LegacyOriginal/Lit/%1/%2/%3/%4/%5/%6")
-				.arg(binding.material).arg(binding.resource).arg(binding.tint.x()).arg(binding.tint.y())
-				.arg(binding.tint.z()).arg(int(binding.cutout));
-			const GLuint texture = ari.re->CreateTextureFromBitmap(STATIC_TEXTURE_ID, key, image, GL_LINEAR, GL_LINEAR,
-				!binding.cutout, binding.cutout ? 1 : 0);
-			GLuint unlitTexture = texture;
-			if(binding.resource.isEmpty() && binding.material >= 0)
-			{
-				const QImage unlit = AuLegacyScGeometry::OriginalTexture(binding, false);
-				if(unlit.isNull())
-				{
-					error = QStringLiteral("The bundled unlit legacy spacecraft texture is unavailable.");
-					return false;
-				}
-				const QString unlitKey = QStringLiteral("LegacyOriginal/Unlit/%1/%2/%3/%4/%5")
-					.arg(binding.material).arg(binding.tint.x()).arg(binding.tint.y())
-					.arg(binding.tint.z()).arg(int(binding.cutout));
-				unlitTexture = ari.re->CreateTextureFromBitmap(STATIC_TEXTURE_ID, unlitKey, unlit,
-					GL_LINEAR, GL_LINEAR, !binding.cutout, binding.cutout ? 1 : 0);
-			}
-			if(!texture || !unlitTexture)
-			{
-				error = QStringLiteral("Unable to create a legacy surface texture.");
-				return false;
-			}
-			for(auto states = triangles.cbegin(); states != triangles.cend(); ++states)
-			{
-				for(auto group = states.value().at(index).cbegin(); group != states.value().at(index).cend(); ++group)
-				{
-					LegacyTextureDraw draw;
-					draw.roomName = roomNames.value(states.key());
-					if(draw.roomName.startsWith(QStringLiteral("legacy/turret/detail/")))
-						draw.turretId = quint16((states.key() >> 9) & 0xffff);
-					else draw.doorId = quint16((states.key() >> 9) & 0xffff);
-					draw.doorState = quint8((states.key() >> 1) & 0xff);
-					draw.interior = states.key() & 1;
-					draw.textureInset = binding.textureInset;
-					draw.cutout = binding.cutout;
-					draw.opacity = group.key();
-					draw.translucent = draw.opacity < .999f || transparentTexture;
-					draw.texture = texture;
-					draw.unlitTexture = unlitTexture;
-					draw.effectFirstFrame = int((states.key() >> 25) & 0x7f) - 1;
-					draw.weaponBayId = quint16((states.key() >> 32) & 0x1ff);
-					draw.transporterId = quint16(states.key() >> 41);
-					if(draw.effectFirstFrame >= 0)
-					{
-						draw.effectFrameCount = draw.effectFirstFrame == 24 || draw.effectFirstFrame == 40 ? 3 : 4;
-						for(int frame = 0; frame < draw.effectFrameCount; ++frame)
-						{
-							const auto effectTexture = [&](int sourceFrame) {
-								return ari.re->CreateTextureFromBitmap(STATIC_TEXTURE_ID,
-									QStringLiteral("LegacyEffect/%1").arg(sourceFrame),
-									AuLegacyScGeometry::OriginalEffectTexture(sourceFrame), GL_LINEAR, GL_LINEAR, false, 1);
-							};
-							draw.effectTextures[frame] = effectTexture(draw.effectFirstFrame + frame);
-							// AuAtom13:1803c9950 selects 12..15 for On, 16..19 for Hold.
-							if(draw.effectFirstFrame == 16) draw.onEffectTextures[frame] = effectTexture(12 + frame);
-							// Original warp hull frames run backwards through 62..59.
-							if(draw.effectFirstFrame == 31) draw.onEffectTextures[frame] = effectTexture(62 - frame);
-							if(draw.effectFirstFrame == 47) draw.onEffectTextures[frame] = effectTexture(43 + frame);
-							if(!draw.effectTextures[frame] || ((draw.effectFirstFrame == 16 || draw.effectFirstFrame == 31
-								|| draw.effectFirstFrame == 47)
-								&& !draw.onEffectTextures[frame]))
-							{
-								error = QStringLiteral("Unable to create a legacy equipment effect texture.");
-								return false;
-							}
-						}
-					}
-					draw.vao.Create(*ari.re, group.value(), GL_STATIC_DRAW);
-					if(!draw.vao.VAO())
-					{
-						draw.vao.DeleteGL();
-						error = QStringLiteral("Unable to create legacy render geometry.");
-						return false;
-					}
-					draws.append(draw);
-				}
-			}
-		}
-		return !draws.isEmpty();
-	};
-	const bool success = build();
+	const bool ready = ari.mm.LegacySc(*ari.re, *design, m_LegacyScModel);
 	UnlockDesign();
-	if(!success)
-	{
-		for(LegacyTextureDraw& draw : draws) draw.vao.DeleteGL();
-		qWarning() << "Legacy rendering:" << Id() << error;
-		return false;
-	}
-	for(LegacyTextureDraw& draw : m_LegacyTextureDraws) draw.vao.DeleteGL();
-	m_LegacyTextureDraws = draws;
-	m_VAOsCreated = true;
-	return true;
+	return ready;
 }
 
 void DaSc::RenderLegacyTextures(const AuGLSLScBase& shader, AuAtomRenderInfo& ari, const AuMatrix4x4& model, bool transparent)
 {
+	if(!m_LegacyScModel || !m_LegacyScModel->Ready()) return;
 	const GLuint effects[EFF_Count] = {};
 	const bool powered = CapacitorLevel() > 0;
 	// AuAtom13:1803c9950 gates berth, life-support and surgery overlays with
@@ -3875,7 +3606,7 @@ void DaSc::RenderLegacyTextures(const AuGLSLScBase& shader, AuAtomRenderInfo& ar
 		ari.re->glEnable(GL_BLEND);
 		ari.re->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	}
-	for(LegacyTextureDraw& draw : m_LegacyTextureDraws)
+	for(AuLegacyScDraw& draw : m_LegacyScModel->Draws())
 	{
 		if(draw.doorId)
 		{
@@ -3978,7 +3709,7 @@ void DaSc::CreateDeviceObjects(AuAtomRenderInfo& ari)
 			m_TransEmpty.CreateDeviceObjectsEmpty(ari, *this, QString("TCon%1").arg(Id().GetID()),
 				":data/txConsoleTransporter.bmp", false);
 		}
-		if(!m_VAOsCreated) CreateLegacyDeviceObjects(ari);
+		m_VAOsCreated = CreateLegacyDeviceObjects(ari);
 		if(!m_AudioShip[0] && ari.al)
 		{
 			alGenSources(AS_MaxSources, m_AudioShip);
@@ -5438,8 +5169,7 @@ void DaSc::DeleteDeviceObjects(AuAtomRenderInfo& ari)
 	DeleteLegacyDeckObjects();
 	m_LegacyDeckAtlas = 0;
 	m_LegacyDeckRequested = false;
-	for(LegacyTextureDraw& draw : m_LegacyTextureDraws) draw.vao.DeleteGL();
-	m_LegacyTextureDraws.clear();
+	m_LegacyScModel.clear(); // The shared model owns its VAOs, not each ship.
 
 	m_AlertGreen = 0;
 	m_AlertRedBright = 0;
@@ -14146,7 +13876,7 @@ void DaSc::RenderDesign(const AuMatrix4x4& model, AuAtomRenderInfo& ari, const D
 	// Don't continue if we have nothing to draw in this pass.
 	if(IsLegacyDebug())
 	{
-		if(m_LegacyTextureDraws.isEmpty()) return;
+		if(!m_LegacyScModel || !m_LegacyScModel->Ready()) return;
 	}
 	else if(transparentPass)
 	{

@@ -20,6 +20,7 @@
 #include <QProgressDialog>
 #include <QSqlQuery>
 #include <QCryptographicHash>
+#include <utility>
 
 #define SCDESIGN_SERIALIZE_VER			0x09					// At present, this must fit into a nibble.
 
@@ -614,6 +615,36 @@ AuScDesign::AuScDesign(const AuScDesign& c) : AuDesign(c), m_Modules(c.m_Modules
 	m_Skeleton = c.m_Skeleton;
 }
 
+AuScDesign::AuScDesign(AuScDesign&& c) : AuDesign(c), m_Modules(c.m_Modules), m_Bays(c.m_Bays),
+	m_FTLDrives(c.m_FTLDrives)
+{
+	m_LegacyTextureMap = c.m_LegacyTextureMap;
+	m_LegacyStats = c.m_LegacyStats;
+	m_LegacyDeckPlan = c.m_LegacyDeckPlan;
+	m_HullVolume = c.m_HullVolume;
+	m_LandingOrient = c.m_LandingOrient;
+	// Allocate the replacement before taking ownership, preserving the source
+	// even if allocation fails. Qt value members above are implicitly shared.
+	AuScParts* empty = new AuScParts;
+	m_Parts = c.m_Parts;
+	c.m_Parts = empty;
+	m_StationOrient = c.m_StationOrient;
+	m_Streamline = c.m_Streamline;
+	m_Structure = c.m_Structure;
+	m_MinQuality = c.m_MinQuality;
+	m_Armor = c.m_Armor;
+	m_Capacitor = c.m_Capacitor;
+	m_CryoBerths = c.m_CryoBerths;
+	m_Fuel = c.m_Fuel;
+	m_Hold = c.m_Hold;
+	m_LifeSupport = c.m_LifeSupport;
+	m_ManeuverDrive = c.m_ManeuverDrive;
+	m_PowerPlant = c.m_PowerPlant;
+	m_Sensors = c.m_Sensors;
+	m_Shields = c.m_Shields;
+	m_Skeleton = c.m_Skeleton;
+}
+
 AuScDesign& AuScDesign::operator=(const AuScDesign& c)
 {
 	AuDesign::operator=(c);
@@ -644,6 +675,39 @@ AuScDesign& AuScDesign::operator=(const AuScDesign& c)
 	m_Shields = c.m_Shields;
 	m_Skeleton = c.m_Skeleton;
 
+	return *this;
+}
+
+AuScDesign& AuScDesign::operator=(AuScDesign&& c)
+{
+	if(this == &c) return *this;
+	AuDesign::operator=(c);
+	m_LegacyTextureMap = c.m_LegacyTextureMap;
+	m_LegacyStats = c.m_LegacyStats;
+	m_LegacyDeckPlan = c.m_LegacyDeckPlan;
+	m_HullVolume = c.m_HullVolume;
+	m_LandingOrient = c.m_LandingOrient;
+	m_Modules = c.m_Modules;
+	m_StationOrient = c.m_StationOrient;
+	m_Streamline = c.m_Streamline;
+	m_Structure = c.m_Structure;
+	m_MinQuality = c.m_MinQuality;
+	m_Armor = c.m_Armor;
+	m_Bays = c.m_Bays;
+	m_Capacitor = c.m_Capacitor;
+	m_CryoBerths = c.m_CryoBerths;
+	m_FTLDrives = c.m_FTLDrives;
+	m_Fuel = c.m_Fuel;
+	m_Hold = c.m_Hold;
+	m_LifeSupport = c.m_LifeSupport;
+	m_ManeuverDrive = c.m_ManeuverDrive;
+	m_PowerPlant = c.m_PowerPlant;
+	m_Sensors = c.m_Sensors;
+	m_Shields = c.m_Shields;
+	m_Skeleton = c.m_Skeleton;
+	// The source owns the replaced geometry, allowing its caller to dispose
+	// of it on a worker instead of freeing a large mesh during publication.
+	std::swap(m_Parts, c.m_Parts);
 	return *this;
 }
 

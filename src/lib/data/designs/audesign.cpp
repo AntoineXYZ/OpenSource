@@ -431,7 +431,14 @@ bool AuDesign::SaveToFile(const QString& fileName, quint8 fileType) const
 	QFile file(fileName);
 	if(!file.open(QFile::WriteOnly))
 		return false;
+	QDataStream ds(&file);
+	const bool saved = SaveToDataStream(ds, fileType);
+	file.close();
+	return saved;
+}
 
+bool AuDesign::SaveToDataStream(QDataStream& ds, quint8 fileType) const
+{
 	// Store my data into an encrypted byte array.
 	AuCrypt crypt;
 	QDataStream dsc(&crypt, QIODevice::WriteOnly);
@@ -443,15 +450,13 @@ bool AuDesign::SaveToFile(const QString& fileName, quint8 fileType) const
 	crypt.Crypt(cryptKey);
 
 	// Store the encrypted byte array into the file.
-	QDataStream ds(&file);
 	ds.setVersion(QDataStream::Qt_5_0);
 
 	ds << (quint8)fileType;
 	ds << (quint8)SOH_FILE_VER;
 	ds << crypt;
 
-	file.close();
-	return true;
+	return ds.status() == QDataStream::Ok;
 }
 
 //static

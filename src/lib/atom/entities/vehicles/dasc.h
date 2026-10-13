@@ -16,6 +16,7 @@
 #include <QSharedPointer>
 #include <QVector2D>
 #include <QVector4D>
+#include "aulegacyscmodel.h"
 
 class AuQuad;
 class AuRefitMaterials;
@@ -30,34 +31,13 @@ namespace AuLegacyScGeometry { class CollisionWorld; }
 
 class AUATOM_DLL DaSc : public DaVessel
 {
-	struct LegacyTextureDraw
-	{
-		AuScVAO vao;
-		GLuint texture = 0;
-		GLuint unlitTexture = 0;
-		GLuint effectTextures[4] = {};
-		GLuint onEffectTextures[4] = {};
-		int effectFirstFrame = -1;
-		int effectFrameCount = 0;
-		QString roomName;
-		QVector2D textureInset;
-		float opacity = 1;
-		bool interior = false;
-		bool cutout = false;
-		bool translucent = false;
-		quint16 doorId = 0;
-		quint16 turretId = 0;
-		quint16 weaponBayId = 0;
-		quint16 transporterId = 0;
-		quint8 doorState = 0;
-	};
 	struct LegacyDoorSound
 	{
 		int sound = 0;
 		AuPoint location;
 	};
 	LegacyDoorSound m_LegacyDoorSounds[4];
-	QVector<LegacyTextureDraw> m_LegacyTextureDraws;
+	QSharedPointer<AuLegacyScModel> m_LegacyScModel;
 	bool m_LegacyTextureRequested = false;
 	struct LegacyDeckDraw
 	{

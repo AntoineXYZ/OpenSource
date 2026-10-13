@@ -12,6 +12,7 @@
 #include "auscreport.h"
 
 #include <QHash>
+#include <QCache>
 #include <QDataStream>
 #include <QImage>
 #include <QJsonArray>
@@ -72,6 +73,41 @@ const TextureRegion ShipTextures[] = {
 	{64,512,32,32}, {32,544,32,32},
 	{0,416,128,32}, {0,412,128,36}, {0,384,128,32}
 };
+
+struct CachedTextureImage
+{
+	QImage image;
+	bool transparent;
+};
+
+struct OriginalTextureCache
+{
+	QMutex mutex;
+	QImage litAtlas, unlitAtlas;
+	// Costs are KiB. Bound resource/tint combinations while keeping the two
+	// fixed spacecraft atlases resident, independently of GL context lifetime.
+	QCache<QString, CachedTextureImage> resources;
+	QCache<QString, CachedTextureImage> prepared;
+	OriginalTextureCache() : resources(16 * 1024), prepared(64 * 1024) {}
+};
+
+int ImageCacheCost(const QImage& image)
+{
+	const qint64 bytes = qint64(image.bytesPerLine()) * image.height();
+	return int(std::min(qint64(std::numeric_limits<int>::max()), std::max(qint64(1), (bytes + 1023) / 1024)));
+}
+
+bool ImageIsTransparent(const QImage& image)
+{
+	// All cached images are ARGB32. RGB tinting does not change their alpha.
+	for(int y = 0; y < image.height(); ++y)
+	{
+		const QRgb* pixels = reinterpret_cast<const QRgb*>(image.constScanLine(y));
+		for(int x = 0; x < image.width(); ++x)
+			if(qAlpha(pixels[x]) < 255) return true;
+	}
+	return false;
+}
 
 AuPoint Point(const QVector3D& value) { return AuPoint(value.x(), value.y(), value.z()); }
 
@@ -1372,6 +1408,16 @@ bool ReadTextureMap(const QByteArray& bytes, QVector<TextureBinding>& output, QS
 
 QImage OriginalEffectTexture(int frame)
 {
+	// The recovered frame set is finite. QImage returns share pixel storage;
+	// callers can retain them safely after this lock is released.
+	static QMutex mutex;
+	QMutexLocker guard(&mutex);
+	static QHash<int, QImage> frames;
+	const auto cached = frames.constFind(frame);
+	if(cached != frames.constEnd())
+	{
+		return cached.value();
+	}
 	// Same frame rectangles as the offline renderer and AuAtom13:1803e8300.
 	QRect region;
 	if(frame >= 0 && frame < 4) region = QRect(352, frame * 32, 128, 32);
@@ -1397,36 +1443,86 @@ QImage OriginalEffectTexture(int frame)
 	region = QRect(region.x() * atlas.width() / 1024,
 		(128 - region.y() - region.height()) * atlas.height() / 128,
 		region.width() * atlas.width() / 1024, region.height() * atlas.height() / 128);
-	return atlas.copy(region).convertToFormat(QImage::Format_ARGB32);
+	const QImage image = atlas.copy(region).convertToFormat(QImage::Format_ARGB32);
+	if(!image.isNull()) frames.insert(frame, image);
+	return image;
 }
 
-QImage OriginalTexture(const TextureBinding& binding, bool illuminated)
+QString OriginalTextureKey(const TextureBinding& binding, bool illuminated)
 {
+	// Nine significant digits distinguish every finite float tint. Include
+	// source length so resource paths cannot alias subsequent key fields.
+	QString key = QStringLiteral("LegacyOriginal/v2/%1/%2/%3:%4/%5")
+		.arg(illuminated ? 1 : 0).arg(binding.material).arg(binding.resource.size())
+		.arg(binding.resource).arg(binding.cutout ? 1 : 0);
+	for(int component = 0; component < 4; ++component)
+	{
+		key += QLatin1Char('/');
+		key += QString::number(double(binding.tint[component]), 'g', std::numeric_limits<float>::max_digits10);
+	}
+	return key;
+}
+
+QImage OriginalTexture(const TextureBinding& binding, bool illuminated, bool* transparent)
+{
+	if(transparent) *transparent = false;
+	static OriginalTextureCache cache;
+	QMutexLocker guard(&cache.mutex);
+	const QString key = OriginalTextureKey(binding, illuminated);
+	if(const CachedTextureImage* cached = cache.prepared.object(key))
+	{
+		if(transparent) *transparent = cached->transparent;
+		return cached->image;
+	}
+	bool hasTransparency = false;
 	QImage image;
-	if(!binding.resource.isEmpty()) image.load(binding.resource);
+	if(!binding.resource.isEmpty())
+	{
+		if(const CachedTextureImage* cached = cache.resources.object(binding.resource))
+		{
+			image = cached->image;
+			hasTransparency = cached->transparent;
+		}
+		else
+		{
+			image = QImage(binding.resource).convertToFormat(QImage::Format_ARGB32);
+			if(image.isNull()) return image;
+			hasTransparency = ImageIsTransparent(image);
+			cache.resources.insert(binding.resource, new CachedTextureImage{image, hasTransparency}, ImageCacheCost(image));
+		}
+	}
 	else if(binding.material >= 0 && binding.material < int(sizeof(ShipTextures) / sizeof(ShipTextures[0])))
 	{
-		const QImage atlas(illuminated ? QStringLiteral(":/data/legacy_txSpacecraft0Lit.png")
-			: QStringLiteral(":/data/legacy_txSpacecraft0.png"));
+		QImage& atlas = illuminated ? cache.litAtlas : cache.unlitAtlas;
+		if(atlas.isNull())
+			atlas = QImage(illuminated ? QStringLiteral(":/data/legacy_txSpacecraft0Lit.png")
+				: QStringLiteral(":/data/legacy_txSpacecraft0.png")).convertToFormat(QImage::Format_ARGB32);
 		if(atlas.isNull()) return QImage();
 		const TextureRegion& region = ShipTextures[binding.material];
 		image = atlas.copy(region.x * atlas.width() / 128,
 			(4096 - region.y - region.height) * atlas.height() / 4096,
 			region.width * atlas.width() / 128, region.height * atlas.height() / 4096);
+		hasTransparency = ImageIsTransparent(image);
 	}
 	else
 	{
 		image = QImage(1, 1, QImage::Format_ARGB32);
 		image.fill(Qt::white);
 	}
-	image = image.convertToFormat(QImage::Format_ARGB32);
-	for(int y = 0; y < image.height(); ++y)
+	if(image.isNull()) return image;
+	if(binding.tint.x() != 1 || binding.tint.y() != 1 || binding.tint.z() != 1)
 	{
-		QRgb* pixels = reinterpret_cast<QRgb*>(image.scanLine(y));
-		for(int x = 0; x < image.width(); ++x)
-			pixels[x] = qRgba(int(qRed(pixels[x]) * binding.tint.x()), int(qGreen(pixels[x]) * binding.tint.y()),
-				int(qBlue(pixels[x]) * binding.tint.z()), qAlpha(pixels[x]));
+		// scanLine detaches an implicitly shared source image before tinting it.
+		for(int y = 0; y < image.height(); ++y)
+		{
+			QRgb* pixels = reinterpret_cast<QRgb*>(image.scanLine(y));
+			for(int x = 0; x < image.width(); ++x)
+				pixels[x] = qRgba(int(qRed(pixels[x]) * binding.tint.x()), int(qGreen(pixels[x]) * binding.tint.y()),
+					int(qBlue(pixels[x]) * binding.tint.z()), qAlpha(pixels[x]));
+		}
 	}
+	if(transparent) *transparent = hasTransparency;
+	cache.prepared.insert(key, new CachedTextureImage{image, hasTransparency}, ImageCacheCost(image));
 	return image;
 }
 }

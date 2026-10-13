@@ -1046,6 +1046,8 @@ public:	// Methods
 	// 'fileType' .SoH file uses SOH_FILE_TYPE.
 	// Use a different 'fileType' when storing to a cache so the file is not identical to a .SoH file.
 	bool SaveToFile(const QString& fileName, quint8 fileType) const;
+	// Same file format, for callers that own the output device (e.g. QSaveFile).
+	bool SaveToDataStream(QDataStream& out, quint8 fileType) const;
 
 	// Adds to 'sel' the faces and vertices that are contiguous and in the same plane as the face(s) already selected, within
 	// 'angleTol'.
