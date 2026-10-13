@@ -4038,7 +4038,15 @@ int DaSentient::MoveToCapsuleLoc(DaCapsule* ship, const AuPoint& toLoc)
 
 			// If the first route location is not a ladder, I must let go or I'll be stuck here.
 			if(!m_AIScRoute->FirstIsLadder() && IsLadderPose())
+			{
 				Stand();
+				if(sc->IsLegacyDebug())
+				{
+					SetVector(AuPoint(0, 0));
+					TiltHeadTo(0);
+					InvalidateEnvironment();
+				}
+			}
 
 #if !defined(QT_NO_DEBUG)
 			if(Is(s_PathTrace))
@@ -4100,6 +4108,12 @@ void DaSentient::MoveInsideCapsule(DaCapsule* ship, bool isCrew)
 					//qDebug() << *this << "releasing ladder to move to next ladder";
 					wasLadderBeforeReach = false;
 					Stand();
+					if(sc->IsLegacyDebug())
+					{
+						SetVector(AuPoint(0, 0));
+						TiltHeadTo(0);
+						InvalidateEnvironment();
+					}
 				}
 			}
 			//qDebug() << "DaSentient::MoveInsideCapsule" << *this << "route update, going to ladder" << wasLadderBeforeReach
@@ -4117,7 +4131,17 @@ void DaSentient::MoveInsideCapsule(DaCapsule* ship, bool isCrew)
 				if(m_AIScRoute->isEmpty())
 				{
 					// Route complete, at the destination or an intermediate stop.
+					const bool legacyLadder = sc->IsLegacyDebug() && IsLadderPose();
 					m_SentientLock.unlock();
+					if(legacyLadder)
+					{
+						// A short route may end mid-ladder. Hold there until it is
+						// replanned; only a consumed clearance point permits release.
+						SetVector(AuPoint(0, 0));
+						DoPose(wasLadderBeforeReach ? AuPose::Ladder : AuPose::Stand);
+						TiltHeadTo(0);
+						InvalidateEnvironment();
+					}
 					ThinkSoon();
 					return;
 				}
@@ -4129,6 +4153,12 @@ void DaSentient::MoveInsideCapsule(DaCapsule* ship, bool isCrew)
 					ThinkSoon();
 					//qDebug() << *this << "reached end of ladder, standing";
 					Stand();
+					if(sc->IsLegacyDebug())
+					{
+						SetVector(AuPoint(0, 0));
+						TiltHeadTo(0);
+						InvalidateEnvironment();
+					}
 					return;
 				}
 			}
@@ -4356,6 +4386,50 @@ void DaSentient::MoveInsideCapsule(DaCapsule* ship, bool isCrew)
 
 		MoveInDirection(moveVec, headTilt, pose);
 	}
+}
+
+void DaSentient::LimitLegacyLadderMove(AuPoint& movement, AuPoint& velocity)
+{
+	if(!IsAIControlled() || !IsLadderPose()) return;
+	const DaSc* ship = dynamic_cast<const DaSc*>(Parent());
+	if(!ship || !ship->IsLegacyDebug()) return;
+
+	AuScRouteLoc waypoint;
+	m_SentientLock.lockForRead();
+	const bool hasRoute = m_AIScRoute && !m_AIScRoute->isEmpty();
+	if(hasRoute) waypoint = m_AIScRoute->first();
+	m_SentientLock.unlock();
+	if(!hasRoute)
+	{
+		// Clearing an order must not leave its previous climbing force active
+		// between AI updates. Keep the ladder attached until the next decision.
+		movement = velocity = AuPoint(0, 0);
+		DoPose(AuPose::Ladder);
+		ThinkSoon();
+		return;
+	}
+	if(!waypoint.IsLadder() && !waypoint.IsLegacyCell()) return;
+
+	// MoveDistLimit is applied to forward Y acceleration by DaCitizen. Ladder
+	// movement is vertical, so bound the actual displacement after integrating
+	// velocity and elapsed time instead of relying on that forward speed limit.
+	const AuMatrix4x4 transform = Transform();
+	AuPoint shipMovement = transform.ProjectVector(movement);
+	AuPoint shipVelocity = transform.ProjectVector(velocity);
+	const double remaining = waypoint.z - transform.Translation().z;
+	if(shipMovement.z * remaining <= 0)
+	{
+		shipMovement.z = shipVelocity.z = 0;
+	}
+	else if(std::abs(shipMovement.z) >= std::abs(remaining))
+	{
+		shipMovement.z = remaining;
+		shipVelocity.z = 0;
+		ThinkSoon();
+	}
+	else return;
+	movement = transform.UnProjectVector(shipMovement);
+	velocity = transform.UnProjectVector(shipVelocity);
 }
 
 void DaSentient::MoveInDirection(const AuPoint& moveVec, float headTilt, const AuPose& pose)

@@ -2195,6 +2195,10 @@ public:	// AI
 
 	virtual void Tick(const AuElapsedTimer& last, const AuElapsedTimer& now);
 
+	// Bound this physics tick's local displacement at an active legacy NPC
+	// ladder waypoint, including the floor-clearance step before dismounting.
+	void LimitLegacyLadderMove(AuPoint& movement, AuPoint& velocity);
+
 	virtual unsigned int IsTocker() const;
 
 	virtual void Tock(const AuTime& last, const AuTime& now, const AuScripts& scripts, DtTockTransactions& tockTrans);

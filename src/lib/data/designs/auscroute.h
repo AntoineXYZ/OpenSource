@@ -80,6 +80,11 @@ public:	// Methods
 		return m_Ladder;
 	}
 
+	inline bool IsLegacyCell() const
+	{
+		return m_LegacyCell;
+	}
+
 	inline bool IsLift() const
 	{
 		return m_LiftId;

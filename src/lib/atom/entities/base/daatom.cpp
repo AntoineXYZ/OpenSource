@@ -36,6 +36,7 @@
 #include "danpc.h"
 #include "daperson.h"
 #include "dasc.h"
+#include "dasentient.h"
 #include "dasector.h"
 #include "dasolarsystem.h"
 #include "dastar.h"
@@ -682,7 +683,12 @@ void DaAtom::TickMovement(const AuElapsedTimer& last)
 			}
 		}
 	}
-	if(legacyAvatarMovement) SetVector(vector);
+	if(legacyAvatarMovement)
+	{
+		DaSentient* sentient = dynamic_cast<DaSentient*>(this);
+		if(sentient) sentient->LimitLegacyLadderMove(tmove, vector);
+		SetVector(vector);
+	}
 	bool moved = Move(tmove, msElapsed);
 	if(moved)
 	{
