@@ -432,7 +432,20 @@ AuSetProgram::AuSetProgram(QWidget *parent) : QWidget(parent)
 
 					connect(cbit, SIGNAL(StateChanged(int, int)), SLOT(BitChanged(int, int)));
 
-					slay->addWidget(cbit, iy,ix);
+					if(bit == 0 || bit == 8 || bit == 9)
+					{
+						// Keep a disabled indicator where the labelled switch used to be.
+						QCheckBox* indicator = new QCheckBox(cbit->text(), gbBits);
+						indicator->setCheckState(cbit->checkState());
+						indicator->setEnabled(false);
+						connect(cbit, &QCheckBox::stateChanged, indicator, [indicator](int state)
+						{
+							indicator->setCheckState(static_cast<Qt::CheckState>(state));
+						});
+						slay->addWidget(indicator, iy,ix);
+					}
+					else
+						slay->addWidget(cbit, iy,ix);
 
 					bit--;
 				}
@@ -441,6 +454,35 @@ AuSetProgram::AuSetProgram(QWidget *parent) : QWidget(parent)
 		slay->addWidget(lbwarn, 0,8, 4,1);
 		gbBits->setLayout(slay);
 	}
+
+	QGroupBox* gbUsefulSwitches = new QGroupBox(tr("Display and Diagnostics"), this);
+	QGridLayout* usefulSwitchesLayout = new QGridLayout;
+	const struct
+	{
+		int bit;
+		QString label;
+		QString description;
+	} usefulSwitches[] =
+	{
+		{9, tr("Show FPS"), tr("Show the in-game frames per second counter.")},
+		{8, tr("Show frame time"), tr("Show the last frame's render time in milliseconds.")},
+		{0, tr("Diagnostic logging"), tr("Write diagnostics to soh.txt in the temporary files folder; may slow the game.")},
+	};
+	int switchRow = 0;
+	for(const auto& setting : usefulSwitches)
+	{
+		// Reuse the original checkbox, including its state and BitChanged connection.
+		AuCheckBoxValue* cbit = m_Switches[setting.bit];
+		cbit->setText(setting.label);
+		cbit->setToolTip(QString());
+		QLabel* description = new QLabel(setting.description, gbUsefulSwitches);
+		description->setWordWrap(true);
+		usefulSwitchesLayout->addWidget(cbit, switchRow, 0);
+		usefulSwitchesLayout->addWidget(description, switchRow, 1);
+		switchRow++;
+	}
+	usefulSwitchesLayout->setColumnStretch(1, 1);
+	gbUsefulSwitches->setLayout(usefulSwitchesLayout);
 
 	QGridLayout* lay = new QGridLayout;
 	int row=0;
@@ -467,13 +509,16 @@ AuSetProgram::AuSetProgram(QWidget *parent) : QWidget(parent)
 	row++;
 	lay->addWidget(tempFolderLabel, row,0, 1,2);
 	lay->addWidget(m_CacheDirButton, row,2);
-	lay->addWidget(clearAllFiles, row,3);
 	row++;
 	lay->addWidget(clearLogs, row,2);
 	row++;
 	lay->addWidget(clearNetCache, row,2);
 	row++;
+	lay->addWidget(clearAllFiles, row,2);
+	row++;
 	lay->addWidget(gbBits, row,2);
+	row++;
+	lay->addWidget(gbUsefulSwitches, row,2);
 	row++;
 	lay->setColumnMinimumWidth(3, 120);
 	lay->setRowStretch(row, 2);
