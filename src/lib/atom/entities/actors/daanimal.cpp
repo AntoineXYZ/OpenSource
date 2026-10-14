@@ -3194,7 +3194,22 @@ void DaAnimal::DoAI(const AuTime& last, const AuTime& now)
 					// Once a legacy target is visible, aim at it rather than a route waypoint.
 					AuPoint toLoc = targetAtom->Location();
 					AuScRoute route;
-					if(!sc->Route(route, Location(), toLoc, this, false) || route.empty())
+					const bool foundRoute = sc->Route(route, Location(), toLoc, this, false);
+					if(foundRoute && sc->IsLegacyDebug())
+					{
+						// Replanned grid routes include the animal's current cell.
+						// Advance reached cells using feet height, retaining the exact target endpoint.
+						const AuPoint loc = Location();
+						const AuPoint upVec = Transform().ProjectVector(0, 0, 1);
+						const double cgHt = GroundHeightAboveCG();
+						const AuDoorStateHash& doorStates = sc->LockDoorStates();
+						while(!route.isEmpty() && route.first().IsLegacyCell()
+							&& route.Update(loc, cgHt, upVec, CapsuleRoomId(), QString(), IsLadderPose(), false, doorStates))
+						{
+						}
+						sc->UnlockDoorStates();
+					}
+					if(!foundRoute || route.empty())
 					{
 						// No route to the destination.
 						m_Activity = Waiting;
@@ -3203,6 +3218,9 @@ void DaAnimal::DoAI(const AuTime& last, const AuTime& now)
 					{
 						// Successful path so turn toward first waypoint.
 						AuPoint toVec = Transform().UnProject(route.FirstLoc());	// First location in my space.
+						if(sc->IsLegacyDebug() && route.first().IsLegacyCell() && IsInGravity()
+							&& !IsInGravityWell() && !IsFlying() && !IsInWater() && !IsLadderPose() && !InLadderWell())
+							toVec.z = 0;	// Walking grid points use mid-deck height, not the animal's height.
 						targetRange = toVec.Length();
 						targetDir = toVec;
 						if(targetRange != 0)
