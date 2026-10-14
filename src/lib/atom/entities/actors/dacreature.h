@@ -1307,6 +1307,9 @@ public:
 	bool SightTargetDetails(const AuPoint& eyeLoc, const AuMatrix4x4 &tModel, AuPoint& sightedLoc, unsigned int& sightedPart,
 			bool& sightedShield) const;
 
+	// Combat pursuit must not stop at weapon range through a legacy ship wall.
+	bool LegacyShipBlocksAttack(const DaAtom& target) const;
+
 	// Melee weapons are affected by strength and strength increases damage.
 	int StrengthMod() const;
 

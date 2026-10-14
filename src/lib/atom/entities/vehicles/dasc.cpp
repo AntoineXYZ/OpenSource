@@ -38,6 +38,7 @@
 #include "daperson.h"
 #include "dasector.h"
 #include "dasolarsystem.h"
+#include "dastar.h"
 #include "dateleporter.h"
 #include "davehicle.h"
 #include "daworldgasgiant.h"
@@ -12278,6 +12279,41 @@ unsigned int DaSc::IsTocker() const
 	return ms;
 }
 
+void DaSc::ApplyLegacySolarRadiation(const DaStar* parentStar)
+{
+	// DaAtom::ApplySolarRadiation, AuAtom13:180201120. Every DaStar uses
+	// its physical radius (the event horizon for either black hole type).
+	if(parentStar != Parent()) return;
+	const double sunRadius = parentStar->Radius();
+	const double distance = Location().Length();
+	if(!(distance < sunRadius)) return;
+
+	// The original rate is 100000 at 5000 feet below the surface, with
+	// squared-distance scaling and no speed, hull-size or capacitor factor.
+	// Factor the differences of squares in double precision: float radii
+	// can lose the entire 5000-foot layer around a large star or black hole.
+	const double damageDepth = 5000.0;
+	const double damageRatio = (sunRadius - distance) * (sunRadius + distance) /
+		(damageDepth * (2.0 * sunRadius - damageDepth));
+	if(!(damageRatio > 0.0)) return;
+	// Keep each two-die sum within the signed range of AuDice::Roll even
+	// when a ship is placed much deeper than the normal movement limit.
+	const int hits = int(qMin<double>(0x3fffffff, std::ceil(damageRatio * 100000.0)));
+	AuCombatResult result;
+	result.m_Damage1 = g_Au.Dice().Roll(2, hits);
+	result.m_Damage2 = g_Au.Dice().Roll(2, hits);
+
+	AuCombatAttacker attacker;
+	const DaSolarSystem* system = parentStar->FindParentSolarSystemInEnv();
+	attacker.m_Name = parentStar->Description();
+	if(system) attacker.m_Name += " in " + system->Name();
+	AuCombatWeapon weapon(WM_Internal);
+	weapon.m_CID = parentStar->IsAnyBlackHole() ? CID_Spaghettification : CID_SunBurn;
+	weapon.m_w1.m_Effect = WE_Slash;
+	weapon.m_w2.m_Effect = WE_Sonic;
+	CombatApplyDamage(attacker, weapon, AuPoint(0,0), AuPoint(0,0), result);
+}
+
 bool DaSc::LegacyDecaySheltered() const
 {
 	if(!IsOnGround() || !HasOfficers()) return false;
@@ -12476,6 +12512,13 @@ void DaSc::Tock(const AuTime& last, const AuTime& now, const AuScripts& scripts,
 		if(StartMoving()) SetModified();
 		if(last.ElapsedSecTicks(now))
 		{
+			// DaSpaceShip::Think, AuAtom13:18046cfb0, applies stellar damage
+			// before cycling power, independently of ambient unit decay.
+			if(!IsNew())
+			{
+				const DaStar* parentStar = dynamic_cast<const DaStar*>(Parent());
+				if(parentStar) ApplyLegacySolarRadiation(parentStar);
+			}
 			// DaSpaceShip::Think cycles a newly built ship only while its
 			// plant is on; initialized ships cycle even without generation.
 			if(IsPowerPlantOn() || !IsNew()) CycleCapacitor();

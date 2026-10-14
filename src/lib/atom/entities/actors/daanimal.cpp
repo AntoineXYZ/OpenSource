@@ -3171,6 +3171,10 @@ void DaAnimal::DoAI(const AuTime& last, const AuTime& now)
 		break;
 	}
 
+	// An in-range target behind a legacy wall still requires pursuit.
+	if(targetAtom && Activity() == Attacking && weapon.m_Mode != WM_Area && LegacyShipBlocksAttack(*targetAtom))
+		SetActivity(targetAtom == threatAtom ? Charging : Chasing);
+
 	// Turn to face the target (away from target when fleeing).
 	m_ThinkLock.lockForWrite();
 	m_HeadTilt = CurrentHeadTilt();
@@ -3184,9 +3188,10 @@ void DaAnimal::DoAI(const AuTime& last, const AuTime& now)
 			if(parent == targetAtom->Parent())
 			{
 				// Find a path to the target and turn onto the path.
-				if(dynamic_cast<DaSc*>(parent))
+				DaSc* sc = dynamic_cast<DaSc*>(parent);
+				if(sc && (!sc->IsLegacyDebug() || m_Activity != Attacking))
 				{
-					DaSc* sc = (DaSc*)parent;
+					// Once a legacy target is visible, aim at it rather than a route waypoint.
 					AuPoint toLoc = targetAtom->Location();
 					AuScRoute route;
 					if(!sc->Route(route, Location(), toLoc, this, false) || route.empty())
@@ -3803,7 +3808,7 @@ void DaAnimal::ExecuteDecision()
 			// Calculate a random z height from the ground up to their camera location.
 			DaAtom* env = FindEnvironmentAtom();
 			DaAtom* targetAtom = env->FindIdRecursive(targetId);
-			if(targetAtom)
+			if(targetAtom && !LegacyShipBlocksAttack(*targetAtom))
 			{
 				AuPoint targetLoc = targetDir * targetRange;
 				float gcg = targetAtom->GroundHeightAboveCG();

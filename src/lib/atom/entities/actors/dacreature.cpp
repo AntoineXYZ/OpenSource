@@ -7068,6 +7068,17 @@ void DaCreature::StoreClientConsoleSettings() const
 	m_Console->StoreClientSettings(planetId);
 }
 
+bool DaCreature::LegacyShipBlocksAttack(const DaAtom& target) const
+{
+	const AuPoint targetLoc = EnvTransform().UnProject(target.EnvTransform().Project(target.TargetLocation()));
+	AuPoint sightedLoc;
+	unsigned int sightedPart = 0;
+	bool sightedShield = false;
+	const DaSc* obstacle = dynamic_cast<const DaSc*>(DaAtom::SightTarget(sightedLoc, sightedPart, sightedShield,
+		CameraOffset(), targetLoc));
+	return obstacle && obstacle != &target && obstacle->IsLegacyDebug();
+}
+
 DaAtom* DaCreature::SightShotgunTarget(AuPoint& sightedLoc, unsigned int& sightedPart, bool& sightedShield, float shotgunRange,
 		float patternAngle) const
 {

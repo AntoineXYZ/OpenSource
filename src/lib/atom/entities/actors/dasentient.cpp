@@ -10545,8 +10545,9 @@ void DaSentient::DoAttackTarget()
 		return;
 	}
 
-	float moveWithinRange = MOVE_NEAR;
-	if(elapsed < 2000+Rank()*500)
+	const bool legacyObstructed = LegacyShipBlocksAttack(*target);
+	float moveWithinRange = legacyObstructed ? 0 : MOVE_NEAR;
+	if(!legacyObstructed && elapsed < 2000+Rank()*500)
 	{
 		// I have attacked a target within the past few seconds. Can I stay at this range?
 		// What is the range of my weapon?
@@ -10603,7 +10604,7 @@ void DaSentient::DoAttackTarget()
 			//qDebug() << "DaSentient::DoAttackTarget" << Id() << Name() << "giving up on secondary target" << m_AIOrders.count();
 		RequestOrder();	// Give up and request my next order.
 	}
-	else if(IsReadyToShootAimedWeapon())
+	else if(!legacyObstructed && IsReadyToShootAimedWeapon())
 	{
 		//if(Is(AuId(241530682)))
 			//qDebug() << "DaSentient::DoAttackTarget" << Id() << Name() << "ready to shoot aimed weapon" << m_AIOrders.count();
