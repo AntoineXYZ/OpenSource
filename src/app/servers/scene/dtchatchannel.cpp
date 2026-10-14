@@ -6486,6 +6486,8 @@ void DtChatChannel::SpawnLegacySc(quint32 designId, AuLegacyScProtocol::Reply& r
 	AuPoint minimum, maximum;
 	report.Extents(minimum, maximum);
 	const double radius = report.RoughHullRadius();
+	// PrepareLegacySpacecraftSpawn guarantees valid recovered statistics.
+	const double groundHeight = report.LegacyStats()->GroundHeightAboveCG();
 	if(!std::isfinite(radius) || radius <= 0 || minimum.IsNaN() || maximum.IsNaN())
 	{
 		m_I->UnlockAvatar();
@@ -6525,11 +6527,10 @@ void DtChatChannel::SpawnLegacySc(quint32 designId, AuLegacyScProtocol::Reply& r
 		if(terrain)
 		{
 			const AuPoint ground = terrain->GroundLoc(location);
-			// Report extents are actual hull faces, without obstruction margins.
-			// Place the hull one inch above terrain instead of suspending it at
-			// the avatar's altitude or adding several feet below its boarding deck.
-			const double clearance = -minimum.z + 1.0 / 12;
-			location = ground + spawnUp * clearance;
+			// Match the runtime's recovered deck-based clearance exactly.
+			// Mesh bounds include projecting turret domes;
+			// those remain solid but must not raise the ship above its hull deck.
+			location = ground + spawnUp * groundHeight;
 		}
 		if(!terrain && attempt >= 8)
 			location += spawnUp * (radius + 30);

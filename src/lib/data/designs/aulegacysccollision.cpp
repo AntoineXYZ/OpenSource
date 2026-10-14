@@ -22,7 +22,7 @@ constexpr double GroundTolerance = 1.0 / 12;
 constexpr double MaximumFall = 1000000;
 constexpr int MaximumCollisionTriangles = 1000000;
 constexpr double MaximumReplayDistance = 6.561679790026246;
-constexpr double MaximumBoardingStep = .75;
+constexpr double MaximumBoardingStep = 1.38; // 1.38 to account for the ground tolerance plus a bit of margin
 constexpr double CoplanarNormalTolerance = 1e-8;
 constexpr double CoplanarPlaneTolerance = 1e-5;
 

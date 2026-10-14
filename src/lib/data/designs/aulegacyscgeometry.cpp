@@ -1091,9 +1091,9 @@ bool Build(const AuLegacyScDesign& legacy, quint32 runtimeDesignId, const AuId& 
 			return false;
 		}
 		// Hull spans run with the exterior on their right. Retain the exact
-		// aperture width and add a four-foot invisible landing outside its sill
+		// aperture width and add a two-foot invisible landing outside its sill
 		// so on-foot boarding starts before the avatar reaches the hull margin.
-		const QPointF outward(direction.y() / length * 4, -direction.x() / length * 4);
+		const QPointF outward(direction.y() / length * 2, -direction.x() / length * 2);
 		const auto point = [&](const QPointF& position) {
 			return AuScPoint(legacy.AuthorToShip(AuPoint(position.x(), position.y(),
 				aperture.deck * AuLegacyShip::DeckHeight)), 0, 0, AuPoint(0, 0, 1));

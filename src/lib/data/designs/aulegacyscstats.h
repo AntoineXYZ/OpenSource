@@ -23,6 +23,14 @@ public:
 	const AuLegacyShip::Stats& Stats() const { return m_Stats; }
 	const AuLegacyShip::Performance& Performance() const { return m_Performance; }
 
+	// AuAtom13:1803f4390 grounds the lowest hull deck 1.25 feet above
+	// terrain. AnalyzeDesign:1803c63c0 centers the room/deck bounds before
+	// processing details, so projecting turret domes do not affect clearance.
+	double GroundHeightAboveCG() const
+	{
+		return (m_Stats.maximumDeck - m_Stats.minimumDeck) * AuLegacyShip::DeckHeight / 2.0 + 1.25;
+	}
+
 	void operator>>(QDataStream& out) const;
 	void operator<<(QDataStream& in);
 	bool operator==(const AuLegacyScStats& other) const;

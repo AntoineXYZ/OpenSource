@@ -3410,6 +3410,8 @@ bool AuScDesign::FindLadderToGrabAt(const AuPoint& fromLoc, const AuPoint& ladde
 
 double AuScDesign::GroundHeightAboveCG(const AuLandingGearStateHash& landingGearStates) const
 {
+	if(m_LegacyStats && m_LegacyStats->IsValid())
+		return m_LegacyStats->GroundHeightAboveCG();
 	return m_Parts->GroundHeightAboveCG(landingGearStates, LandingOrientation());
 }
 
