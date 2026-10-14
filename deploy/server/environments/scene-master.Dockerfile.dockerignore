@@ -3,3 +3,4 @@
 !*.ini
 !scene-master.Dockerfile
 !scene-master.Dockerfile.dockerignore
+!shutdown.conf
