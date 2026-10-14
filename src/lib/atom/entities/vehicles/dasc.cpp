@@ -5877,28 +5877,27 @@ void DaSc::FilterDestinationLoc(DaAtom* moveAtom, const AuPoint& oldLoc, AuPoint
 			const bool boarding = vehicle->IsGroundVehicle() && vehicle->Parent() != this && vehicle->IsOnGround();
 			nuLoc = world->ResolveDestination(oldLoc, nuLoc, offsets,
 				bodyToShip.ProjectVector(vehicle->GravityNormal()), vehicle->GroundHeightAboveCG(), false, normal, false, &doors, boarding, &contacts);
-			// Low-speed boarding keeps its sliding response. At collision speeds,
-			// preserve the incoming velocity until native momentum/damage is applied.
-			const double collisionSpeed = 15 * FeetPerMeter();
-			const double collisionSpeed2 = collisionSpeed * collisionSpeed;
-			if(vehicle->Vector().Length2() >= collisionSpeed2 || Vector().Length2() >= collisionSpeed2)
+			AuPoint up = bodyToShip.ProjectVector(vehicle->GravityNormal()); up.Unit();
+			const bool inGravity = vehicle->IsInGravity();
+			for(const auto& contact : contacts)
 			{
-				AuPoint up = bodyToShip.ProjectVector(vehicle->GravityNormal()); up.Unit();
-				for(const auto& contact : contacts)
-				{
-					AuPoint localNormal = bodyToShip.UnProjectVector(contact.normal); localNormal.Unit();
-					// Gravity-supported floor contact is not a crash in the 2016 mover.
-					if(vehicle->Parent() == this && Gravity(0) != 0 && contact.normal.Dot(up) >= .55) continue;
-					if(vehicle->Vector().Dot(localNormal) < 0)
-						vehicle->MovementBlocked(const_cast<DaSc*>(this), contact.location, localNormal, false);
-				}
-			}
-			if(!normal.IsZero())
-			{
-				const AuPoint localNormal = bodyToShip.UnProjectVector(normal);
+				AuPoint localNormal = bodyToShip.UnProjectVector(contact.normal); localNormal.Unit();
 				const AuPoint velocity = vehicle->Vector();
 				const double inward = velocity.Dot(localNormal);
-				if(inward < 0) vehicle->SetVector(velocity - localNormal * inward);
+				if(inward >= 0) continue;
+				// Retain floor/boarding support without bouncing under gravity.
+				if(inGravity && contact.normal.Dot(up) >= .55)
+					vehicle->SetVector(velocity - localNormal * inward);
+				else
+				{
+					// DaVehicle::MovementBlocked:180408f00 delegates nonzero
+					// normals to DaAtom::MovementBlocked:180210f90 at any speed.
+					// Its 15 m/s threshold gates damage, after momentum/reflection.
+					vehicle->MovementBlocked(const_cast<DaSc*>(this), contact.location, localNormal, false);
+					const AuPoint reflected = vehicle->Vector();
+					const double residualInward = reflected.Dot(localNormal);
+					if(residualInward < 0) vehicle->SetVector(reflected - localNormal * residualInward);
+				}
 			}
 		}
 		return;

@@ -659,16 +659,17 @@ void DaAtom::TickMovement(const AuElapsedTimer& last)
 		tmove = vector * rsec;			// Calculate move vector in this time period
 
 	AuId oldParentId = ParentId();		// Watch for parent change resulting from the move, possible even if vec = 0.
-	// Legacy avatar contact can resolve a slide and change velocity while Move
+	// Legacy body contact can resolve a slide and change velocity while Move
 	// still succeeds. Publish this tick's velocity before contact, then retain
 	// its response rather than restoring the pre-contact local vector below.
-	bool legacyAvatarMovement = false;
-	if(dynamic_cast<const DaCreature*>(this) && !IsEthereal() && !AgentEntity())
+	bool legacyBodyMovement = false;
+	if((dynamic_cast<const DaCreature*>(this) || dynamic_cast<const DaVehicle*>(this))
+		&& !IsEthereal() && !AgentEntity())
 	{
 		DaAtom* movementParent = Parent();
 		const DaSc* ship = dynamic_cast<const DaSc*>(movementParent);
-		legacyAvatarMovement = ship && ship->IsLegacyDebug();
-		if(!legacyAvatarMovement && movementParent)
+		legacyBodyMovement = ship && ship->IsLegacyDebug();
+		if(!legacyBodyMovement && movementParent)
 		{
 			DaAtomList peers;
 			movementParent->ListNormalSubatoms(peers);
@@ -677,13 +678,13 @@ void DaAtom::TickMovement(const AuElapsedTimer& last)
 				ship = dynamic_cast<const DaSc*>(peer);
 				if(ship && ship->IsLegacyDebug() && ship->IsObstacle(this))
 				{
-					legacyAvatarMovement = true;
+					legacyBodyMovement = true;
 					break;
 				}
 			}
 		}
 	}
-	if(legacyAvatarMovement)
+	if(legacyBodyMovement)
 	{
 		DaSentient* sentient = dynamic_cast<DaSentient*>(this);
 		if(sentient) sentient->LimitLegacyLadderMove(tmove, vector);
@@ -694,7 +695,7 @@ void DaAtom::TickMovement(const AuElapsedTimer& last)
 	{
 		// Retain legacy contact response and parent-change velocity, e.g.
 		// exiting a moving spacecraft.
-		if(legacyAvatarMovement || oldParentId != ParentId())
+		if(legacyBodyMovement || oldParentId != ParentId())
 			vector = Vector();	// Get my nu movement vector.
 	}
 	else
@@ -4546,10 +4547,17 @@ void DaAtom::Collide(const AuPoint& myChange, const AuPoint& myHitLoc, DaAtom* h
 {
 	const auto legacyDamage = [](DaAtom* victim, const DaAtom* collider, double kineticEnergy,
 		const AuPoint& location, AuCombatResult& result) {
-		const DaSc* ship = dynamic_cast<const DaSc*>(victim);
-		if(!ship || !ship->IsLegacyDebug()) return false;
+		const DaSc* victimShip = dynamic_cast<const DaSc*>(victim);
+		const DaSc* colliderShip = dynamic_cast<const DaSc*>(collider);
+		const bool legacyShipVictim = victimShip && victimShip->IsLegacyDebug();
+		const bool legacyVehicleVictim = dynamic_cast<const DaVehicle*>(victim)
+			&& colliderShip && colliderShip->IsLegacyDebug();
+		if(!legacyShipVictim && !legacyVehicleVictim) return false;
 		// DaAtom::Collide, AuAtom13:180203da0: damage is floor(K / 50000),
 		// capped at 0x3fffffff, applied directly with no armor/hit roll.
+		// Both damage locations are the contact point. Distinct locations let
+		// DaVehicle::CombatApplyDamage add weapon knockback and sync it to the
+		// driver, which can overwrite the reflection with pre-impact velocity.
 		if(kineticEnergy > 50000.)
 		{
 			AuCombatAttacker attacker(tr("collision with %1").arg(collider->Name()));
