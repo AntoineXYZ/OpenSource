@@ -285,8 +285,14 @@ void AuLegacyScModel::Prepare()
 						return false;
 					}
 				}
+				const bool opaque = FullyOpaque(material.image);
+				const bool unlitOpaque = material.unlit.isNull() || FullyOpaque(material.unlit);
+				// The original atlas disabled mipmaps even for opaque floor tiles.
+				// Filter those tiles independently, retaining cutout alpha coverage.
+				material.mipMap = !binding.cutout || opaque;
+				material.unlitMipMap = !binding.cutout || unlitOpaque;
 				const bool occluderMaterial = binding.tint.w() == 1 && binding.material != 26 && binding.material != 28
-					&& FullyOpaque(material.image) && (material.unlit.isNull() || FullyOpaque(material.unlit));
+					&& opaque && unlitOpaque;
 				for(auto states = triangles.cbegin(); states != triangles.cend(); ++states)
 				{
 					for(auto group = states.value().at(index).cbegin(); group != states.value().at(index).cend(); ++group)
@@ -365,10 +371,24 @@ bool AuLegacyScModel::Upload(AuGLEffects& re, QElapsedTimer& budget)
 	if(!m_Context || m_Context.data() != QOpenGLContext::currentContext()) return false;
 	if(!budget.isValid()) budget.start();
 	if(budget.nsecsElapsed() >= 4000000) return false;
-	const auto texture = [&](const QString& key, const QImage& image, bool cutout, bool effect) -> GLuint {
-		GLuint result = re.UseTexture(STATIC_TEXTURE_ID, key);
-		if(!result) result = re.CreateTextureFromBitmap(STATIC_TEXTURE_ID, key, image, GL_LINEAR, GL_LINEAR,
-			!cutout && !effect, cutout || effect ? 1 : 0);
+	GLfloat anisotropy = 1;
+	if(m_Context->hasExtension(QByteArrayLiteral("GL_EXT_texture_filter_anisotropic"))
+		|| m_Context->hasExtension(QByteArrayLiteral("GL_ARB_texture_filter_anisotropic")))
+	{
+		re.glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &anisotropy);
+		anisotropy = qMin(16.f, anisotropy);
+	}
+	const auto texture = [&](const QString& key, const QImage& image, bool mipMap, bool clampEdges) -> GLuint {
+		const QString textureKey = mipMap ? key + QStringLiteral("/mipmapped") : key;
+		GLuint result = re.UseTexture(STATIC_TEXTURE_ID, textureKey);
+		if(result) return result;
+		result = re.CreateTextureFromBitmap(STATIC_TEXTURE_ID, textureKey, image, GL_LINEAR, GL_LINEAR,
+			mipMap, clampEdges ? 1 : 0);
+		if(result && mipMap && anisotropy > 1)
+		{
+			re.glBindTexture(GL_TEXTURE_2D, result);
+			re.glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, anisotropy);
+		}
 		return result;
 	};
 	bool failed = false;
@@ -376,9 +396,11 @@ bool AuLegacyScModel::Upload(AuGLEffects& re, QElapsedTimer& budget)
 	{
 		Material& material = m_Materials[m_NextMaterial++];
 		if(material.image.isNull()) continue; // Unused material map entry.
-		material.texture = texture(AuLegacyScGeometry::OriginalTextureKey(material.binding), material.image, material.binding.cutout, false);
+		material.texture = texture(AuLegacyScGeometry::OriginalTextureKey(material.binding), material.image,
+			material.mipMap, material.binding.cutout);
 		material.unlitTexture = material.unlit.isNull() ? material.texture
-			: texture(AuLegacyScGeometry::OriginalTextureKey(material.binding, false), material.unlit, material.binding.cutout, false);
+			: texture(AuLegacyScGeometry::OriginalTextureKey(material.binding, false), material.unlit,
+				material.unlitMipMap, material.binding.cutout);
 		failed = !material.texture || !material.unlitTexture;
 		material.image = QImage();
 		material.unlit = QImage();

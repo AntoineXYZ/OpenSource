@@ -64,6 +64,7 @@ private:
 		QImage image, unlit;
 		GLuint texture = 0, unlitTexture = 0;
 		bool transparent = false;
+		bool mipMap = false, unlitMipMap = false;
 	};
 	struct PreparedDraw
 	{

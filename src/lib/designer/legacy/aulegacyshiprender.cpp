@@ -1427,14 +1427,22 @@ public:
 				}
 			}
 		}
-		// AuAtom13.dll:1803dcb50 loads the procedural atlases with GL_LINEAR
-		// and no mipmaps. Averaging alpha changes their cutout coverage.
+		// AuAtom13.dll:1803dcb50 used GL_LINEAR without mipmaps for the atlas.
+		// Opaque tiles can be mipmapped separately to prevent distant moire;
+		// keep the original filtering when averaging alpha would change cutouts.
 		const bool studio = IsStudioSurface(batch);
-		QOpenGLTexture* texture = new QOpenGLTexture(tile, studio
-			? QOpenGLTexture::DontGenerateMipMaps : QOpenGLTexture::GenerateMipMaps);
+		const bool mipMap = !studio || !transparentTextures.contains(key);
+		QOpenGLTexture* texture = new QOpenGLTexture(tile, mipMap
+			? QOpenGLTexture::GenerateMipMaps : QOpenGLTexture::DontGenerateMipMaps);
 		texture->setWrapMode(studio ? QOpenGLTexture::ClampToEdge : QOpenGLTexture::Repeat);
-		texture->setMinificationFilter(studio ? QOpenGLTexture::Linear : QOpenGLTexture::LinearMipMapLinear);
+		texture->setMinificationFilter(mipMap ? QOpenGLTexture::LinearMipMapLinear : QOpenGLTexture::Linear);
 		texture->setMagnificationFilter(QOpenGLTexture::Linear);
+		if(mipMap && QOpenGLTexture::hasFeature(QOpenGLTexture::AnisotropicFiltering))
+		{
+			GLfloat anisotropy = 1;
+			QOpenGLContext::currentContext()->functions()->glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &anisotropy);
+			texture->setMaximumAnisotropy(qMin(16.f, anisotropy));
+		}
 		textures.insert(key, texture);
 		return remember(texture);
 	}
@@ -2424,7 +2432,14 @@ void main()
 	// Long walls and scrolling surfaces repeat only on the required axes.
 	vec2 tileUV = mix(clamp(v_uv, vec2(0.0), vec2(1.0)), fract(v_uv), u_tileRepeat);
 	vec2 uv = u_atlas ? mix(u_tileInset, vec2(1.0) - u_tileInset, tileUV) : v_uv;
+#ifdef GL_ES
 	vec4 texel = SAMPLE(u_texture, uv) * u_tint;
+#else
+	// Use continuous UV gradients for mip selection. Clamping/wrapping a tile
+	// must not select sharper or blurrier mip levels along its boundaries.
+	vec2 uvScale = u_atlas ? vec2(1.0) - 2.0 * u_tileInset : vec2(1.0);
+	vec4 texel = textureGrad(u_texture, uv, dFdx(v_uv) * uvScale, dFdy(v_uv) * uvScale) * u_tint;
+#endif
 	if (u_studioSide != 0)
 	{
 		// Original procedural surfaces use alpha testing, not blending:
