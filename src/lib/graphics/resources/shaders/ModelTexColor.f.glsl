@@ -8,6 +8,7 @@
 
 uniform sampler2D						texPaletteHigh;			// Palette of textures for various combinations of materials.
 uniform sampler2D						texPaletteLow;			// Palette of textures for various combinations of materials.
+uniform bool directTexture;
 
 in vec4									vertColor;				// Incoming fragment color interpolated from the vertex color.
 in vec2									vertTexCoord;			// Incoming texture coordinate (xy)
@@ -17,6 +18,17 @@ out vec4								fragColor;				// Outgoing fragment color.
 
 void main()
 {
+	if(directTexture)
+	{
+		vec4 surface = texture(texPaletteLow, vertTexCoord);
+		// Original BuildingsDayNear shader cuts out ordinary window pixels.
+		if(surface.a < .91)
+			discard;
+		fragColor = surface * vertColor;
+		fragColor.a = 1;
+		return;
+	}
+
 	// Palette is 16 rows x 8 columns. Total tiles is 16*8 = 128
 	vec2 tile;
 	tile.x = floor(texTileIndex/16);							// Column index 0..4

@@ -253,6 +253,7 @@ public:
 		Storing,		// Database loaded ok and is currently storing.
 		OpenError,		// Database did not open ok.
 		DriverError,	// Database driver did not init ok.
+		GenerationError,	// Persisted generation or packaged catalogue is incompatible.
 	};
 
 public:
@@ -338,6 +339,7 @@ signals:
 	void EmpireRecordDeleted(quint32 idEmpire);
 	void EmpireRecordLoaded(quint32 idEmpire);
 	void FinishedInit();
+	void GenerationInitialized();
 	void HandoffElsewhere(AuId person, AuId dest, quint8 rideAlso, bool limboRescue, QByteArray atomData, AuId returnOnFail);
 	void OfficerKilled(const AuId);
 	void NewSectorStored(AuId idSector);
@@ -356,6 +358,7 @@ protected:
 	virtual void run();
 
 private:
+	bool InitGameGeneration(QSqlDatabase& db);
 	void InitEmpireCities(DgData& gd, QSqlDatabase& db);
 	void InitNextIds(QSqlDatabase& db);
 	void LoadAssignedAtoms();

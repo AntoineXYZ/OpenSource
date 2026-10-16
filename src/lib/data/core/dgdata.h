@@ -83,6 +83,9 @@ public:
 	// Returns 2 if the GD file could not be opened.
 	// Returns 3 if the GD file data is incorrect.
 	int LoadBasicGameData();
+	// Called after clearing scene views/atoms when changing server generation.
+	// Login identity, avatar selection and account credentials are retained.
+	void ResetGenerationCaches();
 
 	// Saves basic game data to a local cache file for use by stand-alone spacecraft designer.
 	void SaveBasicGameData();

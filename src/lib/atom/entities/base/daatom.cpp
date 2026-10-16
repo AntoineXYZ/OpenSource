@@ -25,6 +25,7 @@
 #include "daasteroid.h"
 #include "daatomlist.h"
 #include "dabd.h"
+#include "dalegacycity.h"
 #include "dacapsule.h"
 #include "dacreature.h"
 #include "dadesigner.h"
@@ -1578,6 +1579,16 @@ void DaAtom::FindBdRecursive(DaAtomList& bds) const
 	subs.FindBdRecursive(bds);
 }
 
+void DaAtom::FindLegacyCitiesRecursive(DaAtomList& cities) const
+{
+	if(!g_Au.IsLegacyGeneration()) return;
+	if(AtomType() == ATOM_LegacyCity && IsNormal())
+		cities.append(const_cast<DaAtom*>(this));
+	DaAtomList children;
+	ListNormalSubatoms(children);
+	for(const DaAtom* child : children) child->FindLegacyCitiesRecursive(cities);
+}
+
 void DaAtom::FindBdRecursive(DaAtomList& bds, quint32 empireId) const
 {
 	DaAtomList subs;
@@ -2283,6 +2294,15 @@ DaAtom::COLLISION_TYPE DaAtom::CheckCollision(const AuPoint &foldloc, const AuPo
 			if(shipDestination.Distance2(requested) > 1e-18)
 				destination = shipTransform.Project(shipDestination);
 		}
+		if(g_Au.IsLegacyGeneration())
+			if(const auto* world = dynamic_cast<const DaWorldLL*>(pParent))
+				for(DaAtom* peer : peers)
+					if(const auto* city = dynamic_cast<const DaLegacyCity*>(peer))
+					{
+						AuBox body(fMoveExt);
+						if(creature) creature->LegacyCollisionExtents(body);
+						city->FilterDestination(*this, foldloc, destination, body);
+					}
 		*resolvedDestination = destination;
 	}
 	AuMatrix4x4 tmove;
@@ -3733,7 +3753,7 @@ AuQueryEnvironment* DaAtom::CreateEnvironmentQuery() const
 		return qe;	// What world is this? D:
 
 	// Check to see if I am on the site of a bd.
-	if(!qe->IsInBd() && !qe->IsAtBd() && !qe->IsAtGeo())
+	if(!g_Au.IsLegacyGeneration() && !qe->IsInBd() && !qe->IsAtBd() && !qe->IsAtGeo())
 	{
 		// I am not subordinate to any capsule.
 		// I am not already known to be on a site or geo road, which could only be true if I was subordinate to a capsule there.
@@ -3948,7 +3968,15 @@ AuQueryEnvironment* DaAtom::CreateEnvironmentQuery() const
 	}
 
 	// Final terrain normal.
-	if(!qe->IsInCapsule() && !qe->OnStairs())
+	if(g_Au.IsLegacyGeneration() && !qe->IsInsideCapsule() && !qe->IsInVehicle())
+	{
+		DaAtomList cities;
+		llworld->ListNormalSubatoms(cities);
+		for(DaAtom* atom : cities)
+			if(const auto* city = dynamic_cast<const DaLegacyCity*>(atom))
+				city->QueryLegacyEnvironment(*this, tModel.Project(AuPoint()), *qe);
+	}
+	if(!qe->IsInCapsule() && !qe->OnStairs() && !(qe->m_Environment & EB_LegacyCityFloor))
 	{
 		// Terrain normal is straight up in gravity wells, when airborne, and on level floors of buildings.
 		if(qe->IsInGravityWell() || qe->IsOnBuildingFloor())
@@ -10392,6 +10420,12 @@ DaAtom* DaAtom::Unpack(const QByteArray& ba)
 	if(!atom)
 		return 0;
 	in >> *atom;
+	if(in.status() != QDataStream::Ok || !in.atEnd())
+	{
+		qWarning() << "Rejected incomplete or incompatible packed atom" << atomType;
+		delete atom;
+		return nullptr;
+	}
 	return atom;
 }
 
@@ -10446,6 +10480,8 @@ DaAtom* DaAtom::Create(ATOM_TYPE atomType)
 		return new DaUniverse();
 	case ATOM_Vehicle:
 		return new DaVehicle();
+	case ATOM_LegacyCity:
+		return g_Au.IsLegacyGeneration() ? new DaLegacyCity() : nullptr;
 
 	case ATOM_Invalid:
 	case ATOM_Atom:
@@ -10523,6 +10559,7 @@ QString DaAtom::AtomTypeName(ATOM_TYPE atomType)
 		QObject::tr("World, Ring"),
 		QObject::tr("World, Ringworld Arc Section"),
 		QObject::tr("World, Sphere"),
+		QObject::tr("Legacy City"),
 	};
 	return names[atomType];
 }

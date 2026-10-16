@@ -38,6 +38,7 @@ class AuScPart;
 class AuScParts;
 class AuSound;
 struct AuScDesignCacheLoad;
+namespace AuLegacyCityProtocol { struct Request; }
 class AuSpecies;
 class AuWarCriteria;
 class DgData;
@@ -101,6 +102,7 @@ private:
 	QUdpSocket 							m_SceneUdpSocket;		// Scene outgoing udp datagram socket.
 	quint16								m_UdpSequence;			// Helps the server discard bad packets.
 	quint32 m_LegacyScNextToken = 0;
+	quint32 m_LegacyCityNextToken = 0;
 	QHash<quint64, std::shared_ptr<AuScDesignCacheLoad>> m_ScDesignCacheLoads;
 	bool								m_wasConnected;			// true if we are ever connected to the server
 
@@ -562,6 +564,7 @@ public:
 	quint32 RequestLegacyScCatalog(quint32 afterId = 0, quint32 token = 0);
 	quint32 UploadLegacyScDesign(const QString& sourceName, const QString& name, const QByteArray& source);
 	quint32 SpawnLegacyScDesign(quint32 designId);
+	quint32 RequestLegacyCityTool(AuLegacyCityProtocol::Request request);
 
 	void EmpireChangeEmperor(quint32 empireId, const AuId& avatarId, const QString& avatarName);
 
@@ -1798,6 +1801,7 @@ signals:
 
 	void ScLibraryUpdated();
 	void LegacyScReplyReceived(QByteArray payload);
+	void LegacyCityReplyReceived(QByteArray payload);
 	void LegacyScTransportReset();
 
 	void ServerConnected();

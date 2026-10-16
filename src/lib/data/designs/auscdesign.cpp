@@ -2261,7 +2261,11 @@ double AuScDesign::FTLDriveVolumeCuFt(quint16 which) const
 
 void AuScDesign::ReportDesign(AuScReport& report) const
 {
-	report.SetLegacyDebug(false);
+	bool legacy = m_LegacyStats && m_LegacyStats->IsValid();
+	if(!legacy)
+		for(const AuScPart* part : *m_Parts)
+			if(part->GroupName().startsWith(QStringLiteral("legacy/debug/static/v"))) { legacy = true; break; }
+	report.SetLegacyDebug(legacy);
 	report.SetLegacyStats(QSharedPointer<const AuLegacyScStats>());
 	// Design
 	{

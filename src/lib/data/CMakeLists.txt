@@ -1,5 +1,5 @@
 au_add_static_library(AuData "${CMAKE_CURRENT_SOURCE_DIR}" DEFINE AUDATA)
-target_link_libraries(AuData PUBLIC AuGlobal AuUtil AuMath AuGL)
+target_link_libraries(AuData PUBLIC AuGlobal AuUtil AuMath AuGL ZLIB::ZLIB)
 
 # Procedural legacy geometry is shared by the offline designer and server intake.
 # Keep its source files in place while compiling them in the data library.

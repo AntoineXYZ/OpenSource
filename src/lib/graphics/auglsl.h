@@ -10642,6 +10642,8 @@ private:
 	GLint								m_p;					// Location of 'p' uniform variable.
 	GLint								m_texPaletteHigh;		// Location of 'texPaletteHigh' uniform variable.
 	GLint								m_texPaletteLow;		// Location of 'texPaletteLow' uniform variable.
+	GLint								m_directTexture;		// Use unmodified UVs for a single texture.
+	GLint								m_directTextureGlobe;	// Globe center in eye space, w enables the horizon test.
 
 	//--------------------
 	// Lighting parameters
@@ -10683,6 +10685,8 @@ public:
 		m_ProjectionValid = false;
 		m_texPaletteHigh = -1;
 		m_texPaletteLow = -1;
+		m_directTexture = -1;
+		m_directTextureGlobe = -1;
 
 		m_LightsValid = false;
 		m_SunsValid = false;
@@ -10841,9 +10845,24 @@ public:
 		m_GLf->glUniform1f(m_sunRadius[sun], diskRadius);
 	}
 
+	inline void SetDirectTextureGlobe(const AuPoint& position, bool enabled) const
+	{
+		m_GLf->glUniform4f(m_directTextureGlobe, position.x, position.y, position.z, enabled ? 1.f : 0.f);
+	}
+
+	// Uses a single texture with its original UVs, retaining color and glow.
+	inline void SetTexture(GLuint texture) const
+	{
+		m_GLf->glUniform1i(m_directTexture, 1);
+		m_GLf->glUniform1i(m_texPaletteLow, 0);
+		m_GLf->glActiveTexture(GL_TEXTURE0);
+		m_GLf->glBindTexture(GL_TEXTURE_2D, texture);
+	}
+
 	// Sets the high and low resolution texture palettes.
 	inline void SetTexture(GLuint texPaletteHigh, GLuint texPaletteLow) const
 	{
+		m_GLf->glUniform1i(m_directTexture, 0);
 		m_GLf->glUniform1i(m_texPaletteHigh, 1);						// Configure uniform 'texPaletteHigh' for texture unit 1.
 		m_GLf->glActiveTexture(GL_TEXTURE1);							// Select texture unit 1 as active.
 		m_GLf->glBindTexture(GL_TEXTURE_2D, texPaletteHigh);			// Bind the texture to the current texture unit.

@@ -7,6 +7,7 @@
 #include "auagentdialog.h"
 //
 #include "auagentdesign.h"
+#include "auagentlegacycity.h"
 #include "auagentempire.h"
 #include "auagentencounters.h"
 #include "auagentenvironment.h"
@@ -21,6 +22,7 @@
 #include <QIcon>
 #include <QKeyEvent>
 #include <QStackedLayout>
+#include <QScrollArea>
 
 AuAgentDialog::AuAgentDialog(QWidget* parent) : AuDialog(parent)
 {
@@ -122,6 +124,15 @@ AuAgentDialog::AuAgentDialog(QWidget* parent) : AuDialog(parent)
 				"</html>"));
 
 		connect(m_PagePlayers, SIGNAL(AvatarSelected(AuId, QString)), m_PageTeleport, SLOT(AvatarSelected(AuId, QString)));
+
+		if(isProgrammer)
+		{
+			auto* cityTools = new QScrollArea(this);
+			cityTools->setWidgetResizable(true);
+			cityTools->setWidget(new AuAgentLegacyCity(cityTools));
+			m_Pages->insertWidget(m_Pages->count(), cityTools);
+			m_Tabs->AddTab(QIcon(":data/bDesignStudio.png"), tr("Legacy cities"));
+		}
 
 		// Empire
 		m_PageEmpire = new AuAgentEmpire(this);

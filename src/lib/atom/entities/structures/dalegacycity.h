@@ -1,0 +1,86 @@
+#ifndef DaLegacyCity_H
+#define DaLegacyCity_H
+
+#include "daatom.h"
+#include "aulegacycitystate.h"
+#include "aulegacybuildingpaths.h"
+#include <QScopedPointer>
+
+class AuCityReportHistory;
+
+// City-owned legacy developments have no DaBd identity or modern economics.
+// Construction and simulation will be added after the persistence foundation.
+class AUATOM_DLL DaLegacyCity : public DaAtom
+{
+public:
+	DaLegacyCity();
+	~DaLegacyCity() override;
+	DaAtom* Clone() const override;
+	ATOM_TYPE AtomType() const override { return ATOM_LegacyCity; }
+	bool IsEthereal() const override { return false; }
+	bool CanSetInMotion() const override { return false; }
+	// Surface rendering dispatches only atmosphere members. Static cities still
+	// need an environment query to establish that membership on globes and rings.
+	bool DoesQueryEnvironment() const override { return true; }
+	bool IsVisibleNearWorld() const override { return true; }
+	bool IsInScene(const DaPerson* sceneAtom, const AuPoint& cameraEnvironmentLocation) const override;
+	bool IsTicker() const override { return false; }
+	unsigned int IsTocker() const override { return 0; }
+	QString Name() const override;
+	void SetName(const QString& name) override;
+	quint32 EmpireId() const override;
+	AuLegacyCity::State Snapshot() const;
+	// Newly authored shared display envelope; no 2016 database binary import.
+	bool ReportHistory(AuCityReportHistory& result) const;
+	static bool ReadReportHistory(const QByteArray& bytes, AuCityReportHistory& result);
+	bool SetState(const AuLegacyCity::State& state, QString& error);
+	void operator>>(QDataStream& out) const override;
+	void operator<<(QDataStream& in) override;
+	bool Refresh(DaAtom* counterpart, AuAtomRenderInfo* ari) override;
+	void TxUpdate(QDataStream& stream, const AuTime& lastUpdate,
+		const AuElapsedTimer& lastTx, const DaPerson& sceneAtom) override;
+	void RxUpdate(QDataStream& stream, bool firstUpdate) override;
+	void Insert(QSqlDatabase& db) const override;
+	void Update(QSqlDatabase& db) const override;
+	static bool LoadSubatoms(AuEther& ether, QSqlDatabase& db, const AuId& world,
+		QString* error = nullptr);
+	static bool RegisterPublicDesigns(QSqlDatabase& db, QString& error);
+	static bool ValidateStateData(const QByteArray& bytes, QString& error);
+	bool RoughExtents(AuBox& extents) const override;
+	bool IsSightTarget(const DaAtom* observer) const override;
+	DaAtom* SightTarget(const DaAtom* observer, const AuPoint& eyeLocation,
+		const AuMatrix4x4& model, DaAtom* best, AuPoint& sightedLocation,
+		unsigned int& sightedPart, bool& sightedShield, AuPoint* surfaceNormal) const override;
+	bool IsPathBlocked(const AuPoint& fromWorld, const AuPoint& toWorld) const;
+	bool IsPathBlocked(const AuPoint& fromWorld, const AuPoint& toWorld,
+		AuPoint& hitLocation, AuPoint& hitNormal, const DaAtom* actor) override;
+	bool FilterDestination(const DaAtom& actor, const AuPoint& fromWorld,
+		AuPoint& toWorld, const AuBox& body) const;
+	// Original square site and its ten-meter terrain blend margin. Both height
+	// and flora queries use this path, independently of rendered room floors.
+	double AdjustSiteTerrain(const DaWorldLL& world, double altitudeMSL, const AuGlobeLL& ll,
+		int& levelSites, bool& hideRocks, int& hideGrass, bool& hideShrubs,
+		bool& hideTrees, WORLDTEX_TYPE& pavementType) const;
+	void QueryLegacyEnvironment(const DaAtom& actor, const AuPoint& locationWorld,
+		AuQueryEnvironment& result) const;
+	// Route positions are returned in the parent world's frame; source cell and
+	// opening identities remain in the development's original graph.
+	bool Route(quint32 developmentId, const AuPoint& fromWorld, const AuPoint& toWorld,
+		QVector<AuLegacyBd::Paths::RoutePoint>& points, bool useGroundLevelDoors = true) const;
+	void DeleteDeviceObjects(AuAtomRenderInfo& ari) override;
+	void RenderEnvironmentObject(const AuMatrix4x4& projection, AuAtomRenderInfo& ari,
+		AuModelMatrixHash& matrices, const DaPerson* sceneAtom, AuRenderLastMap& last,
+		RENDERPASS pass, DaAtomList& sc, DaAtomList& scFog, DaAtomList& scGlobe,
+		DaAtomList& scGlobeFog, DaAtomList& scRing, DaAtomList& scRingFog) override;
+private:
+	DaLegacyCity(const DaLegacyCity& city);
+	mutable QReadWriteLock m_CityLock;
+	AuLegacyCity::State m_City;
+	quint64 m_CityRevision = 1;
+	struct Runtime;
+	mutable QScopedPointer<Runtime> m_Runtime;
+	bool ApplyPayload(const QByteArray& bytes, QString& error);
+	void UpdateSiteTerrain(AuAtomRenderInfo& ari, bool removed = false);
+	void Store(QSqlDatabase& db, bool insert) const;
+};
+#endif

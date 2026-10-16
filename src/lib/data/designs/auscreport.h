@@ -154,7 +154,8 @@ public:	// Methods
 		return m_LegacyDebug.loadAcquire() != 0;
 	}
 
-	// Set only by the server's authorized legacy debug spawn path.
+	// Retained Legacy runtime identity. Online spawning also requires the server
+	// generation and its authorized intake path; this flag is not authorization.
 	inline void SetLegacyDebug(bool legacyDebug)
 	{
 		m_LegacyDebug.storeRelease(legacyDebug ? 1 : 0);

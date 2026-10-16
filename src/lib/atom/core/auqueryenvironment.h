@@ -28,7 +28,9 @@ enum ENV_BITS
 	EB_GravityWell		= 0x00000100,	// atom is in gravity well
 	EB_InWater			= 0x00000200,	// atom is in water and wet, not true inside spacecraft, vehicle, or undersea city.
 	EB_UNUSED1			= 0x00000400,
+	EB_LegacyCity		= EB_UNUSED1,
 	EB_UNUSED2			= 0x00000800,
+	EB_LegacyCityFloor	= EB_UNUSED2,
 	EB_OnWater			= 0x00001000,	// On water surface
 	EB_Design			= 0x00002000,	// inside a design studio
 	EB_OnVehicle		= 0x00004000,	// on an open vehicle
@@ -55,7 +57,11 @@ class AUATOM_DLL AuQueryEnvironment
 {
 friend class DaAtom;
 friend class DaDesigner;
+friend class DaLegacyCity;
 private:
+	AuId m_LegacyCityId;
+	quint32 m_LegacyDevelopmentId = 0;
+	quint8 m_LegacyRoomType = 0;
 	ATMTYPE								m_AtmType;				// Atmosphere type, only valid when IsInAtmosphere.
 	AuId								m_BdCityId;				// Id of DaBd's city capitol DaBd if InBd or AtBd.
 	AuId								m_BdId;					// Id of DaBd if InBd or AtBd.
@@ -102,6 +108,9 @@ public:
 		m_AtmType = c.m_AtmType;
 		m_BdCityId = c.m_BdCityId;
 		m_BdId = c.m_BdId;
+		m_LegacyCityId = c.m_LegacyCityId;
+		m_LegacyDevelopmentId = c.m_LegacyDevelopmentId;
+		m_LegacyRoomType = c.m_LegacyRoomType;
 		m_CapRoomId = c.m_CapRoomId;
 		m_CapRoomName = c.m_CapRoomName;
 		m_CapRoomType = c.m_CapRoomType;
@@ -133,6 +142,9 @@ public:
 		m_AtmType = c.m_AtmType;
 		m_BdCityId = c.m_BdCityId;
 		m_BdId = c.m_BdId;
+		m_LegacyCityId = c.m_LegacyCityId;
+		m_LegacyDevelopmentId = c.m_LegacyDevelopmentId;
+		m_LegacyRoomType = c.m_LegacyRoomType;
 		m_CapRoomId = c.m_CapRoomId;
 		m_CapRoomName = c.m_CapRoomName;
 		m_CapRoomType = c.m_CapRoomType;
@@ -165,6 +177,9 @@ public:
 		m_AtmType = ATMTYPE_Standard;
 		m_BdCityId = AuId(0);
 		m_BdId = AuId(0);
+		m_LegacyCityId = AuId(0);
+		m_LegacyDevelopmentId = 0;
+		m_LegacyRoomType = 0;
 		m_CapRoomId = 0;
 		m_CapRoomName = "";
 		m_CapRoomType = ROOM_None;
@@ -196,6 +211,11 @@ public:
 	{
 		return m_fAltitudeMSL;
 	}
+
+	bool IsInLegacyCity() const { return m_Environment & EB_LegacyCity; }
+	const AuId& LegacyCityId() const { return m_LegacyCityId; }
+	quint32 LegacyDevelopmentId() const { return m_LegacyDevelopmentId; }
+	quint8 LegacyRoomType() const { return m_LegacyRoomType; }
 
 	inline ATMTYPE AtmosphereType() const
 	{

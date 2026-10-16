@@ -6,6 +6,7 @@
 
 #include "auapp.h"
 #include "aulegacyscprotocol.h"
+#include "aulegacycityprotocol.h"
 //
 #include "auatommanager.h"
 #include "auclientglobal.h"
@@ -521,6 +522,23 @@ void AuApp::StartSceneClientThread()
 	{
 		connect(m_tSceneChannel, SIGNAL(ClientUnitEmpireReceived(quint32)), pFrame, SLOT(ClientUnitEmpireReceived(quint32)));
 		connect(m_tSceneChannel, SIGNAL(Connected()), SLOT(ConnectionEstablished()));
+		const QPointer<DtClient> generationClient(m_tSceneChannel);
+		connect(m_tSceneChannel, &DtClient::GenerationChanging, this, [this, generationClient]() {
+			if(!generationClient || !generationClient->Alive()) return;
+			m_Model->ConnectionEstablished();
+			if(Frame()->View()) Frame()->View()->ResetGameGeneration();
+			m_ScDesignCacheLoads.clear();
+			m_EmpiresRequestedLock.lock();
+			m_EmpiresRequested.clear();
+			m_EmpiresRequestedLock.unlock();
+			emit LegacyScTransportReset();
+			generationClient->AcknowledgeGenerationViewsReset();
+		}, Qt::QueuedConnection);
+		connect(m_tSceneChannel, &DtClient::GenerationRejected, this, [this, generationClient](const QString& reason) {
+			if(!generationClient || generationClient.data() != m_tSceneChannel) return;
+			QMessageBox::critical(Frame(), g_Au.ApplicationName(), reason);
+			closeAllWindows();
+		}, Qt::QueuedConnection);
 		connect(m_tSceneChannel, SIGNAL(EmpireDataBegin()), pFrame, SLOT(EmpireDataBegin()));
 		connect(m_tSceneChannel, SIGNAL(EmpireDataComplete()), pFrame, SLOT(EmpireDataComplete()));
 
@@ -1943,6 +1961,8 @@ void AuApp::ConnectChat()
 			connect(m_tChatChannel, &DtClientChat::ScDesignOwned, this, &AuApp::ScDesignOwned, Qt::QueuedConnection);
 			connect(m_tChatChannel, SIGNAL(LegacyScReplyReceived(QByteArray)),
 					SIGNAL(LegacyScReplyReceived(QByteArray)), Qt::QueuedConnection);
+			connect(m_tChatChannel, SIGNAL(LegacyCityReplyReceived(QByteArray)),
+					SIGNAL(LegacyCityReplyReceived(QByteArray)), Qt::QueuedConnection);
 			connect(m_tChatChannel, SIGNAL(ScDesignDelete(quint32)), SLOT(ScDesignDelete(quint32)));
 			connect(m_tChatChannel, SIGNAL(ScDesignNeeded(quint32, quint8)), SLOT(ScDesignNeeded(quint32, quint8)));
 
@@ -4010,6 +4030,18 @@ void AuApp::DesignOpen(quint32 designId, int designMode)
 		out << (quint8)designMode;
 		QueueChatPacket(ba);
 	}
+}
+
+quint32 AuApp::RequestLegacyCityTool(AuLegacyCityProtocol::Request request)
+{
+	if(!g_Au.IsLegacyGeneration() || IsSingleUserMode() || !m_tChatChannel || !m_tChatChannel->IsConnected()) return 0;
+	if(++m_LegacyCityNextToken == 0) ++m_LegacyCityNextToken;
+	request.token = m_LegacyCityNextToken;
+	const QByteArray payload = AuLegacyCityProtocol::EncodeRequest(request);
+	if(payload.isEmpty()) return 0;
+	QByteArray packet(1, char(DtChatChannelPacket::PD_LegacyCity)); packet.append(payload);
+	QueueChatPacket(packet);
+	return request.token;
 }
 
 quint32 AuApp::RequestLegacyScCatalog(quint32 afterId, quint32 token)

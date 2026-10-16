@@ -566,6 +566,12 @@ void DaSc::operator<<(QDataStream& in)
 	m_TurretPosLock.unlock();
 
 	// Ensure the local application has my design loaded. Nothing happens if it is already loaded.
+	if(!IsDesignCompatible(m_Design))
+	{
+		in.setStatus(QDataStream::ReadCorruptData);
+		return;
+	}
+	if(m_Design.LegacyStats() && m_Design.LegacyStats()->IsValid()) m_Design.SetLegacyDebug(true);
 	DesignGeometryNeeded();
 }
 
@@ -728,7 +734,13 @@ void DaSc::RxUpdate(QDataStream& fromServer, bool isFirstUpdate)
 	m_New = hasWhat & 0x4000;
 
 	if(hasWhat & 0x0008)
-		fromServer >> m_Design;
+	{
+		AuScReport incoming;
+		fromServer >> incoming;
+		if(!IsDesignCompatible(incoming)) { fromServer.setStatus(QDataStream::ReadCorruptData); return; }
+		if(incoming.LegacyStats() && incoming.LegacyStats()->IsValid()) incoming.SetLegacyDebug(true);
+		m_Design = incoming;
+	}
 
 	if(hasWhat & 0x0010)
 		fromServer >> m_AirPressures;
@@ -8777,6 +8789,15 @@ DaSc* DaSc::LoadSubatoms(AuEther& ether, QSqlDatabase& db, const AuId& parentId,
 				in >> pnu->m_TurretPos;
 			}
 
+			if(!IsDesignCompatible(pnu->m_Design))
+			{
+				if(pnu->IsDead()) { delete pnu; continue; }
+				qCritical() << "Spacecraft database load rejected for game generation:" << pnu->Id()
+					<< pnu->m_Design.DesignId();
+				delete pnu;
+				return nullptr;
+			}
+			if(pnu->m_Design.LegacyStats() && pnu->m_Design.LegacyStats()->IsValid()) pnu->m_Design.SetLegacyDebug(true);
 			pnu->m_DbLoadTime.start();
 			pnu->ReconcileSystems();
 			pnu->ConnectSignals();
@@ -14828,8 +14849,19 @@ void DaSc::RenderLensVAOs(QHash<quint16, AuScVAO>& vaos, const QHash<quint16, Au
 	}
 }
 
-void DaSc::SetDesign(const AuScReport& r)
+bool DaSc::IsDesignCompatible(const AuScReport& report)
 {
+	const bool legacy = report.IsLegacyDebug() || (report.LegacyStats() && report.LegacyStats()->IsValid());
+	return g_Au.IsSceneSolo() || legacy == g_Au.IsLegacyGeneration();
+}
+
+bool DaSc::SetDesign(const AuScReport& r)
+{
+	if(!IsDesignCompatible(r))
+	{
+		qWarning() << "Spacecraft design rejected for game generation:" << Id() << r.DesignId();
+		return false;
+	}
 	const DaDesigner* pardes = FindParentDesignerInEnv();
 	if(!pardes)
 	{
@@ -14842,6 +14874,7 @@ void DaSc::SetDesign(const AuScReport& r)
 
 	m_DesignLock.lockForWrite();
 	m_Design = r;
+	if(r.LegacyStats() && r.LegacyStats()->IsValid()) m_Design.SetLegacyDebug(true);
 
 	// Collect information about things whose states we must manage.
 	QStringList rooms;
@@ -14913,6 +14946,7 @@ void DaSc::SetDesign(const AuScReport& r)
 		m_TurretPos.insert(ti.key(), AuTurretState());
 	m_TurretPosChg.Set();
 	m_TurretPosLock.unlock();
+	return true;
 }
 
 quint8 DaSc::DoorState(quint16 door) const
@@ -15853,7 +15887,7 @@ void DaSc::InitPreview(quint8 previewType, const QString& studioName, const AuSc
 	if(designName.isEmpty())
 		designName = tr("Unnamed Design");
 
-	SetDesign(r);
+	if(!SetDesign(r)) return;
 	InitSystems(shipQ);
 	SetName(designName);
 	SetEmpireId(person.EmpireId());

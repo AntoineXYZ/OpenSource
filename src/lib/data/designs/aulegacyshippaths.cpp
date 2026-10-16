@@ -157,7 +157,7 @@ bool Graph::Build(const Design& design, QString& error,
 	m_PortalFootprint.clear(); m_Portals.clear();
 	m_CellKeys.clear(); m_ReachCache.clear(); m_CacheClock = 0; m_Canceled = false;
 	error.clear();
-	if(design.rooms.isEmpty()) return true;
+	if(design.rooms.isEmpty() && !m_Building) return true;
 	bool hasHull = false;
 	m_MinimumDeck = m_MaximumDeck = 0;
 	for(const Room& room : design.rooms)
@@ -177,7 +177,12 @@ bool Graph::Build(const Design& design, QString& error,
 		}
 		hasHull = true;
 	}
-	if(!hasHull) return true;
+	if(!hasHull && !m_Building) return true;
+	if(m_Building)
+	{
+		m_MinimumDeck = m_BuildingMinimumDeck;
+		m_MaximumDeck = m_BuildingMaximumDeck;
+	}
 	QVector<Opening> openings;
 	if(!ExtractOpenings(design, openings, error)) return false;
 	QByteArray floor(256 * 256, 0), raster;
@@ -190,7 +195,8 @@ bool Graph::Build(const Design& design, QString& error,
 		}
 		for(const Room& room : design.rooms)
 		{
-			if(room.deck != deck || (room.roomType >= 22 && room.roomType <= 24)) continue;
+			if(room.deck != deck || (m_Building && deck > m_MaximumDeck)
+				|| (room.roomType >= 22 && room.roomType <= 24)) continue;
 			if(!Geometry::RasterFloor(RoomBoundary(room), raster, &error))
 			{
 				error = QStringLiteral("Room %1 on deck %2: %3").arg(room.roomId).arg(deck).arg(error);
@@ -204,7 +210,7 @@ bool Graph::Build(const Design& design, QString& error,
 					const quint32 key = Key(x, y, deck);
 					m_Extant[key] = 1;
 					QVector<quint16>& ids = m_ExtantRooms[key];
-					if(!ids.contains(room.roomId)) ids.append(room.roomId);
+					if(!ids.contains(room.roomId) && (!m_Building || ids.size() < 8)) ids.append(room.roomId);
 					floor[x * 256 + y] = char(type);
 					if(room.roomType == 9 || type != 2) continue;
 					Cell cell; cell.type = 2; cell.room1 = room.roomId;
@@ -213,6 +219,15 @@ bool Graph::Build(const Design& design, QString& error,
 							cell.directions |= Directions[i].mask;
 					m_Cells.insert(key, cell);
 				}
+		}
+		// AuPath::PaintLevelTerrain (1800f2530) paints an axis-aligned square,
+		// including its boundary, and only fills empty cells on ground deck 0.
+		if(m_Building && deck == 0 && m_BuildingSiteRadius != 0)
+		{
+			const int radius = int(std::ceil(m_BuildingSiteRadius / CoordinateSpacing));
+			for(int x = 128 - radius; x <= 128 + radius; ++x)
+				for(int y = 128 - radius; y <= 128 + radius; ++y)
+					if(!At(floor, x, y)) floor[x * 256 + y] = 16;
 		}
 		// PaintFloorPlan retains the deck-below footprint as exterior floor (16).
 		for(int x = 0; x < 256; ++x)
@@ -229,6 +244,9 @@ bool Graph::Build(const Design& design, QString& error,
 		{
 			Opening opening = extracted;
 			if(opening.deck != deck) continue;
+			// PaintOpenings bounds wall doors, holes and railings by the
+			// constructed maximum, while floor hatches retain their upper cell.
+			if(m_Building && deck > m_MaximumDeck && !(opening.flags & 8)) continue;
 			const QPoint first = Grid(opening.first), second = Grid(opening.second);
 			const QPoint center = Grid(opening.center);
 			if(opening.cellType == 6 || opening.cellType == 7)
@@ -244,6 +262,8 @@ bool Graph::Build(const Design& design, QString& error,
 				cell.type = quint8(opening.cellType); cell.flags = opening.flags;
 				cell.doorDetailId = opening.flags & 32 ? opening.detailId : 0;
 				cell.room1 = opening.room1; cell.room2 = opening.room2;
+				cell.doorIndex = opening.doorIndex;
+				cell.holeIndex = opening.holeIndex; cell.railingIndex = opening.railingIndex;
 				m_PortalFootprint.insert(key);
 				floor[x * 256 + y] = char(cell.type);
 				switch(cell.type)
@@ -319,7 +339,7 @@ bool Graph::Build(const Design& design, QString& error,
 		}
 		for(const Detail& detail : design.details)
 		{
-			if(detail.deck != deck) continue;
+			if(detail.deck != deck || (m_Building && deck > m_MaximumDeck)) continue;
 			if(detail.detailType >= 101 && detail.detailType <= 140)
 			{
 				PaintStairs(detail, &floor, 1); continue;
@@ -377,6 +397,7 @@ bool Graph::Build(const Design& design, QString& error,
 			}
 		}
 		// PaintDiagonalHullWalls, 1800f1150.
+		if(!m_Building || deck <= m_MaximumDeck)
 		for(int x = 0; x < 256; ++x)
 			for(int y = 0; y < 256; ++y)
 				if((At(floor, x, y) == 0 || At(floor, x, y) == 16)
@@ -393,6 +414,11 @@ bool Graph::Build(const Design& design, QString& error,
 				if(type) m_Extant[Key(x, y, deck)] = quint8(type);
 				floor[x * 256 + y] = type == 16 || type == 7 || type == 13 ? 0 : type ? 16 : 0;
 			}
+		if(m_Building && (m_Cells.size() > 250000 || m_Extant.size() > 250000))
+		{
+			error = QStringLiteral("Generated building path cells exceed the bounded catalogue limit.");
+			m_Cells.clear(); m_Extant.clear(); m_ExtantRooms.clear(); return false;
+		}
 	}
 	// ConnectLedges, 1800e9640.
 	const QList<quint32> keys = m_Cells.keys();
@@ -425,6 +451,40 @@ bool Graph::Build(const Design& design, QString& error,
 		cell->index = m_CellKeys.size(); m_CellKeys.append(cell.key());
 	}
 	return true;
+}
+
+bool Graph::BuildBuilding(const Design& design, int minimumDeck, int maximumDeck,
+	double siteRadius, QString& error)
+{
+	if(minimumDeck < -127 || maximumDeck > 126 || minimumDeck > maximumDeck
+		|| maximumDeck - minimumDeck > 127 || !std::isfinite(siteRadius)
+		|| siteRadius < 0 || std::ceil(siteRadius / CoordinateSpacing) > 127)
+	{
+		error = QStringLiteral("Building path limits exceed the original half-grid.");
+		return false;
+	}
+	m_Building = true;
+	m_BuildingMinimumDeck = minimumDeck; m_BuildingMaximumDeck = maximumDeck;
+	m_BuildingSiteRadius = siteRadius;
+	const bool result = Build(design, error);
+	m_Building = false;
+	return result;
+}
+
+QHash<quint32, Graph::CellSnapshot> Graph::PathableCells() const
+{
+	QHash<quint32, CellSnapshot> result;
+	for(auto cell = m_Cells.cbegin(); cell != m_Cells.cend(); ++cell)
+	{
+		CellSnapshot snapshot;
+		snapshot.directions = cell->directions; snapshot.flags = cell->flags;
+		snapshot.room1 = cell->room1; snapshot.room2 = cell->room2;
+		snapshot.type = cell->type; snapshot.stairs = cell->stairs;
+		snapshot.doorIndex = cell->doorIndex; snapshot.holeIndex = cell->holeIndex;
+		snapshot.railingIndex = cell->railingIndex; snapshot.doorDetailId = cell->doorDetailId;
+		result.insert(cell.key(), snapshot);
+	}
+	return result;
 }
 
 void Graph::TrimVerticalConnections()

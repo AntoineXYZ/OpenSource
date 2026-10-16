@@ -3458,7 +3458,8 @@ bool DaSolarSystem::IsReadyToDecay() const
 			// One week has passed since this system was last visited.
 			// If there are no buildings or cities, this system can decay completely.
 			DaAtomList bdsOrCities;
-			FindBdRecursive(bdsOrCities);
+			if(g_Au.IsLegacyGeneration()) FindLegacyCitiesRecursive(bdsOrCities);
+			else FindBdRecursive(bdsOrCities);
 			if(bdsOrCities.isEmpty())
 			{
 				//qDebug() << "DaSolarSystem::IsReadyToDecay" << *this << "yes.";
@@ -3682,6 +3683,7 @@ int DaSolarSystem::PirateEncounterBase(DaVessel* victim, bool agentTriggered)
 	g_Au.UnlockScDesigns();
 	if(!loaded)
 		return -15;	// This should not happen. We are supposed to insure all pirate designs are loaded at all times.
+	if(!DaSc::IsDesignCompatible(shipDesign)) return -15;
 
 	// Prepare to make spaceships.
 	const DaSector* sector = FindParentSector();

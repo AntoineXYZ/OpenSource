@@ -11,6 +11,7 @@
 #include "auframe.h"
 #include "augear.h"
 #include "auglobal.h"
+#include "aulegacygenerationbootstrap.h"
 #include "aumission.h"
 #include "aumodel.h"
 #include "daanimal.h"
@@ -79,17 +80,14 @@ void DtClient::run()
 		return;
 	}
 	m_isConnected = true;
+	m_GenerationNegotiated = false;
+	SendGenerationCapability(tcpSocket);
 	emit Connected();
 	if(g_Au.m_LogMessages & LOG_ConnectDisconnect)
 		g_Au.Log(g_Au.CacheApp() + "/soh.txt",
 				QString("Client: Connected to %1 port %2").arg(g_Au.SceneServer()).arg(g_Au.ScenePort()));
 
-	// Request basic game data.
-	DgData& gd = g_Au.LockDataForWrite();
-	bool needsData = gd.LoadBasicGameData();
-	g_Au.UnlockData();
-	if(needsData)
-		auApp->RequestBasicGameData();
+	// Basic metadata is loaded only after the login generation is negotiated.
 
 	while(Alive() && tcpSocket.state() != QAbstractSocket::UnconnectedState)
 	{
@@ -144,6 +142,8 @@ void DtClient::run()
 		{
 			// Signal that scene was deferred to next server. This will clear the scene model and view data.
 			m_isConnected = true;
+			m_GenerationNegotiated = false;
+			SendGenerationCapability(tcpSocket);
 			if(g_Au.m_LogMessages & LOG_ConnectDisconnect)
 				g_Au.Log(g_Au.CacheApp()+"/soh.txt", "Client: Scene deferred, connection lost");
 			emit SceneDeferred(AuApp::DeferScene);
@@ -215,6 +215,59 @@ void DtClient::RxData(QTcpSocket& tcpSocket)
 	}
 }
 
+void DtClient::SendGenerationCapability(QTcpSocket& tcpSocket)
+{
+	AuGameGenerationIdentity capability;
+	QString error;
+	AuPrepareLegacyGenerationIdentity(capability, error);
+	QByteArray bytes;
+	QDataStream out(&bytes, QIODevice::WriteOnly);
+	out.setVersion(QDataStream::Qt_4_1);
+	out << quint8(DtSceneServerPacket::PL_Generation);
+	AuWriteGameGenerationIdentity(out, capability);
+	m_BytesTx += AuUtil::WritePacketSize(tcpSocket, bytes.size());
+	m_BytesTx += tcpSocket.write(bytes);
+	m_LastComm.restart();
+}
+
+bool DtClient::AcceptGeneration(const AuGameGenerationIdentity& identity)
+{
+	QString error;
+	if(identity.generation == AuGameGeneration::Legacy)
+	{
+		AuGameGenerationIdentity local;
+		if(AuPrepareLegacyGenerationIdentity(local, error) && local != identity)
+			error = QStringLiteral("The client and server Legacy catalogues do not match.");
+	}
+	if(!error.isEmpty())
+	{
+		emit GenerationRejected(error);
+		Kill();
+		return false;
+	}
+	if(g_Au.GenerationIdentity() != identity)
+	{
+		while(m_semGenerationViewsReset.tryAcquire()) {}
+		emit GenerationChanging();
+		// A cancellable acknowledgement avoids blocking GUI logout while it waits
+		// for this thread to stop. Metadata still waits for the actual view reset.
+		while(Alive() && !m_semGenerationViewsReset.tryAcquire(1, 50)) {}
+		if(!Alive()) return false;
+		g_Au.ClearEtherium();
+		DgData& data = g_Au.LockDataForWrite();
+		data.ResetGenerationCaches();
+		g_Au.UnlockData();
+		m_EmpiresRequested.clear();
+		m_SpeciesRequested.clear();
+		m_SyncLastAtomIds.clear();
+		m_LegacyMissingShips.clear();
+		m_SceneRemovalPending = false;
+	}
+	g_Au.SetGenerationIdentity(identity);
+	m_GenerationNegotiated = true;
+	return true;
+}
+
 void DtClient::TxData(QTcpSocket& tcpSocket)
 {
 	int written = auApp->TransmitSceneBuffer(tcpSocket);
@@ -258,9 +311,30 @@ bool DtClient::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 				.arg(DtSceneServerPacket::PacketName((DtSceneServerPacket::PACKET)ptype)).arg(ba.count()));
 #endif
 
+	if(!m_GenerationNegotiated && ptype >= DtSceneServerPacket::PG_Commodity
+		&& ptype <= DtSceneServerPacket::PG_StarMap)
+	{
+		emit GenerationRejected(QStringLiteral("The server sent game metadata before negotiating the game generation. Update client and server together."));
+		Kill();
+		return false;
+	}
 	// Atom packets get special handling.
 	if(ptype < DaAtom::ATOM_Count)
+	{
+		if(!m_GenerationNegotiated)
+		{
+			emit GenerationRejected(QStringLiteral("The server sent scene atoms before negotiating the game generation."));
+			Kill();
+			return false;
+		}
 		atom = DaAtom::Create((DaAtom::ATOM_TYPE)ptype);	// The packet type is an atom.
+		if(!atom)
+		{
+			emit GenerationRejected(QStringLiteral("The server sent an unsupported atom type for this game generation."));
+			Kill();
+			return false;
+		}
+	}
 
 	if(!atom)
 	{
@@ -268,6 +342,22 @@ bool DtClient::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 		// This cast generates a handy warning when an enum value is forgotten.
 		switch((DtSceneServerPacket::PACKET)ptype)
 		{
+		case DtSceneServerPacket::PL_Generation:
+			{
+				AuGameGenerationIdentity identity;
+				if(!AuReadGameGenerationIdentity(block, identity) || !block.atEnd())
+				{
+					emit GenerationRejected(QStringLiteral("The server returned an invalid game generation identity."));
+					Kill();
+					return false;
+				}
+				if(!AcceptGeneration(identity)) return false;
+				DgData& data = g_Au.LockDataForWrite();
+				const bool needsData = data.LoadBasicGameData();
+				g_Au.UnlockData();
+				if(needsData) auApp->RequestBasicGameData();
+			}
+			break;
 		case DtSceneServerPacket::PL_Login:	// Login success.
 			{
 				// Store message of the day.
@@ -276,6 +366,21 @@ bool DtClient::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 
 				block >> motd;
 				block >> chatPort;				// 0 in replies from scene master and scene manager.
+				AuGameGenerationIdentity identity;
+				QString error;
+				if(!block.atEnd() && !AuReadGameGenerationIdentity(block, identity))
+					error = QStringLiteral("The server returned an invalid game generation identity.");
+				if(!error.isEmpty())
+				{
+					emit GenerationRejected(error);
+					Kill();
+					return false;
+				}
+				if(!AcceptGeneration(identity)) return false;
+				DgData& data = g_Au.LockDataForWrite();
+				const bool needsData = data.LoadBasicGameData();
+				g_Au.UnlockData();
+				if(needsData) auApp->RequestBasicGameData();
 
 				if(!motd.isEmpty())
 					g_Au.Settings().writeEntry("Settings/MOTD", motd);
@@ -293,6 +398,14 @@ bool DtClient::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 				quint8 errCode;
 
 				block >> errCode;
+				if(errCode == 2)
+				{
+					QString reason;
+					block >> reason;
+					emit GenerationRejected(reason);
+					Kill();
+					return false;
+				}
 
 				emit LoginFailed(errCode);
 			}
@@ -341,6 +454,8 @@ bool DtClient::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 
 				// Signal that init was deferred to next server.
 				m_isConnected = true;
+				m_GenerationNegotiated = false;
+				SendGenerationCapability(tcpSocket);
 				emit EstDeferred(m_idDeferAtom);
 			}
 			break;
@@ -379,6 +494,8 @@ bool DtClient::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 
 					// Signal that init was deferred to next server.
 					m_isConnected = true;
+					m_GenerationNegotiated = false;
+					SendGenerationCapability(tcpSocket);
 					emit RestartNewAvatar();
 				}
 				else if(reason == 15 || reason == 16)
@@ -435,6 +552,8 @@ bool DtClient::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 
 				// Signal that scene was deferred to next server. This will clear the scene model and view data.
 				m_isConnected = true;
+				m_GenerationNegotiated = false;
+				SendGenerationCapability(tcpSocket);
 				if(g_Au.m_LogMessages & LOG_ConnectDisconnect)
 					g_Au.Log(g_Au.CacheApp()+"/soh.txt", QString("Client: Scene deferred to %1:%2 mode %3")
 							.arg(toServer).arg(toPort).arg(srvmode));
@@ -607,7 +726,29 @@ bool DtClient::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 	}
 
 	// All atom packets take similar handling now that we have allocated the proper object.
+	const auto sceneReadError = [&](const AuId& id, const char* stage) {
+		const char* status = block.status() == QDataStream::ReadPastEnd ? "ReadPastEnd"
+			: block.status() == QDataStream::ReadCorruptData ? "ReadCorruptData" : "StreamError";
+		return QStringLiteral("Scene data could not be decoded.\nGeneration: %1\nAtom: %2 (%3), ID %4\nStage: %5\nError: %6\nPacket position: %7 of %8 bytes")
+			.arg(AuGameGenerationLabel(g_Au.Generation()))
+			.arg(DaAtom::AtomTypeName(static_cast<DaAtom::ATOM_TYPE>(ptype))).arg(ptype)
+			.arg(id.StringId()).arg(QString::fromLatin1(stage)).arg(QString::fromLatin1(status))
+			.arg(block.device()->pos()).arg(ba.size());
+	};
+	const auto rejectSceneData = [&](const QString& reason) {
+		qWarning().noquote() << reason;
+		g_Au.Log(g_Au.CacheApp() + "/soh.txt", reason);
+		emit GenerationRejected(reason);
+		Kill();
+	};
 	atom->RxUpdateId(block);	// Pull in only the id and modify time.
+	if(block.status() != QDataStream::Ok)
+	{
+		const QString reason = sceneReadError(atom->Id(), "identity");
+		delete atom;
+		rejectSceneData(reason);
+		return false;
+	}
 
 	AuEther& ether = g_Au.LockEtheriumDelete();
 	AuAtomPos receivedPosition;
@@ -638,6 +779,14 @@ bool DtClient::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 	{
 		// The atom does not exist in the local data.
 		atom->RxUpdateBase(block, &receivedPosition);	// May load new parent id.
+		if(block.status() != QDataStream::Ok)
+		{
+			const QString reason = sceneReadError(atom->Id(), "base");
+			delete atom;
+			g_Au.UnlockEtheriumDelete();
+			rejectSceneData(reason);
+			return false;
+		}
 		atom->ConnectSignals();
 		ether.AddAtom(atom);
 
@@ -657,7 +806,16 @@ bool DtClient::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 	{
 		// Receive the remainder of the update data now that parent is correct.
 		// 'exa' is non-zero if we are updating an existing atom; 'exa' will be 0 the first time we receive an atom.
-		atom->RxUpdate(block, exa?false:true);
+		const bool baseValid = block.status() == QDataStream::Ok;
+		if(baseValid) atom->RxUpdate(block, exa?false:true);
+		if(block.status() != QDataStream::Ok)
+		{
+			const QString reason = sceneReadError(atom->Id(), baseValid ? "payload" : "base");
+			ether.TrashAtom(atom->Id());
+			g_Au.UnlockEtheriumDelete();
+			rejectSceneData(reason);
+			return false;
+		}
 
 		DaPerson* avatar = dynamic_cast<DaPerson*>(atom);
 		if(avatar && avatar->Is(auApp->AvatarId()))

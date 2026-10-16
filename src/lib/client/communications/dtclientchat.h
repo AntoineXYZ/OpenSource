@@ -115,6 +115,7 @@ signals:
 	void ScExchangeUpdated();
 	void ScLibraryUpdated();
 	void LegacyScReplyReceived(QByteArray payload);
+	void LegacyCityReplyReceived(QByteArray payload);
 
 	void TransporterPlace(AuTransporterTarget tt);
 	void TransporterShip(AuId id, QString name, QString desc);

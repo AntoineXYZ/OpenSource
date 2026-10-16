@@ -166,6 +166,12 @@ void DtServerChannel::ReadPacket(const QByteArray& ba, QTcpSocket& /*tcpSocket*/
 	block >> type;
 
 	// Tally count of packets by type.
+	if(!m_SubGenerationMatched && type != P_Status && g_Au.IsLegacyGeneration())
+	{
+		qCritical() << "Subordinate sent a packet before Legacy generation negotiation.";
+		Kill();
+		return;
+	}
 	QHash<quint32, quint32>::iterator pri = m_PacketsRx.find(type);
 	if(pri == m_PacketsRx.end())
 		m_PacketsRx.insert(type, 1);
@@ -1262,8 +1268,29 @@ void DtServerChannel::ReadPacket(const QByteArray& ba, QTcpSocket& /*tcpSocket*/
 				m_SubSystemClients.insert(pair<AuId, AuSystemStatus>(idSystem, sstat));
 			}
 			m_SubCheckInTime = AuTime::Now();
+			AuGameGenerationIdentity identity;
+			const bool hasIdentity = !block.atEnd();
+			const bool generationMatches = block.status() == QDataStream::Ok && (hasIdentity
+				? AuReadGameGenerationIdentity(block, identity) && block.atEnd() && identity == g_Au.GenerationIdentity()
+				: !g_Au.IsLegacyGeneration());
+			if(!generationMatches)
+			{
+				m_SubTickTime = 0xffffffff;
+				m_SubStatusLock.unlock();
+				qCritical() << "Subordinate server game generation or catalogue manifest mismatch; connection refused.";
+				Kill();
+				return;
+			}
+			const bool firstGenerationStatus = !m_SubGenerationMatched;
+			m_SubGenerationMatched = true;
 			bool readinessChanged = wasReady != (m_SubTickTime != 0xffffffff);
 			m_SubStatusLock.unlock();
+			if(firstGenerationStatus)
+			{
+				AuPlayerOnlineStatusVector players;
+				auSceneServerApp->PlayersOnlineStatus(players);
+				SendPlayerStatus(players);
+			}
 
 			// Let the manager refresh its upstream status without waiting for its next heartbeat.
 			if(readinessChanged)
@@ -2727,6 +2754,7 @@ void DtServerChannel::SendPlayerStatus(AuPlayerOnlineStatusVector players)
 	out.setVersion(QDataStream::Qt_4_1);
 	out << (quint8)P_Status;
 	players >> out;
+	AuWriteGameGenerationIdentity(out, g_Au.GenerationIdentity());
 	SendPacket(ba);
 }
 

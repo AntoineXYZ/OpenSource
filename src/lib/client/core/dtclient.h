@@ -11,6 +11,7 @@
 #include "auclientlib.h"
 #include "aucommpacket.h"
 #include "auelapsedtimer.h"
+#include "augamegeneration.h"
 #include "auid.h"
 #include "aupose.h"
 #include "auspecies.h"
@@ -51,6 +52,7 @@ public:
 		m_semLogout.release();
 		Kill();
 	}
+	void AcknowledgeGenerationViewsReset() { m_semGenerationViewsReset.release(); }
 
 public slots:
 	void TxData(QTcpSocket& tcpSocket);
@@ -59,6 +61,9 @@ signals:
 	void ClientUnitEmpireReceived(quint32 empireId);
 
 	void Connected();
+	// The GUI clears views before the network thread changes item metadata.
+	void GenerationChanging();
+	void GenerationRejected(QString reason);
 
 	void EmpireDataBegin();
 
@@ -90,6 +95,9 @@ signals:
 	void SwitchAvatarTransferred(AuId transferredId);
 
 protected:
+	bool m_GenerationNegotiated = false;
+	void SendGenerationCapability(QTcpSocket& tcpSocket);
+	bool AcceptGeneration(const AuGameGenerationIdentity& identity);
 	bool ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket);
 	void ReconcileAtomsInScene();
 	virtual void run();
@@ -109,6 +117,7 @@ private:
 	int			m_PacketSizeBytesLeft;	// Number of packet size bytes we are expecting.
 	QSemaphore	m_semAlive;				// Used to know when I'm supposed to die.
 	QSemaphore	m_semLogout;			// Send a logout packet before closing the connection.
+	QSemaphore	m_semGenerationViewsReset;
 	unordered_map<AuId, bool, AuIdHash>	m_SyncLastAtomIds;	// Ids of non-permanent atoms that belong in the scene.
 	bool		m_SceneRemovalPending;	// Retry removal after retained child atoms have moved or departed.
 	QSet<AuId>	m_LegacyMissingShips;	// Restore boarding/collision if a retained ship reappears in the server scene.

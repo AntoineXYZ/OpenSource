@@ -24,6 +24,10 @@ void AuView::DeselectAllUnits()
 {
 }
 
+void AuView::ResetGameGeneration()
+{
+}
+
 QString AuView::DesignAnalysis()
 {
 	return QString();

@@ -693,6 +693,7 @@ private:
 
 	// Information provided by P_Status packets from the subordinate server to which I am connected.
 	mutable QReadWriteLock				m_SubStatusLock;		// Guards sub server status variables updated by P_Status.
+	bool m_SubGenerationMatched = false;
 	float								m_SubAtomLoad;			// Atom load on sub worker server.
 	quint16								m_SubAtomMgrs;			// number of atom managers reported by a worker to its manager
 	AuTime								m_SubCheckInTime;		// checkin time

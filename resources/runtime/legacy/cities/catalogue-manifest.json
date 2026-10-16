@@ -1,0 +1,497 @@
+{
+  "format": "hazeron-legacy-city-catalogue-manifest-v1",
+  "catalogue_version": "2016-GD-0x3a",
+  "resource": ":/legacy/cities/GD2016",
+  "runtime_file": "resources/runtime/legacy/cities/GD2016",
+  "source_bytes": 212679,
+  "source_sha256": "dac1d7b576a8405d55a85f9eb2723d757d0cce0ba7dc49aeb88f7be8e34f9106",
+  "parsed_bytes": 212679,
+  "named_industries": 75,
+  "named_commodities": 349,
+  "default_process_markers": 45,
+  "tables": [
+    {
+      "name": "ship_details",
+      "offset": 2,
+      "bytes": 52429,
+      "records": 143,
+      "sha256": "8f08ed37167daad1c6c187446fc2830a43027df705d70d979271e5309d6ecfc1"
+    },
+    {
+      "name": "ship_rooms",
+      "offset": 52431,
+      "bytes": 6500,
+      "records": 25,
+      "sha256": "b9034275fd098ecafd1e44beb708e17e614694798032e667ad00dc5db3d57a9e"
+    },
+    {
+      "name": "commodities",
+      "offset": 58931,
+      "bytes": 94176,
+      "records": 350,
+      "sha256": "b700396da6461faa7a0353f0387763a0f93eee7f06a2d9b0af7454f8f5d31fd5"
+    },
+    {
+      "name": "industries",
+      "offset": 153107,
+      "bytes": 2926,
+      "records": 130,
+      "sha256": "2760b1275470956dbba6340859997129617a35c853691e799c39008c349cbe69"
+    },
+    {
+      "name": "manufacturing_processes",
+      "offset": 156033,
+      "bytes": 28318,
+      "records": 526,
+      "sha256": "4b40f75beefccec7d0b950eb0f8c4a82acb37206d1002ca2e86a2eef4d9ee56a"
+    },
+    {
+      "name": "manufacturing_components",
+      "offset": 184351,
+      "bytes": 21784,
+      "records": 2420,
+      "sha256": "5005f969f6b432723ddb5400d20810e0c9df7a3e2afe87055a6b961750421fe3"
+    },
+    {
+      "name": "construction_processes",
+      "offset": 206135,
+      "bytes": 2732,
+      "records": 82,
+      "sha256": "4d8f0ad41fe2f2ebb3a51a3ce8a4ea2f0b44693eb67193691882bbc635ef106c"
+    },
+    {
+      "name": "construction_components",
+      "offset": 208867,
+      "bytes": 3812,
+      "records": 476,
+      "sha256": "1589822ac9f3d86287f97c7c701c8551a34773e1bedcaac2a816f729bb72f280"
+    }
+  ],
+  "runtime_alias_first": 664,
+  "runtime_alias_last": 741,
+  "commodity_remaps": [
+    {
+      "historical": 2,
+      "runtime": 161
+    },
+    {
+      "historical": 113,
+      "runtime": 354
+    },
+    {
+      "historical": 287,
+      "runtime": 651
+    },
+    {
+      "historical": 288,
+      "runtime": 650
+    }
+  ],
+  "commodity_aliases": [
+    {
+      "historical": 158,
+      "runtime": 664,
+      "name": "Aircraft Factory Technology"
+    },
+    {
+      "historical": 159,
+      "runtime": 665,
+      "name": "Military Guard Tower Technology"
+    },
+    {
+      "historical": 160,
+      "runtime": 666,
+      "name": "Airport Repair Shop Technology"
+    },
+    {
+      "historical": 161,
+      "runtime": 667,
+      "name": "Airport Terminal Technology"
+    },
+    {
+      "historical": 162,
+      "runtime": 668,
+      "name": "Apartment Technology"
+    },
+    {
+      "historical": 163,
+      "runtime": 669,
+      "name": "Arena Technology"
+    },
+    {
+      "historical": 164,
+      "runtime": 670,
+      "name": "Armorer Technology"
+    },
+    {
+      "historical": 165,
+      "runtime": 671,
+      "name": "Bakery Technology"
+    },
+    {
+      "historical": 166,
+      "runtime": 672,
+      "name": "Bank Technology"
+    },
+    {
+      "historical": 167,
+      "runtime": 673,
+      "name": "Brewery Technology"
+    },
+    {
+      "historical": 168,
+      "runtime": 674,
+      "name": "Broker Technology"
+    },
+    {
+      "historical": 169,
+      "runtime": 675,
+      "name": "Capitol Technology"
+    },
+    {
+      "historical": 170,
+      "runtime": 676,
+      "name": "Carpenter Technology"
+    },
+    {
+      "historical": 171,
+      "runtime": 677,
+      "name": "Casino Technology"
+    },
+    {
+      "historical": 172,
+      "runtime": 678,
+      "name": "Church Technology"
+    },
+    {
+      "historical": 173,
+      "runtime": 679,
+      "name": "Clothing Factory Technology"
+    },
+    {
+      "historical": 174,
+      "runtime": 680,
+      "name": "Coal Power Plant Technology"
+    },
+    {
+      "historical": 175,
+      "runtime": 681,
+      "name": "Military Shield Generator Technology"
+    },
+    {
+      "historical": 176,
+      "runtime": 682,
+      "name": "Computer Factory Technology"
+    },
+    {
+      "historical": 177,
+      "runtime": 683,
+      "name": "Design Studio Technology"
+    },
+    {
+      "historical": 178,
+      "runtime": 684,
+      "name": "Distillery Technology"
+    },
+    {
+      "historical": 179,
+      "runtime": 685,
+      "name": "Electronics Factory Technology"
+    },
+    {
+      "historical": 180,
+      "runtime": 686,
+      "name": "Explosives Factory Technology"
+    },
+    {
+      "historical": 181,
+      "runtime": 687,
+      "name": "Farm Technology"
+    },
+    {
+      "historical": 182,
+      "runtime": 688,
+      "name": "Fire Station Technology"
+    },
+    {
+      "historical": 183,
+      "runtime": 689,
+      "name": "Gasoline Power Plant Technology"
+    },
+    {
+      "historical": 184,
+      "runtime": 690,
+      "name": "Grist Mill Technology"
+    },
+    {
+      "historical": 185,
+      "runtime": 691,
+      "name": "Grocery Technology"
+    },
+    {
+      "historical": 186,
+      "runtime": 692,
+      "name": "Military Weapon System Technology"
+    },
+    {
+      "historical": 187,
+      "runtime": 693,
+      "name": "Hospital Technology"
+    },
+    {
+      "historical": 188,
+      "runtime": 694,
+      "name": "Condominium Technology"
+    },
+    {
+      "historical": 189,
+      "runtime": 695,
+      "name": "House Technology"
+    },
+    {
+      "historical": 190,
+      "runtime": 696,
+      "name": "Hydroelectric Power Plant Technology"
+    },
+    {
+      "historical": 191,
+      "runtime": 697,
+      "name": "Hydrogen Power Plant Technology"
+    },
+    {
+      "historical": 192,
+      "runtime": 698,
+      "name": "Jeweler Technology"
+    },
+    {
+      "historical": 193,
+      "runtime": 699,
+      "name": "Logging Camp Technology"
+    },
+    {
+      "historical": 194,
+      "runtime": 700,
+      "name": "Lumber Mill Technology"
+    },
+    {
+      "historical": 195,
+      "runtime": 701,
+      "name": "Machine Shop Technology"
+    },
+    {
+      "historical": 196,
+      "runtime": 702,
+      "name": "Meat Processing Plant Technology"
+    },
+    {
+      "historical": 197,
+      "runtime": 703,
+      "name": "Mine Technology"
+    },
+    {
+      "historical": 198,
+      "runtime": 704,
+      "name": "Munitions Factory Technology"
+    },
+    {
+      "historical": 199,
+      "runtime": 705,
+      "name": "Natural Gas Power Plant Technology"
+    },
+    {
+      "historical": 200,
+      "runtime": 706,
+      "name": "Nuclear Power Plant Technology"
+    },
+    {
+      "historical": 201,
+      "runtime": 707,
+      "name": "Orchard Technology"
+    },
+    {
+      "historical": 202,
+      "runtime": 708,
+      "name": "Park Technology"
+    },
+    {
+      "historical": 203,
+      "runtime": 709,
+      "name": "Pharmaceutical Lab Technology"
+    },
+    {
+      "historical": 204,
+      "runtime": 710,
+      "name": "Plastics Factory Technology"
+    },
+    {
+      "historical": 205,
+      "runtime": 711,
+      "name": "Police Station Technology"
+    },
+    {
+      "historical": 206,
+      "runtime": 712,
+      "name": "Refinery Technology"
+    },
+    {
+      "historical": 207,
+      "runtime": 713,
+      "name": "Retail Store Technology"
+    },
+    {
+      "historical": 208,
+      "runtime": 714,
+      "name": "Rocket Motor Factory Technology"
+    },
+    {
+      "historical": 209,
+      "runtime": 715,
+      "name": "University Technology"
+    },
+    {
+      "historical": 210,
+      "runtime": 716,
+      "name": "Ship Yard Technology"
+    },
+    {
+      "historical": 211,
+      "runtime": 717,
+      "name": "Smelter Technology"
+    },
+    {
+      "historical": 212,
+      "runtime": 718,
+      "name": "Solar Power Plant Technology"
+    },
+    {
+      "historical": 213,
+      "runtime": 719,
+      "name": "Spacecraft Factory Technology"
+    },
+    {
+      "historical": 214,
+      "runtime": 720,
+      "name": "Sugar Mill Technology"
+    },
+    {
+      "historical": 215,
+      "runtime": 721,
+      "name": "Cantina Technology"
+    },
+    {
+      "historical": 216,
+      "runtime": 722,
+      "name": "Textile Mill Technology"
+    },
+    {
+      "historical": 217,
+      "runtime": 723,
+      "name": "Treatment Plant Technology"
+    },
+    {
+      "historical": 218,
+      "runtime": 724,
+      "name": "Vehicle Factory Technology"
+    },
+    {
+      "historical": 219,
+      "runtime": 725,
+      "name": "Warehouse Technology"
+    },
+    {
+      "historical": 220,
+      "runtime": 726,
+      "name": "Weapon Smith Technology"
+    },
+    {
+      "historical": 221,
+      "runtime": 727,
+      "name": "Well Technology"
+    },
+    {
+      "historical": 222,
+      "runtime": 728,
+      "name": "Wharf Technology"
+    },
+    {
+      "historical": 223,
+      "runtime": 729,
+      "name": "Wind Power Plant Technology"
+    },
+    {
+      "historical": 224,
+      "runtime": 730,
+      "name": "Winery Technology"
+    },
+    {
+      "historical": 225,
+      "runtime": 731,
+      "name": "Zoo Technology"
+    },
+    {
+      "historical": 237,
+      "runtime": 732,
+      "name": "Metal Hull Module"
+    },
+    {
+      "historical": 249,
+      "runtime": 733,
+      "name": "Beam Laser Turret Module"
+    },
+    {
+      "historical": 251,
+      "runtime": 734,
+      "name": "Missile Launcher Turret Module"
+    },
+    {
+      "historical": 253,
+      "runtime": 735,
+      "name": "Pulse Laser Bay Module"
+    },
+    {
+      "historical": 255,
+      "runtime": 736,
+      "name": "Missile Launcher Bay Module"
+    },
+    {
+      "historical": 280,
+      "runtime": 737,
+      "name": "Magmium Hull Module"
+    },
+    {
+      "historical": 281,
+      "runtime": 738,
+      "name": "Vulcium Hull Module"
+    },
+    {
+      "historical": 286,
+      "runtime": 739,
+      "name": "Observatory Technology"
+    },
+    {
+      "historical": 328,
+      "runtime": 740,
+      "name": "Genesis Device"
+    },
+    {
+      "historical": 348,
+      "runtime": 741,
+      "name": "Dairy Technology"
+    }
+  ],
+  "industry_remaps": [
+    {
+      "historical": 65,
+      "runtime": 68,
+      "name": "Nuclear Power Plant"
+    }
+  ],
+  "server_metadata_gaps": [
+    {
+      "field": "DbManufacturingProcess::m_nat",
+      "reason": "2016 GD serialization omits the server SQL natural-quality flag",
+      "cache_default": true,
+      "authority": "2016 constructor and GD Rx; 2022 dump flags are comparison evidence only"
+    }
+  ]
+}

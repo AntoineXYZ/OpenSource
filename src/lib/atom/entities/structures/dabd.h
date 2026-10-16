@@ -2695,7 +2695,8 @@ public:	// Methods
 
 	void SetResidentSpecies(const AuSpecies& species);
 
-	void SetDesign(const AuBdReport& r);
+	static bool IsGenerationCompatible();
+	bool SetDesign(const AuBdReport& r);
 
 	virtual void SetEmpireId(quint32 idEmpire);
 

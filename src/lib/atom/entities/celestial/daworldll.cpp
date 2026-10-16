@@ -13,6 +13,7 @@
 #include "aucommpacket.h"
 #include "aufireparticles.h"
 #include "auglmodelmaker.h"
+#include "aulegacybuildinggeometry.h"
 #include "auroadmap.h"
 #include "auscparts.h"
 #include "ausmokeparticles.h"
@@ -21,6 +22,7 @@
 #include "daanimal.h"
 #include "daatomlist.h"
 #include "dabd.h"
+#include "dalegacycity.h"
 #include "dadesignbase.h"
 #include "dagalaxy.h"
 #include "daitem.h"
@@ -2258,8 +2260,11 @@ GLuint DaWorldLL::CreateTerrainTexture(AuGLEffects& re, WORLDTEX_TYPE worldTexTy
 	};
 
 	GLuint texId = 0;
-	QString texName = QString("WTX%1.%2").arg(worldTexType).arg(tileSize);
-	QImage imgTile(QString(":data/") + tileFile[worldTexType]);
+	const bool legacyPavement = g_Au.IsLegacyGeneration() && worldTexType <= WORLDTEX_RockTan;
+	const QString textureFile = legacyPavement ? AuLegacyBd::Geometry::SiteTextureFile(int(worldTexType))
+		: QString(":data/") + tileFile[worldTexType];
+	QString texName = QString("WTX%1.%2.%3").arg(worldTexType).arg(tileSize).arg(legacyPavement);
+	QImage imgTile(textureFile);
 	if(!imgTile.isNull())
 	{
 		QImage imgSized = imgTile.scaled(tileSize,tileSize, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
@@ -2267,15 +2272,15 @@ GLuint DaWorldLL::CreateTerrainTexture(AuGLEffects& re, WORLDTEX_TYPE worldTexTy
 		{
 			texId = re.CreateTextureFromBitmap(STATIC_TEXTURE_ID, texName, imgSized, GL_LINEAR, GL_LINEAR, true);
 			if(!texId)
-				qWarning() << "DaWorldLL::CreateTerrainTexture ERROR Failed to create texture" << tileFile[worldTexType];
+				qWarning() << "DaWorldLL::CreateTerrainTexture ERROR Failed to create texture" << textureFile;
 			//else
 				//qDebug() << "DaWorldLL::CreateTerrainTexture Created texture" << texId << "of" << tileFile[worldTexType];
 		}
 		else
-			qWarning() << "DaWorldLL::CreateTerrainTexture ERROR Failed to resize" << tileFile[worldTexType] << tileSize;
+			qWarning() << "DaWorldLL::CreateTerrainTexture ERROR Failed to resize" << textureFile << tileSize;
 	}
 	else
-		qWarning() << "DaWorldLL::CreateTerrainTexture ERROR Failed to load" << tileFile[worldTexType];
+		qWarning() << "DaWorldLL::CreateTerrainTexture ERROR Failed to load" << textureFile;
 	return texId;
 }
 
@@ -4238,6 +4243,7 @@ void DaWorldLL::ProcessDemandTally(const AuId& idCity, const AuItem& item,
 int DaWorldLL::SpawnSc(DaBd* bd, const AuScReport& shipDesign, quint8 quality, const AuId& ownerId, const QString& ownerName,
 		quint32 ownerEmpire)
 {
+	if(!DaSc::IsDesignCompatible(shipDesign)) return 3;
 	AuEther* ether = Ether();
 	if(!ether)
 		return 3;
@@ -7426,6 +7432,7 @@ DaVessel* DaWorldLL::CreateSpacecraft(const AuGlobeLLF& ll, double altAGL, quint
 		qDebug() << "error: DaWorldLL::CreateSpacecraft blueprint" << designId << "not loaded";
 		return 0;
 	}
+	if(!DaSc::IsDesignCompatible(r)) return nullptr;
 	if(quality < r.Quality())
 		quality = r.Quality();
 
@@ -8524,6 +8531,18 @@ double DaWorldLL::TerrainAltitudeMSL(const AuGlobeLL& ll) const
 	WORLDTEX_TYPE pavementType = WORLDTEX_Count;
 	AuTime newest;
 	double terAltMSL = VirginTerrainAltitudeMSL(ll, pavementType, newest);
+	if(g_Au.IsLegacyGeneration())
+	{
+		if(pavementType != WORLDTEX_Count) return terAltMSL;
+		DaAtomList subs; ListNormalSubatoms(subs);
+		int levelSites = 0, hideGrass = 0;
+		bool hideRocks = false, hideShrubs = false, hideTrees = false;
+		for(const DaAtom* atom : subs)
+			if(const auto* city = dynamic_cast<const DaLegacyCity*>(atom))
+				terAltMSL = city->AdjustSiteTerrain(*this, terAltMSL, ll, levelSites,
+					hideRocks, hideGrass, hideShrubs, hideTrees, pavementType);
+		return terAltMSL;
+	}
 	if(!BdHere() || pavementType != WORLDTEX_Count)
 	{
 		// Landscapers do not change the terrain texture but they do want to decide about the altitude of the terrain.
@@ -8575,6 +8594,20 @@ double DaWorldLL::TerrainAltitudeMSLPave(const AuGlobeLL& ll, bool& hideRocks, i
 	orchardTreeMSL = 0;			// 0 indicates no influence because it isn't really a valid altitude for a plaform build zone.
 	AuTime newest;
 	double terAltMSL = VirginTerrainAltitudeMSL(ll, hideRocks, hideGrass, hideShrubs, hideTrees, pavementType, newest);
+	if(g_Au.IsLegacyGeneration())
+	{
+		// Legacy developments belong to cities, so neither BdHere nor the
+		// modern BuildingsAt map can find their sites. Use the same sampler
+		// for terrain vertices, grass, shrubs, trees and rocks on both worlds.
+		if(pavementType != WORLDTEX_Count) return terAltMSL;
+		DaAtomList subs; ListNormalSubatoms(subs);
+		int levelSites = 0;
+		for(const DaAtom* atom : subs)
+			if(const auto* city = dynamic_cast<const DaLegacyCity*>(atom))
+				terAltMSL = city->AdjustSiteTerrain(*this, terAltMSL, ll, levelSites,
+					hideRocks, hideGrass, hideShrubs, hideTrees, pavementType);
+		return terAltMSL;
+	}
 	if(!BdHere() || pavementType != WORLDTEX_Count)
 	{
 		// Landscapers do not change the terrain texture but they do want to decide about the altitude of the terrain.
@@ -12289,6 +12322,15 @@ const DaWorldLL* DaWorldLL::FindParentWorldInEnv() const
 
 bool DaWorldLL::IsPathBlocked(const AuPoint& oloc, const AuPoint& nloc, AuPoint& hitLoc, AuPoint& hitNormal, const DaAtom* toWho)
 {
+	if(g_Au.IsLegacyGeneration())
+	{
+		DaAtomList cities;
+		ListNormalSubatoms(cities);
+		for(DaAtom* atom : cities)
+			if(auto* city = dynamic_cast<DaLegacyCity*>(atom))
+				if(city->IsPathBlocked(oloc, nloc, hitLoc, hitNormal, toWho)) return true;
+		return false;
+	}
 	// World does not block path if both locations are outside the atmosphere.
 	double nalt = InAtmosphereCGAltitude(nloc);
 	if(nalt == -10000 && InAtmosphereCGAltitude(oloc) == -10000)
@@ -12412,6 +12454,7 @@ void DaWorldLL::RenderSmoke(const AuGlobeLLF& smokeLL, const AuMatrix4x4& projec
 
 void DaWorldLL::PirateBaseEncounter()
 {
+	if(g_Au.IsLegacyGeneration()) return; // Legacy base generation awaits its own city mechanics.
 	// Double check some things to be sure we don't put two bases on the same world.
 	if(BdHere() ||
 			BaseHere() ||
@@ -12969,6 +13012,7 @@ AuPoint DaWorldLL::GroundLoc(const AuPoint& loc) const
 DaBd* DaWorldLL::CreateBuilding(quint32 designId, quint8 quality, INDUSTRYID industryId, COMMODITYID material,
 		const AuGlobeLLF& atLL, float zRotation, quint32 empireId, const AuSpecies& residentSpecies)
 {
+	if(g_Au.IsLegacyGeneration()) return nullptr;
 	AuEther* ether = Ether();
 	if(!ether)
 		return 0;

@@ -62,6 +62,7 @@ class DaVessel;
 class DiControlInputArray;
 class DpBody;
 namespace AuLegacyScProtocol { struct Reply; }
+namespace AuLegacyCityProtocol { struct Request; struct Reply; }
 
 class DtChatChannel : public QThread
 {
@@ -426,6 +427,8 @@ private:
 	bool LegacyScAuthorized(bool requirePowers);
 	void ReadLegacyScPacket(const QByteArray& payload);
 	void SpawnLegacySc(quint32 designId, AuLegacyScProtocol::Reply& reply);
+	void ReadLegacyCityPacket(const QByteArray& payload);
+	void ProcessLegacyCityRequest(const AuLegacyCityProtocol::Request& request, AuLegacyCityProtocol::Reply& reply);
 
 	void RxData(QTcpSocket& tcpSocket);
 
@@ -503,6 +506,7 @@ private:
 	AuElapsedTimer m_LastLegacyScUpload;
 	AuElapsedTimer m_LastLegacyScCatalogQuery;
 	AuElapsedTimer m_LastLegacyScSpawn;
+	AuElapsedTimer m_LastLegacyCityRequest;
 	int									m_PacketSizeBytesLeft;	// Number of packet size bytes we are expecting.
 	int									m_socketDescriptor;		// Provided in the constructor.
 	AuTime								m_tmConnect;			// Time connection is established.

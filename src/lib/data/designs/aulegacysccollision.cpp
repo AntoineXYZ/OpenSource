@@ -1,6 +1,7 @@
 #include "aulegacysccollision.h"
 #include "aubox.h"
 #include "aulegacyship.h"
+#include "aulegacyshipmesh.h"
 #include "auscdesign.h"
 #include "auscparts.h"
 #include "auscreporthelpers.h"
@@ -104,6 +105,11 @@ struct Triangle
 		: a(triangle.V0()), b(triangle.V1()), c(triangle.V2()),
 		  normal((b - a).Cross(c - a)), bounds(a), stair(stairSurface),
 		  boardingStep(sourceGroup == QStringLiteral("legacy/boarding-step")), group(sourceGroup)
+	{
+		normal.Unit(); bounds.Include(b); bounds.Include(c);
+	}
+	Triangle(const AuPoint& first, const AuPoint& second, const AuPoint& third, bool stairSurface, const QString& sourceGroup)
+		: a(first), b(second), c(third), normal((b - a).Cross(c - a)), bounds(a), stair(stairSurface), group(sourceGroup)
 	{
 		normal.Unit(); bounds.Include(b); bounds.Include(c);
 	}
@@ -839,6 +845,32 @@ CollisionWorld::CollisionWorld(const AuScDesign& design) : m_Impl(new Impl)
 	if(m_Impl->triangles.isEmpty()) return;
 	m_Impl->BuildPatches();
 	m_Impl->BuildNode(0, m_Impl->triangles.size()); m_Impl->valid = true;
+}
+
+CollisionWorld::CollisionWorld(const AuLegacyShip::Rendering::Mesh& mesh) : m_Impl(new Impl)
+{
+	m_Impl->statefulDoors = true;
+	for(const auto& batch : mesh.batches)
+	{
+		const bool stairs = batch.material == AuLegacyShip::Rendering::Material::StairTread
+			|| batch.material == AuLegacyShip::Rendering::Material::StairRiser;
+		if(batch.equipment && !stairs && !batch.doorId) continue;
+		if(batch.vertices.size() % 3 || batch.doorId > 65535
+			|| batch.vertices.size() / 3 > MaximumCollisionTriangles - m_Impl->triangles.size()) return;
+		for(int i = 0; i < batch.vertices.size(); i += 3)
+		{
+			const auto point = [](const QVector3D& p) { return AuPoint(p.x(), p.y(), p.z()); };
+			Triangle triangle(point(batch.vertices[i].position), point(batch.vertices[i+1].position),
+				point(batch.vertices[i+2].position), stairs, QStringLiteral("legacy/building"));
+			triangle.doorId = quint16(batch.doorId);
+			if(!Finite(triangle.a) || !Finite(triangle.b) || !Finite(triangle.c) || triangle.normal.IsZero()) continue;
+			m_Impl->triangles.append(triangle);
+		}
+	}
+	if(m_Impl->triangles.isEmpty()) return;
+	m_Impl->BuildPatches();
+	m_Impl->BuildNode(0, m_Impl->triangles.size());
+	m_Impl->valid = true;
 }
 
 CollisionWorld::~CollisionWorld() {}

@@ -727,10 +727,38 @@ void DtSceneServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 	quint8 type;
 	block >> type;
 	//qDebug() << "DtSceneServer::ReadPacket type" << DtSceneServerPacket::PacketName((DtSceneServerPacket::PACKET)type);
+	if(g_Au.IsLegacyGeneration() && !m_GenerationNegotiated
+		&& type != DtSceneServerPacket::PL_Generation && type != DtSceneServerPacket::PL_Login
+		&& type != DtSceneServerPacket::PL_KeepAlive && type != DtSceneServerPacket::PZ_StatusQuery)
+	{
+		Disconnect();
+		return;
+	}
 
 	switch((DtSceneServerPacket::PACKET)type)	// Generate warning when enum forgotten.
 	{
 	case DtSceneServerPacket::PL_KeepAlive:
+		break;
+	case DtSceneServerPacket::PL_Generation:
+		{
+			AuGameGenerationIdentity capability;
+			const bool valid = AuReadGameGenerationIdentity(block, capability) && block.atEnd();
+			QByteArray replyBytes;
+			QDataStream reply(&replyBytes, QIODevice::WriteOnly);
+			reply.setVersion(QDataStream::Qt_4_1);
+			if(!valid || (g_Au.IsLegacyGeneration() && capability != g_Au.GenerationIdentity()))
+			{
+				reply << quint8(DtSceneServerPacket::PL_LoginFailure) << quint8(2)
+					<< QStringLiteral("This server requires matching game generation protocol and Legacy catalogue assets.");
+				SendPacket(replyBytes);
+				Disconnect();
+				break;
+			}
+			m_GenerationNegotiated = true;
+			reply << quint8(DtSceneServerPacket::PL_Generation);
+			AuWriteGameGenerationIdentity(reply, g_Au.GenerationIdentity());
+			SendPacket(replyBytes);
+		}
 		break;
 
 	case DtSceneServerPacket::PI_Deadhead:
@@ -1226,6 +1254,19 @@ void DtSceneServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 			m_AFK = status & 0x01;
 			m_ChatClient = status & 0x02;	// true if they are using the chat client "Hazeron Commander".
 			bool initLogin = status & 0x04;	// true if this is their first worker server login, so their ship can contact them.
+			AuGameGenerationIdentity capability;
+			const bool hasGenerationCapability = !block.atEnd() && AuReadGameGenerationIdentity(block, capability);
+			if(g_Au.IsLegacyGeneration() && (!hasGenerationCapability || capability != g_Au.GenerationIdentity()))
+			{
+				QByteArray rejected;
+				QDataStream reply(&rejected, QIODevice::WriteOnly);
+				reply.setVersion(QDataStream::Qt_4_1);
+				reply << quint8(DtSceneServerPacket::PL_LoginFailure) << quint8(2)
+					<< QStringLiteral("This Legacy server requires matching Legacy city catalogues and generation protocol support. Update the client assets and program together.");
+				SendPacket(rejected);
+				Disconnect();
+				break;
+			}
 
 			if(sver != AuUtil::SceneVersion())
 			{
@@ -1364,7 +1405,9 @@ void DtSceneServer::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 				out << (quint8)DtSceneServerPacket::PL_Login;
 				out << motd;
 				out << g_Au.ChatPort();			// Tell the client what port to connect for chat.
+				if(hasGenerationCapability) AuWriteGameGenerationIdentity(out, g_Au.GenerationIdentity());
 				SendPacket(ba);
+				m_GenerationNegotiated = true;
 			}
 			else
 			{
@@ -1654,6 +1697,7 @@ void DtSceneServer::IdleClient()
 
 void DtSceneServer::SyncClient()
 {
+	if(g_Au.IsLegacyGeneration() && !m_GenerationNegotiated) return;
 	// Don't flood the client with syncs if they are falling behind.
 	m_rwSync.lockForRead();
 	quint32 syncCount = m_SyncCount;

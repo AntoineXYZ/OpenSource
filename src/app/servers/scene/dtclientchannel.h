@@ -236,6 +236,7 @@ private slots:
 
 private:
 	bool			m_AwaitingAtomIdRestock;
+	bool m_ParentGenerationMatched = false;
 	bool			m_AwaitingBuildingDesignIdRestock;
 	bool			m_AwaitingItemDesignIdRestock;
 	bool			m_AwaitingShipDesignIdRestock;

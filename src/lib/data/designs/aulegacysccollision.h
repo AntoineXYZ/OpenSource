@@ -10,6 +10,7 @@ class AuBox;
 class AuDoorStateHash;
 class AuScDesign;
 class QString;
+namespace AuLegacyShip { namespace Rendering { struct Mesh; } }
 
 namespace AuLegacyScGeometry
 {
@@ -32,6 +33,9 @@ public:
 	};
 
 	explicit CollisionWorld(const AuScDesign& design);
+	// Original building geometry uses the same swept-body/contact solver;
+	// importing it here leaves ship blueprints and rendering unchanged.
+	explicit CollisionWorld(const AuLegacyShip::Rendering::Mesh& mesh);
 	~CollisionWorld();
 	bool IsValid() const;
 	int TriangleCount() const;

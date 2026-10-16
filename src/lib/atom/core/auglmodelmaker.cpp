@@ -14,6 +14,7 @@
 #include "auglobal.h"
 #include "daatomlist.h"
 #include "dabd.h"
+#include "dalegacycity.h"
 #include "dadesigner.h"
 #include "dastar.h"
 #include "daworldglobe.h"
@@ -3851,19 +3852,19 @@ void AuGlobeModelTri::run()
 				tempEther.AddAtom(clonedWorld);
 			}
 
-			// Must also clone the bds so terrain can conform to site meshes.
+			// Clone both building representations so terrain can see their sites.
 			bool bds = false;
 			DaAtomList subs;
 			world->ListNormalSubatoms(subs);
 			for(DaAtomList::const_iterator ai = subs.cbegin(); ai != subs.cend(); ai++)
 			{
-				if(!dynamic_cast<const DaBd*>(*ai))
+				if(!dynamic_cast<const DaBd*>(*ai) && !dynamic_cast<const DaLegacyCity*>(*ai))
 					continue;
 
 				// Add the clone.
 				DaAtom* clone = (*ai)->Clone();
 				tempEther.AddAtom(clone);
-				bds = true;
+				bds = bds || dynamic_cast<const DaBd*>(*ai);
 			}
 			if(bds)
 				clonedWorld->BdAdded();
@@ -4083,19 +4084,19 @@ void AuFloraModel::run()
 		genSeed = world->GenSeed();
 		floraGlow = world->FloraGlow();
 
-		// Must also clone the bds so terrain can conform to site meshes.
+		// Flora uses the same sites as terrain, including city-owned legacy buildings.
 		bool bds = false;
 		DaAtomList subs;
 		world->ListNormalSubatoms(subs);
 		for(DaAtomList::const_iterator ai = subs.cbegin(); ai != subs.cend(); ai++)
 		{
-			if(!dynamic_cast<const DaBd*>(*ai))
+			if(!dynamic_cast<const DaBd*>(*ai) && !dynamic_cast<const DaLegacyCity*>(*ai))
 				continue;
 
 			// Add the clones.
 			DaAtom* clone = (*ai)->Clone();
 			tempEther.AddAtom(clone);
-			bds = true;
+			bds = bds || dynamic_cast<const DaBd*>(*ai);
 		}
 		if(bds)
 			clonedWorld->BdAdded();
@@ -4247,19 +4248,19 @@ void AuRockModel::run()
 
 		genSeed = world->GenSeed();
 
-		// Must also clone the bds so terrain can conform to site meshes.
+		// Rock hiding also needs city-owned legacy building sites in the worker.
 		bool bds = false;
 		DaAtomList subs;
 		world->ListNormalSubatoms(subs);
 		for(DaAtomList::const_iterator ai = subs.cbegin(); ai != subs.cend(); ai++)
 		{
-			if(!dynamic_cast<const DaBd*>(*ai))
+			if(!dynamic_cast<const DaBd*>(*ai) && !dynamic_cast<const DaLegacyCity*>(*ai))
 				continue;
 
 			// Add the clones.
 			DaAtom* clone = (*ai)->Clone();
 			tempEther.AddAtom(clone);
-			bds = true;
+			bds = bds || dynamic_cast<const DaBd*>(*ai);
 		}
 		if(bds)
 			clonedWorld->BdAdded();

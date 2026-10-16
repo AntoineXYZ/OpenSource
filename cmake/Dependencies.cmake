@@ -8,6 +8,7 @@ find_package(Qt5 5.12 REQUIRED COMPONENTS
 )
 
 find_package(OpenGL REQUIRED)
+find_package(ZLIB REQUIRED)
 find_package(OpenAL REQUIRED)
 if(NOT TARGET OpenAL::OpenAL)
     add_library(OpenAL::OpenAL UNKNOWN IMPORTED)

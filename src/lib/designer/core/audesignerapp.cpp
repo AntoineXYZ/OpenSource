@@ -5,6 +5,7 @@
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
 #include "audesignerapp.h"
+#include "aulegacygenerationbootstrap.h"
 //
 #include "auclientglobal.h"
 #include "auframe.h"
@@ -153,6 +154,10 @@ void AuDesignerApp::SceneLogin()
 	out << osVer;
 	out << wordSize;
 	out << status;
+	AuGameGenerationIdentity legacyCapability;
+	QString generationError;
+	if(AuPrepareLegacyGenerationIdentity(legacyCapability, generationError))
+		AuWriteGameGenerationIdentity(out, legacyCapability);
 
 	if(g_Au.m_LogMessages & LOG_ConnectDisconnect)
 		g_Au.Log(g_Au.CacheApp() + "/soh.txt", QString("App: Sending login TCP packet. %1 %2 %3")

@@ -5635,6 +5635,16 @@ void DaDesigner::WeaponEmitLoc(const AuId& archId, const AuScSelection& partIds,
 
 void DaDesigner::SetPreview(quint8 previewType, const AuDesign* design, quint32 genSeed)
 {
+	if(previewType && design && !g_Au.IsSceneSolo())
+	{
+		if(const auto* ship = dynamic_cast<const AuScDesign*>(design))
+		{
+			AuScReport report;
+			ship->ReportDesign(report);
+			if(!DaSc::IsDesignCompatible(report)) return;
+		}
+		if(dynamic_cast<const AuBdDesign*>(design) && !DaBd::IsGenerationCompatible()) return;
+	}
 	AuEther* ether = Ether();
 	if(!ether)
 		return;

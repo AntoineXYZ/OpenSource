@@ -60,6 +60,7 @@ void DtClientChannel::run()
 	emit Connected();
 
 	// Send an initial status packet so the server has a chance to defer me right off.
+	m_ParentGenerationMatched = false;
 	SendStatus();
 
 	const int secsToCheckIn = 60;	// Worker checks in every minute.
@@ -77,7 +78,7 @@ void DtClientChannel::run()
 		RxData(tcpSocket);
 
 		// Restock local id values from boss.
-		RestockNextIds();
+		if(!g_Au.IsLegacyGeneration() || m_ParentGenerationMatched) RestockNextIds();
 
 		// Report readiness changes promptly; otherwise check in once per minute.
 		// Only this thread builds status packets, preserving the order of their snapshots.
@@ -180,6 +181,13 @@ bool DtClientChannel::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 	block >> ptype;
 
 	// Tally count of packets by type.
+	if(g_Au.IsLegacyGeneration() && !m_ParentGenerationMatched && ptype != DtServerChannel::P_Status)
+	{
+		qCritical() << "Parent sent game data before Legacy generation negotiation. Server stopped.";
+		QMetaObject::invokeMethod(auSceneServerApp, [](){ QCoreApplication::exit(1); }, Qt::QueuedConnection);
+		Kill();
+		return false;
+	}
 	QHash<quint32, quint32>::iterator pri = m_PacketsRx.find(ptype);
 	if(pri == m_PacketsRx.end())
 		m_PacketsRx.insert(ptype, 1);
@@ -970,6 +978,7 @@ bool DtClientChannel::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 			emit Connected();
 
 			// Send an initial status packet so the server knows what mode I'm in.
+			m_ParentGenerationMatched = false;
 			SendStatus();
 
 			if(g_Au.m_LogMessages & LOG_ConnectDisconnect)
@@ -1332,6 +1341,17 @@ bool DtClientChannel::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 		{
 			AuPlayerOnlineStatusVector players;
 			players << block;
+			AuGameGenerationIdentity identity;
+			const bool generationMatches = block.status() == QDataStream::Ok && (block.atEnd() ? !g_Au.IsLegacyGeneration()
+				: AuReadGameGenerationIdentity(block, identity) && block.atEnd() && identity == g_Au.GenerationIdentity());
+			if(!generationMatches)
+			{
+				qCritical() << "Parent server game generation or catalogue manifest mismatch. Server stopped.";
+				QMetaObject::invokeMethod(auSceneServerApp, [](){ QCoreApplication::exit(1); }, Qt::QueuedConnection);
+				Kill();
+				return false;
+			}
+			m_ParentGenerationMatched = true;
 			emit PlayerOnlineStatus(players);
 		}
 		break;
@@ -1476,6 +1496,7 @@ void DtClientChannel::SendStatus()
 		out << (*it).second.m_Clients;
 		out << (*it).second.m_Tick;	// This value is in 1/2 millisecond increments. i.e. 100 = 50ms
 	}
+	AuWriteGameGenerationIdentity(out, g_Au.GenerationIdentity());
 	SendPacket(ba);
 }
 

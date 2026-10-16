@@ -1,0 +1,60 @@
+{
+  "source": "Original 2016 AuAtomRes13.dll",
+  "extraction": "Original registered Qt resource PNG bytes; no image re-encoding.",
+  "materials": [
+    {
+      "file": "BldLumber.png",
+      "sha256": "ebb80fb6e515134e66ccadbab0ff4c363af29d9b0ce693426527217a21592092",
+      "bytes": 2373482,
+      "width": 256,
+      "height": 8192,
+      "source_binary": "AuAtomRes13.dll",
+      "data_address": "0x1828c02d4"
+    },
+    {
+      "file": "BldMagmium.png",
+      "sha256": "7dbafbada6b05775fa3403c6e3b72a2216eeb9b47be47a61c89ee490c58eea72",
+      "bytes": 2328112,
+      "width": 256,
+      "height": 8192,
+      "source_binary": "AuAtomRes13.dll",
+      "data_address": "0x182b03a42"
+    },
+    {
+      "file": "BldStone.png",
+      "sha256": "ac16218987e56452870a4162ad37ddf29446ec06121ba7db5271a15d69b41a17",
+      "bytes": 2404162,
+      "width": 256,
+      "height": 8192,
+      "source_binary": "AuAtomRes13.dll",
+      "data_address": "0x182fa8efa"
+    },
+    {
+      "file": "BldMetal.png",
+      "sha256": "4d9b946caacf7d6804c719be11af1b7188742fe57c5a4d30541826401f860660",
+      "bytes": 2543074,
+      "width": 256,
+      "height": 8192,
+      "source_binary": "AuAtomRes13.dll",
+      "data_address": "0x182d3c114"
+    },
+    {
+      "file": "BldWood.png",
+      "sha256": "d35076670e8eeeb3dd69fb3fc7683b90e7fa3d846b32965cf6b4acc350bfa3d0",
+      "bytes": 2999995,
+      "width": 256,
+      "height": 8192,
+      "source_binary": "AuAtomRes13.dll",
+      "data_address": "0x183416f51"
+    },
+    {
+      "file": "BldVulcium.png",
+      "sha256": "c9409b431c61021c299d3251eea1f4d00bb262f05e20e52df786a10ed4d12514",
+      "bytes": 2240633,
+      "width": 256,
+      "height": 8192,
+      "source_binary": "AuAtomRes13.dll",
+      "data_address": "0x1831f3ed4"
+    }
+  ]
+}

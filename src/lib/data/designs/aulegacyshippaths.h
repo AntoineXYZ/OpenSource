@@ -31,6 +31,11 @@ struct Opening
 	bool large = false;
 	bool firstEmbedded = false;
 	bool secondEmbedded = false;
+	// Original AuPath references opening-array indices independently of detail
+	// IDs. Building routes retain those three namespaces in their waypoints.
+	qint16 doorIndex = -1;
+	qint32 holeIndex = -1;
+	qint32 railingIndex = -1;
 };
 
 bool ExtractOpenings(const Design& design, QVector<Opening>& openings, QString& error);
@@ -39,9 +44,26 @@ bool AppendVerticalOpenings(const Design& design, QVector<Opening>& openings, QS
 class Graph
 {
 public:
+	struct CellSnapshot
+	{
+		quint32 directions = 0x200;
+		quint16 flags = 0, room1 = 0, room2 = 0;
+		quint8 type = 0, stairs = 0;
+		qint16 doorIndex = -1;
+		qint32 holeIndex = -1, railingIndex = -1;
+		quint32 doorDetailId = 0;
+	};
 	// Progress returns false to cancel. A failed build leaves no usable graph.
 	bool Build(const Design& design, QString& error,
 		const std::function<bool(int, int)>& progress = {});
+	// AuPath::CreateBuilding shares the original painting routines, but uses
+	// constructed limits and PaintLevelTerrain rather than ship hull extents.
+	bool BuildBuilding(const Design& design, int minimumDeck, int maximumDeck,
+		double siteRadius, QString& error);
+	QHash<quint32, CellSnapshot> PathableCells() const;
+	const QHash<quint32, quint8>& ExtantCells() const { return m_Extant; }
+	const QHash<quint32, QVector<quint16>>& ExtantRooms() const { return m_ExtantRooms; }
+	const QSet<quint32>& PortalCells() const { return m_Portals; }
 	bool CanReach(const QPointF& from, int fromDeck, const QPointF& to,
 		int toDeck, bool crew = true) const;
 	bool CanReachOutside(const QPointF& from, int fromDeck, bool crew = true) const;
@@ -65,6 +87,8 @@ private:
 		quint8 type = 0;
 		quint8 stairs = 0;
 		quint32 doorDetailId = 0;
+		qint16 doorIndex = -1;
+		qint32 holeIndex = -1, railingIndex = -1;
 		int index = -1;
 	};
 	struct ReachCache
@@ -88,6 +112,9 @@ private:
 	mutable bool m_Canceled = false;
 	int m_MinimumDeck = 0;
 	int m_MaximumDeck = 0;
+	bool m_Building = false;
+	int m_BuildingMinimumDeck = 0, m_BuildingMaximumDeck = 0;
+	double m_BuildingSiteRadius = 0;
 	void ConnectOpening(quint32 key);
 	void ConnectBelow(quint32 key);
 	void RemoveCell(quint32 key);

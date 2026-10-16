@@ -4,6 +4,7 @@
 /old-editor/
 /scripts/
 /research/
+/docs/
 
 __pycache__/
 *.pyc
@@ -17,3 +18,4 @@ __pycache__/
 **/.d/
 **/.r/
 **/.qmake.stash
+/tests/

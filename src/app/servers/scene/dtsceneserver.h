@@ -322,6 +322,7 @@ private:
 	AuTime			m_AccountExpiry;
 	unsigned int	m_confirmNum;		// Confirmation number assigned by login server.
 	unsigned int	m_idPlayer;			// Id of player in login database.
+	bool			m_GenerationNegotiated = false;
 	AuId			m_idUnit;			// Id of player's person unit atom.
 	quint32			m_idUnitEmpire;		// Id of player's person unit atom's empire.
 	quint8			m_UnitAgentBits;

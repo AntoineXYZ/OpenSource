@@ -6,6 +6,9 @@
 
 #version 150
 
+uniform bool directTexture;
+uniform vec4 directTextureGlobe; // xyz: globe center in eye space; w: horizon test enabled.
+
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 // Lighting Structures and Functions
 
@@ -67,6 +70,18 @@ void computeSunLight(SunLight sun,
 	float rd2 = cos(sunang - diskang);
 	NdotL = max(rd1, NdotL);
 	NdotL = max(rd2, NdotL);
+
+	if(directTexture && directTextureGlobe.w > .5)
+	{
+		// Original BuildingsDayNear sun-over-the-horizon test. A studio
+		// model shader otherwise lights walls through the body of the planet.
+		vec3 up = normalize(P - directTextureGlobe.xyz);
+		float LdotU = dot(L, up);
+		float horizonAngle = acos(clamp(LdotU, -1., 1.));
+		LdotU = max(LdotU, cos(horizonAngle + diskang));
+		LdotU = max(LdotU, cos(horizonAngle - diskang));
+		NdotL *= sign(max(0., LdotU));
+	}
 
 	// Compute specular lighting terms.
 	vec3 V = normalize(-P);										// Vector to the eye from P. We are lighting in eye-space.

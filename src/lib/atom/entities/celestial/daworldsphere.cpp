@@ -226,6 +226,7 @@ double DaWorldSphere::SurfaceAltitudeMSL(const AuGlobeLL& ll) const
 int DaWorldSphere::SpawnSc(const AuScReport& shipDesign, quint32 bdEmpireId, quint8 quality,
 		const AuId& ownerId, const QString& ownerName, quint32 ownerEmpire, const AuId& cityOrBdId)
 {
+	if(!DaSc::IsDesignCompatible(shipDesign)) return 1;
 	AuEther* ether = Ether();
 	if(!ether)
 		return 4;

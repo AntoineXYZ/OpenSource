@@ -1311,12 +1311,16 @@ quint32 DbCommodity::TestFailure(quint8 quality, quint32 count)
 
 bool DbCommodity::IsInvalid(COMMODITYID cid)
 {
+	if(gp_AuGlobal && g_Au.IsLegacyGeneration())
+		return cid == CID_Invalid || !g_Au.HasLegacyCommodity(cid);
 	return cid == CID_Invalid;
 }
 
 //static
 bool DbCommodity::IsPatent(COMMODITYID cid)
 {
+	// Legacy technology commodities carry a level; they are not modern patents.
+	if(gp_AuGlobal && g_Au.IsLegacyGeneration()) return false;
 	switch(cid)
 	{
 	case CID_PatentAPCApparatus:
@@ -1579,6 +1583,7 @@ bool DbCommodity::IsScPatent(COMMODITYID cid)
 //static
 bool DbCommodity::IsObsolete(COMMODITYID cid)
 {
+	if(gp_AuGlobal && g_Au.IsLegacyGeneration()) return !g_Au.HasLegacyCommodity(cid);
 	return
 		cid == CID_WoodHullModule ||					// Hull modules are conceptual. They do not actually exist.
 		cid == CID_LumberHullModule ||					// Hull modules are conceptual. They do not actually exist.

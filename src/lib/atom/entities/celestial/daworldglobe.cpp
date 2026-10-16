@@ -25,6 +25,7 @@
 #include "daasteroid.h"
 #include "daatomlist.h"
 #include "dabd.h"
+#include "dalegacycity.h"
 #include "dadesigner.h"
 #include "daeffect.h"
 #include "daitem.h"
@@ -6540,7 +6541,14 @@ DaWorldGlobe* DaWorldGlobe::LoadSubatoms(AuEther& ether, QSqlDatabase& db, const
 				pnu->SetEnclosureNotReady();
 
 				DaAsteroid::LoadSubatoms(ether, db, pnu->Id());
-				DaBd::LoadSubatoms(ether, db, pnu->Id());
+				if(g_Au.IsLegacyGeneration())
+				{
+					QString error;
+					if(!DaLegacyCity::LoadSubatoms(ether, db, pnu->Id(), &error))
+						qFatal("Legacy city world load failed: %s", qPrintable(error));
+				}
+				else
+					DaBd::LoadSubatoms(ether, db, pnu->Id());
 				DaSc::LoadSubatoms(ether, db, pnu->Id());
 				DaVehicle::LoadSubatoms(ether, db, pnu->Id());
 				DaPerson::LoadSubatoms(ether, db, pnu->Id());
@@ -6550,6 +6558,8 @@ DaWorldGlobe* DaWorldGlobe::LoadSubatoms(AuEther& ether, QSqlDatabase& db, const
 				DaArena::LoadSubatoms(ether, db, pnu->Id());
 				DaNpc::LoadSubatoms(ether, db, pnu->Id());
 
+				if(!g_Au.IsLegacyGeneration())
+				{
 				pnu->m_BdBits = 0x80 | 0x20 | 0x08;
 				pnu->JurisdictionUpdate();
 				pnu->UpdateRoadMap();
@@ -6558,6 +6568,7 @@ DaWorldGlobe* DaWorldGlobe::LoadSubatoms(AuEther& ether, QSqlDatabase& db, const
 				pnu->TroopSupplierUpdate();
 				pnu->SendBdFacilities();	// Notify master server of bd cities and their facilities.
 				pnu->InvalidateEnclosureCache();
+				}
 			}
 		}
 		if(!idToLoad.IsNull())

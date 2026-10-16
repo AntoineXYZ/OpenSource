@@ -268,13 +268,24 @@ bool ExtractOpenings(const Design& design, QVector<Opening>& openings, QString& 
 	}
 	QVector<Opening> result = doors;
 	result += holes; result += railings;
+	for(int i = 0; i < result.size(); ++i)
+	{
+		if(i < doors.size()) result[i].doorIndex = qint16(i);
+		else if(i < doors.size() + holes.size()) result[i].holeIndex = i - doors.size();
+		else result[i].railingIndex = i - doors.size() - holes.size();
+	}
 	for(Opening& opening : result)
 		if(opening.large)
 		{
 			opening.firstEmbedded = Embedded(opening.first, opening.deck, holes, rooms);
 			opening.secondEmbedded = Embedded(opening.second, opening.deck, holes, rooms);
 		}
+	const int explicitCount = result.size();
 	if(!AppendVerticalOpenings(design, result, error)) return false;
+	// DpBuilding::AnalyzeDesign and DaSpaceShip::AnalyzeDesign append generated
+	// gravity/open-to-below samples to the hole array after explicit details.
+	for(int i = explicitCount; i < result.size(); ++i)
+		result[i].holeIndex = holes.size() + i - explicitCount;
 	openings = std::move(result);
 	error.clear();
 	return true;

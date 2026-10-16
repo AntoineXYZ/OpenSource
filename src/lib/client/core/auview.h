@@ -32,6 +32,8 @@ public:
 	virtual void ChatReceived(AuCommPacket* msg) = 0;
 
 	virtual void DeselectAllUnits();
+	// GUI thread hook: release rendered atoms and commands before metadata changes.
+	virtual void ResetGameGeneration();
 
 	virtual QString DesignAnalysis();
 

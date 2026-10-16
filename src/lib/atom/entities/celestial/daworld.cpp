@@ -773,6 +773,7 @@ DaVessel* DaWorld::AgentSpawnSpacecraft(DaPerson* person, int designId, quint8& 
 			errcode = 2;
 		return 0;
 	}
+	if(!DaSc::IsDesignCompatible(scReport)) { errcode = 27; return nullptr; }
 
 	DaVessel* vessel = 0;
 	unsigned int mfgTimeSecs;			// Number of seconds needed to manufacture the design.

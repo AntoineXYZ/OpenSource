@@ -1,0 +1,83 @@
+{
+  "source": "Original 2016 AuAtomRes13.dll",
+  "extraction": "Original registered Qt resource PNG bytes; no image re-encoding.",
+  "registration_address": "0x180001070",
+  "textures": [
+    {
+      "file": "ConstructionZone.png",
+      "sha256": "940d425d358979db10c31549ae0f3241e990c46bd8251bf19ad9c11a282e9af4",
+      "bytes": 57085,
+      "width": 256,
+      "height": 256,
+      "data_address": "0x180e62f95",
+      "original_worldtex": 1,
+      "pavement_slot": 0
+    },
+    {
+      "file": "ConcreteHeavy.png",
+      "sha256": "445083d45f1a57f1cce4019b43596a1dd9ebadae82ed5f1afc9cad68b4bf5c2c",
+      "bytes": 132950,
+      "width": 256,
+      "height": 256,
+      "data_address": "0x180cd7570",
+      "original_worldtex": 3,
+      "pavement_slot": 1,
+      "material_commodity": 146
+    },
+    {
+      "file": "ConcreteDarkModerate.png",
+      "sha256": "839b4623d86121ae4bc2215c76dd946949a03f02f851692e9678617111ee5c5e",
+      "bytes": 188703,
+      "width": 256,
+      "height": 256,
+      "data_address": "0x180db65ac",
+      "original_worldtex": 2,
+      "pavement_slot": 2,
+      "material_commodity": 145
+    },
+    {
+      "file": "BrickIrregular.png",
+      "sha256": "7ca02b935fcbdf1b0036a591d8ad11cedb1f5c4bdbe4afc6ccbf0a9d6e403705",
+      "bytes": 177489,
+      "width": 256,
+      "height": 256,
+      "data_address": "0x180c5bb69",
+      "original_worldtex": 7,
+      "pavement_slot": 3,
+      "material_commodity": 51
+    },
+    {
+      "file": "CobblestoneLight.png",
+      "sha256": "92068ece1671b28bd9a3ac5ac547d8cc14b454d3e652cfb62c8090ae632f2cee",
+      "bytes": 167520,
+      "width": 256,
+      "height": 256,
+      "data_address": "0x180b9b033",
+      "original_worldtex": 8,
+      "pavement_slot": 4,
+      "material_commodity": 76
+    },
+    {
+      "file": "BrickLight.png",
+      "sha256": "1b552962c78a9d7c3d09eb838c9d42e4b3741f50e1b720fc803cd0ac41c18bf4",
+      "bytes": 177212,
+      "width": 256,
+      "height": 256,
+      "data_address": "0x180becd76",
+      "original_worldtex": 9,
+      "pavement_slot": 5,
+      "material_commodity": 48
+    },
+    {
+      "file": "DirtRocky.png",
+      "sha256": "eb86cd2dae5eaa1d6f4aa78d1c7d71fa122cb54e0e77d027cf3fb9945886f3ab",
+      "bytes": 186533,
+      "width": 256,
+      "height": 256,
+      "data_address": "0x180b2a9e6",
+      "original_worldtex": 10,
+      "pavement_slot": 6,
+      "material_commodity": 86
+    }
+  ]
+}

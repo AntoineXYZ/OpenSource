@@ -93,6 +93,11 @@ QDebug operator<<(QDebug dbg, const AuItemContentId& id)
 
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
+bool AuLegacyItemTechnologyActive()
+{
+	return gp_AuGlobal && g_Au.IsLegacyGeneration();
+}
+
 AuItem::AuItem(COMMODITYID cid, quint8 quality, quint32 empireOfOrigin, quint32 count/*=1*/)
 {
 	Q_ASSERT(quality);
@@ -102,7 +107,7 @@ AuItem::AuItem(COMMODITYID cid, quint8 quality, quint32 empireOfOrigin, quint32 
 	m_EmpireOfOrigin = empireOfOrigin;
 
 	// Don't crash if the commodity array is invalid. e.g. CID_Underwear.
-	if(g_Au.m_CommodityArray[cid].m_id == cid)
+	if(g_Au.IsCommodityAvailable(cid))
 		m_HitPoints = NewHitPoints();
 	else
 		m_HitPoints = 1;
@@ -682,6 +687,13 @@ AuItem* AuItem::Create(COMMODITYID cid, quint8 quality, quint32 empireOfOrigin, 
 //static
 quint8 AuItem::ItemType(COMMODITYID cid)
 {
+	if(g_Au.IsLegacyGeneration())
+	{
+		if(!g_Au.HasLegacyCommodity(cid)) return IT_Invalid;
+		// Legacy technology/module aliases and the original non-storage
+		// computer are plain commodities, irrespective of modern semantics.
+		if(cid >= CID_Count || cid == CID_Computer) return IT_Item;
+	}
 	switch(cid)
 	{
 	case CID_FIRST:
@@ -2150,7 +2162,7 @@ QString AuItem::ListName() const
 float AuItem::UnitCost() const
 {
 	// Get the commodity/quality cost of the item.
-	float unitCost = g_Au.CommodityQualityCost(CommodityId(), Quality());
+	float unitCost = g_Au.CommodityQualityCost(CommodityId(), Quality(), TechLevel());
 
 	// Modulate the cost by the condition of the item.
 	if(HitPoints() >= NewHitPoints() || NewHitPoints() == 0)
@@ -3434,6 +3446,7 @@ float AuItem::GroundHeightAboveCG() const
 
 AuItem* AuItem::FixItem() const
 {
+	if(AuLegacyItemTechnologyActive()) return 0;
 	if(CommodityId() == CID_ComputerObsolete)
 	{
 		// Computers were upgraded to be storage devices.
@@ -7728,6 +7741,11 @@ AuGearPos AuItemContent::FindItemPos(const AuGearPos& parentPos, const AuItem& i
 
 AuGearPos AuItemContent::FindBest(const AuGearPos& parentPos, COMMODITYID cid, quint8& bestQ) const
 {
+	if(AuLegacyItemTechnologyActive())
+	{
+		quint8 bestTechnology = 0;
+		return FindBest(parentPos, cid, bestQ, bestTechnology, 0);
+	}
 	AuGearPos pos;
 	for(const_iterator ii = cbegin(); ii != cend(); ii++)
 	{
@@ -7749,6 +7767,28 @@ AuGearPos AuItemContent::FindBest(const AuGearPos& parentPos, COMMODITYID cid, q
 		}
 	}
 	return pos;
+}
+
+AuGearPos AuItemContent::FindBest(const AuGearPos& parentPos, COMMODITYID cid, quint8& bestQ,
+	quint8& bestTechnology, quint8 minimumTechnology) const
+{
+	AuGearPos result;
+	for(const auto& entry : *this)
+	{
+		const auto* item = entry.second;
+		if(item->CommodityId() == cid && item->TechLevel() >= minimumTechnology
+			&& (item->TechLevel() > bestTechnology || (item->TechLevel() == bestTechnology
+				&& (bestQ == 0 || item->Quality() > bestQ))))
+		{
+			result = AuGearPos(parentPos, entry.first); bestTechnology = item->TechLevel(); bestQ = item->Quality();
+		}
+		if(const auto* content = item->Content())
+		{
+			const auto nested = content->FindBest(AuGearPos(parentPos, entry.first), cid, bestQ, bestTechnology, minimumTechnology);
+			if(nested.IsValid()) result = nested;
+		}
+	}
+	return result;
 }
 
 bool AuItemContent::FetchConstructionMaterials(DeConstructionProcess& cp)

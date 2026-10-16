@@ -20456,6 +20456,11 @@ void DaPerson::DeleteStoredData(const AuGearPos& srcPos, const QSet<COMMODITYID>
 DaBd* DaPerson::BdBuild(INDUSTRYID industryId, quint32 designId, COMMODITYID material, const AuPoint& buildLoc, float zRotation,
 		const AuId& platformId, quint16 mpid, bool workerOk)
 {
+	if(!DaBd::IsGenerationCompatible())
+	{
+		Thought(tr("Legacy city construction is not implemented yet."));
+		return nullptr;
+	}
 	AuEther* ether = Ether();
 	if(!ether)
 		return 0;
@@ -20583,6 +20588,7 @@ DaBd* DaPerson::BdBuildStorage(INDUSTRYID industryId, quint32 designId, COMMODIT
 
 DaBd* DaPerson::BdPreview(const AuPoint& buildLoc, float zRotation)
 {
+	if(!DaBd::IsGenerationCompatible()) return nullptr;
 	AuEther* ether = Ether();
 	if(!ether)
 		return 0;
@@ -23635,6 +23641,11 @@ DaAtom::ATOM_TYPE DaPerson::AtomType() const
 DaBd* DaPerson::BdBuildFence(const AuPoint& startLoc, const AuPoint& endLoc, int fenceStyle, const AuId& platformId,
 		quint32 customDesignId, int mat)
 {
+	if(!DaBd::IsGenerationCompatible())
+	{
+		Thought(tr("Legacy city construction is not implemented yet."));
+		return nullptr;
+	}
 	AuEther* ether = Ether();
 	if(!ether)
 		return 0;
@@ -23776,6 +23787,7 @@ DaBd* DaPerson::BdBuildFence(const AuPoint& startLoc, const AuPoint& endLoc, int
 
 DaBd* DaPerson::BdPreviewFence(const AuPoint& startLoc, const AuPoint& endLoc)
 {
+	if(!DaBd::IsGenerationCompatible()) return nullptr;
 	AuEther* ether = Ether();
 	if(!ether)
 		return 0;

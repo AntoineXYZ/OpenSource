@@ -1710,6 +1710,7 @@ public slots:
 
 public:
 	virtual QString DesignAnalysis();
+	void ResetGameGeneration() override;
 
 	// Returns current material setting of building in design studio.
 	BUILDMATERIAL DesignBuildingMaterial();

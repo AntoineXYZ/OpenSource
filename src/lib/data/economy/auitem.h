@@ -43,6 +43,9 @@ class DeConstructionProcess;
 class DeManufacturingProcess;
 class DpBody;
 
+// Kept out of this header's dependency graph: AuGlobal includes item headers.
+AUDATA_DLL bool AuLegacyItemTechnologyActive();
+
 class AUDATA_DLL QPointHash
 {
 public:
@@ -244,6 +247,7 @@ public:	// Operators
 
 	virtual bool operator==(const AuItem& item) const
 	{
+		if(AuLegacyItemTechnologyActive() && TechLevel() != item.TechLevel()) return false;
 		if(Quality() != item.Quality())
 			return false;
 		if(CommodityId() != item.CommodityId())
@@ -285,6 +289,9 @@ public:	// Operators
 		else if(CommodityId() > item.CommodityId())
 			return false;
 
+		if(AuLegacyItemTechnologyActive() && TechLevel() != item.TechLevel())
+			return TechLevel() < item.TechLevel();
+
 		if(Quality() < item.Quality())
 			return true;
 		else if(Quality() > item.Quality())
@@ -303,6 +310,19 @@ public:	// Operators
 	virtual void operator<<(QDataStream& in);
 
 public:	// Methods
+	// 2016 stored TL independently from quality in the low five item bits.
+	quint8 TechLevel() const { return AuLegacyItemTechnologyActive() ? m_Bits & 0x1f : 0; }
+	bool SetTechLevel(quint8 level)
+	{
+		if(!AuLegacyItemTechnologyActive() || level > 31) return false;
+		m_Bits = (m_Bits & ~quint8(0x1f)) | level;
+		return true;
+	}
+	bool MeetsRequirements(quint8 minimumQuality, quint8 minimumTechnology) const
+	{
+		return Quality() >= minimumQuality
+			&& (!AuLegacyItemTechnologyActive() || TechLevel() >= minimumTechnology);
+	}
 	// Returns the axis down which the item is aimed. 0=positive X, 1=positive Y
 	int AimAxis() const;
 
@@ -1099,6 +1119,7 @@ public:
 	// Compares fields necessary to distinquish items in a collection. Does not compare Count.
 	virtual bool IsItem(const AuItem& item) const
 	{
+		if(AuLegacyItemTechnologyActive() && TechLevel() != item.TechLevel()) return false;
 		if(Quality() != item.Quality())
 			return false;
 		if(CommodityId() != item.CommodityId())
@@ -1995,7 +2016,10 @@ public:	// Methods
 		iterator bestIt = end();
 		for(iterator it = find(cid); it != end() && (*it).first == cid; it++)
 		{
-			if((*it).second->Quality() > bestQ)
+			if(AuLegacyItemTechnologyActive()
+				? (bestIt == end() || it->second->TechLevel() > bestIt->second->TechLevel()
+					|| (it->second->TechLevel() == bestIt->second->TechLevel() && it->second->Quality() > bestQ))
+				: it->second->Quality() > bestQ)
 			{
 				bestQ = (*it).second->Quality();
 				bestIt = it;
@@ -2017,7 +2041,10 @@ public:	// Methods
 		const_iterator bestIt = cend();
 		for(const_iterator it = find(cid); it != cend() && (*it).first == cid; it++)
 		{
-			if((*it).second->Quality() > bestQ)
+			if(AuLegacyItemTechnologyActive()
+				? (bestIt == cend() || it->second->TechLevel() > bestIt->second->TechLevel()
+					|| (it->second->TechLevel() == bestIt->second->TechLevel() && it->second->Quality() > bestQ))
+				: it->second->Quality() > bestQ)
 			{
 				bestQ = (*it).second->Quality();
 				bestIt = it;
@@ -2043,7 +2070,10 @@ public:	// Methods
 		{
 			if((*it).second->EmpireOfOrigin() != empireOfOrigin)
 				continue;
-			if((*it).second->Quality() > bestQ)
+			if(AuLegacyItemTechnologyActive()
+				? (bestIt == cend() || it->second->TechLevel() > bestIt->second->TechLevel()
+					|| (it->second->TechLevel() == bestIt->second->TechLevel() && it->second->Quality() > bestQ))
+				: it->second->Quality() > bestQ)
 			{
 				bestQ = (*it).second->Quality();
 				bestIt = it;
@@ -2067,7 +2097,10 @@ public:	// Methods
 		{
 			if((*it).second->EmpireOfOrigin() != empireOfOrigin)
 				continue;
-			if((*it).second->Quality() > bestQ)
+			if(AuLegacyItemTechnologyActive()
+				? (bestIt == end() || it->second->TechLevel() > bestIt->second->TechLevel()
+					|| (it->second->TechLevel() == bestIt->second->TechLevel() && it->second->Quality() > bestQ))
+				: it->second->Quality() > bestQ)
 			{
 				bestQ = (*it).second->Quality();
 				bestIt = it;
@@ -2111,7 +2144,10 @@ public:	// Methods
 		iterator worstIt = end();
 		for(iterator it = find(cid); it != end() && (*it).first == cid; it++)
 		{
-			if((*it).second->Quality() < worstQ)
+			if(AuLegacyItemTechnologyActive()
+				? (worstIt == end() || it->second->TechLevel() < worstIt->second->TechLevel()
+					|| (it->second->TechLevel() == worstIt->second->TechLevel() && it->second->Quality() < worstQ))
+				: it->second->Quality() < worstQ)
 			{
 				worstQ = (*it).second->Quality();
 				worstIt = it;
@@ -2161,6 +2197,29 @@ public:	// Methods
 			if((*it).second->Quality() >= minQ)
 				count += (*it).second->Count();
 		return count;
+	}
+
+	// Legacy production/repair must not count lower-technology stock.
+	quint32 RawCount(COMMODITYID cid, quint8 minQ, quint8 minTL) const
+	{
+		quint32 count = 0;
+		for(const_iterator it = find(cid); it != cend() && it->first == cid; ++it)
+			if(it->second->MeetsRequirements(minQ, minTL)) count += it->second->Count();
+		return count;
+	}
+	int RawRemove(COMMODITYID cid, quint8 minQ, quint8 minTL, quint32 count)
+	{
+		quint32 removed = 0;
+		for(iterator it = find(cid); count && it != end() && it->first == cid; )
+		{
+			if(!it->second->MeetsRequirements(minQ, minTL)) { ++it; continue; }
+			const quint32 take = qMin(count, it->second->Count());
+			it->second->Consume(take);
+			removed += take;
+			count -= take;
+			if(!it->second->Count()) it = Erase(it); else ++it;
+		}
+		return int(removed);
 	}
 
 	// Removes the first 'count' quantity of a commodity that is in this array, ignoring quality.
@@ -2609,6 +2668,8 @@ public:	// Methods
 
 	// Recursive.
 	AuGearPos FindBest(const AuGearPos& parentPos, COMMODITYID cid, quint8& bestQ) const;
+	AuGearPos FindBest(const AuGearPos& parentPos, COMMODITYID cid, quint8& bestQ,
+		quint8& bestTechnology, quint8 minimumTechnology) const;
 
 	// Recursive.
 	AuGearPos FindItemPos(const AuGearPos& parentPos, const AuItem& item) const;

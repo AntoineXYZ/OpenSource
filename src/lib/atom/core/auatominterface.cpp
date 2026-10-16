@@ -21,6 +21,7 @@
 #include "austory.h"
 #include "daarena.h"
 #include "dabd.h"
+#include "dalegacycity.h"
 #include "daatomlist.h"
 #include "dacitizen.h"
 #include "dadesigner.h"
@@ -5124,6 +5125,24 @@ bool AuAtomInterface::ReportCityLast(const AuId& cityId, bool& haveReport, AuCit
 	{
 		personEmpire = person->EmpireId();
 		personHasAgentPower = person->HasAgentPower();
+		if(g_Au.IsLegacyGeneration())
+		{
+			AuId selected(cityId);
+			if(selected.IsNull())
+			{ selected = person->LockEnvironmentQuery()->LegacyCityId(); person->UnlockEnvironmentQuery(); }
+			const auto* city = dynamic_cast<const DaLegacyCity*>(person->Ether()->FindNormalAtom(selected));
+			foundCity = city != nullptr;
+			if(city && (personHasAgentPower || (personEmpire && personEmpire == city->EmpireId())))
+			{
+				AuCityReportHistory history;
+				if(city->ReportHistory(history))
+				{
+					report = history.Last(); haveReport = true; havePrevReport = history.Count() > 1;
+					if(havePrevReport) prevReport = history.NextToLast();
+				}
+			}
+			UnlockAvatar(); return foundCity;
+		}
 		const DaBd* bd;
 		if(!cityId.IsNull())
 			bd = dynamic_cast<const DaBd*>(system->FindIdRecursive(cityId));
@@ -5177,6 +5196,17 @@ bool AuAtomInterface::ReportCityHistory(const AuId& cityId, bool& haveReport, Au
 	{
 		personEmpire = person->EmpireId();
 		personHasAgentPower = person->HasAgentPower();
+		if(g_Au.IsLegacyGeneration())
+		{
+			AuId selected(cityId);
+			if(selected.IsNull())
+			{ selected = person->LockEnvironmentQuery()->LegacyCityId(); person->UnlockEnvironmentQuery(); }
+			const auto* city = dynamic_cast<const DaLegacyCity*>(person->Ether()->FindNormalAtom(selected));
+			foundCity = city != nullptr;
+			if(city && (personHasAgentPower || (personEmpire && personEmpire == city->EmpireId())))
+				haveReport = city->ReportHistory(report);
+			UnlockAvatar(); return foundCity;
+		}
 		const DaAtom* atom = 0;
 		if(!cityId.IsNull())
 			atom = system->FindIdRecursive(cityId);

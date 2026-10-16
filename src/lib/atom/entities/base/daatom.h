@@ -706,6 +706,7 @@ public:
 		ATOM_WorldRing,
 		ATOM_WorldRingSection = 40,
 		ATOM_WorldSphere,
+		ATOM_LegacyCity = 42,
 		ATOM_Count					// Update P_SyncComplete in dtsspacket.h if this exceeds 50.
 	};
 
@@ -2185,6 +2186,7 @@ public:
 	DaBd* FindBdHQ() const;
 
 	virtual void FindBdRecursive(DaAtomList& bds) const;
+	void FindLegacyCitiesRecursive(DaAtomList& cities) const;
 
 	virtual void FindBdRecursive(DaAtomList& bds, quint32 empireId) const;
 

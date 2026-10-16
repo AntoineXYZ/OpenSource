@@ -12,6 +12,7 @@
 #include "auglobal.h"
 #include "auitreport.h"
 #include "aulegacyscprotocol.h"
+#include "aulegacycityprotocol.h"
 #include <utility>
 #include "aumission.h"
 #include "auscreport.h"
@@ -215,6 +216,14 @@ bool DtClientChat::ReadPacket(const QByteArray& ba, QTcpSocket& /*tcpSocket*/)
 			if(!AuLegacyScProtocol::DecodeReply(payload, reply))
 				return false;
 			emit LegacyScReplyReceived(payload);
+		}
+		break;
+	case DtChatChannelPacket::PD_LegacyCity:
+		{
+			AuLegacyCityProtocol::Reply reply;
+			const QByteArray payload = ba.mid(1);
+			if(!AuLegacyCityProtocol::DecodeReply(payload, reply)) return false;
+			emit LegacyCityReplyReceived(payload);
 		}
 		break;
 	case DtChatChannelPacket::PZ_QueryAvatars:

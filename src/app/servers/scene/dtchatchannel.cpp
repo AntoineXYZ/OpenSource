@@ -14,6 +14,7 @@
 #include "auitreport.h"
 #include "aujoboffer.h"
 #include "aulegacyscprotocol.h"
+#include "aulegacycityprotocol.h"
 #include "aulegacyspacecraftcatalog.h"
 #include "aulogincomm.h"
 #include "auplayeronlinestatus.h"
@@ -334,6 +335,13 @@ void DtChatChannel::RxData(QTcpSocket& tcpSocket)
 			Disconnect();
 			return;
 		}
+		if(!packetType.isEmpty() && quint8(packetType.at(0)) == DtChatChannelPacket::PD_LegacyCity
+			&& (m_PacketSize > AuLegacyCityProtocol::MaximumRequestBytes + 1 || !LegacyScAuthorized(false)))
+		{
+			tcpSocket.abort();
+			Disconnect();
+			return;
+		}
 		if(!packetType.isEmpty())
 			tcpSocket.setReadBufferSize(quint8(packetType.at(0)) == DtChatChannelPacket::PD_LegacySc ? m_PacketSize : 0);
 
@@ -365,6 +373,9 @@ void DtChatChannel::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 	{
 	case DtChatChannelPacket::PD_LegacySc:
 		ReadLegacyScPacket(ba.mid(1));
+		break;
+	case DtChatChannelPacket::PD_LegacyCity:
+		ReadLegacyCityPacket(ba.mid(1));
 		break;
 	case DtChatChannelPacket::PI_TurboLift:
 		{
@@ -6355,7 +6366,7 @@ void DtChatChannel::DesignOpen(quint32 designId, int designMode)
 
 bool DtChatChannel::LegacyScAuthorized(bool requirePowers)
 {
-	if(!g_Au.IsSceneWorker() || !m_idPlayer || !m_confirmNum || UnitId().IsNull())
+	if(!g_Au.IsLegacyGeneration() || !g_Au.IsSceneWorker() || !m_idPlayer || !m_confirmNum || UnitId().IsNull())
 		return false;
 	AuId units[6];
 	ACCOUNT account;
@@ -6556,7 +6567,14 @@ void DtChatChannel::SpawnLegacySc(quint32 designId, AuLegacyScProtocol::Reply& r
 		transform *= AuPoint(0, 0, 1).GetAlignmentTransform(spawnUp);
 		candidate->SetPosAndOrient(AuAtomPos(parent->Id(), transform));
 		ether->AddAtom(candidate.get());
-		candidate->SetDesign(report);
+		if(!candidate->SetDesign(report))
+		{
+			parent->TrashSubatom(candidate->Id());
+			candidate.release();
+			m_I->UnlockAvatar();
+			reply.message = tr("The spacecraft design belongs to the other server generation.");
+			return;
+		}
 		DaAtom* hit = nullptr;
 		AuPoint hitLocation, hitNormal;
 		placed = candidate->CheckCollision(location, location + spawnUp, hit, hitLocation, hitNormal) == DaAtom::CT_Miss;
@@ -8161,6 +8179,7 @@ void DtChatChannel::ReportCityLast(const AuId& cityId)
 	AuCityReport report, prevReport;
 
 	bool foundCity = m_I->ReportCityLast(cityId, haveReport, report, havePrevReport, prevReport, personHasAgentPower, personEmpire);
+	if(g_Au.IsLegacyGeneration() && !personHasAgentPower && !personEmpire) return;
 
 	if(haveReport)
 		SendCityLastReport(cityId, report, havePrevReport ? &prevReport : 0);
@@ -8205,6 +8224,7 @@ void DtChatChannel::ReportCityHistory(const AuId& cityId)
 	quint32 personEmpire = 0;
 	AuCityReportHistory report;
 	bool foundCity = m_I->ReportCityHistory(cityId, haveReport, report, personHasAgentPower, personEmpire);
+	if(g_Au.IsLegacyGeneration() && !personHasAgentPower && !personEmpire) return;
 
 	if(haveReport)
 		SendCityReportHistory(cityId, report);

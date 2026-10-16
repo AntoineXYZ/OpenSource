@@ -1656,6 +1656,11 @@ DaBd::DaBd(const DaBd& rhs) : DaCapsule(rhs)
 
 void DaBd::Create()
 {
+	if(!IsGenerationCompatible())
+	{
+		qWarning() << "Modern building creation requires a Modern server.";
+		return;
+	}
 	DaCapsule::Create();
 	m_BdLock.lockForWrite();
 	m_tmReport.Set();
@@ -2062,6 +2067,7 @@ void DaBd::TxUpdate(QDataStream& toClient, const AuTime& tmLastUpdate, const AuE
 
 void DaBd::RxUpdate(QDataStream& fromServer, bool isFirstUpdate)
 {
+	if(!IsGenerationCompatible()) { fromServer.setStatus(QDataStream::ReadCorruptData); return; }
 	QString oldName = AssignedName();
 	quint32 oldEmpire = Allegiance();
 	DaCapsule::RxUpdate(fromServer, isFirstUpdate);
@@ -6550,6 +6556,7 @@ void DaBd::Update(QSqlDatabase& db) const
 //static
 DaBd* DaBd::LoadSubatoms(AuEther& ether, QSqlDatabase& db, const AuId& parentId, const AuId& idToLoad)
 {
+	if(!IsGenerationCompatible()) return nullptr;
 	QString sq;
 	sq = QString("SELECT id,locX,locY,locZ,rotX,rotY,rotZ,timeCreate,timeModified,timeTock,timeDeath, "
 			"name,allegiance,arenaTeam,conditions,damageHistory, "
@@ -13063,15 +13070,25 @@ void DaBd::RenderLensVAOs(QHash<quint16, AuScVAO>& vaos, const QHash<quint16, Au
 	}
 }
 
-void DaBd::SetDesign(const AuBdReport& r)
+bool DaBd::IsGenerationCompatible()
 {
+	return g_Au.IsSceneSolo() || !g_Au.IsLegacyGeneration();
+}
+
+bool DaBd::SetDesign(const AuBdReport& r)
+{
+	if(!IsGenerationCompatible())
+	{
+		qWarning() << "Modern building design rejected in a Legacy server:" << Id() << r.DesignId();
+		return false;
+	}
 	if(IndustryId() == IID_Fence)
 	{
 		// Fences and walls do not reference a design.
 		m_DesignLock.lockForWrite();
 		m_Design = r;
 		m_DesignLock.unlock();
-		return;
+		return true;
 	}
 
 	// A building cursor in the design preview has no ether.
@@ -13146,6 +13163,7 @@ void DaBd::SetDesign(const AuBdReport& r)
 		m_TurretPos.insert(ti.key(), AuTurretState());
 	m_TurretPosChg.Set();
 	m_TurretPosLock.unlock();
+	return true;
 }
 
 quint8 DaBd::DoorState(quint16 door) const
@@ -13854,7 +13872,7 @@ void DaBd::OperateLandingSystems()
 
 void DaBd::InitPreview(const AuBdReport& r, const QString& bdName, quint32 empireId, const AuSpecies& residentSpecies)
 {
-	SetDesign(r);
+	if(!SetDesign(r)) return;
 	InitSystems(r.HullModule(), r.Quality());
 	SetResidentSpecies(residentSpecies);
 	if(!bdName.isEmpty())
@@ -18323,6 +18341,7 @@ void DaBd::EnableConstructionWorker(bool enable)
 void DaBd::StartConstruction(INDUSTRYID industryId, const AuBdReport& report, quint32 sitePrepLabor, quint16 mpid, bool workerOk,
 		const AuSpecies& residentSpecies)
 {
+	if(!IsGenerationCompatible()) return;
 	// Insure previous construction process data is eliminated.
 	m_ConstructionLock.lockForWrite();
 	if(m_pConstruct)
@@ -40036,6 +40055,7 @@ void DaBd::operator>>(QDataStream& out) const
 
 void DaBd::operator<<(QDataStream& in)
 {
+	if(!IsGenerationCompatible()) { in.setStatus(QDataStream::ReadCorruptData); return; }
 	DaCapsule::operator<<(in);
 
 	in >> m_bTaxSubmit;

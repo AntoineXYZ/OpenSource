@@ -1065,7 +1065,7 @@ DaVessel* DaArena::SpawnSpacecraft(quint8 team, quint32 designId, quint8& errcod
 		errcode = 2;
 		return 0;
 	}
-	if(!okToMake)
+	if(!okToMake || !DaSc::IsDesignCompatible(r))
 	{
 		// Not ok to make the design.
 		errcode = 3;

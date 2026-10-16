@@ -1441,6 +1441,9 @@ void DgData::CalcCommodityBaseCost(DbCommodity& bCom)
 // Called after loading to calculate costs.
 void DgData::CalcCommodityBaseCosts()
 {
+	// Compatibility arrays still serve modern/offline tools. Legacy recipes
+	// and descriptors are owned by the immutable historical catalogue.
+	if(g_Au.IsLegacyGeneration()) return;
 	int unresolved = 0;
 	do
 	{
@@ -1473,6 +1476,7 @@ void DgData::CalcCommodityBaseCosts()
 // Calculate values used to determine base hit points per level of all industries.
 void DgData::CalcIndustryHitPointValues()
 {
+	if(g_Au.IsLegacyGeneration()) return;
 	Q_ASSERT(!m_bManufacturingProcessArray.isEmpty());
 	Q_ASSERT(!m_bManufacturingComponentArray.isEmpty());
 	m_bIndustryArray.CalcPatentsRequired(m_bManufacturingProcessArray, m_bManufacturingComponentArray);
@@ -1599,7 +1603,9 @@ void DgData::SaveBasicGameData()
 {
 	// Store basic game data into a local cache file for use by stand-alone spacecraft designer.
 	QDir cacheDir(g_Au.CacheGame());
-	QString cacheFileName = cacheDir.absoluteFilePath("GD1");
+	QString cacheFileName = cacheDir.absoluteFilePath(g_Au.IsLegacyGeneration()
+		? QStringLiteral("GD1-legacy-%1").arg(QString::fromLatin1(g_Au.GenerationIdentity().manifestHash.toHex()))
+		: QStringLiteral("GD1"));
 	QFile::remove(cacheFileName);		// Remove the old file, if it already exists.
 
 	// Insure the cache folder exists.
@@ -1646,12 +1652,34 @@ void DgData::SaveBasicGameData()
 }
 
 // Loads basic game data from a local cache file for use by stand-alone spacecraft designer.
+void DgData::ResetGenerationCaches()
+{
+	m_DataReceived = false;
+	m_bIndustryArray.clear();
+	m_bManufacturingComponentArray.clear();
+	m_bManufacturingProcessArray.clear();
+	m_gEmpires.clear();
+	g_Au.m_CommodityArray.clear();
+	g_Au.LockBdDesignsForWrite();
+	m_BdDesigns->clear();
+	g_Au.UnlockBdDesigns();
+	g_Au.LockItDesignsForWrite();
+	m_ItDesigns->clear();
+	g_Au.UnlockItDesigns();
+	g_Au.LockScDesignsForWrite();
+	m_ScDesigns->clear();
+	m_LegacyScDesigns.clear();
+	g_Au.UnlockScDesigns();
+}
+
 int DgData::LoadBasicGameData()
 {
 	// Load basic game data from a local cache file for use by stand-alone spacecraft designer.
 	// We prefer to load basic game data from the temporary folder since it could be more up-to-date than the distro file.
 	QDir cacheDir(g_Au.CacheGame());
-	QString cacheFileName = cacheDir.absoluteFilePath("GD1");
+	QString cacheFileName = cacheDir.absoluteFilePath(g_Au.IsLegacyGeneration()
+		? QStringLiteral("GD1-legacy-%1").arg(QString::fromLatin1(g_Au.GenerationIdentity().manifestHash.toHex()))
+		: QStringLiteral("GD1"));
 	if(g_Au.m_LogMessages & LOG_Database)
 		qDebug() << "DgData::LoadBasicGameData on entry cacheFileName" << cacheFileName;
 	if(QFile::exists(cacheFileName))
@@ -1745,6 +1773,8 @@ int DgData::LoadBasicGameData()
 		}
 	}
 
+	// The modern distro cache cannot initialize a Legacy connection.
+	if(g_Au.IsLegacyGeneration()) return 1;
 	// Load basic game data from distro file.
 	cacheFileName = "GD";
 	if(g_Au.m_LogMessages & LOG_Database)

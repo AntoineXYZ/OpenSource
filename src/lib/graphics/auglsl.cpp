@@ -20,8 +20,9 @@ thread_local QHash<QString, QByteArray>	s_GLSLProgramSrc;
 static void LoadLegacySurfaceShaders()
 {
 	// Compile these source files into Qt resources so ordinary client builds
-	// update legacy surface modes and lighting without repacking glsl.har.
+	// update legacy surface modes, city textures and lighting without repacking glsl.har.
 	const char* names[] = {
+		"ModelTexColor.f.glsl", "ModelTexColor.v.glsl",
 		"Sc.f.glsl", "ScFog.f.glsl", "ScGlobe.f.glsl", "ScGlobeFog.f.glsl", "ScRingworld.f.glsl", "ScRingworldFog.f.glsl",
 		"Sc.v.glsl", "ScFog.v.glsl", "ScGlobe.v.glsl", "ScGlobeFog.v.glsl", "ScRingworld.v.glsl", "ScRingworldFog.v.glsl",
 		"H_SunLight.glsl", "H_SunLightGlobe.glsl", "H_SunLightRingworld.glsl"
@@ -7803,6 +7804,8 @@ void AuGLSLModelTexColor::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& 
 	m_p = GetUniformLoc("p");
 	m_texPaletteHigh = GetUniformLoc("texPaletteHigh");
 	m_texPaletteLow = GetUniformLoc("texPaletteLow");
+	m_directTexture = GetUniformLoc("directTexture");
+	m_directTextureGlobe = GetUniformLoc("directTextureGlobe");
 
 	m_ambient = GetUniformLoc("light.ambient");
 	m_ambientUp = GetUniformLoc("light.ambientUp");

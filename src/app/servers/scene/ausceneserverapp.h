@@ -686,6 +686,9 @@ public:
 		return m_GenerateAllGalaxies;
 	}
 
+	AuGameGeneration RequestedGeneration() const { return m_RequestedGeneration; }
+	bool HasRequestedGeneration() const { return m_HasRequestedGeneration; }
+
 	// Returns a number from 0 to 1+. 1 is 100%.
 	float AtomManagerLoadAverage() const;
 
@@ -1721,6 +1724,8 @@ private:
 
 	// This server.
 	bool m_GenerateAllGalaxies;							// Settings/galaxyGen: all or 1galaxy.
+	AuGameGeneration m_RequestedGeneration = AuGameGeneration::Modern;
+	bool m_HasRequestedGeneration = false;
 	int									m_AtomManagerCount;		// Number of atom managers to create. Default is idealThreadCount()
 																// but can be overridden with command line option.
 	unsigned int						m_AtomMgrLoadIndex;		// Which load index we are timing, in the array.

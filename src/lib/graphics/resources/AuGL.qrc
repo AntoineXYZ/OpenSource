@@ -3,6 +3,8 @@
 	<file>glsl.har</file>
 </qresource>
 <qresource prefix="/legacy-surface-shaders">
+	<file alias="ModelTexColor.f.glsl">shaders/ModelTexColor.f.glsl</file>
+	<file alias="ModelTexColor.v.glsl">shaders/ModelTexColor.v.glsl</file>
 	<file alias="Sc.f.glsl">shaders/Sc.f.glsl</file>
 	<file alias="ScFog.f.glsl">shaders/ScFog.f.glsl</file>
 	<file alias="ScGlobe.f.glsl">shaders/ScGlobe.f.glsl</file>

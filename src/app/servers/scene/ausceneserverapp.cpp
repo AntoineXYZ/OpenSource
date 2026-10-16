@@ -172,6 +172,14 @@ AuSceneServerApp::AuSceneServerApp(int& argc, char** argv) : QCoreApplication(ar
 		}
 	}
 	QSettings settings(settingsFile, QSettings::IniFormat);
+	m_HasRequestedGeneration = settings.contains("Settings/gameGeneration");
+	if(!AuParseGameGeneration(settings.value("Settings/gameGeneration", "modern").toString(), m_RequestedGeneration))
+	{
+		qCritical() << "Invalid Settings/gameGeneration in" << settingsFile
+			<< "- expected modern or legacy. Server startup stopped.";
+		QTimer::singleShot(0, [this](){ exit(1); });
+		return;
+	}
 	QString galaxyGen = settings.value("Settings/galaxyGen", "all").toString().trimmed().toLower();
 	if(galaxyGen == "1galaxy")
 		m_GenerateAllGalaxies = false;
@@ -369,9 +377,6 @@ AuSceneServerApp::AuSceneServerApp(int& argc, char** argv) : QCoreApplication(ar
 
 		// Start threads.
 		StartThreads();
-
-		// Start the server channel listener for connections from sub servers.
-		StartServerChannel();	// Does nothing if I'm a scene worker, i.e. no subs.
 	}
 }
 
@@ -686,7 +691,7 @@ void AuSceneServerApp::StartThreads()
 				SLOT(BdDesignExchangeUnpublishedDown(quint32)),
 				Qt::QueuedConnection);
 
-		m_tClientChannel->start();
+		// The database publishes the persisted generation before this channel starts.
 	}
 
 	// Start server manager listener so we can get status right away.
@@ -804,6 +809,10 @@ void AuSceneServerApp::StartThreads()
 				SLOT(BdDesignDeactivatedUp(quint32)),
 				Qt::QueuedConnection);
 
+		connect(m_tDb, &DtDb::GenerationInitialized, this, [this]() {
+			StartServerChannel(); // Subordinates see the verified identity from their first status.
+			if(m_tClientChannel && !m_tClientChannel->isRunning()) m_tClientChannel->start();
+		}, Qt::QueuedConnection);
 		m_tDb->start();
 	}
 
@@ -966,6 +975,10 @@ void AuSceneServerApp::DbFinishedInit()
 	case DtDb::OpenError:			// Database did not open ok.
 		if(g_Au.m_LogMessages & LOG_Error)
 			g_Au.Error(tr("Failed to Open Database"));
+		break;
+	case DtDb::GenerationError:
+		qCritical() << "Game generation initialization failed. Server startup stopped.";
+		exit(1);
 		break;
 	case DtDb::DriverError:			// Database driver did not init ok.
 		if(g_Au.m_LogMessages & LOG_Error)

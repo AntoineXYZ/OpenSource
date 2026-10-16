@@ -14,6 +14,7 @@
 #include "audice.h"
 #include "auelapsedtimer.h"
 #include "auemoji.h"
+#include "augamegeneration.h"
 #include "augloballib.h"
 #include "auglobell.h"
 #include "auhash.h"
@@ -26,6 +27,7 @@
 
 using namespace std;
 #include <unordered_map>
+#include <atomic>
 
 class AuAtomChatList;
 class AuAtomManagerDispatch;
@@ -422,7 +424,32 @@ public:	// Methods
 
 class AUGLOBAL_DLL AuGlobal
 {
+private:
+	std::atomic<AuGameGeneration> m_GameGeneration { AuGameGeneration::Modern };
+	mutable QReadWriteLock m_GenerationIdentityLock;
+	AuGameGenerationIdentity m_GenerationIdentity;
+
 public:
+	AuGameGeneration Generation() const { return m_GameGeneration.load(); }
+	bool IsLegacyGeneration() const { return Generation() == AuGameGeneration::Legacy; }
+	// Set only before loading game data/atoms, or after clearing a disconnected client.
+	void SetGeneration(AuGameGeneration generation) { m_GameGeneration = generation; }
+	AuGameGenerationIdentity GenerationIdentity() const
+	{
+		m_GenerationIdentityLock.lockForRead();
+		AuGameGenerationIdentity identity = m_GenerationIdentity;
+		identity.generation = Generation();
+		m_GenerationIdentityLock.unlock();
+		return identity;
+	}
+	void SetGenerationIdentity(const AuGameGenerationIdentity& identity)
+	{
+		m_GenerationIdentityLock.lockForWrite();
+		m_GenerationIdentity = identity;
+		SetGeneration(identity.generation);
+		m_GenerationIdentityLock.unlock();
+	}
+
 	enum MODE
 	{
 		LoginMaster,
@@ -448,6 +475,28 @@ public:
 
 public:
 	DbCommodityArray	m_CommodityArray;	// Commodities data gets loaded (in DgData) and then it never changes. No mutex needed.
+
+private:
+	// Published once before legacy inventories load. Never replace this map:
+	// Commodity() returns references which must remain valid across reconnects.
+	QHash<quint16, DbCommodity> m_LegacyCommodityDescriptors;
+	QMutex m_LegacyCommodityInstallLock;
+	std::atomic<bool> m_LegacyCommodityDescriptorsReady { false };
+
+public:
+	bool InstallLegacyCommodityDescriptors(const QHash<quint16, DbCommodity>& descriptors, QString& error);
+	bool HasLegacyCommodity(COMMODITYID cid) const
+	{
+		return m_LegacyCommodityDescriptorsReady.load(std::memory_order_acquire)
+			&& m_LegacyCommodityDescriptors.contains(quint16(cid));
+	}
+	bool IsCommodityAvailable(COMMODITYID cid) const
+	{
+		if(IsLegacyGeneration()) return HasLegacyCommodity(cid);
+		return cid >= CID_Invalid && cid < m_CommodityArray.count()
+			&& m_CommodityArray[int(cid)].m_id == cid;
+	}
+	QList<COMMODITYID> ActiveCommodityIds() const;
 
 	// Public for convenience. Use the atom chat mutex to access channel open queue.
 	QList<AuOpenChannel>				m_OpenChannels;			// Channel open requests initiated by local atoms.
@@ -1059,7 +1108,8 @@ public:
 	// Returns m_CacheDir;
 	QString CacheApp() const;
 
-	// Returns m_CacheDir/Solo if IsClientSolo, otherwise returns m_CacheDir.
+	// Solo caches retain their original path. Online Legacy caches use a
+	// manifest-specific subdirectory; Modern caches retain CacheApp().
 	QString CacheGame() const;
 
 	// Returns dir for mail cache. Differs between solo and mmo.
@@ -1107,6 +1157,18 @@ public:
 	// Commodities
 	inline const DbCommodity& Commodity(COMMODITYID cid) const
 	{
+		if(IsLegacyGeneration())
+		{
+			if(m_LegacyCommodityDescriptorsReady.load(std::memory_order_acquire))
+			{
+				const auto found = m_LegacyCommodityDescriptors.constFind(quint16(cid));
+				if(found != m_LegacyCommodityDescriptors.cend()) return found.value();
+			}
+			// Bootstrap rejects missing metadata before loading items. Invalid
+			// external IDs still need a safe descriptor rather than an array read.
+			static const DbCommodity invalid;
+			return invalid;
+		}
 		// Redirect obsolete computer to new computer, to prevent crash.
 		if(cid == CID_ComputerObsolete)
 			cid = CID_Computer;
@@ -1122,7 +1184,7 @@ public:
 	// Returns empty string when the commodity id is invalid.
 	inline QString CommodityBitmapName(COMMODITYID cid) const
 	{
-		if(cid >= CID_Invalid && cid < m_CommodityArray.count())
+		if(IsCommodityAvailable(cid))
 			return Commodity(cid).BitmapName();
 
 		// Return empty string when the commodity id is invalid.
@@ -1134,7 +1196,7 @@ public:
 	// Returns empty string when the commodity id is invalid.
 	inline QString CommodityModel(COMMODITYID cid) const
 	{
-		if(cid >= CID_Invalid && cid < m_CommodityArray.count())
+		if(IsCommodityAvailable(cid))
 			return Commodity(cid).ModelName();
 
 		// Return empty string when the commodity id is invalid.
@@ -1145,8 +1207,24 @@ public:
 	QString CommodityName(COMMODITYID cid) const;
 
 	// Returns the base cost of a commodity modified by quality.
-	inline float CommodityQualityCost(COMMODITYID idCommodity, quint8 quality) const
+	inline float CommodityQualityCost(COMMODITYID idCommodity, quint8 quality, quint8 technology = 0) const
 	{
+		if(IsLegacyGeneration())
+		{
+			if(idCommodity == CID_Money) return 1;
+			float cost = Commodity(idCommodity).BaseCost();
+			if(cost < 0) return cost;
+			if(idCommodity != CID_Electricity)
+			{
+				cost *= 1.f + technology / 10.f;
+				// Immutable historical crosswalk: ordinary technologies 664..731,
+				// Observatory 739 and Dairy 741. Technologies do not scale by Q.
+				const bool isTechnology = (idCommodity >= 664 && idCommodity <= 731)
+					|| idCommodity == 739 || idCommodity == 741;
+				if(!isTechnology) cost = (cost * quality) * .0078125f;
+			}
+			return qMax(1.f, cost);
+		}
 		return m_CommodityArray.CommodityQualityCost(idCommodity, quality);
 	}
 

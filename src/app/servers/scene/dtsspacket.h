@@ -54,6 +54,7 @@ namespace DtSceneServerPacket
 		// Admin
 		PZ_PlayersQuery,		// Sent by admin to get a list of players who are currently online.
 		PZ_StatusQuery,			// Sent by AuServerStatus to check my current status.
+		PL_Generation,			// Generation capability negotiation before metadata or avatar selection.
 	};
 
 	inline const char* PacketName(PACKET p)
@@ -102,7 +103,7 @@ namespace DtSceneServerPacket
 			"ATOM_WorldRing",
 			"ATOM_WorldRingSection",
 			"ATOM_WorldSphere",
-			"ATOM_42",
+			"ATOM_LegacyCity",
 			"ATOM_43",
 			"ATOM_44",
 			"ATOM_45",
@@ -150,6 +151,7 @@ namespace DtSceneServerPacket
 			// Admin
 			"PZ_PlayersQuery",
 			"PZ_StatusQuery",
+			"PL_Generation",
 		};
 		return packetNames[p];
 	}

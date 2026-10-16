@@ -944,7 +944,10 @@ public:	// Methods
 
 	bool SetBridgeVisible(const QString& roomName, bool visible);
 
-	void SetDesign(const AuScReport& r);
+	// Server intake uses the report's retained Legacy identity. Offline previews
+	// may inspect either era without changing the universe selection.
+	static bool IsDesignCompatible(const AuScReport& report);
+	bool SetDesign(const AuScReport& r);
 
 	virtual void GetRenderLightsRecursive(const DaPerson& person, const AuMatrix4x4& model, QList<AuGLSun>& suns,
 			QList<AuGLLight>& lights) const;

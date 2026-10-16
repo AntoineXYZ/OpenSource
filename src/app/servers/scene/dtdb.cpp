@@ -14,7 +14,10 @@
 #include "audbglobal.h"
 #include "auitdesign.h"
 #include "aulegacyspacecraftcatalog.h"
+#include "aulegacygenerationbootstrap.h"
 #include "auscdesign.h"
+#include "auscparts.h"
+#include "auscreport.h"
 #include "auscdesignexchange.h"
 #include "ausceneserverapp.h"
 #include "daanimal.h"
@@ -22,6 +25,7 @@
 #include "daasteroid.h"
 #include "daatomlist.h"
 #include "dabd.h"
+#include "dalegacycity.h"
 #include "dacitizen.h"
 #include "dadesignbase.h"
 #include "dadesignplane.h"
@@ -44,6 +48,7 @@
 #include <qsqldatabase.h>
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QtEndian>
 
 // Must call qRegisterMetaType in order to use this class type in queued signal and slot connections.
 // The Q_DECLARE_METATYPE macro is also required.
@@ -112,6 +117,13 @@ void DtDb::run()
 		{
 			if(OpenDatabase(db))
 			{
+				if(!InitGameGeneration(db))
+				{
+					m_eDbStatus = GenerationError;
+					db.close();
+					return;
+				}
+				emit GenerationInitialized();
 				// Load master game data.
 				DgData& gd = g_Au.LockDataForWrite();
 				gd.Load();
@@ -809,6 +821,178 @@ DaUniverse* DtDb::LoadGalaxies(QSqlDatabase& db, AuEther& ether)
 	}
 
 	return universe;
+}
+
+bool DtDb::InitGameGeneration(QSqlDatabase& db)
+{
+	const auto fail = [](const QString& error) {
+		qCritical().noquote() << "Game generation startup rejected:" << error;
+		return false;
+	};
+	QSqlQuery query(db);
+	if(!query.exec("SELECT generation, catalogueVersion, manifestHash FROM g_GameGeneration WHERE singleton=1"))
+		return fail(QStringLiteral("Install the gamegeneration.sql universe migration before starting this server. %1")
+			.arg(query.lastError().text()));
+	const bool marked = query.next();
+	AuGameGenerationIdentity stored;
+	if(marked)
+	{
+		if(!AuParseGameGeneration(query.value(0).toString(), stored.generation))
+			return fail(QStringLiteral("The universe contains an unsupported generation."));
+		stored.catalogueVersion = query.value(1).toString();
+		stored.manifestHash = query.value(2).toByteArray();
+	}
+	else if(!g_Au.IsSceneMaster())
+		return fail(QStringLiteral("The scene master must initialize the universe generation before subordinate servers start."));
+
+	const bool hasRequested = g_Au.IsSceneMaster() || auSceneServerApp->HasRequestedGeneration();
+	const AuGameGeneration selected = hasRequested ? auSceneServerApp->RequestedGeneration() : stored.generation;
+	if(marked && hasRequested && selected != stored.generation)
+		return fail(QStringLiteral("Configured %1 conflicts with persisted %2. Use a separate universe database; automatic conversion is disabled.")
+			.arg(AuGameGenerationLabel(selected), AuGameGenerationLabel(stored.generation)));
+
+	AuGameGenerationIdentity identity;
+	identity.generation = selected;
+	QString error;
+	if(selected == AuGameGeneration::Legacy && !AuPrepareLegacyGenerationIdentity(identity, error)) return fail(error);
+	if(selected == AuGameGeneration::Legacy)
+	{
+		if(!query.exec("SELECT to_regclass('a_legacycity') IS NOT NULL AND to_regclass('n_legacybddesign') IS NOT NULL")
+			|| !query.next() || !query.value(0).toBool())
+			return fail(QStringLiteral("Install legacycities.sql before initializing a Legacy universe."));
+	}
+	if(marked && identity != stored)
+		return fail(QStringLiteral("The persisted generation catalogue version or manifest does not match this server's packaged assets."));
+
+	const auto hasRows = [&](const QString& table, bool& rows) {
+		QSqlQuery exists(db);
+		exists.prepare("SELECT to_regclass(?) IS NOT NULL");
+		exists.addBindValue(table.toLower());
+		if(!exists.exec() || !exists.next()) return false;
+		rows = false;
+		if(!exists.value(0).toBool()) return true;
+		if(!exists.exec(QString("SELECT EXISTS (SELECT 1 FROM %1 WHERE timeDeath IS NULL OR timeDeath > CURRENT_TIMESTAMP)").arg(table))
+			|| !exists.next()) return false;
+		rows = exists.value(0).toBool();
+		return true;
+	};
+	bool modernBuildings = false, legacyCities = false;
+	if(!hasRows(QStringLiteral("a_Bd"), modernBuildings) || !hasRows(QStringLiteral("a_LegacyCity"), legacyCities))
+		return fail(QStringLiteral("Could not inspect existing city records for generation compatibility."));
+	if((selected == AuGameGeneration::Legacy && modernBuildings)
+		|| (selected == AuGameGeneration::Modern && legacyCities))
+		return fail(QStringLiteral("Existing cities belong to the other game generation. No records were converted or deleted."));
+	if(selected == AuGameGeneration::Legacy)
+	{
+		query.setForwardOnly(true);
+		if(!query.exec("SELECT id,stateVersion,stateData,name,controllingEmpire,allegianceEmpire,population,satisfaction,reportHistory FROM a_LegacyCity"))
+			return fail(QStringLiteral("Could not inspect saved Legacy city state: %1").arg(query.lastError().text()));
+		while(query.next())
+		{
+			const QByteArray bytes = query.value(2).toByteArray();
+			AuLegacyCity::State state;
+			if(query.value(1).toUInt() != AuLegacyCity::StateVersion
+				|| !AuLegacyCity::DecodeState(bytes, state, error) || !DaLegacyCity::ValidateStateData(bytes, error))
+				return fail(QStringLiteral("Invalid saved Legacy city %1: %2").arg(query.value(0).toString(), error));
+			if(state.name != query.value(3).toString() || state.controllingEmpire != query.value(4).toUInt()
+				|| state.allegianceEmpire != query.value(5).toUInt() || state.population != query.value(6).toInt()
+				|| state.satisfaction != query.value(7).toInt() || state.reportHistory != query.value(8).toByteArray())
+				return fail(QStringLiteral("Saved Legacy city %1 indexed summary disagrees with its state envelope.").arg(query.value(0).toString()));
+		}
+		if(query.lastError().isValid())
+			return fail(QStringLiteral("Legacy city preflight failed: %1").arg(query.lastError().text()));
+		query.finish();
+		query.setForwardOnly(false);
+	}
+
+	// Historical developer spacecraft were stored in a_Sc using modern wrapper
+	// designs. Inspect only live instances; retained catalogue assets are allowed.
+	QHash<quint32, bool> spacecraftGeneration;
+	query.setForwardOnly(true);
+	if(!query.exec("SELECT DISTINCT s.idDesign,d.parts FROM a_Sc s LEFT JOIN n_ScDesign d ON d.id=s.idDesign "
+		"WHERE s.timeDeath IS NULL OR s.timeDeath>CURRENT_TIMESTAMP"))
+		return fail(QStringLiteral("Could not inspect existing spacecraft generation: %1").arg(query.lastError().text()));
+	while(query.next())
+	{
+		const QByteArray storedParts = query.value(1).toByteArray();
+		constexpr int maximumPartsBytes = 256 * 1024 * 1024;
+		if(storedParts.isEmpty() || storedParts.size() > maximumPartsBytes)
+			return fail(QStringLiteral("Spacecraft design %1 has missing or oversized parts; its generation cannot be verified.").arg(query.value(0).toUInt()));
+		QByteArray parts = storedParts;
+		// AuScDesign::Save compresses the parts. Earlier records may contain the
+		// raw QDataStream; only identify compression when the zlib header agrees.
+		if(storedParts.size() >= 6 && (quint8(storedParts[4]) & 0x0f) == 8
+			&& ((quint16(quint8(storedParts[4])) << 8) | quint8(storedParts[5])) % 31 == 0)
+		{
+			const quint32 size = qFromBigEndian<quint32>(reinterpret_cast<const uchar*>(storedParts.constData()));
+			if(!size || size > quint32(maximumPartsBytes))
+				return fail(QStringLiteral("Spacecraft design %1 exceeds the bounded generation inspection limit.").arg(query.value(0).toUInt()));
+			parts = qUncompress(storedParts);
+			if(parts.size() != int(size))
+				return fail(QStringLiteral("Spacecraft design %1 has invalid compressed parts.").arg(query.value(0).toUInt()));
+		}
+		AuScParts decoded;
+		QDataStream in(parts);
+		in.setVersion(QDataStream::Qt_5_0);
+		in >> decoded;
+		if(in.status() != QDataStream::Ok || !in.atEnd())
+			return fail(QStringLiteral("Spacecraft design %1 could not be decoded to verify its generation.").arg(query.value(0).toUInt()));
+		bool legacy = false;
+		for(const AuScPart* part : decoded)
+			if(part->GroupName().startsWith(QStringLiteral("legacy/debug/static/v"))) legacy = true;
+		if(legacy != (selected == AuGameGeneration::Legacy))
+			return fail(QStringLiteral("Existing spacecraft design %1 belongs to the other generation, including historical developer wrappers. Use a separate universe database; no records were changed.").arg(query.value(0).toUInt()));
+		spacecraftGeneration.insert(query.value(0).toUInt(), legacy);
+	}
+	if(query.lastError().isValid())
+		return fail(QStringLiteral("Spacecraft generation inspection failed: %1").arg(query.lastError().text()));
+	query.finish();
+	if(!query.exec("SELECT id,idDesign,designRpt FROM a_Sc WHERE timeDeath IS NULL OR timeDeath>CURRENT_TIMESTAMP"))
+		return fail(QStringLiteral("Could not inspect saved spacecraft reports: %1").arg(query.lastError().text()));
+	while(query.next())
+	{
+		const QByteArray bytes = query.value(2).toByteArray();
+		if(bytes.isEmpty() || bytes.size() > 256 * 1024 * 1024)
+			return fail(QStringLiteral("Spacecraft %1 has no bounded saved design report.").arg(query.value(0).toString()));
+		AuScReport report;
+		QDataStream in(bytes);
+		in.setVersion(QDataStream::Qt_4_1);
+		in >> report;
+		const quint32 designId = query.value(1).toUInt();
+		const bool legacyReport = report.IsLegacyDebug() || (report.LegacyStats() && report.LegacyStats()->IsValid());
+		if(in.status() != QDataStream::Ok || !in.atEnd() || report.DesignId() != designId
+			|| !spacecraftGeneration.contains(designId) || legacyReport != spacecraftGeneration.value(designId))
+			return fail(QStringLiteral("Spacecraft %1 design report disagrees with its verified generation or blueprint.").arg(query.value(0).toString()));
+	}
+	if(query.lastError().isValid())
+		return fail(QStringLiteral("Spacecraft report inspection failed: %1").arg(query.lastError().text()));
+	query.finish();
+	query.setForwardOnly(false);
+
+	// Select the internal metadata overlay for immutable default verification.
+	// No gameplay listeners or atom loading start until this function returns successfully.
+	g_Au.SetGenerationIdentity(identity);
+	if(selected == AuGameGeneration::Legacy && !DaLegacyCity::RegisterPublicDesigns(db, error))
+		return fail(error);
+	if(!marked)
+	{
+		query.prepare("INSERT INTO g_GameGeneration (singleton,generation,catalogueVersion,manifestHash) "
+			"VALUES (1,?,?,?) ON CONFLICT (singleton) DO NOTHING");
+		query.addBindValue(AuGameGenerationName(identity.generation));
+		query.addBindValue(identity.catalogueVersion);
+		query.addBindValue(identity.manifestHash);
+		if(!query.exec()) return fail(QStringLiteral("Could not persist universe generation: %1").arg(query.lastError().text()));
+		if(!query.exec("SELECT generation,catalogueVersion,manifestHash FROM g_GameGeneration WHERE singleton=1") || !query.next())
+			return fail(QStringLiteral("Could not verify the persisted universe generation."));
+		AuGameGenerationIdentity actual;
+		if(!AuParseGameGeneration(query.value(0).toString(), actual.generation)) return fail(QStringLiteral("Invalid persisted generation."));
+		actual.catalogueVersion = query.value(1).toString();
+		actual.manifestHash = query.value(2).toByteArray();
+		if(actual != identity) return fail(QStringLiteral("Another master initialized a different universe generation."));
+	}
+	qInfo().noquote() << "Universe game generation:" << AuGameGenerationLabel(identity.generation)
+		<< identity.catalogueVersion;
+	return true;
 }
 
 void DtDb::InitNextIds(QSqlDatabase& db)
@@ -3733,6 +3917,8 @@ void DtDb::InitEmpireCities(DgData& gd, QSqlDatabase& db)
 		sq = QString("SELECT id,idp,name,cityName,allegiance,industry,designRpt FROM a_Bd WHERE industry=%1 OR industry=%2;")
 			.arg(IID_Capitol)
 			.arg(IID_BaseHeadquarters);
+		if(g_Au.IsLegacyGeneration())
+			sq = QStringLiteral("SELECT id,idp,name,name,controllingEmpire,%1,NULL FROM a_LegacyCity;").arg(IID_Capitol);
 		QSqlQuery qryBd(QString(), db);
 		qryBd.prepare(sq);
 		qryBd.exec();
@@ -3773,7 +3959,9 @@ void DtDb::InitEmpireCities(DgData& gd, QSqlDatabase& db)
             }
 
 			CITYTYPE cityType;
-			if(iid == IID_Capitol)
+			if(g_Au.IsLegacyGeneration())
+				cityType = CITY_City_Obsolete;
+			else if(iid == IID_Capitol)
 			{
 				cityType = CITY_Capitol;
 				if(sCity.isEmpty())
@@ -4345,7 +4533,9 @@ void DtDb::ProvideCityReports()
 		return;							// Failed to open database?
 
 	// Build a query to select them all at once vs multiple selects.
-	QString sq("SELECT id,allegiance,reportHist FROM a_Bd WHERE");
+	QString sq(g_Au.IsLegacyGeneration()
+		? "SELECT id,controllingEmpire,reportHistory FROM a_LegacyCity WHERE"
+		: "SELECT id,allegiance,reportHist FROM a_Bd WHERE");
 	for(unordered_multimap<AuId, AuCityReportRequest, AuIdHash>::const_iterator ri = cityReportRequests.cbegin();
 			ri != cityReportRequests.cend(); ri++)
 	{
@@ -4364,6 +4554,23 @@ void DtDb::ProvideCityReports()
 		int qv=0;
 		AuId cityId = AuId(qry.value(qv++).toUInt());
 		quint32 empireId = qry.value(qv++).toUInt();
+		if(g_Au.IsLegacyGeneration())
+		{
+			AuCityReportHistory history;
+			if(!DaLegacyCity::ReadReportHistory(qry.value(qv).toByteArray(), history)) continue;
+			const auto requests = cityReportRequests.equal_range(cityId);
+			for(auto request = requests.first; request != requests.second; ++request)
+			{
+				// The chat authority passes zero only for HasAgentPower readers.
+				if(request->second.m_UnitEmpire && request->second.m_UnitEmpire != empireId) continue;
+				if(request->second.m_ReportWhat == 1)
+					emit CityHistoryReportReady(request->second.m_UnitId, cityId, history);
+				else if(request->second.m_ReportWhat == 0)
+					emit CityLastReportReady(request->second.m_UnitId, cityId, history.Last(), history.Count() > 1,
+						history.Count() > 1 ? history.NextToLast() : history.Last());
+			}
+			continue;
+		}
 
 		// Locate the request so we know what to send them.
 		unordered_multimap<AuId, AuCityReportRequest, AuIdHash>::iterator ri = cityReportRequests.find(cityId);

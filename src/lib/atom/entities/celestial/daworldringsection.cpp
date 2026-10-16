@@ -22,6 +22,7 @@
 #include "daasteroid.h"
 #include "daatomlist.h"
 #include "dabd.h"
+#include "dalegacycity.h"
 #include "dadesigner.h"
 #include "daeffect.h"
 #include "daitem.h"
@@ -6549,7 +6550,14 @@ DaWorldRingSection* DaWorldRingSection::LoadSubatoms(AuEther& ether, QSqlDatabas
 				pnu->SetEnclosureNotReady();
 
 				DaAsteroid::LoadSubatoms(ether, db, pnu->Id());
-				DaBd::LoadSubatoms(ether, db, pnu->Id());
+				if(g_Au.IsLegacyGeneration())
+				{
+					QString error;
+					if(!DaLegacyCity::LoadSubatoms(ether, db, pnu->Id(), &error))
+						qFatal("Legacy city world load failed: %s", qPrintable(error));
+				}
+				else
+					DaBd::LoadSubatoms(ether, db, pnu->Id());
 				DaSc::LoadSubatoms(ether, db, pnu->Id());
 				DaVehicle::LoadSubatoms(ether, db, pnu->Id());
 				DaPerson::LoadSubatoms(ether, db, pnu->Id());
@@ -6565,6 +6573,8 @@ DaWorldRingSection* DaWorldRingSection::LoadSubatoms(AuEther& ether, QSqlDatabas
 					pnu->SetModified();
 				}
 
+				if(!g_Au.IsLegacyGeneration())
+				{
 				pnu->m_BdBits = 0x80 | 0x20 | 0x08;
 				pnu->JurisdictionUpdate();
 				pnu->UpdateRoadMap();
@@ -6573,6 +6583,7 @@ DaWorldRingSection* DaWorldRingSection::LoadSubatoms(AuEther& ether, QSqlDatabas
 				pnu->TroopSupplierUpdate();
 				pnu->SendBdFacilities();	// Notify master server of bd cities and their facilities.
 				pnu->InvalidateEnclosureCache();
+				}
 			}
 			//pnu->SetModified();	//DHH force update of nu blob fields
 		}
@@ -7131,6 +7142,7 @@ double DaWorldRingSection::SurfaceAltitudeMSL(const AuGlobeLL& ll) const
 int DaWorldRingSection::SpawnSc(const AuScReport& shipDesign, quint32 bdEmpireId, quint8 quality,
 		const AuId& ownerId, const QString& ownerName, quint32 ownerEmpire, const AuId& cityOrBdId)
 {
+	if(!DaSc::IsDesignCompatible(shipDesign)) return 1;
 	AuEther* ether = Ether();
 	if(!ether)
 		return 4;

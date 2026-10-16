@@ -61,7 +61,7 @@ void DaSector::TxUpdate(QDataStream& toClient, const AuTime& tmLastUpdate, const
 		m_SectorLock.unlock();
 	}
 	else
-		toClient << "";
+		toClient << QString();
 }
 
 // Receive updates to this atom from a server.

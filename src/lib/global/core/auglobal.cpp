@@ -16,6 +16,7 @@
 #include <QFile>
 #include <QString>
 #include <QTextStream>
+#include <algorithm>
 
 AUGLOBAL_DLL AuGlobal*					gp_AuGlobal = 0;		// This is the one and only global data pointer.
 
@@ -1015,8 +1016,60 @@ void AuGlobal::ServerTimeUpdated(const AuTime& serverUTC)
 		//<< "now" << AuTime::Now() << "serverUTC" << serverUTC;
 }
 
+bool AuGlobal::InstallLegacyCommodityDescriptors(const QHash<quint16, DbCommodity>& descriptors, QString& error)
+{
+	QMutexLocker lock(&m_LegacyCommodityInstallLock);
+	if(descriptors.size() != 349)
+	{
+		error = QStringLiteral("Legacy commodity metadata must contain all 349 named commodities.");
+		return false;
+	}
+	for(auto it = descriptors.cbegin(); it != descriptors.cend(); ++it)
+		if(!it.key() || it.value().m_id != it.key())
+		{
+			error = QStringLiteral("Legacy commodity metadata has an invalid runtime identity.");
+			return false;
+		}
+	if(m_LegacyCommodityDescriptorsReady.load(std::memory_order_acquire))
+	{
+		for(auto it = descriptors.cbegin(); it != descriptors.cend(); ++it)
+			if(!m_LegacyCommodityDescriptors.contains(it.key())
+				|| m_LegacyCommodityDescriptors.value(it.key()).m_name != it.value().m_name)
+			{
+				error = QStringLiteral("Cannot replace published legacy commodity metadata.");
+				return false;
+			}
+		return true;
+	}
+	m_LegacyCommodityDescriptors = descriptors;
+	m_LegacyCommodityDescriptorsReady.store(true, std::memory_order_release);
+	return true;
+}
+
+QList<COMMODITYID> AuGlobal::ActiveCommodityIds() const
+{
+	QList<COMMODITYID> ids;
+	if(IsLegacyGeneration())
+	{
+		if(m_LegacyCommodityDescriptorsReady.load(std::memory_order_acquire))
+			for(auto it = m_LegacyCommodityDescriptors.cbegin(); it != m_LegacyCommodityDescriptors.cend(); ++it)
+				ids.append(COMMODITYID(it.key()));
+	}
+	else
+		for(const DbCommodity& descriptor : m_CommodityArray)
+			if(descriptor.m_id != CID_Invalid) ids.append(COMMODITYID(descriptor.m_id));
+	std::sort(ids.begin(), ids.end());
+	return ids;
+}
+
 COMMODITYID AuGlobal::CommodityId(const QString& name) const
 {
+	if(IsLegacyGeneration())
+	{
+		for(COMMODITYID cid : ActiveCommodityIds())
+			if(Commodity(cid).m_name.compare(name, Qt::CaseInsensitive) == 0) return cid;
+		return CID_Invalid;
+	}
 	for(DbCommodityArray::const_iterator it = m_CommodityArray.constBegin(); it != m_CommodityArray.constEnd(); it++)
 		if((*it).m_id != CID_Invalid)
 			if((*it).m_name.compare(name, Qt::CaseInsensitive) == 0)
@@ -1387,6 +1440,8 @@ QString AuGlobal::CacheGame() const
 	// Cache during solo play must be kept separate due to atom ids.
 	if(IsSceneSolo())
 		return CacheSolo();	// We don't need separate solo caches in both Temporary and TemporaryAlt caches.
+	if(IsLegacyGeneration())
+		return CacheApp() + QStringLiteral("/Legacy-%1").arg(QString::fromLatin1(GenerationIdentity().manifestHash.toHex()));
 	return CacheApp();
 }
 
@@ -1898,6 +1953,7 @@ const char* AuGlobal::Address() const
 
 QString AuGlobal::CommodityName(COMMODITYID cid) const
 {
+	if(IsLegacyGeneration()) return Commodity(cid).m_name;
 	if(cid >= CID_Invalid && cid < m_CommodityArray.count())
 		return Commodity(cid).m_name;
 	else

@@ -6749,6 +6749,27 @@ void AuDesignerView::AtomChanged(DaAtom* atom)
 		emit DesignerSelectionChanged();
 }
 
+void AuDesignerView::ResetGameGeneration()
+{
+	EndCommands();
+	DeselectAllUnits();
+	if(isValid())
+	{
+		makeCurrent();
+		AtomsCleared();
+		m_MM->ClearLegacySc();
+		doneCurrent();
+	}
+	else
+	{
+		m_SceneLock.lockForWrite();
+		m_SceneEther.DeleteEther();
+		m_SceneLock.unlock();
+		m_SceneAtomTransition = true;
+		m_SceneRendered = false;
+	}
+}
+
 void AuDesignerView::AtomsCleared()
 {
 	m_SceneLock.lockForWrite();

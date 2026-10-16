@@ -227,6 +227,7 @@ namespace DtChatChannelPacket
 		PV_SetJoinPass,
 		PZ_TickTock,
 		PD_LegacySc,
+		PD_LegacyCity,
 	};
 
 	inline const char* PacketName(PACKET p)
@@ -447,6 +448,7 @@ namespace DtChatChannelPacket
 		"PV_SetJoinPass",
 		"PZ_TickTock",
 		"PD_LegacySc",
+		"PD_LegacyCity",
 		};
 		return packetNames[p];
 	}
