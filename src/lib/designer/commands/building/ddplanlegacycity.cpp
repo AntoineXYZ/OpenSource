@@ -431,7 +431,12 @@ void DdPlanLegacyCity::RenderCursor(const AuMatrix4x4& projection, const AuMatri
 	{
 		ClearTarget hit; if(!FindClearTarget(*world, point, hit)) return;
 		ClearOutline(*world, hit, vertices, ground); clearAllowed = hit.allowed;
-		model = worldModel;
+		// Match site rendering: keep vertices local before the VAO converts
+		// doubles to floats, avoiding rounding at planet-sized coordinates.
+		const AuMatrix4x4 inverse = hit.placement.Inverse();
+		for(auto& vertex : vertices) vertex = AuPointAlpha(inverse.Project(vertex), vertex.m_Alpha);
+		for(auto& vertex : ground) vertex = AuPointAlpha(inverse.Project(vertex), vertex.m_Alpha);
+		model = worldModel * hit.placement;
 	}
 	else if(m_Request.industryId == 2)
 	{
