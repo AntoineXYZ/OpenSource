@@ -1212,7 +1212,6 @@ bool DaLegacyCity::OperateConstruction(DaPerson* person, quint32 id, bool fetch,
 						if(now-it.value()>60000) it=m_ConstructionLaborTimes.erase(it); else ++it;
 			}
 		}
-		else error = QStringLiteral("Required construction tools or electricity are unavailable.");
 	}
 	// Retain original technology/quality stacks in city storage; discard only
 	// emptied stacks after materials and worn tools have consumed exact items.
@@ -1237,7 +1236,6 @@ bool DaLegacyCity::OperateConstruction(DaPerson* person, quint32 id, bool fetch,
 	if(person && playerGearChanged) { person->LockGearForWrite(); person->UpdateGearWeight(); person->UnlockGear(); }
 	if(changed) SetModified();
 	if(physicalChanged) world->InvalidateEnvironmentRecursive();
-	if(!changed && error.isEmpty()) error=QStringLiteral("The site is waiting for construction materials.");
 	return changed;
 }
 

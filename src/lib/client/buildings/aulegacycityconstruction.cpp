@@ -710,7 +710,7 @@ void AuLegacyCityLabor::ReceiveReply(QByteArray payload)
 void AuLegacyCityLabor::UpdateControls()
 {
 	const bool online = g_Au.IsLegacyGeneration() && !auApp->IsSingleUserMode() && auApp->IsSceneConnected();
-	const bool idle = online && !m_PendingToken; const auto* entry = Selected();
+	const auto* entry = Selected();
 	const bool unfinished = entry && UnderConstruction(*entry);
 	const auto* catalogue = AuLegacyCityCatalogue::BuiltIn();
 	DeConstructionProcess process;
@@ -747,7 +747,6 @@ void AuLegacyCityLabor::UpdateControls()
 		name = QStringLiteral("<b>%1</b>").arg(name.toHtmlEscaped());
 	}
 	m_Labor->SetLegacyTarget(name, process, online && unfinished, entry && m_CitizenEnabled, entry && entry->halted);
-	m_Labor->SetLegacyRequestPending(!idle);
 	m_Labor->setVisible(online && unfinished); m_Info->setVisible(!online || !unfinished);
 	if(!online) m_Labor->StopWorking();
 }

@@ -24,6 +24,8 @@
 #include <QTableWidget>
 #include <QTimer>
 #include <QSignalBlocker>
+#include <QStyle>
+#include <QScrollBar>
 
 AuBldConstruct::AuBldConstruct(QWidget* parent, bool legacy) : QWidget(parent)
 {
@@ -46,11 +48,12 @@ AuBldConstruct::AuBldConstruct(QWidget* parent, bool legacy) : QWidget(parent)
 	m_Materials->setMinimumWidth(100);
 	m_Materials->setToolTip(tr("Commodities consumed by the construction."));
 
-	m_Modifiers = new QTableWidget(0,3,this);	// 0 rows, 2 columns
-	// AuLaborConstruct (2016, 0x1401caaa0) allowed the modifier table to grow.
-	m_Modifiers->setMinimumWidth(legacy ? 70 : 74);
-	m_Modifiers->setMaximumWidth(legacy ? 110 : 74);
-	if(!legacy) m_Modifiers->setMinimumHeight(10);
+	m_Modifiers = new QTableWidget(0,3,this);	// Commodity, modifier effect, readiness.
+	if(!legacy)
+	{
+		m_Modifiers->setFixedWidth(74);
+		m_Modifiers->setMinimumHeight(10);
+	}
 	m_Modifiers->setEditTriggers(QAbstractItemView::NoEditTriggers);
 	m_Modifiers->setSelectionBehavior(QAbstractItemView::SelectRows);
 	m_Modifiers->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -71,7 +74,10 @@ AuBldConstruct::AuBldConstruct(QWidget* parent, bool legacy) : QWidget(parent)
 			"commodities must be available, either in your ready inventory "
 			"or the city's inventory, before the Work button can be "
 			"pressed.</html>"));
-	m_Modifiers->resizeColumnsToContents(); // This eliminates a horizontal scrollbar that was visible until the first update.
+	if(legacy)
+		connect(m_Modifiers->verticalScrollBar(), &QScrollBar::rangeChanged, this,
+			[this](int, int) { ResizeModifierColumns(); });
+	ResizeModifierColumns(); // Fit all three icon columns before the first update.
 
 
 	m_Employ = new QCheckBox(tr("Employ Citizen"), this);
@@ -208,7 +214,7 @@ void AuBldConstruct::SetLegacyTarget(const QString& name, const DeConstructionPr
 	bool available, bool citizenEnabled, bool halted)
 {
 	if(!m_LegacyMode) return;
-	m_LegacyAvailable = available; m_LegacyHalted = halted; m_CitizenOk = citizenEnabled;
+	m_CitizenOk = citizenEnabled;
 	m_Construct->setText(name); ShowProcessComponents(process);
 	{ const QSignalBlocker blocked(m_Employ); m_Employ->setChecked(citizenEnabled); }
 	if(!available)
@@ -217,15 +223,19 @@ void AuBldConstruct::SetLegacyTarget(const QString& name, const DeConstructionPr
 	}
 	else if(halted) { StopWorking(); m_Labor->setText(tr("Construction Halted")); }
 	else m_Labor->setText(process.LaborNeeded() ? tr("%L1 Labor Needed").arg(process.LaborNeeded()) : tr("No Labor Needed"));
-	SetLegacyRequestPending(m_LegacyPending);
+	m_Employ->setEnabled(available);
+	m_Work->setEnabled(m_DoWork || (available && !halted));
 }
 
-void AuBldConstruct::SetLegacyRequestPending(bool pending)
+void AuBldConstruct::ResizeModifierColumns()
 {
-	m_LegacyPending = pending;
-	if(!m_LegacyMode) return;
-	m_Employ->setEnabled(m_LegacyAvailable);
-	m_Work->setEnabled(m_DoWork || (m_LegacyAvailable && !m_LegacyHalted && !pending));
+	m_Modifiers->resizeColumnsToContents();
+	if(m_LegacyMode)
+		// Add scrollbar width only when the rows need scrolling. Its range is
+		// updated when the window height changes, keeping every icon visible.
+		m_Modifiers->setFixedWidth(m_Modifiers->horizontalHeader()->length() + 2 * m_Modifiers->frameWidth()
+			+ (m_Modifiers->verticalScrollBar()->maximum() > m_Modifiers->verticalScrollBar()->minimum()
+				? m_Modifiers->style()->pixelMetric(QStyle::PM_ScrollBarExtent, nullptr, m_Modifiers) : 0));
 }
 
 void AuBldConstruct::ShowProcessComponents(const DeConstructionProcess& process)
@@ -346,7 +356,7 @@ void AuBldConstruct::ShowProcessComponents(const DeConstructionProcess& process)
 				}
 			}
 		}
-		m_Modifiers->resizeColumnsToContents();
+		ResizeModifierColumns();
 	}
 }
 
@@ -656,7 +666,7 @@ void AuBldConstruct::UpdateContents()
 								}
 							}
 						}
-						m_Modifiers->resizeColumnsToContents();
+						ResizeModifierColumns();
 					}
 
 					// Labor
