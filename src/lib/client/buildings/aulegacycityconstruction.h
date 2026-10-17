@@ -13,6 +13,7 @@ class QComboBox;
 class QLabel;
 class QToolButton;
 class QPushButton;
+class QPixmap;
 class QStackedWidget;
 class QTimer;
 
@@ -23,6 +24,7 @@ class AUCLIENT_DLL AuLegacyCityConstruction : public QWidget
 public:
 	explicit AuLegacyCityConstruction(QWidget* parent = nullptr);
 	void Submit(AuLegacyCityProtocol::Request request);
+	QPixmap PlacementIcon(const AuLegacyCityProtocol::Request& request) const;
 	void SetCursorMaterial(quint16 material);
 	void SetCursorRoadSlab(bool slab);
 	void SetCursorLevels(quint8 levels) { if(m_Planning) m_ActiveRequest.levels = levels; }

@@ -15,6 +15,9 @@
 #include "daworldll.h"
 #include <QWheelEvent>
 #include <QGuiApplication>
+#include <QCursor>
+#include <QPainter>
+#include <QPixmap>
 #include <cmath>
 
 namespace
@@ -212,6 +215,32 @@ void DdPlanLegacyCity::UpdateSelection(const AuLegacyCityProtocol::Request& requ
 	m_Request.targetX = m_Request.targetY = m_Request.targetZ = 0;
 	if(!sameProcess) m_HasStart = false;
 	m_PreviewValid = false;
+}
+
+void DdPlanLegacyCity::SetCursor(const AuMatrix4x4& camera, DaPerson* person, const QPoint& pixel)
+{
+	const QPixmap icon = m_Interface ? m_Interface->PlacementIcon(m_Request) : QPixmap();
+	if(!person || !g_Au.IsLegacyGeneration() || icon.isNull())
+	{ DdCommand::SetCursor(camera, person, pixel); return; }
+	// 2016: DdPlanGlobeRoad::SetCursor (0x140327ba0) uses the native
+	// road bitmap, doubled to 32 pixels for slabs, with a centered hotspot.
+	if(m_Request.action == AuLegacyCityProtocol::Build && m_Request.industryId == 2)
+	{
+		m_pWnd->setCursor(QCursor(m_Request.roadSlab ? icon.scaledToWidth(32) : icon)); return;
+	}
+	// Building 0x140321130, biodome 0x14031bd50 and clear 0x14031d920.
+	const bool building = m_Request.action == AuLegacyCityProtocol::Build && m_Request.industryId != 129;
+	QPixmap image(building ? 64 : 32, 32); image.fill(Qt::transparent);
+	QPainter painter(&image); painter.setRenderHint(QPainter::SmoothPixmapTransform);
+	painter.drawPixmap(QRectF(0, 0, 32, 32), icon, QRectF());
+	if(building && m_Request.levels)
+	{
+		painter.setFont(QFont(QStringLiteral("Arial"), 12, QFont::Bold));
+		const QString levels = QString::number(m_Request.levels);
+		painter.setPen(Qt::black); painter.drawText(QRect(1, 1, 32, 32), Qt::AlignLeft | Qt::AlignTop, levels);
+		painter.setPen(QColor(25, 229, 25)); painter.drawText(QRect(0, 0, 31, 31), Qt::AlignLeft | Qt::AlignTop, levels);
+	}
+	painter.end(); m_pWnd->setCursor(QCursor(image));
 }
 
 void DdPlanLegacyCity::ChangeMaterial(int direction)
@@ -501,14 +530,14 @@ void DdPlanLegacyCity::RenderCursor(const AuMatrix4x4& projection, const AuMatri
 	effects.GLSL().LineShader().Select(); effects.GLSL().LineShader().SetProjectionModelView(projection * model);
 	if(m_Request.action == AuLegacyCityProtocol::ClearLand)
 		effects.GLSL().LineShader().SetColor(.9f, clearAllowed ? .35f : .1f, .1f, .9f);
-	else effects.GLSL().LineShader().SetColor(.95f, .8f, .2f, .7f);
+	else effects.GLSL().LineShader().SetColor(.1f, .9f, .1f, .9f);
 	effects.glEnable(GL_BLEND); effects.glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	if(!ground.isEmpty())
 	{
 		AuGLVAO vao; vao.CreateForSprites(effects, ground, GL_STREAM_DRAW);
 		if(vao.VAO()) { vao.SelectGL(); vao.DrawGL(GL_LINES); vao.DeselectGL(); vao.DeleteGL(); }
 	}
-	if(m_Request.action == AuLegacyCityProtocol::ClearLand) effects.glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+	effects.glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 	if(m_Request.action != AuLegacyCityProtocol::ClearLand && m_Request.industryId != 2 && m_Request.industryId != 129)
 	{
 		if(!m_PreviewVAO.VAO()) m_PreviewVAO.CreateForSprites(effects, m_Preview, GL_STATIC_DRAW);
@@ -522,12 +551,9 @@ void DdPlanLegacyCity::RenderCursor(const AuMatrix4x4& projection, const AuMatri
 	effects.glDisable(GL_BLEND); effects.GLSL().LineShader().Deselect();
 	effects.glDepthMask(depthWrite);
 	if(depthTest) effects.glEnable(GL_DEPTH_TEST);
-	if(m_Request.action == AuLegacyCityProtocol::ClearLand) return;
+	if(m_Request.action == AuLegacyCityProtocol::ClearLand || (m_Request.industryId != 2 && m_Request.industryId != 129)) return;
 	QFont font; font.setPixelSize(14);
 	const QString text = m_Request.industryId == 2 ? (m_HasStart ? QObject::tr("Click road end — %1 m").arg(preview.roadLengthMeters, 0, 'f', 1) : QObject::tr("Click road start"))
-		: m_Request.industryId == 129 ? (m_HasStart ? QObject::tr("Click biodome radius — %1 m").arg(preview.biodomeRadiusMeters, 0, 'f', 1) : QObject::tr("Click biodome center"))
-		// FUN_140321130 draws a compact numeric level badge, also for a town
-		// square (the shared building cursor initializes its level count to 1).
-		: QString::number(m_Request.levels);
+		: (m_HasStart ? QObject::tr("Click biodome radius — %1 m").arg(preview.biodomeRadiusMeters, 0, 'f', 1) : QObject::tr("Click biodome center"));
 	effects.RenderText(pixel.x() + 16, pixel.y() + 24, text, font, QColor(255, 230, 100), info.glw->width(), info.glw->height());
 }

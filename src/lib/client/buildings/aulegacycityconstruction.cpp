@@ -489,6 +489,19 @@ void AuLegacyCityConstruction::UpdatePlanningSettings()
 	m_ActiveRequest.targetY = float(m_Grading->currentData().toInt()); emit PlanConstruction(m_ActiveRequest);
 }
 
+QPixmap AuLegacyCityConstruction::PlacementIcon(const AuLegacyCityProtocol::Request& request) const
+{
+	if(request.action == AuLegacyCityProtocol::ClearLand)
+		return QPixmap(QStringLiteral(":data/bp_ClearLand.png"));
+	if(request.industryId == 2)
+		for(const auto& button : AuLegacyCityConstructionLayout::Buttons)
+			if(button.industry == 2 && button.process == request.processId) return QPixmap(button.icon);
+	if(const auto* catalogue = AuLegacyCityCatalogue::BuiltIn())
+		if(const auto* material = catalogue->Commodity(AuLegacyCity::CommodityId(request.material)))
+			return QPixmap(material->descriptor.BitmapName());
+	return QPixmap();
+}
+
 void AuLegacyCityConstruction::SetCursorMaterial(quint16 material)
 {
 	if(!m_Materials->button(material)) return;

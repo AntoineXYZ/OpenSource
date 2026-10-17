@@ -24,6 +24,7 @@ public:
 	void OnButtonDown(QMouseEvent* event) override;
 	void OnMouseWheel(QWheelEvent* event) override;
 	void DeleteDeviceObjects(AuGLEffects& effects) override;
+	void SetCursor(const AuMatrix4x4& camera, DaPerson* person, const QPoint& pixel) override;
 	void RenderCursor(const AuMatrix4x4& projection, const AuMatrix4x4& camera, DaPerson* person,
 		const QPoint& pixel, AuAtomRenderInfo& info, bool snapped) override;
 private:
