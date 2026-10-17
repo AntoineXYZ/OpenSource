@@ -39,6 +39,90 @@ namespace
 {
 AuPoint Point(const QVector3D& p) { return AuPoint(p.x(), p.y(), p.z()); }
 
+// DpGlobeRoad::Contains, AuAtom13 0x652cf0. The visible pavement's
+// eight-foot border is deliberately absent from the placement footprint.
+bool RoadContains(const DaWorldLL& world, const AuLegacyCity::Development& road,
+	const AuGlobeLLF& start, const AuGlobeLLF& end, const AuGlobeLLF& point, double margin)
+{
+	float fraction;
+	const auto closest = point.CoordOnSegment(start, end, &fraction, world.LLShape());
+	const float startAltitude = float(road.roadStartAltitudeMSL), endAltitude = float(road.roadEndAltitudeMSL);
+	const float altitude = fraction <= 0 ? startAltitude : fraction >= 1 ? endAltitude
+		: (endAltitude - startAltitude) * fraction + startAltitude;
+	const AuPoint endpoint = world.LocOfLL(fraction <= 0 ? start : fraction >= 1 ? end : closest, altitude);
+	const AuPoint query = world.LocOfLL(point, altitude);
+	const float halfWidth = float(road.roadWidthMeters * FeetPerMeter() / 2);
+	if(fraction >= 0 && fraction <= 1)
+	{
+		const float width = float(halfWidth + margin);
+		return float(query.Distance2(endpoint)) <= width * width;
+	}
+	if(margin <= 0) return false;
+	const AuPoint first = world.LocOfLL(start, startAltitude), last = world.LocOfLL(end, endAltitude);
+	const double beyond = (fraction < 0 ? -double(fraction) : double(fraction) - 1) * first.Distance(last);
+	if(beyond > margin) return false;
+	AuPoint direction = last - first;
+	if(direction.IsZero()) direction.x = 1; else direction.Unit();
+	AuPoint side = direction.Cross(-world.GravityDir(endpoint)); side.Unit();
+	const AuPoint delta = query - endpoint;
+	const double lateral = delta.x * side.x + delta.y * side.y + delta.z * side.z;
+	if(std::abs(lateral) <= halfWidth + margin) return true;
+	const AuPoint edge = endpoint + side * (lateral > 0 ? halfWidth : -halfWidth);
+	return query.Distance2(edge) <= double(float(margin * margin));
+}
+
+bool BuildingTouchesRoad(const DaWorldLL& world, const AuLegacyCity::Development& building,
+	const AuMatrix4x4& placement, double radius, const AuLegacyCity::Development& road,
+	const AuMatrix4x4& roadPlacement)
+{
+	AuGlobeLLF start, end;
+	const double halfLength = road.roadLengthMeters * FeetPerMeter() / 2;
+	if(!world.LLOfLoc(start, roadPlacement.Project(AuPoint(0, -halfLength, 0)))
+		|| !world.LLOfLoc(end, roadPlacement.Project(AuPoint(0, halfLength, 0)))) return false;
+	// DaCity::DevelopmentContaining 0x28c050: an expanded center query,
+	// then 32 square-boundary samples with no expansion (0x28c354-0x28c3ad).
+	if(RoadContains(world, road, start, end, building.location, radius)) return true;
+	for(int i = 0; i < 32; ++i)
+	{
+		const float angle = float(i) * 6.2831855f * .03125f;
+		const float x = std::cos(angle), y = std::sin(angle), scale = qMax(std::abs(x), std::abs(y));
+		AuGlobeLLF ll;
+		if(world.LLOfLoc(ll, placement.Project(AuPoint(radius * (x / scale), radius * (y / scale), 0)))
+			&& RoadContains(world, road, start, end, ll, 0)) return true;
+	}
+	return false;
+}
+
+bool RoadTouchesBuilding(const DaWorldLL& world, const AuLegacyCity::Development& road,
+	const AuMatrix4x4& placement, const AuLegacyCity::Development& building,
+	const AuMatrix4x4& buildingPlacement, double radius)
+{
+	// LockTestBuildLocation 0x5264d0 checks center and both edges
+	// every fifteen feet, including the final endpoint, against DpBuilding::Contains.
+	const double halfLength = road.roadLengthMeters * FeetPerMeter() / 2;
+	AuGlobeLLF startLL, endLL;
+	world.LLOfLoc(startLL, placement.Project(AuPoint(0, -halfLength, 0)));
+	world.LLOfLoc(endLL, placement.Project(AuPoint(0, halfLength, 0)));
+	const AuPoint start = world.LocOfLL(startLL, road.roadStartAltitudeMSL);
+	const AuPoint end = world.LocOfLL(endLL, road.roadEndAltitudeMSL), direction = end - start;
+	const double length = direction.Length(); if(length <= 0) return false;
+	const auto inverse = buildingPlacement.Inverse();
+	for(double along = 0;; along = qMin(length, along + 15))
+	{
+		AuPoint center = start + direction * (along / length);
+		world.ElevateLocMSL(center, road.roadStartAltitudeMSL
+			+ (road.roadEndAltitudeMSL - road.roadStartAltitudeMSL) * along / length);
+		AuPoint side = direction.Cross(-world.GravityDir(center)); side.Unit(road.roadWidthMeters * FeetPerMeter() / 2);
+		for(int edge : {0, -1, 1})
+		{
+			AuGlobeLLF ll; if(!world.LLOfLoc(ll, center + side * edge)) continue;
+			const AuPoint local = inverse.Project(world.LocOfLL(ll, building.altitudeMSL));
+			if(qMax(float(std::abs(local.x)), float(std::abs(local.y))) <= radius) return true;
+		}
+		if(along >= length) return false;
+	}
+}
+
 double TerrainLevelRadius(quint8 industry, const AuLegacyCityCatalogue& catalogue, quint8 constructionProcess = 0)
 {
 	// DpDevelopment::TerrainLevelRadius, AuAtom13 0xfe610. Default BuildRadius
@@ -779,6 +863,9 @@ bool DaLegacyCity::BeginConstruction(DaPerson& person, quint8 industry, quint8 p
 			for(const auto& existing : otherCity.developments)
 			{
 				if(existing.demolished) continue;
+				const bool landscapingRoad = existing.industryId == 2 && (existing.constructionProcessId == 5
+					|| existing.constructionProcessId == 74 || existing.constructionProcessId == 80 || existing.constructionProcessId == 81);
+				if(landscapingRoad && industry != 129) continue; // Original FIND_SkipLandscapers.
 				const auto* otherRecipe = ConstructionRecipe(existing.industryId, existing.constructionProcessId);
 				if(!otherRecipe) continue;
 				AuMatrix4x4 otherPlacement;
@@ -794,9 +881,13 @@ bool DaLegacyCity::BeginConstruction(DaPerson& person, quint8 industry, quint8 p
 				const double rx = ownX*std::abs(cosine) + ownY*std::abs(sine);
 				const double ry = ownX*std::abs(sine) + ownY*std::abs(cosine);
 				// Test all four axes of the two oriented footprints.
-				const bool overlapping = std::abs(p.x) < otherX+rx-.05 && std::abs(p.y) < otherY+ry-.05
+				bool overlapping = std::abs(p.x) < otherX+rx-.05 && std::abs(p.y) < otherY+ry-.05
 					&& std::abs(p.x*cosine+p.y*sine) < ownX+otherX*std::abs(cosine)+otherY*std::abs(sine)-.05
 					&& std::abs(-p.x*sine+p.y*cosine) < ownY+otherX*std::abs(sine)+otherY*std::abs(cosine)-.05;
+				if(industry != 2 && industry != 129 && existing.industryId == 2)
+					overlapping = BuildingTouchesRoad(*world, dev, placement, radius, existing, otherPlacement);
+				else if(industry == 2 && existing.industryId != 2 && existing.industryId != 129)
+					overlapping = RoadTouchesBuilding(*world, dev, placement, existing, otherPlacement, otherX);
 				const bool inMargin = std::abs(p.x) <= otherX+rx+32.8084 && std::abs(p.y) <= otherY+ry+32.8084;
 				bool domeCompatible=false;
 				if(industry==129 || existing.industryId==129)
@@ -833,8 +924,6 @@ bool DaLegacyCity::BeginConstruction(DaPerson& person, quint8 industry, quint8 p
 				{ error = QStringLiteral("The construction site overlaps an existing development."); return false; }
 				if(city==this && inMargin)
 				{
-					const bool landscapingRoad=existing.industryId==2 && (existing.constructionProcessId==5
-						|| existing.constructionProcessId==74 || existing.constructionProcessId==80 || existing.constructionProcessId==81);
 					const bool town=existing.industryId==1;
 					const bool road=existing.industryId==2 && existing.constructed && !landscapingRoad;
 					// LockTestForAdjacentFinishedRoad 0x527fe0 explicitly tries
