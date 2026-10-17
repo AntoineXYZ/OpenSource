@@ -76,6 +76,7 @@
 #include "ddgrid3pt.h"
 #include "ddgridmove.h"
 #include "ddplanbdbuilding.h"
+#include "ddplanlegacycity.h"
 #include "ddplanbdfence.h"
 #include "ddplanclearcraters.h"
 #include "ddplanclearglobe.h"
@@ -15124,6 +15125,14 @@ void AuDesignerView::DesignerTree()
 	if(DesignerObjectMode())
 		return;
 	StartCommand(new DdBdTree(this));
+}
+
+void AuDesignerView::PlanLegacyCity(const AuLegacyCityProtocol::Request& request, AuLegacyCityConstruction* controls)
+{
+	if(!g_Au.IsLegacyGeneration() || IsInDesignEnvironment()) return;
+	if(auto* planning = dynamic_cast<DdPlanLegacyCity*>(Command()))
+		if(planning->UsesControls(controls)) { planning->UpdateSelection(request); return; }
+	StartCommand(new DdPlanLegacyCity(this, controls, request));
 }
 
 void AuDesignerView::PlanBd(INDUSTRYID industryId, const AuBdReport& report, COMMODITYID constructionMaterial, quint16 mpid,

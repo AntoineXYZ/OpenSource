@@ -3374,19 +3374,20 @@ class AUGL_DLL AuGLSLTerrainLit : public AuGLSLProgram
 	bool								m_ProjectionValid;		// True if projection has been set.
 
 private:
+	int m_PavementCount;							// Seven modern or eighteen original 2016 pavement textures.
 	GLint								m_altNoiseFactor;		// Multiplier for altitude noise.
 	GLint								m_fogColor;				// Location of 'fogColor' uniform variable.
 	GLint								m_fogDensity;			// Location of 'fogDensity' uniform variable.
 	GLint								m_mv;					// Location of 'mv' uniform variable.
 	GLint								m_OldLookup;			// Previous texture binding for restore upon deselect.
 	GLint								m_OldNoise;				// Previous texture binding for restore upon deselect.
-	GLint								m_OldPavement[7];		// Previous texture binding for restore upon deselect.
+	GLint								m_OldPavement[18];		// Previous texture binding for restore upon deselect.
 	GLint								m_OldSnow;				// Previous texture binding for restore upon deselect.
 	GLint								m_OldTerrain[5];		// Previous texture binding for restore upon deselect.
 	GLint								m_p;					// Location of 'p' uniform variable.
 	GLint								m_texLookup;			// Location of 'texLookup' uniform variable.
 	GLint								m_texNoise;				// Location of 'texNoise' uniform variable.
-	GLint								m_texPavement[7];		// Location of 'texPavement' uniform variable.
+	GLint								m_texPavement[18];		// Location of 'texPavement' uniform variable.
 	GLint								m_texSnow;				// Location of 'texSnow' uniform variable.
 	GLint								m_texTerrain[5];		// Location of 'texTerrain' uniform variable.
 
@@ -3414,8 +3415,9 @@ private:
 	//--------------------
 
 public:
-	AuGLSLTerrainLit()
+	AuGLSLTerrainLit(bool legacy=false)
 	{
+		m_PavementCount = legacy ? 18 : 7;
 		m_altNoiseFactor = -1;
 		m_fogColor = -1;
 		m_fogDensity = -1;
@@ -3428,7 +3430,7 @@ public:
 		m_texLookup = -1;
 		m_texNoise = -1;
 
-		for(int pave=0; pave<7; pave++)
+		for(int pave=0; pave<m_PavementCount; pave++)
 		{
 			m_texPavement[pave] = -1;
 			m_OldPavement[pave] = -1;
@@ -3494,7 +3496,7 @@ public:
 			texUnit++;
 		}
 
-		for(int pave=0; pave<7; pave++)
+		for(int pave=0; pave<m_PavementCount; pave++)
 		{
 			m_GLf->glActiveTexture(texUnit);
 			m_GLf->glBindTexture(GL_TEXTURE_2D, m_OldPavement[pave]);
@@ -3626,11 +3628,11 @@ public:
 		m_GLf->glBindTexture(GL_TEXTURE_2D, texName);					// Bind the texture to the current texture unit.
 	}
 
-	inline void SetPavementPalette(GLuint texName[7]) const
+	inline void SetPavementPalette(const GLuint* texName) const
 	{
 		GLuint texUnit = 8;
 		GLuint texBase = GL_TEXTURE0 + texUnit;
-		for(int pave=0; pave<7; pave++)
+		for(int pave=0; pave<m_PavementCount; pave++)
 		{
 			m_GLf->glUniform1i(m_texPavement[pave], texUnit);	// Configure uniform 'texTerrainHigh' for texture unit.
 			m_GLf->glActiveTexture(texBase);					// Select texture unit 0 as active.
@@ -3663,6 +3665,7 @@ class AUGL_DLL AuGLSLTerrainLitFlora : public AuGLSLProgram
 	bool								m_ProjectionValid;		// True if projection has been set.
 
 private:
+	int m_PavementCount;							// Seven modern or eighteen original 2016 pavement textures.
 	GLint								m_altNoiseFactor;		// Multiplier for altitude noise.
 	GLint								m_fogColor;				// Location of 'fogColor' uniform variable.
 	GLint								m_fogDensity;			// Location of 'fogDensity' uniform variable.
@@ -3670,14 +3673,14 @@ private:
 	GLint								m_OldGrass;				// Previous texture binding for restore upon deselect.
 	GLint								m_OldLookup;			// Previous texture binding for restore upon deselect.
 	GLint								m_OldNoise;				// Previous texture binding for restore upon deselect.
-	GLint								m_OldPavement[7];		// Previous texture binding for restore upon deselect.
+	GLint								m_OldPavement[18];		// Previous texture binding for restore upon deselect.
 	GLint								m_OldSnow;				// Previous texture binding for restore upon deselect.
 	GLint								m_OldTerrain[5];		// Previous texture binding for restore upon deselect.
 	GLint								m_p;					// Location of 'p' uniform variable.
 	GLint								m_texGrass;				// Location of 'texGrass' uniform variable.
 	GLint								m_texLookup;			// Location of 'texLookup' uniform variable.
 	GLint								m_texNoise;				// Location of 'texNoise' uniform variable.
-	GLint								m_texPavement[7];		// Location of 'texPavement' uniform variable.
+	GLint								m_texPavement[18];		// Location of 'texPavement' uniform variable.
 	GLint								m_texSnow;				// Location of 'texSnow' uniform variable.
 	GLint								m_texTerrain[5];		// Location of 'texTerrain' uniform variable.
 
@@ -3705,8 +3708,9 @@ private:
 	//--------------------
 
 public:
-	AuGLSLTerrainLitFlora()
+	AuGLSLTerrainLitFlora(bool legacy=false)
 	{
+		m_PavementCount = legacy ? 18 : 7;
 		m_altNoiseFactor = -1;
 		m_fogColor = -1;
 		m_fogDensity = -1;
@@ -3723,7 +3727,7 @@ public:
 		m_texLookup = -1;
 		m_texNoise = -1;
 
-		for(int pave=0; pave<7; pave++)
+		for(int pave=0; pave<m_PavementCount; pave++)
 		{
 			m_texPavement[pave] = -1;
 			m_OldPavement[pave] = -1;
@@ -3793,7 +3797,7 @@ public:
 			texUnit++;
 		}
 
-		for(int pave=0; pave<7; pave++)
+		for(int pave=0; pave<m_PavementCount; pave++)
 		{
 			m_GLf->glActiveTexture(texUnit);
 			m_GLf->glBindTexture(GL_TEXTURE_2D, m_OldPavement[pave]);
@@ -3934,11 +3938,11 @@ public:
 		m_GLf->glBindTexture(GL_TEXTURE_2D, texName);			// Bind the texture to the current texture unit.
 	}
 
-	inline void SetPavementPalette(GLuint texName[7]) const
+	inline void SetPavementPalette(const GLuint* texName) const
 	{
 		GLuint texUnit = 9;
 		GLuint texBase = GL_TEXTURE0 + texUnit;
-		for(int pave=0; pave<7; pave++)
+		for(int pave=0; pave<m_PavementCount; pave++)
 		{
 			m_GLf->glUniform1i(m_texPavement[pave], texUnit);	// Configure uniform 'texTerrainHigh' for texture unit.
 			m_GLf->glActiveTexture(texBase);					// Select texture unit 0 as active.
@@ -3971,6 +3975,7 @@ class AUGL_DLL AuGLSLRingworldTerrainLitFlora : public AuGLSLProgram
 	bool								m_ProjectionValid;		// True if projection has been set.
 
 private:
+	int m_PavementCount;							// Seven modern or eighteen original 2016 pavement textures.
 	GLint								m_altNoiseFactor;		// Multiplier for altitude noise.
 	GLint								m_fogColor;				// Location of 'fogColor' uniform variable.
 	GLint								m_fogDensity;			// Location of 'fogDensity' uniform variable.
@@ -3978,14 +3983,14 @@ private:
 	GLint								m_OldGrass;				// Previous texture binding for restore upon deselect.
 	GLint								m_OldLookup;			// Previous texture binding for restore upon deselect.
 	GLint								m_OldNoise;				// Previous texture binding for restore upon deselect.
-	GLint								m_OldPavement[7];		// Previous texture binding for restore upon deselect.
+	GLint								m_OldPavement[18];		// Previous texture binding for restore upon deselect.
 	GLint								m_OldSnow;				// Previous texture binding for restore upon deselect.
 	GLint								m_OldTerrain[5];		// Previous texture binding for restore upon deselect.
 	GLint								m_p;					// Location of 'p' uniform variable.
 	GLint								m_texGrass;				// Location of 'texGrass' uniform variable.
 	GLint								m_texLookup;			// Location of 'texLookup' uniform variable.
 	GLint								m_texNoise;				// Location of 'texNoise' uniform variable.
-	GLint								m_texPavement[7];		// Location of 'texPavement' uniform variable.
+	GLint								m_texPavement[18];		// Location of 'texPavement' uniform variable.
 	GLint								m_texSnow;				// Location of 'texSnow' uniform variable.
 	GLint								m_texTerrain[5];		// Location of 'texTerrain' uniform variable.
 
@@ -4017,8 +4022,9 @@ private:
 	//--------------------
 
 public:
-	AuGLSLRingworldTerrainLitFlora()
+	AuGLSLRingworldTerrainLitFlora(bool legacy=false)
 	{
+		m_PavementCount = legacy ? 18 : 7;
 		m_altNoiseFactor = -1;
 		m_fogColor = -1;
 		m_fogDensity = -1;
@@ -4035,7 +4041,7 @@ public:
 		m_texLookup = -1;
 		m_texNoise = -1;
 
-		for(int pave=0; pave<7; pave++)
+		for(int pave=0; pave<m_PavementCount; pave++)
 		{
 			m_texPavement[pave] = -1;
 			m_OldPavement[pave] = -1;
@@ -4109,7 +4115,7 @@ public:
 			texUnit++;
 		}
 
-		for(int pave=0; pave<7; pave++)
+		for(int pave=0; pave<m_PavementCount; pave++)
 		{
 			m_GLf->glActiveTexture(texUnit);
 			m_GLf->glBindTexture(GL_TEXTURE_2D, m_OldPavement[pave]);
@@ -4255,11 +4261,11 @@ public:
 		m_GLf->glBindTexture(GL_TEXTURE_2D, texName);			// Bind the texture to the current texture unit.
 	}
 
-	inline void SetPavementPalette(GLuint texName[7]) const
+	inline void SetPavementPalette(const GLuint* texName) const
 	{
 		GLuint texUnit = 9;
 		GLuint texBase = GL_TEXTURE0 + texUnit;
-		for(int pave=0; pave<7; pave++)
+		for(int pave=0; pave<m_PavementCount; pave++)
 		{
 			m_GLf->glUniform1i(m_texPavement[pave], texUnit);	// Configure uniform 'texTerrainHigh' for texture unit.
 			m_GLf->glActiveTexture(texBase);					// Select texture unit 0 as active.
@@ -22488,6 +22494,13 @@ private:
 	AuGLSLSpriteActualSize*				m_SpriteActualSize;
 	AuGLSLSpriteSize*					m_SpriteSize;
 	AuGLSLSpriteSizeColor*				m_SpriteSizeColor;
+	AuGLSLTerrainLit* m_LegacyTerrainLit;
+	bool m_LegacyTerrainReady = false;
+	AuGLSLTerrainLitFlora* m_LegacyTerrainLitFlora;
+	AuGLSLRingworldTerrainLitFlora* m_LegacyRingworldTerrainLitFlora;
+
+	void EnsureLegacyTerrainShaders();
+
 	AuGLSLTerrainLit*					m_TerrainLit;
 	AuGLSLTerrainLitFlora*				m_TerrainLitFlora;
 	AuGLSLTexBar*						m_TexBar;
@@ -22938,8 +22951,13 @@ public:
 		return *m_RingworldStatue;
 	}
 
-	inline AuGLSLRingworldTerrainLitFlora& RingworldTerrainLitFloraShader()
+	inline AuGLSLRingworldTerrainLitFlora& RingworldTerrainLitFloraShader(bool legacy=false)
 	{
+		if(legacy)
+		{
+			EnsureLegacyTerrainShaders();
+			return *m_LegacyRingworldTerrainLitFlora;
+		}
 		return *m_RingworldTerrainLitFlora;
 	}
 
@@ -23053,13 +23071,23 @@ public:
 		return *m_SpriteSizeColor;
 	}
 
-	inline AuGLSLTerrainLit& TerrainLitShader()
+	inline AuGLSLTerrainLit& TerrainLitShader(bool legacy=false)
 	{
+		if(legacy)
+		{
+			EnsureLegacyTerrainShaders();
+			return *m_LegacyTerrainLit;
+		}
 		return *m_TerrainLit;
 	}
 
-	inline AuGLSLTerrainLitFlora& TerrainLitFloraShader()
+	inline AuGLSLTerrainLitFlora& TerrainLitFloraShader(bool legacy=false)
 	{
+		if(legacy)
+		{
+			EnsureLegacyTerrainShaders();
+			return *m_LegacyTerrainLitFlora;
+		}
 		return *m_TerrainLitFlora;
 	}
 

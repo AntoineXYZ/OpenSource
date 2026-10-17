@@ -586,6 +586,31 @@ The production deployment archive includes
 `deploy/server/environments/production.ini`, which can be edited after extraction
 and before running `./start.sh`.
 
+### Legacy city construction
+
+Legacy universes use a separate **F11 Construction** window and reuse the existing
+construction labor controls in **F10 Labor**, adapted to legacy city sites.
+F11 selects historical industries, public design variants, materials,
+levels, road grading and clearing. Its world cursor places buildings with one
+click and roads with two clicks. The original icon rail selects categories;
+press a building icon to begin placement. Plus/minus or the mouse wheel change
+building level counts. Road grading and width controls are on the Roads &
+Landscape page. F10 supplies construction materials, contributes
+player labor, enables citizen labor, and halts or resumes projects. Extensions
+retain the existing building's design and material. A new town square requires
+an empire flag and a valid city name.
+
+Construction progress uses legacy city state version 2. Reset the universe after
+schema changes; fresh database initialization creates the current legacy city
+tables. The packaged schema does not migrate existing databases.
+
+After a manual client/server build, verify founding with and without a flag,
+material shortages and repeated labor, halt/resume, multi-level completion and
+extensions, each road/landscaping type, demolition and town-square deletion
+restrictions, and restart/reconnect with work partially complete. Check the
+separate F10/F11 windows and a modern server as well. Economy, population growth,
+powered life support, services and political lifecycle remain later stages.
+
 ### Legacy spacecraft storage
 
 Legacy designs are stored in `n_LegacyScDesign` in `auUniverse`. Scene servers

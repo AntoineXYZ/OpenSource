@@ -359,6 +359,10 @@ public:
 		m_ItemLock.unlock();
 	}
 
+	// Publish mutations made through LockItemForWrite, including partial
+	// consumption of loose stacks and container contents. Call after unlock.
+	void NotifyItemChanged();
+
 	virtual quint64 MemoryUsage() const;
 
 	virtual AuPoint MovementBlocked(DaAtom* hit, const AuPoint& hitLoc, const AuPoint& hitNormal, bool hitShield);

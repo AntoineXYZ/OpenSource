@@ -9,12 +9,19 @@
 
 namespace AuLegacyCity
 {
-constexpr quint8 StateVersion = 1;
+constexpr quint8 StateVersion = 2;
 constexpr int MaximumStateBytes = 8 * 1024 * 1024;
 constexpr int MaximumDevelopments = 32768;
 
 // These are owned records, not modern building atoms. IDs are local to a city;
 // original blueprint and commodity IDs remain in their historical namespaces.
+struct ConstructionComponent
+{
+	quint16 commodityId = 0; // Historical GD ID.
+	quint8 effect = 5, quality = 0;
+	quint32 quantity = 0, applied = 0;
+};
+
 struct Development
 {
 	quint32 id = 0;
@@ -28,6 +35,19 @@ struct Development
 	qint8 maximumDeck = 0;
 	bool constructed = true;
 	quint8 completedLevels = 1;
+	quint8 constructionProcessId = 0;
+	quint8 targetLevels = 1;
+	quint32 laborRemaining = 0;
+	bool halted = false, citizenWorker = true;
+	qint64 lastPlayerLabor = 0;
+	QVector<ConstructionComponent> components;
+	// Procedural roads use a rectangular strip, centered at location, with its
+	// long axis along local +Y. Original process IDs distinguish all road types.
+	float roadLengthMeters = 10, roadWidthMeters = 10;
+	bool roadSlab = false;
+	double roadStartAltitudeMSL = 0, roadEndAltitudeMSL = 0;
+	float biodomeRadiusMeters = 100;
+	bool demolished = false;
 };
 
 struct Flag

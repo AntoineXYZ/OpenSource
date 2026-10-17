@@ -1837,7 +1837,9 @@ public:	// AI
 	// Returns true if the item functions, though it may be used up by this last use.
 	// Returns false if the item could not function because it needs ammo.
 	// Returns false if there is no item at that position.
-	inline bool UseGearItem(const AuGearPos& gearPos, INVENTORYSUB sub)
+	// If weight refresh is deferred, the caller must refresh after releasing
+	// locks that environment queries could otherwise re-enter.
+	inline bool UseGearItem(const AuGearPos& gearPos, INVENTORYSUB sub, bool updateWeight = true)
 	{
 		if(!gearPos.IsGear())
 			return false;
@@ -1858,7 +1860,7 @@ public:	// AI
 						gear->Erase(gearPos);	// The item was completely used up.
 
 					// Need to update my current inventory weight carried.
-					UpdateGearWeight();
+					if(updateWeight) UpdateGearWeight();
 				}
 			}
 		}

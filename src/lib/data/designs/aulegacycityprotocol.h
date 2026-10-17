@@ -2,20 +2,28 @@
 #define AuLegacyCityProtocol_H
 
 #include "audata.h"
+#include "aulegacycitystate.h"
 #include <QByteArray>
 #include <QString>
 #include <QVector>
 
-// Architect test tools for the recovered infrastructure, separate from gameplay construction.
+// Legacy gameplay has its own interface and commands. Architect fixture actions
+// retain their original numbers and their separate server authorization.
 namespace AuLegacyCityProtocol
 {
-constexpr int MaximumRequestBytes = 96;
-constexpr int MaximumReplyBytes = 128 * 1024;
+constexpr int MaximumRequestBytes = 1024;
+constexpr int MaximumReplyBytes = 512 * 1024;
 constexpr int MaximumEntries = 256;
 // Keep the retired action's number reserved so stale clients cannot reinterpret
 // a door request as removal or another mutation.
 // The version-1 door boolean/count byte positions also remain reserved in the codec.
-enum Action : quint8 { List = 0, Spawn = 1, Update = 2, RetiredDoors = 3, Remove = 4, Route = 5 };
+enum Action : quint8
+{
+	List = 0, Spawn = 1, Update = 2, RetiredDoors = 3, Remove = 4, Route = 5,
+	ConstructionList = 6, Build = 7, Extend = 8, Halt = 9, Resume = 10,
+	Contribute = 11, Demolish = 12, ClearLand = 13, FetchMaterials = 14, EmployCitizen = 15, ChangeRoad = 16
+};
+inline bool IsGameplay(Action action) { return action >= ConstructionList && action <= ChangeRoad; }
 struct Request
 {
 	Action action = List;
@@ -25,6 +33,15 @@ struct Request
 	bool constructed = true;
 	float distanceMeters = 40, headingDegrees = 0, elevationMeters = 0;
 	float targetX = 0, targetY = 0, targetZ = 4; // Building-local feet.
+	quint8 industryId = 0, processId = 0, levels = 1;
+	float roadLengthMeters = 10, roadWidthMeters = 10;
+	bool roadSlab = false;
+	float biodomeRadiusMeters = 100;
+	bool citizenEnabled = true;
+	QString cityName;
+	bool explicitLocation = false;
+	quint32 worldId = 0;
+	float latitudeRadians = 0, longitudeRadians = 0;
 };
 struct Entry
 {
@@ -34,6 +51,11 @@ struct Entry
 	bool constructed = true;
 	float elevationMeters = 0, headingDegrees = 0;
 	QString name;
+	quint8 industryId = 0, processId = 0, completedLevels = 0, targetLevels = 0;
+	bool halted = false, citizenEnabled = false;
+	quint32 siteLaborRemaining = 0, levelLaborRemaining = 0;
+	QString materials;
+	QVector<AuLegacyCity::ConstructionComponent> components;
 };
 struct Reply
 {
@@ -43,6 +65,8 @@ struct Reply
 	QVector<Entry> entries;
 	bool hasList = false;
 	bool truncated = false;
+	// A valid labor command can be accepted while waiting for materials.
+	bool accepted = false;
 };
 AUDATA_DLL QByteArray EncodeRequest(const Request& request);
 AUDATA_DLL bool DecodeRequest(const QByteArray& bytes, Request& request);

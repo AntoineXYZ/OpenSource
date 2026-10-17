@@ -570,6 +570,11 @@ bool DaItem::Orient(const AuPoint& atLoc, const AuPoint& terNormal)
 	return true;
 }
 
+void DaItem::NotifyItemChanged()
+{
+	m_ItemLock.lockForWrite(); m_ItemChangeTime.Set(); m_ItemLock.unlock(); SetModified();
+}
+
 // Attempts to consume this commodity into the construction process passed.
 // If this atom is consumed, it dies.
 bool DaItem::FetchConstructionMaterials(DeConstructionProcess &cp)

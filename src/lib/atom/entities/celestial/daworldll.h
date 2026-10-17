@@ -2184,7 +2184,9 @@ public:
 	virtual void CreateRocks(QMap<AuResKey, AuGlobeRock>& rocks, const AuPoint& groundLoc, quint32 worldGenSeed,
 			float range, bool visibleOnly) const = 0;
 
-	static GLuint CreateTerrainTexture(AuGLEffects& re, WORLDTEX_TYPE worldTexType, int tileSize);
+	static GLuint CreateTerrainTexture(AuGLEffects& re, WORLDTEX_TYPE worldTexType, int tileSize, bool legacyPavement=false);
+	static int TerrainPavementCount();
+	static bool PavementHidesSnow(WORLDTEX_TYPE pavementType);
 
 	DaDesignBase* DesignEnvironment(const AuGlobeLLF& devLL, int panelIndex);
 

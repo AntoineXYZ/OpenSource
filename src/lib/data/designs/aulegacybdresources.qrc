@@ -82,11 +82,22 @@
   <file alias="materials/BldMagmium.png">../../../../resources/runtime/legacy/cities/materials/BldMagmium.png</file>
   <file alias="materials/BldVulcium.png">../../../../resources/runtime/legacy/cities/materials/BldVulcium.png</file>
   <file alias="sites/ConstructionZone.png">../../../../resources/runtime/legacy/cities/sites/ConstructionZone.png</file>
+  <file alias="sites/ConstructionRoad.png">../../../../resources/runtime/legacy/cities/sites/ConstructionRoad.png</file>
   <file alias="sites/ConcreteHeavy.png">../../../../resources/runtime/legacy/cities/sites/ConcreteHeavy.png</file>
   <file alias="sites/ConcreteDarkModerate.png">../../../../resources/runtime/legacy/cities/sites/ConcreteDarkModerate.png</file>
   <file alias="sites/BrickIrregular.png">../../../../resources/runtime/legacy/cities/sites/BrickIrregular.png</file>
   <file alias="sites/CobblestoneLight.png">../../../../resources/runtime/legacy/cities/sites/CobblestoneLight.png</file>
   <file alias="sites/BrickLight.png">../../../../resources/runtime/legacy/cities/sites/BrickLight.png</file>
   <file alias="sites/DirtRocky.png">../../../../resources/runtime/legacy/cities/sites/DirtRocky.png</file>
+  <file alias="sites/AsphaltHeavy.png">../../../../resources/runtime/legacy/cities/sites/AsphaltHeavy.png</file>
+  <file alias="sites/Tarmac.png">../../../../resources/runtime/legacy/cities/sites/Tarmac.png</file>
+  <file alias="sites/DirtSmooth.png">../../../../resources/runtime/legacy/cities/sites/DirtSmooth.png</file>
+  <file alias="sites/DirtCrackedModerate.png">../../../../resources/runtime/legacy/cities/sites/DirtCrackedModerate.png</file>
+  <file alias="sites/DirtCrackedSmooth.png">../../../../resources/runtime/legacy/cities/sites/DirtCrackedSmooth.png</file>
+  <file alias="sites/Grass.png">../../../../resources/runtime/legacy/cities/sites/Grass.png</file>
+  <file alias="sites/Pebbles.png">../../../../resources/runtime/legacy/cities/sites/Pebbles.png</file>
+  <file alias="sites/RockCrushed.png">../../../../resources/runtime/legacy/cities/sites/RockCrushed.png</file>
+  <file alias="sites/RockRedSmooth.png">../../../../resources/runtime/legacy/cities/sites/RockRedSmooth.png</file>
+  <file alias="sites/RockTan.png">../../../../resources/runtime/legacy/cities/sites/RockTan.png</file>
  </qresource>
 </RCC>

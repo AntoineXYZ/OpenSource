@@ -1,9 +1,13 @@
 #include "aulegacybuildinggeometry.h"
+#include "aulegacybiodome.h"
 #include "aulegacyshipgeometry.h"
 #include "aulegacyshipstairs.h"
 #include "aulegacyshipequipment.h"
 #include "aulegacyshipvehicles.h"
 #include "aupoint.h"
+#include "aulegacycitystate.h"
+#include "aulegacycitycatalogue.h"
+#include "aunoise.h"
 
 #include <QDataStream>
 #include <QHash>
@@ -695,6 +699,22 @@ void StreetLight(Builder& out, const QPointF& location, int deck)
 			shaft[i] + QVector3D(0, 0, 25), {0, 0}, {0, 1}, {1, 1}, {1, 0});
 	}
 }
+
+void RunwayLight(Builder& out, const QPointF& location)
+{
+	// DpDevelopment::CreateRunwayLight 0x64bc40: eight-sided one-foot
+	// fixture, 1/6-foot stem and half-foot light cap (BuildingTexture 38).
+	for(int i=0;i<8;++i)
+	{
+		const float a=float(i)*6.2831855f/8, b=float(i+1)*6.2831855f/8;
+		const auto p=[&](float angle,float radius,float z) {
+			return QVector3D(float(location.x())+std::cos(angle)*radius,
+				float(location.y())+std::sin(angle)*radius,z); };
+		out.Quad(7,0,false,p(a,1.f/6,0),p(b,1.f/6,0),p(b,1.f/6,2.f/3),p(a,1.f/6,2.f/3));
+		out.Quad(38,0,false,p(a,1.f/6,2.f/3),p(b,1.f/6,2.f/3),p(b,.5f,5.f/6),p(a,.5f,5.f/6));
+		out.Triangle(38,0,false,p(a,.5f,5.f/6),p(b,.5f,5.f/6),Position(location,1));
+	}
+}
 }
 
 int Mesh::TriangleCount() const
@@ -714,18 +734,18 @@ int SiteTextureSlot(quint16 commodity, bool constructed)
 	// DpBuilding::AdjustAltMSL, AuAtom13 0x597380. Original WORLDTEX
 	// indices 10,9,8,7,3,2 map to the six material images below.
 	const int material = MaterialIndex(commodity);
-	static const int materialSiteTextures[] = {6, 5, 4, 3, 1, 2};
-	return material < 0 ? -1 : constructed ? materialSiteTextures[material] : 0;
+	static const int materialSiteTextures[] = {10, 9, 8, 7, 3, 2};
+	return material < 0 ? -1 : constructed ? materialSiteTextures[material] : 1;
 }
 
 QString SiteTextureFile(int slot)
 {
-	// Keep the existing seven-sampler terrain shaders. In Legacy universes
-	// their pavement palette contains the original building-site textures.
-	// Stone and harder surfaces precede lumber/logs to retain snow behavior.
-	static const char* names[] = {"ConstructionZone", "ConcreteHeavy", "ConcreteDarkModerate",
-		"BrickIrregular", "CobblestoneLight", "BrickLight", "DirtRocky"};
-	return slot < 0 || slot >= 7 ? QString()
+	// DaWorldLL::CreateTerrainTexture, AuAtom13 0x5144c0: retain WORLDTEX order.
+	static const char* names[] = {"ConstructionRoad", "ConstructionZone", "ConcreteDarkModerate",
+		"ConcreteHeavy", "AsphaltHeavy", "Tarmac", "DirtSmooth", "BrickIrregular",
+		"CobblestoneLight", "BrickLight", "DirtRocky", "DirtCrackedModerate",
+		"DirtCrackedSmooth", "Grass", "Pebbles", "RockCrushed", "RockRedSmooth", "RockTan"};
+	return slot < 0 || slot >= 18 ? QString()
 		: QStringLiteral(":/legacy/cities/sites/%1.png").arg(QString::fromLatin1(names[slot]));
 }
 
@@ -843,6 +863,67 @@ Mesh Build(const Design& design, const Options& options)
 			if(detail.detailType == 100) FlagPole(out, location, detail.deck);
 			else if(detail.detailType == 142) StreetLight(out, location, detail.deck);
 		}
+	return std::move(out.mesh);
+}
+
+Mesh BuildProcedural(const AuLegacyCity::Development& dev)
+{
+	if(dev.industryId == 129) return AuLegacyBd::Biodome::Build(dev);
+	Builder out;
+	if(dev.demolished) return out.mesh;
+	if(dev.industryId == 1 || dev.industryId == 10)
+	{
+		if(!dev.constructed) return out.mesh;
+		FlagPole(out, QPointF(), 0);
+		// Cloth uses the owning empire's image at upload time. Keep its surface
+		// separate from solid collision, like the original flag VAO.
+		out.Quad(-2,0,false,{0,0,31},{8,0,31},{8,0,23},{0,0,23},
+			{0,1},{1,1},{1,0},{0,0},0,0,true);
+		for(auto& batch : out.mesh.batches) if(batch.textureSlot == -2) batch.empireFlag = true;
+		float radius = 0;
+		if(const auto* catalogue = AuLegacyCityCatalogue::BuiltIn())
+			for(const auto& process : catalogue->ConstructionProcesses())
+				if(process.industry.value == dev.industryId) { radius = float(process.buildRadius * FeetPerMeter()); break; }
+		if(dev.industryId == 1)
+		{
+			// DpBuilding::CreateTownSquare 0x59e310: one street light, its
+			// repeatable position derived from the site's original coordinates.
+			const float noise = AuNoiseF::IntegerNoise(0, int(dev.location.Latitude() * 57.295776f * 100),
+				int(dev.location.Longitude() * 57.295776f * 100));
+			const float offset = std::abs(std::sin(noise * 3.1415927f)) * radius;
+			StreetLight(out, QPointF(offset, offset), 0);
+		}
+		else StreetLight(out,QPointF(0,radius),0);
+	}
+	if(dev.industryId == 2)
+	{
+		const float halfWidth=float(dev.roadWidthMeters*FeetPerMeter()/2);
+		const float length=float(dev.roadLengthMeters*FeetPerMeter());
+		if(dev.constructed && (dev.constructionProcessId == 3 || dev.constructionProcessId == 4 || dev.constructionProcessId == 7))
+		{
+			// DpGlobeRoad::CreateVAO 0x6531f0. Paved roads alternate street
+			// lights every 100 feet; slabs have paired runway lights every 50.
+			const float spacing=dev.roadSlab ? 50.f : 100.f;
+			for(int i=0;i<=int(std::ceil(length/spacing));++i)
+			{
+				const float along=std::min(length,i*spacing);
+				const float altitude=float(dev.roadStartAltitudeMSL-dev.altitudeMSL
+					+(dev.roadEndAltitudeMSL-dev.roadStartAltitudeMSL)*(along/length));
+				const int firstBatch=out.mesh.batches.size();
+				// Keep each fixture in its own batch while translating its grade.
+				out.batchIndices.clear();
+				if(dev.roadSlab)
+				{ RunwayLight(out,QPointF(-halfWidth,along-length/2)); RunwayLight(out,QPointF(halfWidth,along-length/2)); }
+				else StreetLight(out,QPointF(i%2 ? halfWidth : -halfWidth,along-length/2),0);
+				for(int batch=firstBatch;batch<out.mesh.batches.size();++batch)
+					for(auto& vertex : out.mesh.batches[batch].vertices) vertex.position.setZ(vertex.position.z()+altitude);
+			}
+		}
+		// Even dirt roads with no above-ground triangles occupy their full site.
+		out.mesh.minimum=QVector3D(-halfWidth,-length/2,float(std::min(dev.roadStartAltitudeMSL,dev.roadEndAltitudeMSL)-dev.altitudeMSL-.5));
+		out.mesh.maximum=QVector3D(halfWidth,length/2,float(std::max(dev.roadStartAltitudeMSL,dev.roadEndAltitudeMSL)-dev.altitudeMSL+27));
+	}
+	// All road surfaces, including construction markings, come from terrain.
 	return std::move(out.mesh);
 }
 

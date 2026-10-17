@@ -336,7 +336,7 @@ void DtChatChannel::RxData(QTcpSocket& tcpSocket)
 			return;
 		}
 		if(!packetType.isEmpty() && quint8(packetType.at(0)) == DtChatChannelPacket::PD_LegacyCity
-			&& (m_PacketSize > AuLegacyCityProtocol::MaximumRequestBytes + 1 || !LegacyScAuthorized(false)))
+			&& (m_PacketSize > AuLegacyCityProtocol::MaximumRequestBytes + 1 || !LegacyCityAuthorized()))
 		{
 			tcpSocket.abort();
 			Disconnect();

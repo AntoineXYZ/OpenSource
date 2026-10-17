@@ -56,6 +56,7 @@ static GLuint s_TexRock = 0;			// Texture used for all developments for rocks.
 static GLuint s_texSea[5] = {0,0,0,0,0};	// Sea surface textures by orbit zone.
 static GLuint s_texSeaN[5] = {0,0,0,0,0};	// Sea surface bump maps by orbit zone.
 static GLuint 							s_TexTerPalette[WORLDTEX_Count];	// Terrain texture tiles.
+static GLuint s_TexLegacyPavement[18];				// Original 2016 WORLDTEX 0..17, independent of natural terrain.
 
 DaWorldGlobe::DaWorldGlobe()
 {
@@ -4485,6 +4486,10 @@ void DaWorldGlobe::CreateDeviceObjects(AuAtomRenderInfo& ari)
 			for(int wt=0; wt<WORLDTEX_Count; wt++)
 				s_TexTerPalette[wt] = CreateTerrainTexture(*ari.re, (WORLDTEX_TYPE)wt, g_Au.GroundTextureSize());
 
+		if(g_Au.IsLegacyGeneration() && !s_TexLegacyPavement[0])
+			for(int wt=0; wt<18; ++wt)
+				s_TexLegacyPavement[wt] = CreateTerrainTexture(*ari.re, WORLDTEX_TYPE(wt), g_Au.GroundTextureSize(), true);
+
 		// Create textures used for developments and rocks.
 		if(!s_TexRock)
 			s_TexRock = ari.re->CreateTextureFromBitmap(STATIC_TEXTURE_ID, "Rock", ":data/txRock.png");
@@ -7103,7 +7108,7 @@ void DaWorldGlobe::CreateAtTerrainSurfaceTriangle(QList<AuGlobeTriAltVegNPave>& 
 		// Calculate snow due to polar caps and mountain peaks.
 		// Do not put snow on pavement that is used on roads and around buildings. This allows snow in other "paved" areas such as
 		// yards and farmland.
-		t.m_Snow = (t.m_PavementType <= WORLDTEX_CobblestoneLight) ? 0 : SnowCoverage(t.m_TerAltMSL, ll0.Latitude(), inEnclosure);
+		t.m_Snow = PavementHidesSnow(t.m_PavementType) ? 0 : SnowCoverage(t.m_TerAltMSL, ll0.Latitude(), inEnclosure);
 		t.m_TerTex.setX((ll0long)/(PIf*2) * texreps * cosf(ll0.Latitude()));
 		t.m_TerTex.setY((ll0.Latitude() + PIf/2)/PIf * texreps);
 		ti0 = terAltInfo.insert(ll0, t);
@@ -7140,7 +7145,7 @@ void DaWorldGlobe::CreateAtTerrainSurfaceTriangle(QList<AuGlobeTriAltVegNPave>& 
 		// Calculate snow due to polar caps and mountain peaks.
 		// Do not put snow on pavement that is used on roads and around buildings. This allows snow in other "paved" areas such as
 		// yards and farmland.
-		t.m_Snow = (t.m_PavementType <= WORLDTEX_CobblestoneLight) ? 0 : SnowCoverage(t.m_TerAltMSL, ll1.Latitude(), inEnclosure);
+		t.m_Snow = PavementHidesSnow(t.m_PavementType) ? 0 : SnowCoverage(t.m_TerAltMSL, ll1.Latitude(), inEnclosure);
 		t.m_TerTex.setX((ll1long)/(PIf*2) * texreps * cosf(ll1.Latitude()));
 		t.m_TerTex.setY((ll1.Latitude() + PIf/2)/PIf * texreps);
 		ti1 = terAltInfo.insert(ll1, t);
@@ -7177,7 +7182,7 @@ void DaWorldGlobe::CreateAtTerrainSurfaceTriangle(QList<AuGlobeTriAltVegNPave>& 
 		// Calculate snow due to polar caps and mountain peaks.
 		// Do not put snow on pavement that is used on roads and around buildings. This allows snow in other "paved" areas such as
 		// yards and farmland.
-		t.m_Snow = (t.m_PavementType <= WORLDTEX_CobblestoneLight) ? 0 : SnowCoverage(t.m_TerAltMSL, ll2.Latitude(), inEnclosure);
+		t.m_Snow = PavementHidesSnow(t.m_PavementType) ? 0 : SnowCoverage(t.m_TerAltMSL, ll2.Latitude(), inEnclosure);
 		t.m_TerTex.setX((ll2long)/(PIf*2) * texreps * cosf(ll2.Latitude()));
 		t.m_TerTex.setY((ll2.Latitude() + PIf/2)/PIf * texreps);
 		ti2 = terAltInfo.insert(ll2, t);
@@ -7202,11 +7207,11 @@ void DaWorldGlobe::CreateAtTerrainSurfaceTriangle(QList<AuGlobeTriAltVegNPave>& 
 	{
 		// Select the lowest numbered pavement type for consistency. This also avoids the one(s) that are WORLDTEX_Count.
 		if((*ti0).m_PavementType < (*ti1).m_PavementType && (*ti0).m_PavementType < (*ti2).m_PavementType)
-			paveType = (float)(*ti0).m_PavementType / 7.f;
+			paveType = (float)(*ti0).m_PavementType / float(TerrainPavementCount());
 		else if((*ti1).m_PavementType < (*ti2).m_PavementType)
-			paveType = (float)(*ti1).m_PavementType / 7.f;
+			paveType = (float)(*ti1).m_PavementType / float(TerrainPavementCount());
 		else
-			paveType = (float)(*ti2).m_PavementType / 7.f;
+			paveType = (float)(*ti2).m_PavementType / float(TerrainPavementCount());
 	}
 
 	// Construct a terrain triangle.
@@ -7614,22 +7619,24 @@ void DaWorldGlobe::RenderAtGlobe(const AuMatrix4x4& projection, const AuMatrix4x
 	if(CanHaveFlora() || BdHere())
 	{
 		// Flora shader.
-		ari.re->GLSL().TerrainLitFloraShader().Select(projection);
-		ari.re->GLSL().TerrainLitFloraShader().SetModelView(model);
-		ari.re->GLSL().TerrainLitFloraShader().SetNoiseTexture(s_TexNoise);
-		ari.re->GLSL().TerrainLitFloraShader().SetPavementPalette(s_TexTerPalette);	// First ones are the commonly used pavements.
-		ari.re->GLSL().TerrainLitFloraShader().SetSnowTexture(s_TexTerPalette[WORLDTEX_SnowModerate]);
-		ari.re->GLSL().TerrainLitFloraShader().SetTerrainPalette(m_AtGlobe.m_TerElevTex);
-		ari.re->GLSL().TerrainLitFloraShader().SetGrassTexture(m_glTexGrass);
-		ari.re->GLSL().TerrainLitFloraShader().SetTerrainLookup(m_AtGlobe.m_TexLookup);
-		ari.re->GLSL().TerrainLitFloraShader().SetAltitudeNoiseFactor(m_AtGlobe.AltNoiseFactor(AltitudeIncrement()/3));
-		ari.re->GLSL().TerrainLitFloraShader().SetFog(fogDensity, fogR, fogG, fogB);
+		const bool legacyTerrain = g_Au.IsLegacyGeneration();
+		auto& terrainShader = ari.re->GLSL().TerrainLitFloraShader(legacyTerrain);
+		terrainShader.Select(projection);
+		terrainShader.SetModelView(model);
+		terrainShader.SetNoiseTexture(s_TexNoise);
+		terrainShader.SetPavementPalette(legacyTerrain ? s_TexLegacyPavement : s_TexTerPalette);	// First ones are the commonly used pavements.
+		terrainShader.SetSnowTexture(s_TexTerPalette[WORLDTEX_SnowModerate]);
+		terrainShader.SetTerrainPalette(m_AtGlobe.m_TerElevTex);
+		terrainShader.SetGrassTexture(m_glTexGrass);
+		terrainShader.SetTerrainLookup(m_AtGlobe.m_TexLookup);
+		terrainShader.SetAltitudeNoiseFactor(m_AtGlobe.AltNoiseFactor(AltitudeIncrement()/3));
+		terrainShader.SetFog(fogDensity, fogR, fogG, fogB);
 		//qDebug() << "DaWorldGlobe::RenderAtGlobe" << Id() << Name() << "fog" << fogR << fogG << fogB;
 
 		// Ambient light
-		ari.re->GLSL().TerrainLitFloraShader().SetAmbientLight(ambientLight);
+		terrainShader.SetAmbientLight(ambientLight);
 		const QColor& c = AuGLLight::ColorSodiumVapor();
-		ari.re->GLSL().TerrainLitFloraShader().SetCityAmbientLight(c.redF() * (float)AuGLLight::AmbientLitCity(),
+		terrainShader.SetCityAmbientLight(c.redF() * (float)AuGLLight::AmbientLitCity(),
 				c.greenF() * (float)AuGLLight::AmbientLitCity(),
 				c.blueF() * (float)AuGLLight::AmbientLitCity());
 
@@ -7641,7 +7648,7 @@ void DaWorldGlobe::RenderAtGlobe(const AuMatrix4x4& projection, const AuMatrix4x
 			AuPoint sunLoc = model.UnProject(sun.m_LocX, sun.m_LocY, sun.m_LocZ);	// Sun location relative to me.
 
 			// Configure shader for object space lighting.
-			ari.re->GLSL().TerrainLitFloraShader().SetSun(sunIndex, sun.m_Enabled, sun.m_Attenuation, sun.m_ColorR, sun.m_ColorG,
+			terrainShader.SetSun(sunIndex, sun.m_Enabled, sun.m_Attenuation, sun.m_ColorR, sun.m_ColorG,
 					sun.m_ColorB, sunLoc.x, sunLoc.y, sunLoc.z, sun.m_DiskRadius);
 		}
 
@@ -7656,7 +7663,7 @@ void DaWorldGlobe::RenderAtGlobe(const AuMatrix4x4& projection, const AuMatrix4x
 				spotDir = model.UnProjectVector(light.m_Direction);					// Light direction relative to me.
 
 			// Configure shader for object space lighting.
-			ari.re->GLSL().TerrainLitFloraShader().SetLight(lightIndex, light.m_bEnabled, light.m_kL, light.m_kQ, light.m_ColorR,
+			terrainShader.SetLight(lightIndex, light.m_bEnabled, light.m_kL, light.m_kQ, light.m_ColorR,
 					light.m_ColorG, light.m_ColorB, lightLoc.x, lightLoc.y, lightLoc.z,
 					light.m_cosOuter, light.m_cosInner, spotDir.x, spotDir.y, spotDir.z);
 		}
@@ -7710,25 +7717,27 @@ void DaWorldGlobe::RenderAtGlobe(const AuMatrix4x4& projection, const AuMatrix4x
 				m_AtGlobe.DeleteGlobeTriVAO(Id(), vidx, ari.mm);
 			}
 		}
-		ari.re->GLSL().TerrainLitFloraShader().Deselect();
+		terrainShader.Deselect();
 	}
 	else
 	{
 		// No flora shader.
-		ari.re->GLSL().TerrainLitShader().Select(projection);
-		ari.re->GLSL().TerrainLitShader().SetModelView(model);
-		ari.re->GLSL().TerrainLitShader().SetNoiseTexture(s_TexNoise);
-		ari.re->GLSL().TerrainLitShader().SetPavementPalette(s_TexTerPalette);	// First ones are the commonly used pavements.
-		ari.re->GLSL().TerrainLitShader().SetSnowTexture(s_TexTerPalette[WORLDTEX_SnowModerate]);
-		ari.re->GLSL().TerrainLitShader().SetTerrainPalette(m_AtGlobe.m_TerElevTex);
-		ari.re->GLSL().TerrainLitShader().SetTerrainLookup(m_AtGlobe.m_TexLookup);
-		ari.re->GLSL().TerrainLitShader().SetAltitudeNoiseFactor(m_AtGlobe.AltNoiseFactor(AltitudeIncrement()/3));
-		ari.re->GLSL().TerrainLitShader().SetFog(fogDensity, fogR, fogG, fogB);
+		const bool legacyTerrain = g_Au.IsLegacyGeneration();
+		auto& terrainShader = ari.re->GLSL().TerrainLitShader(legacyTerrain);
+		terrainShader.Select(projection);
+		terrainShader.SetModelView(model);
+		terrainShader.SetNoiseTexture(s_TexNoise);
+		terrainShader.SetPavementPalette(legacyTerrain ? s_TexLegacyPavement : s_TexTerPalette);	// First ones are the commonly used pavements.
+		terrainShader.SetSnowTexture(s_TexTerPalette[WORLDTEX_SnowModerate]);
+		terrainShader.SetTerrainPalette(m_AtGlobe.m_TerElevTex);
+		terrainShader.SetTerrainLookup(m_AtGlobe.m_TexLookup);
+		terrainShader.SetAltitudeNoiseFactor(m_AtGlobe.AltNoiseFactor(AltitudeIncrement()/3));
+		terrainShader.SetFog(fogDensity, fogR, fogG, fogB);
 
 		// Ambient light
-		ari.re->GLSL().TerrainLitShader().SetAmbientLight(ambientLight);
+		terrainShader.SetAmbientLight(ambientLight);
 		const QColor& c = AuGLLight::ColorSodiumVapor();
-		ari.re->GLSL().TerrainLitShader().SetCityAmbientLight(c.redF() * (float)AuGLLight::AmbientLitCity(),
+		terrainShader.SetCityAmbientLight(c.redF() * (float)AuGLLight::AmbientLitCity(),
 				c.greenF() * (float)AuGLLight::AmbientLitCity(),
 				c.blueF() * (float)AuGLLight::AmbientLitCity());
 
@@ -7740,7 +7749,7 @@ void DaWorldGlobe::RenderAtGlobe(const AuMatrix4x4& projection, const AuMatrix4x
 			AuPoint sunLoc = model.UnProject(sun.m_LocX, sun.m_LocY, sun.m_LocZ);	// Sun location relative to me.
 
 			// Configure shader for object space lighting.
-			ari.re->GLSL().TerrainLitShader().SetSun(sunIndex, sun.m_Enabled, sun.m_Attenuation, sun.m_ColorR, sun.m_ColorG,
+			terrainShader.SetSun(sunIndex, sun.m_Enabled, sun.m_Attenuation, sun.m_ColorR, sun.m_ColorG,
 					sun.m_ColorB, sunLoc.x, sunLoc.y, sunLoc.z, sun.m_DiskRadius);
 		}
 
@@ -7755,7 +7764,7 @@ void DaWorldGlobe::RenderAtGlobe(const AuMatrix4x4& projection, const AuMatrix4x
 				spotDir = model.UnProjectVector(light.m_Direction);					// Light direction relative to me.
 
 			// Configure shader for object space lighting.
-			ari.re->GLSL().TerrainLitShader().SetLight(lightIndex, light.m_bEnabled, light.m_kL, light.m_kQ, light.m_ColorR,
+			terrainShader.SetLight(lightIndex, light.m_bEnabled, light.m_kL, light.m_kQ, light.m_ColorR,
 					light.m_ColorG, light.m_ColorB, lightLoc.x, lightLoc.y, lightLoc.z,
 					light.m_cosOuter, light.m_cosInner, spotDir.x, spotDir.y, spotDir.z);
 		}
@@ -7809,7 +7818,7 @@ void DaWorldGlobe::RenderAtGlobe(const AuMatrix4x4& projection, const AuMatrix4x
 				m_AtGlobe.DeleteGlobeTriVAO(Id(), vidx, ari.mm);
 			}
 		}
-		ari.re->GLSL().TerrainLitShader().Deselect();
+		terrainShader.Deselect();
 	}
 	//AuGLTexture::OutputGlError("DaWorldGlobe::RenderAtGlobe finished terrain patches.");
 

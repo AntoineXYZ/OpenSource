@@ -891,7 +891,7 @@ bool DtDb::InitGameGeneration(QSqlDatabase& db)
 		{
 			const QByteArray bytes = query.value(2).toByteArray();
 			AuLegacyCity::State state;
-			if(query.value(1).toUInt() != AuLegacyCity::StateVersion
+			if((query.value(1).toUInt() != 1 && query.value(1).toUInt() != AuLegacyCity::StateVersion)
 				|| !AuLegacyCity::DecodeState(bytes, state, error) || !DaLegacyCity::ValidateStateData(bytes, error))
 				return fail(QStringLiteral("Invalid saved Legacy city %1: %2").arg(query.value(0).toString(), error));
 			if(state.name != query.value(3).toString() || state.controllingEmpire != query.value(4).toUInt()

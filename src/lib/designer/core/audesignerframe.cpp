@@ -28,6 +28,7 @@
 #include "auclientglobal.h"
 #include "aucomm.h"
 #include "auconstruction.h"
+#include "aulegacycityconstruction.h"
 #include "audamagereport.h"
 #include "audesignerbar.h"
 #include "audesignerbar2.h"
@@ -330,6 +331,8 @@ AuDesignerFrame::AuDesignerFrame(QWidget *parent) : AuFrame(parent)
 	m_CargoTransferDock = 0;
 	m_CommDock = 0;
 	m_ConstructionDock = 0;
+	m_LegacyCityConstructionDock = 0;
+	m_LegacyCityLaborDock = 0;
 	m_DesignerBar = 0;
 	m_DesignerBar2 = 0;
 	m_DesignerPartsDock = 0;
@@ -968,6 +971,18 @@ void AuDesignerFrame::ShowPeaceDimensionStandings()
 
 void AuDesignerFrame::ToggleConstructionUi()
 {
+	if(g_Au.IsLegacyGeneration())
+	{
+		if(m_ConstructionDock) m_ConstructionDock->hide();
+		if(m_LegacyCityConstructionDock)
+		{
+			if(m_View && m_View->SceneContext() == SCENE_Universe)
+				m_LegacyCityConstructionDock->setVisible(m_LegacyCityConstructionDock->isHidden());
+			else m_LegacyCityConstructionDock->hide();
+		}
+		return;
+	}
+	if(m_LegacyCityConstructionDock) m_LegacyCityConstructionDock->hide();
 	if(m_ConstructionDock)
 	{
 		if(m_View && m_View->SceneContext() != SCENE_Universe)
@@ -981,6 +996,18 @@ void AuDesignerFrame::ToggleConstructionUi()
 
 void AuDesignerFrame::ToggleBuildingUi()
 {
+	if(g_Au.IsLegacyGeneration())
+	{
+		if(m_BuildingDock) m_BuildingDock->hide();
+		if(m_LegacyCityLaborDock)
+		{
+			if(m_View && m_View->SceneContext() == SCENE_Universe)
+				m_LegacyCityLaborDock->setVisible(m_LegacyCityLaborDock->isHidden());
+			else m_LegacyCityLaborDock->hide();
+		}
+		return;
+	}
+	if(m_LegacyCityLaborDock) m_LegacyCityLaborDock->hide();
 	if(m_BuildingDock)
 	{
 		if(m_View && m_View->SceneContext() != SCENE_Universe)
@@ -2582,6 +2609,27 @@ void AuDesignerFrame::CreateDockWidgets()
 		m_ConstructionDock->setFloating(true);
 		m_DockBars.m_DockWidgets.append(AuFrameDock(m_ConstructionDock));
 
+		// Original construction (F11) and labor (F10) have separate Legacy
+		// windows, without modern construction/building pages or commands.
+		m_LegacyCityConstructionDock = new AuLegacyCityConstructionDock(this);
+		auto* legacyConstruction = m_LegacyCityConstructionDock->Content();
+		connect(legacyConstruction, &AuLegacyCityConstruction::PlanConstruction, m_View,
+			[this, legacyConstruction](AuLegacyCityProtocol::Request request) { m_View->PlanLegacyCity(request, legacyConstruction); });
+		connect(legacyConstruction, &AuLegacyCityConstruction::StopPlanning, m_View, &AuDesignerView::EndCommands);
+		addDockWidget(Qt::RightDockWidgetArea, m_LegacyCityConstructionDock, Qt::Vertical);
+		m_LegacyCityConstructionDock->hide(); m_LegacyCityConstructionDock->setFloating(true);
+		m_DockBars.m_DockWidgets.append(AuFrameDock(m_LegacyCityConstructionDock));
+		m_LegacyCityLaborDock = new AuLegacyCityLaborDock(this);
+		addDockWidget(Qt::RightDockWidgetArea, m_LegacyCityLaborDock, Qt::Vertical);
+		m_LegacyCityLaborDock->hide(); m_LegacyCityLaborDock->setFloating(true);
+		m_DockBars.m_DockWidgets.append(AuFrameDock(m_LegacyCityLaborDock));
+		connect(auApp, &AuApp::LegacyScTransportReset, this, [this]() {
+			if(m_LegacyCityConstructionDock) m_LegacyCityConstructionDock->hide();
+			if(m_LegacyCityLaborDock) m_LegacyCityLaborDock->hide();
+			if(m_ConstructionDock) m_ConstructionDock->hide();
+			if(m_BuildingDock) m_BuildingDock->hide();
+		});
+
 		m_BdExchangeDock = new AuBdExchangeDock(this);
 		addDockWidget(Qt::BottomDockWidgetArea, m_BdExchangeDock, Qt::Horizontal);
 		m_BdExchangeDock->hide();
@@ -2594,6 +2642,14 @@ void AuDesignerFrame::CreateDockWidgets()
 		m_BuildingDock->hide();
 		m_BuildingDock->setFloating(true);
 		m_DockBars.m_DockWidgets.append(AuFrameDock(m_BuildingDock));
+		// Dock menus and restored layouts must respect the same generation
+		// boundary as F10/F11, including attempts to show a modern dock directly.
+		connect(m_ConstructionDock, &QDockWidget::visibilityChanged, this, [this](bool visible) {
+			if(visible && g_Au.IsLegacyGeneration()) m_ConstructionDock->hide();
+		});
+		connect(m_BuildingDock, &QDockWidget::visibilityChanged, this, [this](bool visible) {
+			if(visible && g_Au.IsLegacyGeneration()) m_BuildingDock->hide();
+		});
 
 		// Locator System Map
 		m_LocatorSystemScanDock = new AuLocatorSystemScanDock(this);
@@ -2639,6 +2695,16 @@ void AuDesignerFrame::CreateDockWidgets()
 // 'sceneContext' is an SCENE_CONTEXT value.
 void AuDesignerFrame::SceneContextChanged(int sceneContext)
 {
+	if(sceneContext != SCENE_Universe || !g_Au.IsLegacyGeneration())
+	{
+		if(m_LegacyCityConstructionDock) m_LegacyCityConstructionDock->hide();
+		if(m_LegacyCityLaborDock) m_LegacyCityLaborDock->hide();
+	}
+	if(g_Au.IsLegacyGeneration())
+	{
+		if(m_ConstructionDock) m_ConstructionDock->hide();
+		if(m_BuildingDock) m_BuildingDock->hide();
+	}
 	switch((SCENE_CONTEXT)sceneContext)
 	{
 	case SCENE_Unknown:

@@ -145,6 +145,15 @@ struct ConstructionComponentRecord
 	RecordSource source;
 };
 
+// One current construction level. Zero quantity denotes a reusable tool.
+// Commodity IDs and effects remain historical, just like the source records.
+struct ConstructionRequirement
+{
+	CommodityId commodity;
+	quint8 effect = 0;
+	quint32 quantity = 0;
+};
+
 struct TableSource
 {
 	QString name;
@@ -193,6 +202,22 @@ public:
 	AuLegacyCity::ManufacturingProcessId DefaultManufacturingProcess(AuLegacyCity::IndustryId id) const;
 	QVector<AuLegacyCity::ManufacturingComponentRecord> ComponentsForProcess(AuLegacyCity::ManufacturingProcessId id) const;
 	QVector<AuLegacyCity::ConstructionComponentRecord> ComponentsForConstruction(AuLegacyCity::ConstructionProcessId id) const;
+	const AuLegacyCity::ConstructionProcessRecord* ConstructionProcessForIndustry(AuLegacyCity::IndustryId id) const;
+	int BuildingDesignMaximumDeck(AuLegacyCity::IndustryId industry, AuLegacyCity::CommodityId material) const;
+	// A count of industrial levels, distinct from the authored design's top deck.
+	int ConstructionLevelLimit(AuLegacyCity::ConstructionProcessId process, AuLegacyCity::CommodityId material,
+		bool flammableMaterialsAllowed = true) const;
+	int ConstructionResourceLevelLimit(AuLegacyCity::ConstructionProcessId process,
+		quint32 rocks, quint32 shrubs, quint32 trees) const;
+	quint16 SitePreparationLabor(AuLegacyCity::ConstructionProcessId process, quint8 completedLevels,
+		quint32 rocks, quint32 shrubs, quint32 trees) const;
+	QVector<AuLegacyCity::ConstructionRequirement> ConstructionRequirements(AuLegacyCity::ConstructionProcessId process,
+		AuLegacyCity::CommodityId material, quint8 environment, quint32 pavementQuantity = 0,
+		quint32 materialMultiplier = 1) const;
+	static quint32 RoadPavementQuantity(double lengthFeet, double widthFeet);
+	static int BiodomeSegmentCount(double radiusFeet);
+	static quint16 RoadPreparationLabor(AuLegacyCity::ConstructionProcessId process,
+		double lengthFeet, double widthFeet, double meanAbsoluteTerrainDifference);
 
 	quint16 RuntimeCommodityId(AuLegacyCity::CommodityId id) const;
 	bool HistoricalCommodityId(quint16 runtimeId, AuLegacyCity::CommodityId& output) const;

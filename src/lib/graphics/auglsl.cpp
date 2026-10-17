@@ -35,6 +35,29 @@ static void LoadLegacySurfaceShaders()
 	}
 }
 
+static void LoadLegacyTerrainShaders()
+{
+	// The original terrain shader blends pavement coverage times texture alpha.
+	// Keep its 18-entry pavement block separate from the modern seven-entry one.
+	QFile pavement(QStringLiteral(":/legacy-surface-shaders/LegacyPavement.glsl"));
+	if(!pavement.open(QIODevice::ReadOnly)) return;
+	const QByteArray block = pavement.readAll();
+	const char* names[] = {"TerrainLit.f.glsl", "TerrainLitFlora.f.glsl", "RingworldTerrainLitFlora.f.glsl"};
+	for(const char* name : names)
+	{
+		const QString fileName = QString::fromLatin1(name);
+		QFile source(QStringLiteral(":/legacy-surface-shaders/") + fileName);
+		if(!source.open(QIODevice::ReadOnly)) continue;
+		QByteArray shader = source.readAll();
+		shader.replace("texPavement[7]", "texPavement[18]");
+		const int start = shader.indexOf("\t// Pavement\n");
+		const int end = shader.indexOf("\n\t// ", start + 4) + 1;
+		if(start < 0 || end <= start) continue;
+		shader.replace(start, end - start, block);
+		s_GLSLProgramSrc.insert(QStringLiteral("Legacy") + fileName, qCompress(shader));
+	}
+}
+
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
 void AuGLVAO::CreateForLines(AuOpenGLFunctions& GLf, const AuPointArray& verts, bool closeBoundary, GLenum usage)
@@ -950,6 +973,7 @@ AuGLSL::AuGLSL()
 	m_RingworldLitFlora = new AuGLSLRingworldLitFlora;
 	m_RingworldStatue = new AuGLSLRingworldStatue;
 	m_RingworldTerrainLitFlora = new AuGLSLRingworldTerrainLitFlora;
+	m_LegacyRingworldTerrainLitFlora = new AuGLSLRingworldTerrainLitFlora(true);
 	m_RingworldTerrainStatue = new AuGLSLRingworldTerrainStatue;
 	m_Rock = new AuGLSLRock;
 	m_RockRingworld = new AuGLSLRockRingworld;
@@ -970,7 +994,9 @@ AuGLSL::AuGLSL()
 	m_SpriteSize = new AuGLSLSpriteSize;
 	m_SpriteSizeColor = new AuGLSLSpriteSizeColor;
 	m_TerrainLit = new AuGLSLTerrainLit;
+	m_LegacyTerrainLit = new AuGLSLTerrainLit(true);
 	m_TerrainLitFlora = new AuGLSLTerrainLitFlora;
+	m_LegacyTerrainLitFlora = new AuGLSLTerrainLitFlora(true);
 	m_TexBar = new AuGLSLTexBar;
 	m_TexOffset = new AuGLSLTexOffset;
 	m_Texture = new AuGLSLTexture;
@@ -1069,6 +1095,7 @@ AuGLSL::~AuGLSL()
 	delete m_RingworldLitFlora;
 	delete m_RingworldStatue;
 	delete m_RingworldTerrainLitFlora;
+	delete m_LegacyRingworldTerrainLitFlora;
 	delete m_RingworldTerrainStatue;
 	delete m_Rock;
 	delete m_RockRingworld;
@@ -1089,7 +1116,9 @@ AuGLSL::~AuGLSL()
 	delete m_SpriteSize;
 	delete m_SpriteSizeColor;
 	delete m_TerrainLit;
+	delete m_LegacyTerrainLit;
 	delete m_TerrainLitFlora;
+	delete m_LegacyTerrainLitFlora;
 	delete m_TexBar;
 	delete m_TexOffset;
 	delete m_Texture;
@@ -1262,6 +1291,23 @@ void AuGLSL::Initialize(AuOpenGLFunctions& GLf, unsigned int maxLights)
 
 	// The .glsl program source code hash table is no longer needed.
 	s_GLSLProgramSrc.clear();
+}
+
+void AuGLSL::EnsureLegacyTerrainShaders()
+{
+	if(m_LegacyTerrainReady) return;
+	// Compile only when a legacy world needs them. Modern contexts retain their
+	// existing sampler requirements and shader programs.
+	Hashpack::ReadFiles(":glsl.har", s_GLSLProgramSrc);
+	LoadLegacySurfaceShaders();
+	LoadLegacyTerrainShaders();
+	const AuGLSLProgramOpt opt(m_MaxLights);
+	m_LegacyTerrainLit->Build(*m_GLf, opt);
+	m_LegacyTerrainLitFlora->Build(*m_GLf, opt);
+	m_LegacyRingworldTerrainLitFlora->Build(*m_GLf, opt);
+	m_LegacyTerrainReady = true;
+	s_GLSLProgramSrc.clear();
+	DeselectProgram();
 }
 
 void AuGLSL::InvalidateLights()
@@ -3421,7 +3467,7 @@ void AuGLSLTerrainLit::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt
 	AuGLSLShader vs(*m_GLf, GL_VERTEX_SHADER, "TerrainLit.v", opt.MaxLights());
 	m_GLf->glAttachShader(m_Program, vs.Id());
 
-	AuGLSLShader fs(*m_GLf, GL_FRAGMENT_SHADER, QString("TerrainLit.f"));
+	AuGLSLShader fs(*m_GLf, GL_FRAGMENT_SHADER, QString(m_PavementCount == 18 ? "LegacyTerrainLit.f" : "TerrainLit.f"));
 	m_GLf->glAttachShader(m_Program, fs.Id());
 
 	// Bind user defined 'in' variables to vertex attribute indices.
@@ -3472,7 +3518,7 @@ void AuGLSLTerrainLit::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt& opt
 	m_texNoise = GetUniformLoc("texNoise");
 	m_texSnow = GetUniformLoc("texSnow");
 
-	for(int pave=0; pave<7; pave++)
+	for(int pave=0; pave<m_PavementCount; pave++)
 		m_texPavement[pave] = GetUniformLoc(QString("texPavement[%1]").arg(pave));
 
 	for(int ter=0; ter<5; ter++)
@@ -3530,7 +3576,7 @@ void AuGLSLTerrainLit::Select(const AuMatrix4x4& projection)
 		texUnit++;
 	}
 
-	for(int pave=0; pave<7; pave++)
+	for(int pave=0; pave<m_PavementCount; pave++)
 	{
 		m_GLf->glActiveTexture(texUnit);
 		m_GLf->glGetIntegerv(GL_TEXTURE_BINDING_2D, &m_OldPavement[pave]);
@@ -3554,7 +3600,7 @@ void AuGLSLTerrainLitFlora::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt
 	AuGLSLShader vs(*m_GLf, GL_VERTEX_SHADER, "TerrainLitFlora.v", opt.MaxLights());
 	m_GLf->glAttachShader(m_Program, vs.Id());
 
-	AuGLSLShader fs(*m_GLf, GL_FRAGMENT_SHADER, QString("TerrainLitFlora.f"));
+	AuGLSLShader fs(*m_GLf, GL_FRAGMENT_SHADER, QString(m_PavementCount == 18 ? "LegacyTerrainLitFlora.f" : "TerrainLitFlora.f"));
 	m_GLf->glAttachShader(m_Program, fs.Id());
 
 	// Bind user defined 'in' variables to vertex attribute indices.
@@ -3606,7 +3652,7 @@ void AuGLSLTerrainLitFlora::Build(AuOpenGLFunctions& GLf, const AuGLSLProgramOpt
 	m_texSnow = GetUniformLoc("texSnow");
 	m_texGrass = GetUniformLoc("texGrass");
 
-	for(int pave=0; pave<7; pave++)
+	for(int pave=0; pave<m_PavementCount; pave++)
 		m_texPavement[pave] = GetUniformLoc(QString("texPavement[%1]").arg(pave));
 
 	for(int ter=0; ter<5; ter++)
@@ -3668,7 +3714,7 @@ void AuGLSLTerrainLitFlora::Select(const AuMatrix4x4& projection)
 		texUnit++;
 	}
 
-	for(int pave=0; pave<7; pave++)
+	for(int pave=0; pave<m_PavementCount; pave++)
 	{
 		m_GLf->glActiveTexture(texUnit);
 		m_GLf->glGetIntegerv(GL_TEXTURE_BINDING_2D, &m_OldPavement[pave]);
@@ -3692,7 +3738,7 @@ void AuGLSLRingworldTerrainLitFlora::Build(AuOpenGLFunctions& GLf, const AuGLSLP
 	AuGLSLShader vs(*m_GLf, GL_VERTEX_SHADER, "RingworldTerrainLitFlora.v", opt.MaxLights());
 	m_GLf->glAttachShader(m_Program, vs.Id());
 
-	AuGLSLShader fs(*m_GLf, GL_FRAGMENT_SHADER, QString("RingworldTerrainLitFlora.f"));
+	AuGLSLShader fs(*m_GLf, GL_FRAGMENT_SHADER, QString(m_PavementCount == 18 ? "LegacyRingworldTerrainLitFlora.f" : "RingworldTerrainLitFlora.f"));
 	m_GLf->glAttachShader(m_Program, fs.Id());
 
 	// Bind user defined 'in' variables to vertex attribute indices.
@@ -3744,7 +3790,7 @@ void AuGLSLRingworldTerrainLitFlora::Build(AuOpenGLFunctions& GLf, const AuGLSLP
 	m_texSnow = GetUniformLoc("texSnow");
 	m_texGrass = GetUniformLoc("texGrass");
 
-	for(int pave=0; pave<7; pave++)
+	for(int pave=0; pave<m_PavementCount; pave++)
 		m_texPavement[pave] = GetUniformLoc(QString("texPavement[%1]").arg(pave));
 
 	for(int ter=0; ter<5; ter++)
@@ -3810,7 +3856,7 @@ void AuGLSLRingworldTerrainLitFlora::Select(const AuMatrix4x4& projection)
 		texUnit++;
 	}
 
-	for(int pave=0; pave<7; pave++)
+	for(int pave=0; pave<m_PavementCount; pave++)
 	{
 		m_GLf->glActiveTexture(texUnit);
 		m_GLf->glGetIntegerv(GL_TEXTURE_BINDING_2D, &m_OldPavement[pave]);

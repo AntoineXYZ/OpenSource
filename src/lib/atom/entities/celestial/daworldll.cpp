@@ -2214,7 +2214,7 @@ int DaWorldLL::IsIrrigated(const AuGlobeLL& ll) const
 }
 
 //static
-GLuint DaWorldLL::CreateTerrainTexture(AuGLEffects& re, WORLDTEX_TYPE worldTexType, int tileSize)
+GLuint DaWorldLL::CreateTerrainTexture(AuGLEffects& re, WORLDTEX_TYPE worldTexType, int tileSize, bool legacyPavement)
 {
 	// Each tile in the terrain palette must be loaded separately due to size limitation of the windows resource compiler.
 	// NOTE: These MUST BE in the same order as the WORLDTEX_ enum.
@@ -2260,7 +2260,6 @@ GLuint DaWorldLL::CreateTerrainTexture(AuGLEffects& re, WORLDTEX_TYPE worldTexTy
 	};
 
 	GLuint texId = 0;
-	const bool legacyPavement = g_Au.IsLegacyGeneration() && worldTexType <= WORLDTEX_RockTan;
 	const QString textureFile = legacyPavement ? AuLegacyBd::Geometry::SiteTextureFile(int(worldTexType))
 		: QString(":data/") + tileFile[worldTexType];
 	QString texName = QString("WTX%1.%2.%3").arg(worldTexType).arg(tileSize).arg(legacyPavement);
@@ -2282,6 +2281,17 @@ GLuint DaWorldLL::CreateTerrainTexture(AuGLEffects& re, WORLDTEX_TYPE worldTexTy
 	else
 		qWarning() << "DaWorldLL::CreateTerrainTexture ERROR Failed to load" << textureFile;
 	return texId;
+}
+
+int DaWorldLL::TerrainPavementCount()
+{
+	return g_Au.IsLegacyGeneration() ? 18 : 7;
+}
+
+bool DaWorldLL::PavementHidesSnow(WORLDTEX_TYPE pavementType)
+{
+	// 2016 CreateAtTerrainSurfaceTriangle suppresses snow for WORLDTEX 0..10.
+	return int(pavementType) <= (g_Au.IsLegacyGeneration() ? 10 : int(WORLDTEX_CobblestoneLight));
 }
 
 float DaWorldLL::BuildingAmbientLight(const AuGlobeLLF& ll) const
@@ -2324,7 +2334,7 @@ float DaWorldLL::BuildingAmbientLight(const AuGlobeLLF& ll) const
 float DaWorldLL::CityAmbientLight(const AuGlobeLLF& ll, WORLDTEX_TYPE pavementType) const
 {
 	// Pavement type can tell us about ambient light in the area.
-	if(pavementType <= WORLDTEX_CobblestoneLight)
+	if(PavementHidesSnow(pavementType))
 		return 1.f;	// Hard pavement gets maximum ambient light.
 
 	// Calculate ambient light level at the rounded location.
@@ -8599,7 +8609,14 @@ double DaWorldLL::TerrainAltitudeMSLPave(const AuGlobeLL& ll, bool& hideRocks, i
 		// Legacy developments belong to cities, so neither BdHere nor the
 		// modern BuildingsAt map can find their sites. Use the same sampler
 		// for terrain vertices, grass, shrubs, trees and rocks on both worlds.
-		if(pavementType != WORLDTEX_Count) return terAltMSL;
+		if(pavementType != WORLDTEX_Count)
+		{
+			// Geological features use modern enum values internally. Translate at
+			// their boundary; legacy cities below already return original indices.
+			static const int originalPavement[] = {1, 3, 5, 6, 8, 12, 17};
+			if(int(pavementType) < 7) pavementType = WORLDTEX_TYPE(originalPavement[int(pavementType)]);
+			return terAltMSL;
+		}
 		DaAtomList subs; ListNormalSubatoms(subs);
 		int levelSites = 0;
 		for(const DaAtom* atom : subs)

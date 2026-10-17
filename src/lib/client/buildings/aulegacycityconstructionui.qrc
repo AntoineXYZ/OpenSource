@@ -1,0 +1,42 @@
+<RCC>
+    <qresource prefix="/legacy/cities/ui">
+        <file alias="bCapital.png">../../../../resources/runtime/legacy/cities/ui/bCapital.png</file>
+        <file alias="Construction.png">../../../../resources/runtime/legacy/cities/ui/Construction.png</file>
+        <file alias="bElectronicsFactory.png">../../../../resources/runtime/legacy/cities/ui/bElectronicsFactory.png</file>
+        <file alias="bPoliceDepartment.png">../../../../resources/runtime/legacy/cities/ui/bPoliceDepartment.png</file>
+        <file alias="c_Atmosphere.png">../../../../resources/runtime/legacy/cities/ui/c_Atmosphere.png</file>
+        <file alias="c_BayModule.png">../../../../resources/runtime/legacy/cities/ui/c_BayModule.png</file>
+        <file alias="c_Coal.png">../../../../resources/runtime/legacy/cities/ui/c_Coal.png</file>
+        <file alias="c_CommandAndControlModule.png">../../../../resources/runtime/legacy/cities/ui/c_CommandAndControlModule.png</file>
+        <file alias="c_Computer.png">../../../../resources/runtime/legacy/cities/ui/c_Computer.png</file>
+        <file alias="c_CrudeOil.png">../../../../resources/runtime/legacy/cities/ui/c_CrudeOil.png</file>
+        <file alias="c_DriveModule.png">../../../../resources/runtime/legacy/cities/ui/c_DriveModule.png</file>
+        <file alias="c_FTLModule.png">../../../../resources/runtime/legacy/cities/ui/c_FTLModule.png</file>
+        <file alias="c_HullModule.png">../../../../resources/runtime/legacy/cities/ui/c_HullModule.png</file>
+        <file alias="c_LifeSupportModule.png">../../../../resources/runtime/legacy/cities/ui/c_LifeSupportModule.png</file>
+        <file alias="c_Lumenite.png">../../../../resources/runtime/legacy/cities/ui/c_Lumenite.png</file>
+        <file alias="c_MedKit.png">../../../../resources/runtime/legacy/cities/ui/c_MedKit.png</file>
+        <file alias="c_MedicalModule.png">../../../../resources/runtime/legacy/cities/ui/c_MedicalModule.png</file>
+        <file alias="c_Metal.png">../../../../resources/runtime/legacy/cities/ui/c_Metal.png</file>
+        <file alias="c_MetalJewelry.png">../../../../resources/runtime/legacy/cities/ui/c_MetalJewelry.png</file>
+        <file alias="c_Milk.png">../../../../resources/runtime/legacy/cities/ui/c_Milk.png</file>
+        <file alias="c_Minerals.png">../../../../resources/runtime/legacy/cities/ui/c_Minerals.png</file>
+        <file alias="c_Ore.png">../../../../resources/runtime/legacy/cities/ui/c_Ore.png</file>
+        <file alias="c_PlasticBodyArmor.png">../../../../resources/runtime/legacy/cities/ui/c_PlasticBodyArmor.png</file>
+        <file alias="c_PlasticHelmet.png">../../../../resources/runtime/legacy/cities/ui/c_PlasticHelmet.png</file>
+        <file alias="c_Polytaride.png">../../../../resources/runtime/legacy/cities/ui/c_Polytaride.png</file>
+        <file alias="c_PowerPlantModule.png">../../../../resources/runtime/legacy/cities/ui/c_PowerPlantModule.png</file>
+        <file alias="c_Radioactives.png">../../../../resources/runtime/legacy/cities/ui/c_Radioactives.png</file>
+        <file alias="c_SensorModule.png">../../../../resources/runtime/legacy/cities/ui/c_SensorModule.png</file>
+        <file alias="c_ShieldModule.png">../../../../resources/runtime/legacy/cities/ui/c_ShieldModule.png</file>
+        <file alias="c_Stone.png">../../../../resources/runtime/legacy/cities/ui/c_Stone.png</file>
+        <file alias="c_TesloidDissipator.png">../../../../resources/runtime/legacy/cities/ui/c_TesloidDissipator.png</file>
+        <file alias="c_Tongs.png">../../../../resources/runtime/legacy/cities/ui/c_Tongs.png</file>
+        <file alias="c_TransporterModule.png">../../../../resources/runtime/legacy/cities/ui/c_TransporterModule.png</file>
+        <file alias="c_TurretModule.png">../../../../resources/runtime/legacy/cities/ui/c_TurretModule.png</file>
+        <file alias="c_VacSuit.png">../../../../resources/runtime/legacy/cities/ui/c_VacSuit.png</file>
+        <file alias="c_VacSuitHelmet.png">../../../../resources/runtime/legacy/cities/ui/c_VacSuitHelmet.png</file>
+        <file alias="c_Vulcanite.png">../../../../resources/runtime/legacy/cities/ui/c_Vulcanite.png</file>
+        <file alias="c_WovenBodyArmor.png">../../../../resources/runtime/legacy/cities/ui/c_WovenBodyArmor.png</file>
+    </qresource>
+</RCC>

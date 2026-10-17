@@ -4,12 +4,13 @@
 #include "daatom.h"
 #include "aulegacycitystate.h"
 #include "aulegacybuildingpaths.h"
+#include <QHash>
 #include <QScopedPointer>
 
 class AuCityReportHistory;
 
 // City-owned legacy developments have no DaBd identity or modern economics.
-// Construction and simulation will be added after the persistence foundation.
+// Legacy construction remains city-owned and uses the historical GD recipes.
 class AUATOM_DLL DaLegacyCity : public DaAtom
 {
 public:
@@ -25,7 +26,8 @@ public:
 	bool IsVisibleNearWorld() const override { return true; }
 	bool IsInScene(const DaPerson* sceneAtom, const AuPoint& cameraEnvironmentLocation) const override;
 	bool IsTicker() const override { return false; }
-	unsigned int IsTocker() const override { return 0; }
+	unsigned int IsTocker() const override { return 1; }
+	void Tock(const AuTime& last, const AuTime& now, const AuScripts& scripts, DtTockTransactions& transactions) override;
 	QString Name() const override;
 	void SetName(const QString& name) override;
 	quint32 EmpireId() const override;
@@ -34,6 +36,17 @@ public:
 	bool ReportHistory(AuCityReportHistory& result) const;
 	static bool ReadReportHistory(const QByteArray& bytes, AuCityReportHistory& result);
 	bool SetState(const AuLegacyCity::State& state, QString& error);
+	bool BeginConstruction(DaPerson& person, quint8 industryId, quint8 processId, quint32 designId,
+		quint16 materialId, const AuGlobeLLF& location, double headingRadians, quint8 levels, QString& error,
+		double roadLengthMeters = 10, double roadWidthMeters = 10, bool roadSlab = false, double biodomeRadiusMeters = 100);
+	bool ExtendConstruction(DaPerson& person, quint32 developmentId, quint8 additionalLevels, QString& error);
+	bool SetConstructionHalted(DaPerson& person, quint32 developmentId, bool halted, QString& error);
+	bool ContributeConstructionLabor(DaPerson& person, quint32 developmentId, QString& error, bool* accepted = nullptr);
+	bool FetchConstructionMaterials(DaPerson& person, quint32 developmentId, QString& error);
+	bool ChangeRoadConstruction(DaPerson& person, quint32 developmentId, quint8 processId, QString& error);
+	bool EmployConstructionWorker(DaPerson& person, quint32 developmentId, bool enabled, QString& error);
+	bool DemolishDevelopment(DaPerson& person, quint32 developmentId, bool clearLand, QString& error);
+	static int ConstructionLevelLimit(quint8 industryId, quint16 materialId);
 	void operator>>(QDataStream& out) const override;
 	void operator<<(QDataStream& in) override;
 	bool Refresh(DaAtom* counterpart, AuAtomRenderInfo* ari) override;
@@ -77,10 +90,14 @@ private:
 	mutable QReadWriteLock m_CityLock;
 	AuLegacyCity::State m_City;
 	quint64 m_CityRevision = 1;
+	QHash<quint32, qint64> m_ConstructionLaborTimes;
 	struct Runtime;
 	mutable QScopedPointer<Runtime> m_Runtime;
 	bool ApplyPayload(const QByteArray& bytes, QString& error);
 	void UpdateSiteTerrain(AuAtomRenderInfo& ari, bool removed = false);
 	void Store(QSqlDatabase& db, bool insert) const;
+	bool OperateConstruction(DaPerson* person, quint32 developmentId, bool fetch, bool labor, QString& error, bool* accepted = nullptr);
+	bool ReplaceFinishedDevelopment(const AuLegacyCity::Development& development,
+		quint8 expectedProcess, quint8 expectedLevels, QString& error);
 };
 #endif

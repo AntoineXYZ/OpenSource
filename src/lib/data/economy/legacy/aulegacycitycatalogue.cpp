@@ -677,6 +677,160 @@ QVector<AuLegacyCity::ConstructionComponentRecord> AuLegacyCityCatalogue::Compon
 	return result;
 }
 
+const AuLegacyCity::ConstructionProcessRecord* AuLegacyCityCatalogue::ConstructionProcessForIndustry(AuLegacyCity::IndustryId id) const
+{
+	for(const auto& process : m_construction)
+		if(process.industry == id) return &process;
+	return nullptr;
+}
+
+int AuLegacyCityCatalogue::BuildingDesignMaximumDeck(AuLegacyCity::IndustryId industry, AuLegacyCity::CommodityId material) const
+{
+	// DgData::BuildingDesignMaxDeckLimit, AuData13 0x131180. These fixed
+	// shapes do not describe how many industrial levels can be constructed.
+	switch(industry.value)
+	{
+	case 0: case 1: case 2: case 10: case 51: case 114: case 129: case 130: return 0;
+	case 11: case 12: return 2;
+	case 70: case 85: case 88: case 113: case 127: return 1;
+	case 87: case 126: return 5;
+	case 111: return 4;
+	case 112: case 128: return 3;
+	default: break;
+	}
+	const auto* process = ConstructionProcessForIndustry(industry);
+	if(!process) return 0;
+	const int limit = process->stackLimit;
+	if(limit == 34) return 1;
+	if(limit == 0 || limit == 32 || limit == 33 || material.value == 86) return 0;
+	if(limit != 1 && limit != 3 && limit != 7 && limit != 15 && limit != 31) return 0;
+	if(material.value == 48) return std::min(limit, 3);
+	if(material.value == 76) return std::min(limit, 7);
+	if(material.value == 51) return std::min(limit, 15);
+	if(material.value == 146) return std::min(limit, 23);
+	return limit;
+}
+
+int AuLegacyCityCatalogue::ConstructionLevelLimit(AuLegacyCity::ConstructionProcessId id,
+	AuLegacyCity::CommodityId material, bool flammableMaterialsAllowed) const
+{
+	// DaWorldLL::LockTestBuildLocation, AuAtom13 0x5264d0. Resource-driven
+	// recipes take their limit from the site instead of material strength.
+	// DaWorld::OrbitZone (0x20f940) identifies this[0x3b0] as the orbit
+	// zone. Its zero value is Inferno: wood/lumber/asphalt cannot be used
+	// there. Vacuum is handled independently by the pressure-material bill.
+	const auto* process = ConstructionProcess(id);
+	if(!process) return 0;
+	if(process->stackLimit == 32 || process->stackLimit == 33) return 32;
+	if(process->stackLimit == 34) return 2;
+	if(process->stackLimit >= 32) return 0;
+	int limit = int(process->stackLimit) + 1;
+	switch(material.value)
+	{
+	case 23: return flammableMaterialsAllowed ? limit : 0;
+	case 48: return flammableMaterialsAllowed ? std::min(limit, 4) : 0;
+	case 86: return flammableMaterialsAllowed ? 1 : 0;
+	case 76: return std::min(limit, 8);
+	case 51: return std::min(limit, 16);
+	case 145: return std::min(limit, 32);
+	case 146: return std::min(limit, 24);
+	default: return 0;
+	}
+}
+
+int AuLegacyCityCatalogue::ConstructionResourceLevelLimit(AuLegacyCity::ConstructionProcessId id,
+	quint32 rocks, quint32 shrubs, quint32 trees) const
+{
+	const auto* process = ConstructionProcess(id);
+	if(!process) return 0;
+	if(process->stackLimit < 32) return int(process->stackLimit) + 1;
+	if(process->stackLimit == 32) return int(std::min(rocks, quint32(32)));
+	if(process->stackLimit == 33) return int(std::min(shrubs, quint32(32)));
+	if(process->stackLimit == 34) return trees >= 3 ? 2 : trees ? 1 : 0;
+	return 0;
+}
+
+quint16 AuLegacyCityCatalogue::SitePreparationLabor(AuLegacyCity::ConstructionProcessId id, quint8 completedLevels,
+	quint32 rocks, quint32 shrubs, quint32 trees) const
+{
+	const auto* process = ConstructionProcess(id);
+	if(!process) return 0;
+	// LockAddBuilding, 0x524e20. Assembly 0x525243..0x5252aa also
+	// recovers the shrub/tree branches missing from the manual C export.
+	quint64 labor = 1;
+	if(process->sitePreparation & 32) labor = (quint64(completedLevels) + 1) * (quint64(rocks) + 1) * 5 + 1;
+	if(process->sitePreparation & 1) labor += quint64(rocks) * 15;
+	if(process->sitePreparation & 2) labor += quint64(shrubs) * 5;
+	if(process->sitePreparation & 4) labor += quint64(trees) * 10;
+	return quint16(std::min(labor, quint64(65535)));
+}
+
+QVector<AuLegacyCity::ConstructionRequirement> AuLegacyCityCatalogue::ConstructionRequirements(
+	AuLegacyCity::ConstructionProcessId id, AuLegacyCity::CommodityId material, quint8 environment,
+	quint32 pavementQuantity, quint32 materialMultiplier) const
+{
+	QVector<AuLegacyCity::ConstructionRequirement> result;
+	const auto* process = ConstructionProcess(id);
+	if(!process) return result;
+	auto add = [&](AuLegacyCity::CommodityId commodity, quint8 effect, quint32 quantity) {
+		for(auto& requirement : result)
+			if(requirement.commodity == commodity && requirement.effect == effect)
+			{ requirement.quantity += quantity; return; }
+		AuLegacyCity::ConstructionRequirement requirement;
+		requirement.commodity = commodity; requirement.effect = effect; requirement.quantity = quantity;
+		result.append(requirement);
+	};
+	// InitDbData 0x1181b0 uses every matching row, without reading its lvl
+	// byte. AddRequirement 0x128600 merges the same commodity/effect.
+	for(const auto& component : m_constructionComponents)
+		if(component.process == id) add(component.commodity, component.effect, component.quantity);
+	if(!(id.value >= 1 && id.value <= 5) && id.value != 74 && id.value != 80 && id.value != 81)
+	{
+		if(environment == 2)
+		{ add(AuLegacyCity::CommodityId(27), 5, 1); add(AuLegacyCity::CommodityId(51), 5, 3); add(AuLegacyCity::CommodityId(63), 5, 2); }
+		else if(environment == 4)
+		{ add(AuLegacyCity::CommodityId(51), 5, 10); add(AuLegacyCity::CommodityId(63), 5, 4); }
+	}
+	for(auto& requirement : result)
+	{
+		if(process->industry.value != 2 && requirement.commodity.value == 48) requirement.commodity = material;
+		// SetPavementMaterial 0x118470 replaces the selected surface's
+		// quantity, including a nonzero amount for the smallest road.
+		if(pavementQuantity && ((id.value == 3 && requirement.commodity.value == 23)
+			|| ((id.value == 4 || id.value == 7) && requirement.commodity.value == 76)))
+			requirement.quantity = pavementQuantity;
+		if(requirement.effect == 5 && requirement.quantity) requirement.quantity *= materialMultiplier;
+	}
+	return result;
+}
+
+quint32 AuLegacyCityCatalogue::RoadPavementQuantity(double lengthFeet, double widthFeet)
+{
+	if(!std::isfinite(lengthFeet) || !std::isfinite(widthFeet) || lengthFeet <= 0 || widthFeet <= 0) return 0;
+	// LockAddRoad 0x5253d0 converts to float before truncating to int.
+	const double amount = float(lengthFeet * widthFeet * 2.0) / 19600.0f;
+	return quint32(std::max(1.0, std::min(std::floor(amount), double(0x7fffffff))));
+}
+
+int AuLegacyCityCatalogue::BiodomeSegmentCount(double radiusFeet)
+{
+	// LockTestBuildLocation 0x5264d0 / LockAddBiodome 0x524910:
+	// one structural/material section per fifty meters of circumference.
+	if(!std::isfinite(radiusFeet) || radiusFeet <= 0) return 0;
+	const double sections = std::floor(radiusFeet * 6.2831853071795864769 / 164.041994750656);
+	return sections >= 6 && sections <= 100 ? int(sections) : 0;
+}
+
+quint16 AuLegacyCityCatalogue::RoadPreparationLabor(AuLegacyCity::ConstructionProcessId process,
+	double lengthFeet, double widthFeet, double meanAbsoluteTerrainDifference)
+{
+	if(!std::isfinite(lengthFeet) || !std::isfinite(widthFeet) || !std::isfinite(meanAbsoluteTerrainDifference)
+		|| lengthFeet <= 0 || widthFeet <= 0 || meanAbsoluteTerrainDifference < 0) return 0;
+	double amount = lengthFeet * widthFeet;
+	if(process.value != 74 && process.value != 80 && process.value != 81) amount *= meanAbsoluteTerrainDifference * .5;
+	return quint16(std::max(1.0, std::min(65535.0, std::ceil(amount / 1000.0))));
+}
+
 quint16 AuLegacyCityCatalogue::RuntimeCommodityId(AuLegacyCity::CommodityId id) const
 {
 	return m_toRuntime.value(id.value, 0);

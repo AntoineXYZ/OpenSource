@@ -1,0 +1,583 @@
+{
+  "format": "hazeron-legacy-construction-ui-pngs-v1",
+  "source_binary": "AuSceneClientRes13.dll",
+  "source_sha256": "709de99cca4bdbd43e3be3300f97d72a8d0e1c81d7bb519bd340c7b18b507fea",
+  "source_date": "2016-07-24",
+  "extraction": "Unmodified PNG payloads from the original Qt resource tree, with every PNG chunk CRC checked.",
+  "resource_prefix": "/legacy/cities/ui",
+  "files": [
+    {
+      "file": "bCapital.png",
+      "source_resource": ":data/bCapital.png",
+      "source_file_offset": 1600254,
+      "bytes": 3279,
+      "width": 60,
+      "height": 60,
+      "sha256": "6ffa0387f556718dd7d3ffb376facd56a76568fc2575275fe6bc3a43e56044e6"
+    },
+    {
+      "file": "Construction.png",
+      "source_resource": ":data/Construction.png",
+      "source_file_offset": 2579751,
+      "bytes": 403,
+      "width": 16,
+      "height": 16,
+      "sha256": "902353882542ccbdbff02b85ac6a0a1647be4fe0f0eec5d5c7dc6a053cc10c7c"
+    },
+    {
+      "file": "bElectronicsFactory.png",
+      "source_resource": ":data/bElectronicsFactory.png",
+      "source_file_offset": 1810054,
+      "bytes": 6472,
+      "width": 60,
+      "height": 60,
+      "sha256": "1d3f1538781bfd422ecf63450a745eaf11764bba5298e0431687e2be04939564"
+    },
+    {
+      "file": "bPoliceDepartment.png",
+      "source_resource": ":data/bPoliceDepartment.png",
+      "source_file_offset": 342105,
+      "bytes": 7140,
+      "width": 60,
+      "height": 60,
+      "sha256": "2c0b66f1ae32be67249f7095c1052493daf0451f6905dac5746c9c0583deb064"
+    },
+    {
+      "file": "c_Atmosphere.png",
+      "source_resource": ":data/c_Atmosphere.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2467974,
+      "bytes": 219,
+      "width": 16,
+      "height": 16,
+      "sha256": "1b8d678bf9a6af3d078fa27045bee8ac8139e3d0df935727812835f361fcf5d0",
+      "current_dimensions": [
+        16,
+        16
+      ],
+      "different_pixels": 168
+    },
+    {
+      "file": "c_BayModule.png",
+      "source_resource": ":data/c_BayModule.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2476145,
+      "bytes": 641,
+      "width": 16,
+      "height": 16,
+      "sha256": "c36ee135b63570ee047a36f443c7a7d6d2a215baaa4c333cc4657f43fd46cc3d",
+      "current_dimensions": [
+        64,
+        64
+      ],
+      "different_pixels": null
+    },
+    {
+      "file": "c_Coal.png",
+      "source_resource": ":data/c_Coal.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2398844,
+      "bytes": 243,
+      "width": 16,
+      "height": 16,
+      "sha256": "11cd2adad3ec169dd4278fa03553c7d6b5f2157825cb69967d2507651debfccc",
+      "current_dimensions": [
+        64,
+        64
+      ],
+      "different_pixels": null
+    },
+    {
+      "file": "c_CommandAndControlModule.png",
+      "source_resource": ":data/c_CommandAndControlModule.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2382402,
+      "bytes": 590,
+      "width": 16,
+      "height": 16,
+      "sha256": "9d72fc462ef13a7b72219e23823c1967518667ad38c059379ad1952913294094",
+      "current_dimensions": [
+        64,
+        64
+      ],
+      "different_pixels": null
+    },
+    {
+      "file": "c_Computer.png",
+      "source_resource": ":data/c_Computer.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2389870,
+      "bytes": 230,
+      "width": 16,
+      "height": 16,
+      "sha256": "4a92d3a2cf77475abded8a2c6e3617da06e84d9cf5fecc2784fecc43ef96c460",
+      "current_dimensions": [
+        64,
+        64
+      ],
+      "different_pixels": null
+    },
+    {
+      "file": "c_CrudeOil.png",
+      "source_resource": ":data/c_CrudeOil.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2389014,
+      "bytes": 200,
+      "width": 16,
+      "height": 16,
+      "sha256": "5e8b488b45515eb6234c903f19fb26b66192b9a7764810eb204b9ba984167af9",
+      "current_dimensions": [
+        16,
+        16
+      ],
+      "different_pixels": 137
+    },
+    {
+      "file": "c_DriveModule.png",
+      "source_resource": ":data/c_DriveModule.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2650934,
+      "bytes": 751,
+      "width": 16,
+      "height": 16,
+      "sha256": "383fcf15eaa13d45eb949d72b14a1aefa32fee74f758ac74c22ca98c9a398b5f",
+      "current_dimensions": [
+        64,
+        64
+      ],
+      "different_pixels": null
+    },
+    {
+      "file": "c_FTLModule.png",
+      "source_resource": ":data/c_FTLModule.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2461466,
+      "bytes": 716,
+      "width": 16,
+      "height": 16,
+      "sha256": "621e03f8a8e484c6cbf1037549a627db34a3f33d74a1c00f6a0bbfdb18e5ddff",
+      "current_dimensions": [
+        64,
+        64
+      ],
+      "different_pixels": null
+    },
+    {
+      "file": "c_HullModule.png",
+      "source_resource": ":data/c_HullModule.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2473205,
+      "bytes": 681,
+      "width": 16,
+      "height": 16,
+      "sha256": "1aa16998d5b215b3de1d0fbb749b667922c2396fd7bafbdc8bf84f894ffbcf97",
+      "current_dimensions": [
+        32,
+        32
+      ],
+      "different_pixels": null
+    },
+    {
+      "file": "c_LifeSupportModule.png",
+      "source_resource": ":data/c_LifeSupportModule.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2608625,
+      "bytes": 682,
+      "width": 16,
+      "height": 16,
+      "sha256": "a54e9997680ec66f2dc5421b732209d586e2aaa0aaf990ab917d64272d9f5aad",
+      "current_dimensions": [
+        64,
+        64
+      ],
+      "different_pixels": null
+    },
+    {
+      "file": "c_Lumenite.png",
+      "source_resource": ":data/c_Lumenite.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2492252,
+      "bytes": 388,
+      "width": 16,
+      "height": 16,
+      "sha256": "ed690c6c9d27e6178b72cd4479c8ec427e2553794c66a94ae5df4ae3fc222edc",
+      "current_dimensions": [
+        16,
+        16
+      ],
+      "different_pixels": 135
+    },
+    {
+      "file": "c_MedKit.png",
+      "source_resource": ":data/c_MedKit.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2567245,
+      "bytes": 268,
+      "width": 16,
+      "height": 16,
+      "sha256": "d5ba002fe0d07525d8ae8b158d727b45673106de8cb1248431a1400a4cbb7e4e",
+      "current_dimensions": [
+        16,
+        16
+      ],
+      "different_pixels": 188
+    },
+    {
+      "file": "c_MedicalModule.png",
+      "source_resource": ":data/c_MedicalModule.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2600550,
+      "bytes": 525,
+      "width": 16,
+      "height": 16,
+      "sha256": "4387e573fb67d336bdde3e5be0eb7a4467dada6d29bf97956fc68cdb73e25e65",
+      "current_dimensions": [
+        64,
+        64
+      ],
+      "different_pixels": null
+    },
+    {
+      "file": "c_Metal.png",
+      "source_resource": ":data/c_Metal.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2606795,
+      "bytes": 241,
+      "width": 16,
+      "height": 16,
+      "sha256": "f7e81a4c43c6111edfb0ed641b863c53c512427ed0dc7f29b490502e58c89989",
+      "current_dimensions": [
+        16,
+        16
+      ],
+      "different_pixels": 100
+    },
+    {
+      "file": "c_MetalJewelry.png",
+      "source_resource": ":data/c_MetalJewelry.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2605009,
+      "bytes": 309,
+      "width": 16,
+      "height": 16,
+      "sha256": "e34b3bc4a646e2c960ecc7656be6597600d647296217f9bfb79c473ed7fe8d81",
+      "current_dimensions": [
+        16,
+        16
+      ],
+      "different_pixels": 118
+    },
+    {
+      "file": "c_Milk.png",
+      "source_resource": ":data/c_Milk.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2472058,
+      "bytes": 277,
+      "width": 16,
+      "height": 16,
+      "sha256": "d2ffe519384590a8b4d122ee528ff5f8d7ff227422db2e2bc389cb8270cc75c6",
+      "current_dimensions": [
+        16,
+        16
+      ],
+      "different_pixels": 65
+    },
+    {
+      "file": "c_Minerals.png",
+      "source_resource": ":data/c_Minerals.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2602654,
+      "bytes": 381,
+      "width": 16,
+      "height": 16,
+      "sha256": "1a792b887983037ffccb25787b057f101d3517eafb86fe0315e21913194fb50c",
+      "current_dimensions": [
+        64,
+        64
+      ],
+      "different_pixels": null
+    },
+    {
+      "file": "c_Ore.png",
+      "source_resource": ":data/c_Ore.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2564731,
+      "bytes": 446,
+      "width": 16,
+      "height": 16,
+      "sha256": "1edc8023bac1a2b119d221ae68d44d68ceda3cadb494fbd001c1b328a0876ba3",
+      "current_dimensions": [
+        64,
+        64
+      ],
+      "different_pixels": null
+    },
+    {
+      "file": "c_PlasticBodyArmor.png",
+      "source_resource": ":data/c_PlasticBodyArmor.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2520999,
+      "bytes": 318,
+      "width": 16,
+      "height": 16,
+      "sha256": "05d6ab63dbd92cd9675407cc30f619a59900cdd359e17ed9306e9a77c4574938",
+      "current_dimensions": [
+        32,
+        32
+      ],
+      "different_pixels": null
+    },
+    {
+      "file": "c_PlasticHelmet.png",
+      "source_resource": ":data/c_PlasticHelmet.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2404200,
+      "bytes": 1037,
+      "width": 16,
+      "height": 16,
+      "sha256": "ec490b82c41810dbd99b420273f88bf594891f0d524d7abbb51148f9591c5b2e",
+      "current_dimensions": [
+        32,
+        32
+      ],
+      "different_pixels": null
+    },
+    {
+      "file": "c_Polytaride.png",
+      "source_resource": ":data/c_Polytaride.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2441526,
+      "bytes": 345,
+      "width": 16,
+      "height": 16,
+      "sha256": "4969ae206919e9c56e84f23cfe5b7435ec28a3c0ebcd57ea4606762f6361ac3b",
+      "current_dimensions": [
+        16,
+        16
+      ],
+      "different_pixels": 256
+    },
+    {
+      "file": "c_PowerPlantModule.png",
+      "source_resource": ":data/c_PowerPlantModule.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2463540,
+      "bytes": 688,
+      "width": 16,
+      "height": 16,
+      "sha256": "a49f0b41801c72f46ee29c1a4df18d4b0fcf92c0066615975f79445ae2f447c3",
+      "current_dimensions": [
+        64,
+        64
+      ],
+      "different_pixels": null
+    },
+    {
+      "file": "c_Radioactives.png",
+      "source_resource": ":data/c_Radioactives.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2576375,
+      "bytes": 416,
+      "width": 16,
+      "height": 16,
+      "sha256": "2157626552751942869525ac93a2be59739891bd9409ba7b7585704e725da154",
+      "current_dimensions": [
+        16,
+        16
+      ],
+      "different_pixels": 92
+    },
+    {
+      "file": "c_SensorModule.png",
+      "source_resource": ":data/c_SensorModule.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2445465,
+      "bytes": 558,
+      "width": 16,
+      "height": 16,
+      "sha256": "119a3619fb8fe643e1ef9f77cadb0b9ba405241d26a9494b5da2372cc72132b2",
+      "current_dimensions": [
+        64,
+        64
+      ],
+      "different_pixels": null
+    },
+    {
+      "file": "c_ShieldModule.png",
+      "source_resource": ":data/c_ShieldModule.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2476790,
+      "bytes": 739,
+      "width": 16,
+      "height": 16,
+      "sha256": "f29dc83ce01f0907cc24f56f043ddd0f5a5bd9a7ab6f222c0628379b465df0ec",
+      "current_dimensions": [
+        64,
+        64
+      ],
+      "different_pixels": null
+    },
+    {
+      "file": "c_Stone.png",
+      "source_resource": ":data/c_Stone.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2586836,
+      "bytes": 247,
+      "width": 16,
+      "height": 16,
+      "sha256": "ad0da0501c3b30186062c3a8c87c36f83b2049f526a937a70e7d7104811f1084",
+      "current_dimensions": [
+        16,
+        16
+      ],
+      "different_pixels": 81
+    },
+    {
+      "file": "c_TesloidDissipator.png",
+      "source_resource": ":data/c_TesloidDissipator.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2447079,
+      "bytes": 850,
+      "width": 16,
+      "height": 16,
+      "sha256": "cc8bd1f728c4dbe8cf505b7bf2a0ede88588688afd6fbcbad9c236ae86bbc05b",
+      "current_dimensions": [
+        16,
+        16
+      ],
+      "different_pixels": 193
+    },
+    {
+      "file": "c_Tongs.png",
+      "source_resource": ":data/c_Tongs.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2534396,
+      "bytes": 367,
+      "width": 16,
+      "height": 16,
+      "sha256": "dd02223971280138c6ade4a435be917ce46e1ba772e93e01e13136864a044e37",
+      "current_dimensions": [
+        64,
+        64
+      ],
+      "different_pixels": null
+    },
+    {
+      "file": "c_TransporterModule.png",
+      "source_resource": ":data/c_TransporterModule.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2472527,
+      "bytes": 674,
+      "width": 16,
+      "height": 16,
+      "sha256": "fbbf89a245f8946ca323cfa5a82a55d170eb4923d1eb9c3fa76a1bd2b32bafa7",
+      "current_dimensions": [
+        64,
+        64
+      ],
+      "different_pixels": null
+    },
+    {
+      "file": "c_TurretModule.png",
+      "source_resource": ":data/c_TurretModule.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2370547,
+      "bytes": 634,
+      "width": 16,
+      "height": 16,
+      "sha256": "bc09e8283f9713339bd989b0579c6faea9cf8f9c1490e10da19344d1b7e54b21",
+      "current_dimensions": [
+        64,
+        64
+      ],
+      "different_pixels": null
+    },
+    {
+      "file": "c_VacSuit.png",
+      "source_resource": ":data/c_VacSuit.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2372712,
+      "bytes": 1019,
+      "width": 16,
+      "height": 16,
+      "sha256": "5356ef08d0d6f93370c5461c55983d39c44aa73d1f26aebeecf95f5aeccf3ea0",
+      "current_dimensions": [
+        64,
+        64
+      ],
+      "different_pixels": null
+    },
+    {
+      "file": "c_VacSuitHelmet.png",
+      "source_resource": ":data/c_VacSuitHelmet.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2505173,
+      "bytes": 1019,
+      "width": 16,
+      "height": 16,
+      "sha256": "556531b8e4a096a364e4600971b7403152ee7a0cdf64a8ad236b945578096594",
+      "current_dimensions": [
+        204,
+        167
+      ],
+      "different_pixels": null
+    },
+    {
+      "file": "c_Vulcanite.png",
+      "source_resource": ":data/c_Vulcanite.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2602010,
+      "bytes": 640,
+      "width": 16,
+      "height": 16,
+      "sha256": "2c6baa23877e249bc3e4714cbeb0edd57ad5f51d1d5faca6c38047942f92faba",
+      "current_dimensions": [
+        16,
+        16
+      ],
+      "different_pixels": 72
+    },
+    {
+      "file": "c_WovenBodyArmor.png",
+      "source_resource": ":data/c_WovenBodyArmor.png",
+      "source_binary": "AuData13.dll",
+      "source_file_offset": 2393420,
+      "bytes": 374,
+      "width": 16,
+      "height": 16,
+      "sha256": "01fc72ad01fe9740acb879475a7ecc608db1f8f39f128bb0fa8b891b291339cc",
+      "current_dimensions": [
+        32,
+        32
+      ],
+      "different_pixels": null
+    }
+  ],
+  "comparison": {
+    "method": "Decoded RGBA comparison; RGB under fully transparent pixels ignored.",
+    "unique_layout_icons": 90,
+    "road_bmps": "All eight road and landscaping BMP resources are byte-identical to the 2016 AuSceneClientRes13.dll payloads.",
+    "rail_pngs": "All seven category rail PNGs outside AuSceneClientRes13.dll have identical visible pixels to the originals in AuData13.dll and AuGlobal13.dll.",
+    "bCapital.png": "Current bCapitol.png has identical visible pixels, but the original resource name is missing.",
+    "Construction.png": "Current Construction.png has identical visible pixels; the original PNG is preserved separately.",
+    "bElectronicsFactory.png": "Current artwork differs at 1757 of 3600 pixels.",
+    "bPoliceDepartment.png": "Current artwork differs at 3308 of 3600 pixels.",
+    "remaining_scene_client_pngs": "All other PNGs referenced by the recovered construction layout and present in AuSceneClientRes13.dll have identical visible pixels in current resources."
+  },
+  "source_binaries": {
+    "AuSceneClientRes13.dll": "709de99cca4bdbd43e3be3300f97d72a8d0e1c81d7bb519bd340c7b18b507fea",
+    "AuData13.dll": "6155a0fbb047065ea6ef72727d039d62d32184d24285d1ea94c5237b87c9f440",
+    "AuGlobal13.dll": "959f705c8af7081a30ddffcb4c9c281090e9975e40c96952c481cb0743be4c47"
+  },
+  "commodity_audit": {
+    "named_descriptors_checked": 349,
+    "unique_commodity_pngs_checked": 228,
+    "construction_industries": 75,
+    "recipe_input_and_output_commodities": 335,
+    "recipe_input_and_output_pngs": 218,
+    "differing_pngs_preserved": 34,
+    "library_png": "Identical visible pixels to the original AuSceneClientRes13.dll resource; current alias reused.",
+    "scope": "Original construction/material recipes plus manufacturing inputs and outputs for the 82 recovered construction selections, including Design Studio IDs 113, 287 and 288.",
+    "out_of_scope_differences_not_extracted": []
+  }
+}

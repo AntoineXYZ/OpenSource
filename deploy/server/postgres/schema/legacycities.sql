@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS a_LegacyCity
   allegianceEmpire bigint NOT NULL DEFAULT 0,
   population integer NOT NULL DEFAULT 0 CHECK (population >= 0),
   satisfaction smallint NOT NULL DEFAULT 1 CHECK (satisfaction BETWEEN -20 AND 20),
-  stateVersion smallint NOT NULL DEFAULT 1 CHECK (stateVersion = 1),
+  stateVersion smallint NOT NULL DEFAULT 2 CHECK (stateVersion = 2),
   stateData bytea NOT NULL CHECK (octet_length(stateData) BETWEEN 1 AND 8388608),
   reportHistory bytea NOT NULL DEFAULT ''::bytea
 ) INHERITS (a_Atom);

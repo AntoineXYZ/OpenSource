@@ -38,6 +38,8 @@ class AuCargoTransferDock;
 class AuCommDock;
 class AuCommPacket;
 class AuConstructionDock;
+class AuLegacyCityConstructionDock;
+class AuLegacyCityLaborDock;
 class AuDesignerBar;
 class AuDesignerBar2;
 class AuDesignerPartsDock;
@@ -145,6 +147,8 @@ private:
 	AuCargoTransferDock*				m_CargoTransferDock;
 	AuCommDock*							m_CommDock;
 	AuConstructionDock*					m_ConstructionDock;
+	AuLegacyCityConstructionDock*		m_LegacyCityConstructionDock;
+	AuLegacyCityLaborDock*				m_LegacyCityLaborDock;
 	AuDesignerBar*						m_DesignerBar;
 	AuDesignerBar2*						m_DesignerBar2;
 	AuDesignerPartsDock*				m_DesignerPartsDock;

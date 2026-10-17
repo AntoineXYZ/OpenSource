@@ -428,6 +428,8 @@ private:
 	void ReadLegacyScPacket(const QByteArray& payload);
 	void SpawnLegacySc(quint32 designId, AuLegacyScProtocol::Reply& reply);
 	void ReadLegacyCityPacket(const QByteArray& payload);
+	bool LegacyCityAuthorized();
+	void ProcessLegacyConstructionRequest(const AuLegacyCityProtocol::Request& request, AuLegacyCityProtocol::Reply& reply);
 	void ProcessLegacyCityRequest(const AuLegacyCityProtocol::Request& request, AuLegacyCityProtocol::Reply& reply);
 
 	void RxData(QTcpSocket& tcpSocket);

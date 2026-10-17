@@ -36,13 +36,23 @@ bool Valid(const State& state, QString& error)
 	QSet<quint32> ids;
 	for(const Development& dev : state.developments)
 	{
-		if(!dev.id || !dev.designId || !dev.industryId || ids.contains(dev.id)
+		if(!dev.id || !dev.industryId || ids.contains(dev.id)
 			|| dev.minimumDeck < -127 || dev.maximumDeck > 126 || dev.minimumDeck > dev.maximumDeck
 			|| int(dev.maximumDeck) - int(dev.minimumDeck) > 127
 			|| !std::isfinite(dev.altitudeMSL) || !std::isfinite(dev.facingRadians)
 			|| !std::isfinite(dev.location.Latitude()) || !std::isfinite(dev.location.Longitude())
-			|| std::abs(dev.location.Latitude()) > PIf / 2 || std::abs(dev.location.Longitude()) > PIf)
+			|| std::abs(dev.location.Latitude()) > PIf / 2 || std::abs(dev.location.Longitude()) > PIf
+			|| !dev.targetLevels || dev.targetLevels > 32 || dev.completedLevels > 128
+			|| dev.components.size() > 128 || dev.laborRemaining > 65535
+			|| !std::isfinite(dev.roadLengthMeters) || dev.roadLengthMeters < 1 || dev.roadLengthMeters > 1000
+			|| !std::isfinite(dev.roadWidthMeters) || dev.roadWidthMeters < 1 || dev.roadWidthMeters > 100
+			|| !std::isfinite(dev.roadStartAltitudeMSL) || !std::isfinite(dev.roadEndAltitudeMSL)
+			|| !std::isfinite(dev.biodomeRadiusMeters) || dev.biodomeRadiusMeters < 1 || dev.biodomeRadiusMeters > 1000)
 		{ error = QStringLiteral("Invalid legacy development identity, transform or deck range."); return false; }
+		for(const auto& component : dev.components)
+			if(!component.commodityId || component.effect < 1 || component.effect > 6
+				|| component.quantity > 65535 || component.applied > qMax(quint32(1), component.quantity))
+			{ error = QStringLiteral("Invalid legacy construction component."); return false; }
 		ids.insert(dev.id);
 	}
 	for(const Flag& flag : state.flags)
@@ -72,6 +82,12 @@ bool EncodeState(const State& state, QByteArray& output, QString& error)
 			// Retain the version-1 list count for existing saves/replication.
 			// Original building doorways have no open/closed state.
 			<< quint8(dev.constructed) << dev.completedLevels << quint32(0);
+		out << dev.constructionProcessId << dev.targetLevels << dev.laborRemaining << dev.halted
+			<< dev.citizenWorker << dev.lastPlayerLabor << dev.roadLengthMeters << dev.roadWidthMeters << dev.roadSlab
+			<< dev.roadStartAltitudeMSL << dev.roadEndAltitudeMSL << dev.biodomeRadiusMeters << dev.demolished
+			<< quint16(dev.components.size());
+		for(const auto& component : dev.components)
+			out << component.commodityId << component.effect << component.quality << component.quantity << component.applied;
 	}
 	out << quint32(state.flags.size());
 	for(const Flag& flag : state.flags) out << flag.empire << flag.location << flag.level << flag.capturedAt;
@@ -92,7 +108,7 @@ bool DecodeState(const QByteArray& bytes, State& output, QString& error)
 	quint16 magic = 0; quint8 version = 0;
 	in >> magic >> version;
 	State state;
-	if(magic != 0x4c43 || version != StateVersion || !String(in, state.name))
+	if(magic != 0x4c43 || (version != 1 && version != StateVersion) || !String(in, state.name))
 	{ error = QStringLiteral("Unsupported or malformed legacy city envelope."); return false; }
 	in >> state.controllingEmpire >> state.allegianceEmpire >> state.loyalPopulation >> state.population
 		>> state.satisfaction >> state.capacitor >> state.lastVisit;
@@ -111,6 +127,22 @@ bool DecodeState(const QByteArray& bytes, State& output, QString& error)
 		dev.constructed = constructed != 0;
 		// Consume the bounded obsolete test-tool list without restoring state.
 		for(quint32 door = 0; door < doors; ++door) { quint32 ignored = 0; in >> ignored; }
+		if(version >= 2)
+		{
+			quint16 components = 0;
+			in >> dev.constructionProcessId >> dev.targetLevels >> dev.laborRemaining >> dev.halted
+				>> dev.citizenWorker >> dev.lastPlayerLabor >> dev.roadLengthMeters >> dev.roadWidthMeters >> dev.roadSlab
+				>> dev.roadStartAltitudeMSL >> dev.roadEndAltitudeMSL >> dev.biodomeRadiusMeters >> dev.demolished >> components;
+			if(in.status() != QDataStream::Ok || components > 128 || quint64(components) * 12 > quint64(in.device()->bytesAvailable()))
+			{ error = QStringLiteral("Invalid legacy construction bill."); return false; }
+			for(int j = 0; j < components; ++j)
+			{
+				ConstructionComponent component;
+				in >> component.commodityId >> component.effect >> component.quality >> component.quantity >> component.applied;
+				dev.components.append(component);
+			}
+		}
+		else dev.targetLevels = quint8(qBound(1, int(dev.completedLevels), 32));
 		state.developments.append(dev);
 	}
 	in >> count;

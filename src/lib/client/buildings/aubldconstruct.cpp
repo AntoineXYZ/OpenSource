@@ -9,6 +9,7 @@
 #include "auapp.h"
 #include "auframe.h"
 #include "auview.h"
+#include "aulegacycityprotocol.h"
 #include "dabd.h"
 #include "daperson.h"
 #include "daworldll.h"
@@ -22,9 +23,11 @@
 #include <QPushButton>
 #include <QTableWidget>
 #include <QTimer>
+#include <QSignalBlocker>
 
-AuBldConstruct::AuBldConstruct(QWidget* parent) : QWidget(parent)
+AuBldConstruct::AuBldConstruct(QWidget* parent, bool legacy) : QWidget(parent)
 {
+	m_LegacyMode = legacy;
 	m_BdIndustry = IID_None;
 	m_CapitolOpIndustry = IID_None;
 	m_CitizenOk = false;
@@ -44,19 +47,23 @@ AuBldConstruct::AuBldConstruct(QWidget* parent) : QWidget(parent)
 	m_Materials->setToolTip(tr("Commodities consumed by the construction."));
 
 	m_Modifiers = new QTableWidget(0,3,this);	// 0 rows, 2 columns
-	m_Modifiers->setMinimumWidth(74);
-	m_Modifiers->setMaximumWidth(74);
-	m_Modifiers->setMinimumHeight(10);
+	// AuLaborConstruct (2016, 0x1401caaa0) allowed the modifier table to grow.
+	m_Modifiers->setMinimumWidth(legacy ? 70 : 74);
+	m_Modifiers->setMaximumWidth(legacy ? 110 : 74);
+	if(!legacy) m_Modifiers->setMinimumHeight(10);
 	m_Modifiers->setEditTriggers(QAbstractItemView::NoEditTriggers);
 	m_Modifiers->setSelectionBehavior(QAbstractItemView::SelectRows);
 	m_Modifiers->setSelectionMode(QAbstractItemView::SingleSelection);
 	m_Modifiers->setShowGrid(false);
 	m_Modifiers->horizontalHeader()->hide();
-	m_Modifiers->horizontalHeader()->setDefaultSectionSize(24);
-	m_Modifiers->horizontalHeader()->setMinimumSectionSize(24);
-	m_Modifiers->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Interactive);
-	m_Modifiers->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Interactive);
-	m_Modifiers->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
+	if(!legacy)
+	{
+		m_Modifiers->horizontalHeader()->setDefaultSectionSize(24);
+		m_Modifiers->horizontalHeader()->setMinimumSectionSize(24);
+		m_Modifiers->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Interactive);
+		m_Modifiers->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Interactive);
+		m_Modifiers->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
+	}
 	m_Modifiers->verticalHeader()->hide();
 	m_Modifiers->verticalHeader()->setDefaultSectionSize(18);
 	m_Modifiers->setToolTip(tr("<html>Commodities that affect the construction without "
@@ -85,11 +92,6 @@ AuBldConstruct::AuBldConstruct(QWidget* parent) : QWidget(parent)
 				"%1 Work stops if an enemy unit enters the construction site.</html>").arg(g_Au.MiddleDotSymbol()));
 	connect(m_Work, SIGNAL(clicked(bool)), SLOT(GoPushed()));
 
-	QHBoxLayout* hlay = new QHBoxLayout;
-	hlay->addWidget(m_Employ);
-	hlay->addStretch(1);
-	hlay->addWidget(m_Labor);
-
 	// Build the layout.
 	QGridLayout* lay = new QGridLayout;
 	int row=0;
@@ -98,10 +100,22 @@ AuBldConstruct::AuBldConstruct(QWidget* parent) : QWidget(parent)
 	lay->addWidget(m_Materials, row,0);			// Materials
 	lay->addWidget(m_Modifiers, row,1);			// Modifiers
 	row++;
-	lay->addLayout(hlay, row,0, 1,2);
+	if(legacy)
+	{
+		lay->addWidget(m_Employ, row,0);
+		lay->addWidget(m_Labor, row,1);
+	}
+	else
+	{
+		QHBoxLayout* hlay = new QHBoxLayout;
+		hlay->addWidget(m_Employ);
+		hlay->addStretch(1);
+		hlay->addWidget(m_Labor);
+		lay->addLayout(hlay, row,0, 1,2);
+	}
 	row++;
 	lay->addWidget(m_Work, row,0, 1,2);			// Work
-	lay->setColumnStretch(0,1);
+	if(!legacy) lay->setColumnStretch(0,1);
 	lay->setMargin(2);
 	lay->setSpacing(2);
 	setLayout(lay);
@@ -134,6 +148,11 @@ void AuBldConstruct::showEvent(QShowEvent* event)
 void AuBldConstruct::CitizenEnableChanged(int state)
 {
 	bool citizenOk = (state == Qt::Checked) ? true : false;
+	if(m_LegacyMode)
+	{
+		if(citizenOk != m_CitizenOk) emit LegacyActionRequested(AuLegacyCityProtocol::EmployCitizen, citizenOk);
+		return;
+	}
 	if(citizenOk != m_CitizenOk)
 	{
 		AuFrame* pFrame = auApp->Frame();
@@ -149,6 +168,7 @@ void AuBldConstruct::CitizenEnableChanged(int state)
 
 void AuBldConstruct::FetchPushed()
 {
+	if(m_LegacyMode) { emit LegacyActionRequested(AuLegacyCityProtocol::FetchMaterials, false); return; }
 	AuFrame* pFrame = auApp->Frame();
 	if(!pFrame)
 		return;
@@ -179,6 +199,157 @@ void AuBldConstruct::GoPushed()
 		m_Work->setText(tr("Work Construction Site"));
 }
 
+void AuBldConstruct::StopWorking()
+{
+	m_DoWork = false; m_Work->setDown(false); m_Work->setText(tr("Work Construction Site"));
+}
+
+void AuBldConstruct::SetLegacyTarget(const QString& name, const DeConstructionProcess& process,
+	bool available, bool citizenEnabled, bool halted)
+{
+	if(!m_LegacyMode) return;
+	m_LegacyAvailable = available; m_LegacyHalted = halted; m_CitizenOk = citizenEnabled;
+	m_Construct->setText(name); ShowProcessComponents(process);
+	{ const QSignalBlocker blocked(m_Employ); m_Employ->setChecked(citizenEnabled); }
+	if(!available)
+	{
+		StopWorking(); m_Labor->setText(name.isEmpty() ? QString() : tr("Construction Complete"));
+	}
+	else if(halted) { StopWorking(); m_Labor->setText(tr("Construction Halted")); }
+	else m_Labor->setText(process.LaborNeeded() ? tr("%L1 Labor Needed").arg(process.LaborNeeded()) : tr("No Labor Needed"));
+	SetLegacyRequestPending(m_LegacyPending);
+}
+
+void AuBldConstruct::SetLegacyRequestPending(bool pending)
+{
+	m_LegacyPending = pending;
+	if(!m_LegacyMode) return;
+	m_Employ->setEnabled(m_LegacyAvailable);
+	m_Work->setEnabled(m_DoWork || (m_LegacyAvailable && !m_LegacyHalted && !pending));
+}
+
+void AuBldConstruct::ShowProcessComponents(const DeConstructionProcess& process)
+{
+	// Materials and Modifiers
+	// We'll do these simultaneously so we only have to loop
+	// through the process components once.
+	if(m_Materials && m_Modifiers)
+	{
+		m_Materials->clear();
+		m_Modifiers->clearContents();
+		while(m_Modifiers->rowCount())
+			m_Modifiers->removeRow(0);
+		for(DeProcessComponentArray::const_iterator pci = process.Components().constBegin();
+				pci != process.Components().constEnd(); pci++)
+		{
+			QIcon icon((*pci).CommodityBitmapName());
+			if((*pci).IsRequired() && (*pci).QtyConsumed() > 0)
+			{
+				// Construction "Materials" are those
+				// components that are required AND that get
+				// consumed in the process. Some required things
+				// might not be consumed but could be required,
+				// such as a tool.
+				QString text;
+				if((*pci).QtyApplied() == 0)
+				{
+					// No components applied.
+					text = QString(tr("%1 needed")).arg((*pci).QtyConsumed());
+				}
+				else if((*pci).QtyApplied() == (*pci).QtyConsumed())
+				{
+					// All components applied.
+					if((*pci).Quality() > 0)
+						text = QString("%1 Q%2")
+							.arg((*pci).QtyApplied())
+							.arg((*pci).Quality());
+					else
+						text = QString("%1").arg((*pci).QtyApplied());
+				}
+				else
+				{
+					// Some components applied.
+					if((*pci).Quality() > 0)
+						text = QString("%1 of %2 Q%3")
+							.arg((*pci).QtyApplied())
+							.arg((*pci).QtyConsumed())
+							.arg((*pci).Quality());
+					else
+						text = QString("%1 of %2")
+							.arg((*pci).QtyApplied())
+							.arg((*pci).QtyConsumed());
+				}
+				QListWidgetItem* lwi = new QListWidgetItem(icon, text, m_Materials);
+				lwi->setToolTip(g_Au.CommodityName((*pci).CommodityId()));
+			}
+			else
+			{
+				// Construction "Modifiers" are those
+				// components that are not required OR that do
+				// not get consumed by the process.
+				QString text;
+				QString modicon;
+				if((*pci).EffectBitmapName())
+					modicon = QString((*pci).EffectBitmapName());
+				switch((*pci).Effect())
+				{
+				case CE_None:
+					text = tr("Does Nothing");
+					break;
+				case CE_DecreasesTime:
+					text = tr("Decreases Time");
+					break;
+				case CE_DecreasesMaterials:
+					text = tr("Decreases Materials");
+					break;
+				case CE_Required:
+					text = tr("Required");
+					break;
+				case CE_RequiredQ:
+					text = tr("Required and Limits Quality"
+							"<br>"
+							"<small>Output quality cannot exceed the quality of this patent.</small>");
+					break;
+				case CE_IncreasesQuantity:
+					text = tr("Increases Output");
+					break;
+				}
+
+				m_Modifiers->insertRow(0);
+
+				int col=0;
+				QTableWidgetItem* lwi = new QTableWidgetItem(icon, "");
+				lwi->setSizeHint(QSize(1,16));
+				lwi->setToolTip(g_Au.CommodityName((*pci).CommodityId()));
+				m_Modifiers->setItem(0, col++, lwi);
+
+				lwi = new QTableWidgetItem(QIcon(modicon), "");
+				lwi->setSizeHint(QSize(1,16));
+				lwi->setToolTip(tr("%1 %2").arg(g_Au.CommodityName((*pci).CommodityId())).arg(text));
+				m_Modifiers->setItem(0, col++, lwi);
+
+				if((*pci).QtyApplied())
+				{
+					// Component has been applied.
+					QTableWidgetItem* lwi = new QTableWidgetItem(QIcon(":data/mpReady.png"), "");
+					lwi->setSizeHint(QSize(1,16));
+					lwi->setToolTip(tr("%1 Ready").arg(g_Au.CommodityName((*pci).CommodityId())));
+					m_Modifiers->setItem(0, col++, lwi);
+				}
+				else if((*pci).IsRequired())
+				{
+					// Missing required component is holding up the process.
+					QTableWidgetItem* lwi = new QTableWidgetItem(QIcon(":data/mpNotReady.png"), "");
+					lwi->setSizeHint(QSize(1,16));
+					lwi->setToolTip(tr("%1 Needed").arg(g_Au.CommodityName((*pci).CommodityId())));
+					m_Modifiers->setItem(0, col++, lwi);
+				}
+			}
+		}
+		m_Modifiers->resizeColumnsToContents();
+	}
+}
+
 void AuBldConstruct::UpdateContents()
 {
 	if(!isVisible())
@@ -199,6 +370,12 @@ void AuBldConstruct::UpdateContents()
 		// Kill the timer. It will be restarted during the next showEvent.
 		if(m_timer && m_timer->isActive())
 			m_timer->stop();
+		return;
+	}
+
+	if(m_LegacyMode)
+	{
+		emit LegacyUpdateRequested(m_DoWork);
 		return;
 	}
 
@@ -287,124 +464,7 @@ void AuBldConstruct::UpdateContents()
 						m_Employ->blockSignals(false);
 					}
 
-					// Materials and Modifiers
-					// We'll do these simultaneously so we only have to loop
-					// through the process components once.
-					if(m_Materials && m_Modifiers)
-					{
-						m_Materials->clear();
-						m_Modifiers->clearContents();
-						while(m_Modifiers->rowCount())
-							m_Modifiers->removeRow(0);
-						for(DeProcessComponentArray::const_iterator pci = cp->Components().constBegin();
-								pci != cp->Components().constEnd(); pci++)
-						{
-							QIcon icon((*pci).CommodityBitmapName());
-							if((*pci).IsRequired() && (*pci).QtyConsumed() > 0)
-							{
-								// Construction "Materials" are those
-								// components that are required AND that get
-								// consumed in the process. Some required things
-								// might not be consumed but could be required,
-								// such as a tool.
-								QString text;
-								if((*pci).QtyApplied() == 0)
-								{
-									// No components applied.
-									text = QString(tr("%1 needed")).arg((*pci).QtyConsumed());
-								}
-								else if((*pci).QtyApplied() == (*pci).QtyConsumed())
-								{
-									// All components applied.
-									if((*pci).Quality() > 0)
-										text = QString("%1 Q%2")
-											.arg((*pci).QtyApplied())
-											.arg((*pci).Quality());
-									else
-										text = QString("%1").arg((*pci).QtyApplied());
-								}
-								else
-								{
-									// Some components applied.
-									if((*pci).Quality() > 0)
-										text = QString("%1 of %2 Q%3")
-											.arg((*pci).QtyApplied())
-											.arg((*pci).QtyConsumed())
-											.arg((*pci).Quality());
-									else
-										text = QString("%1 of %2")
-											.arg((*pci).QtyApplied())
-											.arg((*pci).QtyConsumed());
-								}
-								QListWidgetItem* lwi = new QListWidgetItem(icon, text, m_Materials);
-								lwi->setToolTip(g_Au.CommodityName((*pci).CommodityId()));
-							}
-							else
-							{
-								// Construction "Modifiers" are those
-								// components that are not required OR that do
-								// not get consumed by the process.
-								QString text;
-								QString modicon;
-								if((*pci).EffectBitmapName())
-									modicon = QString((*pci).EffectBitmapName());
-								switch((*pci).Effect())
-								{
-								case CE_None:
-									text = tr("Does Nothing");
-									break;
-								case CE_DecreasesTime:
-									text = tr("Decreases Time");
-									break;
-								case CE_DecreasesMaterials:
-									text = tr("Decreases Materials");
-									break;
-								case CE_Required:
-									text = tr("Required");
-									break;
-								case CE_RequiredQ:
-									text = tr("Required and Limits Quality"
-											"<br>"
-											"<small>Output quality cannot exceed the quality of this patent.</small>");
-									break;
-								case CE_IncreasesQuantity:
-									text = tr("Increases Output");
-									break;
-								}
-
-								m_Modifiers->insertRow(0);
-
-								int col=0;
-								QTableWidgetItem* lwi = new QTableWidgetItem(icon, "");
-								lwi->setSizeHint(QSize(1,16));
-								lwi->setToolTip(g_Au.CommodityName((*pci).CommodityId()));
-								m_Modifiers->setItem(0, col++, lwi);
-
-								lwi = new QTableWidgetItem(QIcon(modicon), "");
-								lwi->setSizeHint(QSize(1,16));
-								lwi->setToolTip(tr("%1 %2").arg(g_Au.CommodityName((*pci).CommodityId())).arg(text));
-								m_Modifiers->setItem(0, col++, lwi);
-
-								if((*pci).QtyApplied())
-								{
-									// Component has been applied.
-									QTableWidgetItem* lwi = new QTableWidgetItem(QIcon(":data/mpReady.png"), "");
-									lwi->setSizeHint(QSize(1,16));
-									lwi->setToolTip(tr("%1 Ready").arg(g_Au.CommodityName((*pci).CommodityId())));
-									m_Modifiers->setItem(0, col++, lwi);
-								}
-								else if((*pci).IsRequired())
-								{
-									// Missing required component is holding up the process.
-									QTableWidgetItem* lwi = new QTableWidgetItem(QIcon(":data/mpNotReady.png"), "");
-									lwi->setSizeHint(QSize(1,16));
-									lwi->setToolTip(tr("%1 Needed").arg(g_Au.CommodityName((*pci).CommodityId())));
-									m_Modifiers->setItem(0, col++, lwi);
-								}
-							}
-						}
-						m_Modifiers->resizeColumnsToContents();
-					}
+					ShowProcessComponents(*cp);
 
 					// Labor
 					laborNeeded = cp->LaborNeeded();

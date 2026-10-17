@@ -26,6 +26,8 @@ class AuGameSettings;
 class AuGLModelCache;
 class AuGLModelMaker;
 class AuItemManipulator;
+class AuLegacyCityConstruction;
+namespace AuLegacyCityProtocol { struct Request; }
 class DaGalaxy;
 class DaItem;
 class DaWorldLL;
@@ -862,6 +864,7 @@ public:
 	DdCommand* Command();
 
 	const DdCommand* Command() const;
+	void PlanLegacyCity(const AuLegacyCityProtocol::Request& request, AuLegacyCityConstruction* controls);
 
 	void ConfigureControls(const DiControlInputArray &aAllControls);
 

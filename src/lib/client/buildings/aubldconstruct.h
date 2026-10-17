@@ -20,6 +20,7 @@ class QListWidget;
 class QPushButton;
 class QTableWidget;
 class QTimer;
+class DeConstructionProcess;
 
 class AUCLIENT_DLL AuBldConstruct : public QWidget
 {
@@ -41,10 +42,25 @@ private:
 	QTableWidget*						m_Modifiers;
 	QTimer*								m_timer;
 	QPushButton*						m_Work;
+	bool m_LegacyMode = false, m_LegacyAvailable = false, m_LegacyHalted = false, m_LegacyPending = false;
+	void ShowProcessComponents(const DeConstructionProcess& process);
 
 public:
-	AuBldConstruct(QWidget* parent=0);
+	AuBldConstruct(QWidget* parent=0, bool legacy=false);
 	virtual ~AuBldConstruct();
+	// Reuse common F10 labor controls with a city-owned historical target.
+	// Default construction continues to operate modern Bd targets unchanged.
+	void SetLegacyTarget(const QString& name, const DeConstructionProcess& process,
+		bool available, bool citizenEnabled, bool halted);
+	void SetLegacyRequestPending(bool pending);
+	void StopWorking();
+	bool IsWorking() const { return m_DoWork; }
+
+signals:
+	void LegacyUpdateRequested(bool working);
+	void LegacyActionRequested(quint8 action, bool enabled);
+
+public:
 
 	// Clear information needed when this building is operated from a capitol building.
 	void ClearCapitolOp()

@@ -6,6 +6,8 @@
 #include <QRect>
 #include <QSet>
 
+namespace AuLegacyCity { struct Development; }
+
 namespace AuLegacyBd
 {
 namespace Geometry
@@ -30,6 +32,7 @@ struct Batch
 	bool twoSided = false;
 	bool stairs = false;
 	bool collisionOnly = false;
+	bool empireFlag = false;
 	// Identifies an always-open door/hatch frame. Render its alpha-cutout art,
 	// but omit the full frame quad from collision and sight obstruction.
 	quint32 doorId = 0;
@@ -70,8 +73,9 @@ struct Mesh
 // CPU triangles use CCW order for shared collision; scene upload reverses their
 // vertex order to the original 2016 CW rendering convention, preserving normals.
 AUDATA_DLL Mesh Build(const Design& design, const Options& options);
+AUDATA_DLL Mesh BuildProcedural(const AuLegacyCity::Development& development);
 AUDATA_DLL QString MaterialAtlas(quint16 originalCommodity);
-// Generation-specific seven-entry terrain pavement palette. These slots are
+// Original 18-entry terrain pavement palette. These slots are
 // used only in Legacy universes; they are not modern WORLDTEX material IDs.
 AUDATA_DLL int SiteTextureSlot(quint16 originalCommodity, bool constructed);
 AUDATA_DLL QString SiteTextureFile(int slot);
