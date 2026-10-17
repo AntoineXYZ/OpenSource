@@ -188,6 +188,9 @@ void DtClient::RxData(QTcpSocket& tcpSocket)
 		if(!m_PacketSize || m_PacketSizeBytesLeft)
 		{
 			int packetSizeBytesRead = AuUtil::ReadPacketSize(tcpSocket, m_PacketSize, m_PacketSizeBytesLeft);
+			// Finish a buffered multibyte header before returning to the 10 ms socket wait.
+			if(m_PacketSizeBytesLeft && tcpSocket.bytesAvailable() >= m_PacketSizeBytesLeft)
+				packetSizeBytesRead = AuUtil::ReadPacketSize(tcpSocket, m_PacketSize, m_PacketSizeBytesLeft);
 			if(m_PacketSizeBytesLeft)
 				break;					// We don't have all of the packet size bytes yet.
 			m_BytesRx += packetSizeBytesRead;
