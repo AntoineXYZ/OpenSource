@@ -23,6 +23,7 @@
 #include "daperson.h"
 #include "dgdata.h"
 #include "daworldll.h"
+#include "daworldringsection.h"
 #include "daworldsphere.h"
 #include <QDataStream>
 #include <QDateTime>
@@ -38,6 +39,64 @@
 namespace
 {
 AuPoint Point(const QVector3D& p) { return AuPoint(p.x(), p.y(), p.z()); }
+
+template<class Shader>
+void RenderFlag(Shader& shader, const AuMatrix4x4& model, const AuPoint& ambientUp,
+	GLuint texture, float force, float period, const AuGLVAO& vao)
+{
+	shader.SetAmbientLightUp(ambientUp.x, ambientUp.y, ambientUp.z);
+	shader.SetModelView(model);
+	shader.SetFlagTexture(texture);
+	shader.SetWind(force, period);
+	vao.SelectGL(); vao.DrawGL(); vao.DeselectGL();
+}
+
+void CreateFlagVAO(AuGLVAO& vao, AuGLEffects& re, float aspectRatio)
+{
+	// DaCity::CreateFlagVAO, AuAtom13 0x281950: six strips on each
+	// face, with the original wave displacement and normal-rotation samples.
+	const float x[] = {0, 1.3333334f, 2.6666667f, 4, 5.3333335f, 6.6666665f, 8};
+	const float u[] = {0, .16666667f, .33333334f, .5f, .6666667f, .8333333f, 1};
+	const float wave[] = {0, .7071f, 1, .7071f, 0, -.7071f, -1};
+	const float rotation[] = {1.5707964f, .7853982f, 0, -.7853982f, -1.5707964f, -.7853982f, 0};
+	float positions[72 * 3], normals[72 * 3], texCoordWave[72 * 4];
+	int count = 0;
+	const auto vertex = [&](int column, bool top, float normalY) {
+		positions[count * 3] = x[column];
+		positions[count * 3 + 1] = 0;
+		positions[count * 3 + 2] = top ? 0 : -8 * aspectRatio;
+		normals[count * 3] = 0;
+		normals[count * 3 + 1] = normalY;
+		normals[count * 3 + 2] = 0;
+		texCoordWave[count * 4] = u[column];
+		texCoordWave[count * 4 + 1] = top ? 1 : 0;
+		texCoordWave[count * 4 + 2] = wave[column];
+		texCoordWave[count * 4 + 3] = rotation[column];
+		++count;
+	};
+	for(int column = 0; column < 6; ++column)
+	{
+		vertex(column, false, -1); vertex(column, true, -1); vertex(column + 1, false, -1);
+		vertex(column + 1, false, -1); vertex(column, true, -1); vertex(column + 1, true, -1);
+	}
+	for(int column = 6; column > 0; --column)
+	{
+		vertex(column, false, 1); vertex(column, true, 1); vertex(column - 1, true, 1);
+		vertex(column - 1, true, 1); vertex(column - 1, false, 1); vertex(column, false, 1);
+	}
+	vao.CreateGL(re, count, 3);
+	vao.SelectGL();
+	const auto buffer = [&](GLuint attribute, int components, const float* data, size_t bytes) {
+		re.glBindBuffer(GL_ARRAY_BUFFER, vao.Buffer(attribute));
+		re.glBufferData(GL_ARRAY_BUFFER, bytes, data, GL_STATIC_DRAW);
+		re.glVertexAttribPointer(attribute, components, GL_FLOAT, GL_FALSE, 0, nullptr);
+	};
+	buffer(0, 3, positions, sizeof(positions));
+	buffer(1, 3, normals, sizeof(normals));
+	buffer(2, 4, texCoordWave, sizeof(texCoordWave));
+	re.glBindBuffer(GL_ARRAY_BUFFER, 0);
+	vao.DeselectGL();
+}
 
 // DpGlobeRoad::Contains, AuAtom13 0x652cf0. The visible pavement's
 // eight-foot border is deliberately absent from the placement footprint.
@@ -436,6 +495,12 @@ struct DaLegacyCity::Runtime
 		QVector4D tint = QVector4D(1,1,1,1);
 		float selfIllumination = 0;
 	};
+	struct FlagDraw
+	{
+		AuGLVAO vao;
+		GLuint texture = 0;
+		quint32 empire = 0;
+	};
 	QMutex lock;
 	quint64 revision = 0, drawRevision = 0;
 	quint64 sourceRevision = 0;
@@ -443,6 +508,7 @@ struct DaLegacyCity::Runtime
 	QVector<AuLegacyCity::Development> geometryState;
 	QVector<Building> buildings;
 	QVector<DrawBatch> drawBatches;
+	QVector<FlagDraw> flagDraws;
 	quint64 siteRevision = 0, terrainRevision = 0, terrainDrawRevision = 0;
 	const DaWorldLL* siteWorld = nullptr;
 	QVector<AuLegacyCity::Development> siteState;
@@ -586,6 +652,8 @@ struct DaLegacyCity::Runtime
 	void DeleteDraw(AuAtomRenderInfo& ari, const AuId& id)
 	{
 		for(auto& batch : drawBatches) if(batch.vao.VAO()) batch.vao.DeleteGL();
+		for(auto& flag : flagDraws) if(flag.vao.VAO()) flag.vao.DeleteGL();
+		flagDraws.clear();
 		drawBatches.clear(); drawRevision = 0;
 		if(ari.re) ari.re->DeleteTextures(id.GetID());
 	}
@@ -1741,6 +1809,11 @@ void DaLegacyCity::RenderEnvironmentObject(const AuMatrix4x4& projection, AuAtom
 	const auto model = matrices.constFind(Id());
 	if(!world || model == matrices.cend()) return;
 	UpdateSiteTerrain(ari);
+	QVector<AuLegacyCity::Flag> flags;
+	{ QReadLocker stateLock(&m_CityLock); flags = m_City.flags; }
+	// DaCity::EnclosureNeeded 0x28f190, also used by CreateDeviceObjects.
+	const bool enclosureNeeded = (world->Hydrographics() && world->AltitudeMSL(Transform().Translation()) <= -32)
+		|| !world->HasBreathableAtmosphere();
 	QMutexLocker lock(&m_Runtime->lock); m_Runtime->Ensure(*this);
 	if(m_Runtime->drawRevision != m_Runtime->revision)
 	{
@@ -1754,25 +1827,15 @@ void DaLegacyCity::RenderEnvironmentObject(const AuMatrix4x4& projection, AuAtom
 			const QImage atlas(AuLegacyBd::Geometry::MaterialAtlas(atlasMaterial));
 			for(const auto& batch : building.mesh.batches)
 			{
-				if(batch.collisionOnly) continue;
-				QImage flagImage;
-				if(batch.empireFlag)
-				{
-					const quint32 flagEmpire = EmpireId();
-					const DgData& gd = g_Au.LockDataForRead(); gd.EmpireFlag(flagEmpire, flagImage); g_Au.UnlockData();
-					if(flagImage.isNull()) continue;
-				}
-				const float flagRatio = flagImage.width() ? float(flagImage.height())/flagImage.width() : 1.f;
+				if(batch.collisionOnly || batch.empireFlag) continue;
 				QList<AuTriTexNS> triangles;
 				const bool buildingAtlas = batch.textureFile.isEmpty() && batch.textureSlot >= 0;
 				const QVector2D inset = buildingAtlas
 					? AuLegacyBd::Geometry::TextureInset(batch.textureSlot) : QVector2D();
-				const auto vertex = [inset,flagRatio,&batch](const AuLegacyShip::Rendering::Vertex& v) {
+				const auto vertex = [inset](const AuLegacyShip::Rendering::Vertex& v) {
 					const QPointF uv(inset.x() + v.uv.x() * (1 - 2 * inset.x()),
 						inset.y() + v.uv.y() * (1 - 2 * inset.y()));
-					QVector3D position=v.position;
-					if(batch.empireFlag) position.setZ(31-(31-position.z())*flagRatio);
-					return AuPointTexNS(Point(position), uv, Point(v.normal), 0); };
+					return AuPointTexNS(Point(v.position), uv, Point(v.normal), 0); };
 				for(int i=0; i+2<batch.vertices.size(); i+=3)
 					// The shared CPU mesh uses CCW surfaces for collision. Submit
 					// native 2016 CW faces without changing normals or UV bindings.
@@ -1780,8 +1843,7 @@ void DaLegacyCity::RenderEnvironmentObject(const AuMatrix4x4& projection, AuAtom
 				Runtime::DrawBatch draw; draw.development = building.state.id; draw.twoSided = batch.twoSided;
 				draw.vao.CreateForModelTexFog(*ari.re, triangles, GL_STATIC_DRAW);
 				QImage texture;
-				if(batch.empireFlag) texture = flagImage;
-				else if(!batch.textureFile.isEmpty()) texture.load(batch.textureFile);
+				if(!batch.textureFile.isEmpty()) texture.load(batch.textureFile);
 				else if(batch.textureSlot < 0)
 				{ texture = QImage(1,1,QImage::Format_ARGB32); texture.fill(Qt::white); }
 				else
@@ -1794,7 +1856,7 @@ void DaLegacyCity::RenderEnvironmentObject(const AuMatrix4x4& projection, AuAtom
 				// GL_LINEAR for both filters and no mipmaps on building atlases.
 				draw.texture = ari.re->CreateTextureFromBitmap(Id().GetID(),
 					QStringLiteral("legacy-city/%1/%2/%3").arg(building.state.materialId).arg(batch.textureSlot)
-						.arg(batch.empireFlag ? QStringLiteral("flag-%1").arg(EmpireId()) : batch.textureFile),
+						.arg(batch.textureFile),
 					texture, GL_LINEAR, buildingAtlas ? GL_LINEAR : GL_LINEAR_MIPMAP_LINEAR, !buildingAtlas);
 				m_Runtime->drawBatches.append(draw);
 			}
@@ -1842,9 +1904,101 @@ void DaLegacyCity::RenderEnvironmentObject(const AuMatrix4x4& projection, AuAtom
 		draw.vao.SelectGL(); draw.vao.DrawGL(); draw.vao.DeselectGL();
 		if(draw.twoSided && cullingEnabled) ari.re->glEnable(GL_CULL_FACE);
 	}
-	ari.re->glFrontFace(GLenum(previousFrontFace));
 	if(sunsBlocked) shader.InvalidateSuns();
 	shader.Deselect();
+
+	for(int i = flags.size(); i < m_Runtime->flagDraws.size(); ++i)
+		if(m_Runtime->flagDraws[i].vao.VAO()) m_Runtime->flagDraws[i].vao.DeleteGL();
+	m_Runtime->flagDraws.resize(flags.size());
+	const float seconds = AuTime::CurrentMinCycle() * 60.f;
+	const auto* ring = dynamic_cast<const DaWorldRingSection*>(world);
+	const auto renderFlags = [&]() {
+		for(int i = 0; i < flags.size(); ++i)
+		{
+			const auto& flag = flags[i];
+			auto& draw = m_Runtime->flagDraws[i];
+			const auto building = std::find_if(m_Runtime->buildings.cbegin(), m_Runtime->buildings.cend(),
+				[&flag](const Runtime::Building& b) { return b.state.location == flag.location; });
+			if(building == m_Runtime->buildings.cend() || !building->state.constructed || building->state.demolished) continue;
+			if(!draw.vao.VAO() || draw.empire != flag.empire)
+			{
+				if(draw.vao.VAO()) draw.vao.DeleteGL();
+				draw.texture = 0;
+				QImage image;
+				const DgData& gd = g_Au.LockDataForRead(); gd.EmpireFlag(flag.empire, image); g_Au.UnlockData();
+				if(image.isNull()) continue; // Retry when the empire image arrives.
+				draw.empire = flag.empire;
+				draw.texture = ari.re->CreateTextureFromBitmap(Id().GetID(),
+					QStringLiteral("Flag:%1").arg(flag.empire), image, GL_LINEAR, GL_LINEAR, false, 1);
+				CreateFlagVAO(draw.vao, *ari.re, float(image.height()) / image.width());
+			}
+			if(!draw.texture) continue;
+			// DaCity::CreateDeviceObjects 0x2813b0. Use the flag's own
+			// weather and level; building heading does not turn the cloth.
+			const auto& dev = building->state;
+			AuMatrix4x4 placement;
+			world->BuildingConstructionTransform(world->LocOfLL(dev.location, dev.altitudeMSL),
+				dev.facingRadians, nullptr, AuPoint(), placement);
+			const AuPoint base = placement.Translation();
+			const AuPoint up = -world->GravityDir(base);
+			const AuPoint location = base + up * 3.0 + (up * 27.0) * double(float(flag.level) / 30.f);
+			float direction = 0, force = 1, period = 1;
+			if(!enclosureNeeded)
+			{
+				const QPointF wind = world->WindAt(flag.location);
+				direction = float(std::atan2(wind.y(), wind.x()) + double(1.5707964f));
+				force = qMin(std::sqrt(float(wind.x() * wind.x() + wind.y() * wind.y())) / 100.f, 1.f);
+				period = std::sin(seconds / (5.f - force * 4.75f) * 3.1415927f * 2.f);
+			}
+			AuMatrix4x4 flagModel = worldModel;
+			flagModel.Translate(location);
+			flagModel.Rotate(AuPoint::CalculateRotation(up));
+			flagModel.RotateZ(direction);
+			AuPoint ambientUp = flagModel.ProjectVector(-world->GravityDir(location));
+			if(ring)
+				RenderFlag(ari.re->GLSL().RingworldFlagShader(), flagModel, ambientUp, draw.texture, force, period, draw.vao);
+			else
+				RenderFlag(ari.re->GLSL().FlagShader(), flagModel, ambientUp, draw.texture, force, period, draw.vao);
+		}
+	};
+	if(!flags.isEmpty())
+	{
+		if(ring)
+		{
+			auto& flagShader = ari.re->GLSL().RingworldFlagShader();
+			flagShader.Select(projection, *ari.re);
+			flagShader.SetAmbientLight(ambientR, ambientG, ambientB);
+			flagShader.SetFog(fogDensity, fogR, fogG, fogB);
+			for(int sun = 0; sun < MAX_SUNS; ++sun)
+			{
+				const AuGLSun& light = ari.re->Sun(sun);
+				flagShader.SetSun(sun, light.m_Enabled && !sunsBlocked, light.m_Attenuation,
+					light.m_ColorR, light.m_ColorG, light.m_ColorB, light.m_LocX, light.m_LocY, light.m_LocZ,
+					light.m_DiskRadius, ring->ShadowPanelSunAngle(light.m_ShadowAngle), light.m_ShadowCount,
+					light.m_XVec.x, light.m_XVec.y, light.m_XVec.z, light.m_YVec.x, light.m_YVec.y, light.m_YVec.z);
+			}
+			renderFlags();
+			flagShader.Deselect();
+		}
+		else
+		{
+			auto& flagShader = ari.re->GLSL().FlagShader();
+			flagShader.Select(projection, *ari.re);
+			flagShader.SetAmbientLight(ambientR, ambientG, ambientB);
+			flagShader.SetFog(fogDensity, fogR, fogG, fogB);
+			const AuPoint globe = worldModel.Translation();
+			flagShader.SetGlobeLocation(globe.x, globe.y, globe.z);
+			for(int sun = 0; sun < MAX_SUNS; ++sun)
+			{
+				const AuGLSun& light = ari.re->Sun(sun);
+				flagShader.SetSun(sun, light.m_Enabled && !sunsBlocked, light.m_Attenuation,
+					light.m_ColorR, light.m_ColorG, light.m_ColorB, light.m_LocX, light.m_LocY, light.m_LocZ, light.m_DiskRadius);
+			}
+			renderFlags();
+			flagShader.Deselect();
+		}
+	}
+	ari.re->glFrontFace(GLenum(previousFrontFace));
 }
 
 bool DaLegacyCity::RegisterPublicDesigns(QSqlDatabase& db, QString& error)

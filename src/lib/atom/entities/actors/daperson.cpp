@@ -5787,7 +5787,7 @@ void DaPerson::ProcessControlInput(const DiControlInputArray& aActiveControls, D
 			{
 				// "firing" a flag at the terrain tries to claim the world. On the client, this can trigger the display of a UI to 
 				// create a new empire.
-				if(!EmpireId() && !nuPose.IsTurret() && !InDesignEnvironment())
+				if(!g_Au.IsLegacyGeneration() && !EmpireId() && !nuPose.IsTurret() && !InDesignEnvironment())
 				{
 					// I have no empire; I am not sitting at a turret gun; and I am not in a design environment.
 					AuGearPos gearPos(CurrentItemPos());
@@ -21061,6 +21061,12 @@ void DaPerson::BdManufactureSetWarehouseStorage(COMMODITYID storeCID, const AuId
 
 bool DaPerson::ClaimWorld(DaWorldLL* llworld, const AuPoint& flagLoc)
 {
+	// Legacy settlement uses town-square construction, not terrain flag claims.
+	if(g_Au.IsLegacyGeneration())
+	{
+		Thought(tr("Flags cannot claim terrain in a Legacy universe. Found a city by building a town square."));
+		return false;
+	}
 	quint32 empireId = EmpireId();
 	if(!empireId)
 		return false;	// I cannot claim a world if I have no empire.
