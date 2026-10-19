@@ -1,6 +1,8 @@
 #include "aulegacycityconstruction.h"
 #include "aulegacycityconstructionlayout.h"
 #include "aulegacycityconstructiontips.h"
+#include "aulegacycitymanufacture.h"
+#include "aulegacycitybank.h"
 #include "auapp.h"
 #include "aubldconstruct.h"
 #include "deconstructionprocess.h"
@@ -35,7 +37,9 @@
 #include <QSet>
 #include <QShowEvent>
 #include <QSignalBlocker>
+#include <QStandardItemModel>
 #include <QStackedWidget>
+#include <QTabBar>
 #include <QTimer>
 #include <QToolButton>
 #include <QVBoxLayout>
@@ -232,8 +236,7 @@ AuLegacyCityConstruction::AuLegacyCityConstruction(QWidget* parent) : QWidget(pa
 	m_ProductHeading->setToolTip(tr(AuLegacyCityConstructionTips::ProductsHeading));
 	m_ProductIcons = new QLabel(this); m_ProductIcons->setMinimumSize(1, 50); details->addWidget(m_ProductIcons, 8, 0, 1, 7);
 	m_MakeProduct = new QCheckBox(tr("Make Product"), this); m_MakeProduct->setChecked(true); details->addWidget(m_MakeProduct, 9, 0, 1, 7);
-	m_MakeProduct->setEnabled(false);
-	m_MakeProduct->setToolTip(tr(AuLegacyCityConstructionTips::MakeProduct) + tr("\nLegacy manufacturing is not available yet."));
+	m_MakeProduct->setToolTip(tr(AuLegacyCityConstructionTips::MakeProduct));
 	m_Products = new QComboBox(this); details->addWidget(m_Products, 10, 0, 1, 7);
 	m_Jobs = new QLabel(tr("Jobs"), this); details->addWidget(m_Jobs, 11, 0, 1, 7);
 	m_Homes = new QLabel(tr("Homes"), this); details->addWidget(m_Homes, 12, 0, 1, 7);
@@ -241,8 +244,9 @@ AuLegacyCityConstruction::AuLegacyCityConstruction(QWidget* parent) : QWidget(pa
 	details->setRowStretch(13, 1); details->setColumnStretch(0, 1);
 	layout->addLayout(details, DetailRow, 0, 1, 2);
 
-	connect(m_Stop, &QToolButton::clicked, this, [this]() { m_Planning = false; emit StopPlanning(); });
+	connect(m_Stop, &QToolButton::clicked, this, [this]() { PlanningStopped(); emit StopPlanning(); });
 	connect(m_Clear, &QToolButton::clicked, this, [this]() {
+		PlanningStopped();
 		m_Planning = true; m_ActiveRequest = AuLegacyCityProtocol::Request(); m_ActiveRequest.action = AuLegacyCityProtocol::ClearLand;
 		UpdatePlanningSettings();
 	});
@@ -268,7 +272,8 @@ AuLegacyCityConstruction::AuLegacyCityConstruction(QWidget* parent) : QWidget(pa
 		if(valid && angle >= 0 && angle <= 90)
 		{ g_Au.Settings().writeEntry("Legacy2016/RoundingAngle", angle); UpdatePlanningSettings(); }
 	});
-	connect(m_Products, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() { DescribeProducts(); });
+	connect(m_Products, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() { DescribeProducts(); UpdatePlanningSettings(); });
+	connect(m_MakeProduct, &QCheckBox::toggled, this, [this](bool) { UpdateControls(); UpdatePlanningSettings(); });
 	m_Timer = new QTimer(this); m_Timer->setInterval(1000);
 	connect(m_Timer, &QTimer::timeout, this, &AuLegacyCityConstruction::UpdateControls);
 	m_Timeout = new QTimer(this); m_Timeout->setSingleShot(true); m_Timeout->setInterval(60000);
@@ -486,7 +491,10 @@ void AuLegacyCityConstruction::UpdatePlanningSettings()
 	m_ActiveRequest.material = m_Material; m_ActiveRequest.roadSlab = m_Grading->currentData().toInt() == 1;
 	m_ActiveRequest.roadWidthMeters = float(qBound(8.0, m_RoadWidth->currentText().toDouble(), 80.0));
 	m_ActiveRequest.targetX = float(qBound(0.0, m_Angle->currentText().toDouble(), 90.0));
-	m_ActiveRequest.targetY = float(m_Grading->currentData().toInt()); emit PlanConstruction(m_ActiveRequest);
+	m_ActiveRequest.targetY = float(m_Grading->currentData().toInt());
+	m_ActiveRequest.manufacturingRecipe = quint16(m_Products->currentData().toUInt());
+	m_ActiveRequest.citizenEnabled = m_MakeProduct->isChecked();
+	emit PlanConstruction(m_ActiveRequest);
 }
 
 QPixmap AuLegacyCityConstruction::PlacementIcon(const AuLegacyCityProtocol::Request& request) const
@@ -515,11 +523,39 @@ void AuLegacyCityConstruction::SetCursorRoadSlab(bool slab)
 	m_Grading->setCurrentIndex(slab ? 1 : 0);
 }
 
+void AuLegacyCityConstruction::SetCursorProductChoices(const QVector<quint16>& allowed, quint16 selected)
+{
+	if(!m_Planning || m_ActiveRequest.industryId != m_Industry) return;
+	const QSignalBlocker blocked(m_Products);
+	auto* model = qobject_cast<QStandardItemModel*>(m_Products->model());
+	for(int index = 0; model && index < m_Products->count(); ++index)
+		if(auto* item = model->item(index))
+		{
+			const bool enabled = allowed.contains(quint16(m_Products->itemData(index).toUInt()));
+			if(item->isEnabled() != enabled) item->setEnabled(enabled);
+		}
+	const int index = m_Products->findData(uint(selected));
+	const bool selectionChanged = index != m_Products->currentIndex();
+	if(selectionChanged) m_Products->setCurrentIndex(index);
+	m_ActiveRequest.manufacturingRecipe = quint16(m_Products->currentData().toUInt());
+	if(selectionChanged) DescribeProducts();
+}
+
+void AuLegacyCityConstruction::PlanningStopped()
+{
+	m_Planning = false;
+	if(auto* model = qobject_cast<QStandardItemModel*>(m_Products->model()))
+		for(int index = 0; index < m_Products->count(); ++index)
+			if(auto* item = model->item(index)) item->setEnabled(true);
+}
+
 AuLegacyCityProtocol::Request AuLegacyCityConstruction::BuildRequest() const
 {
 	AuLegacyCityProtocol::Request request; request.action = AuLegacyCityProtocol::Build;
 	request.industryId = m_Industry; request.processId = m_Process; request.material = m_Material;
 	request.designId = m_Designs->currentData().toUInt(); request.levels = 1;
+	request.manufacturingRecipe = quint16(m_Products->currentData().toUInt());
+	request.citizenEnabled = m_MakeProduct->isChecked();
 	request.roadWidthMeters = float(qBound(8.0, m_RoadWidth->currentText().toDouble(), 80.0));
 	request.roadSlab = m_Grading->currentData().toInt() == 1;
 	request.targetX = float(qBound(0.0, m_Angle->currentText().toDouble(), 90.0));
@@ -575,14 +611,15 @@ void AuLegacyCityConstruction::UpdateControls()
 	const bool idle = online && !m_PendingToken;
 	m_Clear->setEnabled(idle); m_Stop->setEnabled(online);
 	m_Designs->setEnabled(idle);
-	m_Products->setEnabled(m_MakeProduct->isChecked());
+	m_MakeProduct->setEnabled(idle && m_Products->count() != 0);
+	m_Products->setEnabled(idle && m_MakeProduct->isChecked() && m_Products->count() != 0);
 	for(auto* button : m_Pages->findChildren<QPushButton*>()) button->setEnabled(idle && m_Loaded);
 }
 
 void AuLegacyCityConstruction::ResetTransport()
 {
 	const bool interrupted = m_PendingToken || m_Planning;
-	emit StopPlanning(); m_PendingToken = 0; m_Timeout->stop(); m_Planning = false;
+	PlanningStopped(); emit StopPlanning(); m_PendingToken = 0; m_Timeout->stop();
 	if(interrupted && isVisible()) ReportMessage(tr("Connection changed. Select construction again after reconnecting."));
 	UpdateControls();
 }
@@ -594,16 +631,23 @@ void AuLegacyCityConstruction::showEvent(QShowEvent* event)
 
 void AuLegacyCityConstruction::hideEvent(QHideEvent* event)
 {
-	m_Planning = false; emit StopPlanning(); m_Timer->stop(); QWidget::hideEvent(event);
+	PlanningStopped(); emit StopPlanning(); m_Timer->stop(); QWidget::hideEvent(event);
 }
 
 
 AuLegacyCityLabor::AuLegacyCityLabor(QWidget* parent) : QWidget(parent)
 {
-	// AuLabor/AuLaborCity (2016, 0x1401bfdd0/0x1401ca750): ordinary
-	// construction has only its labor page, selected by the occupied site.
+	// AuLabor/AuLaborCity (2016, 0x1401bfdd0/0x1401ca750): a production
+	// building extending a level retains Construction and Manufacture tabs.
 	auto* layout = new QGridLayout(this); layout->setMargin(2); layout->setSpacing(0);
-	m_Labor = new AuBldConstruct(this, true); layout->addWidget(m_Labor, 0, 0);
+	m_LaborTabs = new QTabBar(this);
+	m_LaborTabs->addTab(QIcon(":data/ConstructionSign.png"), tr("Construction"));
+	m_LaborTabs->addTab(QIcon(":data/HammerAndSickle.png"), tr("Manufacture"));
+	layout->addWidget(m_LaborTabs, 0, 0); m_LaborTabs->hide();
+	m_LaborPages = new QStackedWidget(this); layout->addWidget(m_LaborPages, 1, 0);
+	m_Labor = new AuBldConstruct(this, true); m_LaborPages->addWidget(m_Labor);
+	m_Manufacture = new AuLegacyCityManufacture(this); m_LaborPages->addWidget(m_Manufacture);
+	m_Bank = new AuLegacyCityBank(this); m_LaborPages->addWidget(m_Bank);
 	m_Info = new QLabel(tr("<html><p>Use this window to use the buildings and roads in a city.</p>"
 		"<p>The contents of this window change based on the building or road site you occupy. "
 		"You do not have to be inside a building; stand anywhere at the site.</p><p><i>Tips</i></p>"
@@ -622,7 +666,11 @@ AuLegacyCityLabor::AuLegacyCityLabor(QWidget* parent) : QWidget(parent)
 		"%1 <b>Retail Stores</b> buy and sell a wide range of things: clothing, tools, weapons, ammunition, construction supplies, spare parts, fuel, and more.<br>"
 		"%1 <b>Spacecraft Factories</b> make and sell spacecraft.<br></html>").arg(g_Au.MiddleDotSymbol()), this);
 	m_Info->setWordWrap(true); m_Info->setAlignment(Qt::AlignTop | Qt::AlignLeft);
-	layout->addWidget(m_Info, 0, 0);
+	m_LaborPages->addWidget(m_Info);
+	connect(m_LaborTabs, &QTabBar::currentChanged, this, [this](int index) {
+		if(m_DualPages && index >= 0) m_LaborPages->setCurrentIndex(m_LaborTabs->tabData(index).toInt());
+	});
+	connect(m_Manufacture, &AuLegacyCityManufacture::AvailabilityChanged, this, [this](bool) { UpdateControls(); });
 	m_Timer = new QTimer(this); m_Timer->setInterval(1000);
 	connect(m_Timer, &QTimer::timeout, this, [this]() {
 		// The shared labor page runs its own work timer while visible. Keep
@@ -749,6 +797,10 @@ void AuLegacyCityLabor::UpdateControls()
 			&& m_DeferredCitizenRequest.developmentId == entry->developmentId)
 			m_CitizenEnabled = m_DeferredCitizenRequest.citizenEnabled;
 	}
+	m_Manufacture->SetTarget(entry ? entry->cityId : 0, entry ? entry->developmentId : 0);
+	// Hidden production pages still receive the occupied site's snapshot.
+	// This also discovers processes when the server initializes a new level.
+	if(online && entry && !m_Manufacture->isVisible()) m_Manufacture->Refresh();
 	QString name;
 	if(entry)
 	{
@@ -760,7 +812,25 @@ void AuLegacyCityLabor::UpdateControls()
 		name = QStringLiteral("<b>%1</b>").arg(name.toHtmlEscaped());
 	}
 	m_Labor->SetLegacyTarget(name, process, online && unfinished, entry && m_CitizenEnabled, entry && entry->halted);
-	m_Labor->setVisible(online && unfinished); m_Info->setVisible(!online || !unfinished);
+	const bool manufacturing = online && m_Manufacture->HasIndustry();
+	const bool banking = online && entry && entry->completedLevels && (entry->industryId == 100 || entry->industryId == 123);
+	m_Bank->SetTarget(banking ? entry->cityId : 0, banking ? entry->developmentId : 0, banking && entry->industryId == 123);
+	const int previousPage = m_LaborPages->currentIndex();
+	{
+		const QSignalBlocker blocked(m_LaborTabs);
+		while(m_LaborTabs->count()) m_LaborTabs->removeTab(0);
+		const auto addPage = [this](QWidget* page, const QString& title) {
+			const int tab = m_LaborTabs->addTab(title); m_LaborTabs->setTabData(tab, m_LaborPages->indexOf(page));
+		};
+		if(online && unfinished) addPage(m_Labor, tr("Construction"));
+		if(manufacturing) addPage(m_Manufacture, tr("Manufacture"));
+		if(banking) addPage(m_Bank, entry->industryId == 123 ? tr("Government") : tr("Bank"));
+		for(int tab = 0; tab < m_LaborTabs->count(); ++tab)
+			if(m_LaborTabs->tabData(tab).toInt() == previousPage) m_LaborTabs->setCurrentIndex(tab);
+	}
+	m_DualPages = m_LaborTabs->count() > 1; m_LaborTabs->setVisible(m_DualPages);
+	if(m_LaborTabs->count()) m_LaborPages->setCurrentIndex(m_LaborTabs->tabData(m_LaborTabs->currentIndex()).toInt());
+	else m_LaborPages->setCurrentWidget(m_Info);
 	if(!online) m_Labor->StopWorking();
 }
 

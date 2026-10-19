@@ -14,6 +14,8 @@
 #include "aufireparticles.h"
 #include "auglmodelmaker.h"
 #include "aulegacybuildinggeometry.h"
+#include "aulegacycitycatalogue.h"
+#include "auqueryenvironment.h"
 #include "auroadmap.h"
 #include "auscparts.h"
 #include "ausmokeparticles.h"
@@ -3888,7 +3890,14 @@ void DaWorldLL::TallyVehicles(const AuId& cityId, quint32 empireId, QList<COMMOD
 
 		if(vehicle->EmpireId() != empireId)
 			continue;				// Only vehicles of the city's empire can be used by its citizens.
-		if(vehicle->InBdCity() != cityId)
+		AuId vehicleCity;
+		if(g_Au.IsLegacyGeneration())
+		{
+			vehicleCity = vehicle->LockEnvironmentQuery()->LegacyCityId();
+			vehicle->UnlockEnvironmentQuery();
+		}
+		else vehicleCity = vehicle->InBdCity();
+		if(vehicleCity != cityId)
 			continue;
 
 		// Found a vehicle in the city.
@@ -7884,6 +7893,17 @@ void DaWorldLL::RenderTerrainInfoSprite(AuGLEffects& re, const AuPoint& txpt, GL
 	}
 }
 
+void DaWorldLL::RenderLegacyCityInteriors(const AuMatrix4x4& projection, AuAtomRenderInfo& ari,
+	AuModelMatrixHash& matrices, const DaPerson* sceneAtom)
+{
+	if(!g_Au.IsLegacyGeneration()) return;
+	DaAtomList atoms;
+	ListSubatoms(atoms);
+	for(DaAtom* atom : atoms)
+		if(auto* city = dynamic_cast<DaLegacyCity*>(atom))
+			city->RenderPreTerrain(projection, ari, matrices, sceneAtom);
+}
+
 void DaWorldLL::RenderTerrainInfo(const AuMatrix4x4& model, AuAtomRenderInfo& ari, const DaPerson* scenePerson)
 {
 	if(ari.TopViewInfo() == AuAtomRenderInfo::VI_None)
@@ -8121,8 +8141,10 @@ void DaWorldLL::RenderTerrainInfo(const AuMatrix4x4& model, AuAtomRenderInfo& ar
 					continue;				// We don't need to see buildings on the other side of the planet.
 				txpt = tP.Project(txpt);	// Calculate screen space location of object.
 
-				QString sname = QString("IID%1").arg((*bi).m_IID);
+				QString sname = QString((*bi).m_IsBd ? "IID%1" : "LegacyIID%1").arg((*bi).m_IID);
 				GLuint texture1 = ari.re->UseTexture(STATIC_TEXTURE_ID, sname);
+				if(!texture1 && !(*bi).m_IsBd)
+					texture1 = ari.re->UseTexture(STATIC_TEXTURE_ID, QString("IID%1").arg((*bi).m_IID));
 
 				GLuint texQ;
 				if((*bi).IsBdUnderConstruction())
@@ -8464,6 +8486,29 @@ void DaWorldLL::UpdateBuildingOverlaySprites(const AuPoint& worldLoc, quint32 sc
 						hitsCur, hitsTot, bd->IsBurning()));
 			continue;
 		}
+		if(g_Au.IsLegacyGeneration())
+			if(const auto* city = dynamic_cast<const DaLegacyCity*>(*it))
+			{
+				const auto* catalogue = AuLegacyCityCatalogue::BuiltIn();
+				if(!catalogue) continue;
+				const auto state = city->Snapshot();
+				const QColor color = PoliticalStanceColor(sceneEmpireId, state.controllingEmpire, true);
+				// RenderTerrainInfo (2016 0x4f88d0/0x570d40) visits each
+				// city's buildings; roads belong to their separate overlay.
+				for(const auto& development : state.developments)
+				{
+					if(development.demolished || development.industryId == 2) continue;
+					const auto industry = INDUSTRYID(catalogue->RuntimeIndustryId(
+						AuLegacyCity::IndustryId(development.industryId)));
+					const quint8 pending = development.targetLevels > development.completedLevels
+						? quint8(development.targetLevels - development.completedLevels) : 0;
+					const AuPoint buildLoc = LocOfLL(development.location, development.altitudeMSL);
+					// City Names shares this cache; label the town square once.
+					const QString name = development.industryId == 1 ? state.name : QString();
+					m_OverlayBuildings.insert(buildLoc, AuBldSprite(name, color, industry,
+						development.completedLevels, pending));
+				}
+			}
 	}
 }
 
@@ -13735,6 +13780,15 @@ bool DaWorldLL::IsSuitableRespawnPlanet(quint32 empireId) const
 	quint32 claimEmpire = ClaimedByEmpire();
 	if(claimEmpire && claimEmpire != empireId)
 		return false;		// World is claimed by someone else.
+
+	if(g_Au.IsLegacyGeneration())
+	{
+		DaAtomList cities;
+		FindLegacyCitiesRecursive(cities);
+		for(const auto* city : cities)
+			if(city->IsNormal() && city->EmpireId() && city->EmpireId() != empireId)
+				return false;	// A legacy city belongs to another empire.
+	}
 
 	if(!BdHere())
 		return true;		// No buildings or cities at all. This world is ok.

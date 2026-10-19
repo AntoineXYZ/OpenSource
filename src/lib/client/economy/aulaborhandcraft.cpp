@@ -14,6 +14,7 @@
 #include "daworldll.h"
 #include "demanufacturingprocess.h"
 #include "dgdata.h"
+#include "aulegacycitycatalogue.h"
 #include <QCheckBox>
 #include <QComboBox>
 #include <QGridLayout>
@@ -62,6 +63,11 @@ AuHandCraftPanel::AuHandCraftPanel(QWidget* parent) : QWidget(parent)
 				"</p>"
 				"</html>"), this);
 	lbinfo->setWordWrap(true);
+	if(g_Au.IsLegacyGeneration())
+		lbinfo->setText(tr("<html><p><i>Handcrafting</i> creates a new item from items in your gear. "
+			"If the new item does not fit into your gear, it is dropped at your location.</p>"
+			"<p>Manufacturing buildings enable specialized handcrafting choices, due to their workshop facilities. "
+			"For example, to handcraft metal from ore you possess, go to a smelter.</p></html>"));
 
 	m_Note = new QLabel(this);
 	m_Note->setWordWrap(true);
@@ -151,6 +157,7 @@ void AuHandCraftPanel::UpdateContents(DaPerson* person)
 	// Don't do anything if the combo box has its list open, otherwise it's disruptive.
 	if(m_MakeWhat->view() && m_MakeWhat->view()->isVisible())
 		return;
+	if(g_Au.IsLegacyGeneration()) { UpdateLegacyContents(person); return; }
 
 	// Must not allow handcraft at a building under construction when the building is required.
 	bool inBd = false;			// true if in a bd that is not under construction and not destroyed.
@@ -456,7 +463,9 @@ void AuHandCraftPanel::GoPushed()
 	if(!m_MPID)
 		return;
 
-	if(m_MPID == MPID_Flag)
+	const auto* catalogue = AuLegacyCityCatalogue::BuiltIn();
+	const auto* legacy = catalogue ? catalogue->ManufacturingProcess(AuLegacyCity::ManufacturingProcessId(quint16(m_MPID))) : nullptr;
+	if(g_Au.IsLegacyGeneration() ? legacy && legacy->commodity.value == 1 : m_MPID == MPID_Flag)
 	{
 		AuFrame* pFrame = auApp->Frame();
 		if(!pFrame)

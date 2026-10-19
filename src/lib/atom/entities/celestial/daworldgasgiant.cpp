@@ -843,6 +843,7 @@ void DaWorldGasGiant::RenderEnvironmentObject(const AuMatrix4x4& projection, AuA
 		if(eyeUnderWater)
 		{
 			// Render core globe model.
+			RenderLegacyCityInteriors(projection, ari, rmod, sceneAtom);
 			RenderAtGlobe(projection, model, ari, viewerPos, ambientLight, fogDensity, fogcol[0], fogcol[1], fogcol[2]);
 
 			// Render plants
@@ -7162,7 +7163,7 @@ bool DaWorldGasGiant::FilterDestinationLoc(DaAtom* moveAtom, const AuPoint& oldL
 	// Moving atom is inside the atmosphere.
 	double stopMove = 0;				// How much movement was stopped for collision damage.
 	int stopReason;
-	if(moveAtom->IsAtBd())
+	if(moveAtom->IsAtBd() || moveAtom->IsAtLegacyCityFloor())
 	{
 		// Moving atom is in a building, could be on the roof.
 		if(nuCgAlt <= oldCgAlt)

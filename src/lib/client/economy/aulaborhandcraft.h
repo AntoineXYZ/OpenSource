@@ -39,6 +39,7 @@ public:
 	virtual ~AuHandCraftPanel();
 
 	void UpdateContents(DaPerson* person);
+	void UpdateLegacyContents(DaPerson* person);
 
 protected slots:
 	void GoPushed();

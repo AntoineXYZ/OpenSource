@@ -5,6 +5,8 @@
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
 #include "davessel.h"
+#include <cmath>
+#include "aulegacyfinancetransfer.h"
 //
 #include "auatomchat.h"
 #include "auatomrenderinfo.h"
@@ -3043,6 +3045,7 @@ void DaVessel::SendSOS(int msgType, const QString& msgText, int msgValue)
 
 void DaVessel::CreditAccount(double amount)
 {
+	AuLegacyFinanceTransfer transfer(this);
 	if(amount <= 0)
 		return;
 	m_AccountLock.lockForWrite();
@@ -3056,6 +3059,7 @@ void DaVessel::CreditAccount(double amount)
 
 void DaVessel::CreditAccountSubsidyTax(double amount)
 {
+	AuLegacyFinanceTransfer transfer(this);
 	Q_ASSERT(!IsPrivatelyOwned());
 	if(amount <= 0)
 		return;
@@ -3071,6 +3075,7 @@ void DaVessel::CreditAccountSubsidyTax(double amount)
 
 void DaVessel::CreditAccountSales(double amount)
 {
+	AuLegacyFinanceTransfer transfer(this);
 	if(amount <= 0)
 		return;
 
@@ -3109,6 +3114,7 @@ void DaVessel::CreditAccountSales(double amount)
 
 void DaVessel::DebitAccount(double amount)
 {
+	AuLegacyFinanceTransfer transfer(this);
 	if(amount <= 0)
 		return;
 
@@ -3123,6 +3129,7 @@ void DaVessel::DebitAccount(double amount)
 
 void DaVessel::DebitAccountSubsidyTax(double amount)
 {
+	AuLegacyFinanceTransfer transfer(this);
 	if(amount <= 0)
 		return;
 
@@ -3899,7 +3906,10 @@ bool DaVessel::InstallSystemModule(const AuSysId& sysId, const AuItem& item, qui
 		m_SystemsLock.lockForWrite();
 		didInstall = m_ssaShipSystems.UpgradeSystem(sysId.System(), item.CommodityId(), item.Quality());
 		if(didInstall)
+		{
+			m_ssaShipSystems.SetSystemTechLevel(AuSysId(sysId.System(), 0), item.TechLevel());
 			m_tmSystemsUpg.Set();
+		}
 		m_SystemsLock.unlock();
 		break;
 
@@ -3914,7 +3924,10 @@ bool DaVessel::InstallSystemModule(const AuSysId& sysId, const AuItem& item, qui
 			m_SystemsLock.lockForWrite();
 			didInstall = m_ssaShipSystems.UpgradeSystem(sysId.System(), moduleCID, item.Quality());
 			if(didInstall)
+			{
+				m_ssaShipSystems.SetSystemTechLevel(AuSysId(sysId.System(), 0), item.TechLevel());
 				m_tmSystemsUpg.Set();
+			}
 			m_SystemsLock.unlock();
 		}
 		break;
@@ -3927,7 +3940,10 @@ bool DaVessel::InstallSystemModule(const AuSysId& sysId, const AuItem& item, qui
 		m_SystemsLock.lockForWrite();
 		didInstall = m_ssaShipSystems.UpgradeSystem(sysId.System(), sysId.Which(), item.CommodityId(), item.Quality());
 		if(didInstall)
+		{
+			m_ssaShipSystems.SetSystemTechLevel(sysId, item.TechLevel());
 			m_tmSystemsUpg.Set();
+		}
 		m_SystemsLock.unlock();
 		break;
 
@@ -3935,7 +3951,10 @@ bool DaVessel::InstallSystemModule(const AuSysId& sysId, const AuItem& item, qui
 		m_SystemsLock.lockForWrite();
 		didInstall = m_ssaShipSystems.UpgradeSystem(sysId.System(), sysId.Which(), item.CommodityId(), item.Quality());
 		if(didInstall)
+		{
+			m_ssaShipSystems.SetSystemTechLevel(sysId, item.TechLevel());
 			m_tmSystemsUpg.Set();
+		}
 		m_SystemsLock.unlock();
 
 		// Must forget current ammo selection for the turret.
@@ -3953,7 +3972,10 @@ bool DaVessel::InstallSystemModule(const AuSysId& sysId, const AuItem& item, qui
 		m_SystemsLock.lockForWrite();
 		didInstall = m_ssaShipSystems.UpgradeSystem(sysId.System(), sysId.Which(), item.CommodityId(), item.Quality());
 		if(didInstall)
+		{
+			m_ssaShipSystems.SetSystemTechLevel(sysId, item.TechLevel());
 			m_tmSystemsUpg.Set();
+		}
 		m_SystemsLock.unlock();
 
 		// Must forget current ammo selection for the bay.
@@ -16786,6 +16808,7 @@ void DaVessel::Harvest(quint16 which, COMMODITYID bayModule, double wpnRange, do
 		return;
 	if(probabilityToHarvest <= 0)
 		return;
+	const bool legacy = g_Au.IsLegacyGeneration();
 
 	// Harvesters always fire at max power.
 	float targetE;			// Energy to reach the target.
@@ -16794,7 +16817,7 @@ void DaVessel::Harvest(quint16 which, COMMODITYID bayModule, double wpnRange, do
 		int weaponPower = GetPowerConsumption(SYS_Weapon, which);
 		float rangeFactor = targDist/wpnRange;
 		float wpnPower = BayWeaponPower(weaponPower, which);
-		targetE = round(wpnPower * (1.f - rangeFactor));
+		targetE = legacy ? std::round(float((1.0 - rangeFactor) * wpnPower)) : round(wpnPower * (1.f - rangeFactor));
 	}
 	else
 		targetE = 0;
@@ -16808,11 +16831,21 @@ void DaVessel::Harvest(quint16 which, COMMODITYID bayModule, double wpnRange, do
 	int harvestedUnits = harvestUnits * g_Au.Dice().Roll(2, probabilityToHarvest, -1) / 100;
 	if(harvestedUnits <= 0)
 		harvestedUnits = 1;
+	quint8 harvestTechnology = 0;
+	if(legacy)
+	{
+		QReadLocker lock(&m_SystemsLock);
+		// A pre-recovery save discarded installed TL. Neither its current
+		// quality nor its blueprint can reconstruct later module upgrades.
+		if(!m_ssaShipSystems.HasLegacyTechnology()) return;
+		harvestTechnology = qMin(m_ssaShipSystems.SystemTechLevel(SYS_Weapon, which), quint8(harvestQ >> 3));
+	}
 
 	// We harvested some.
 	AuItem* harvested = AuItem::Create(harvestCID, harvestQ, EmpireId(), harvestedUnits);
 	if(!harvested)
 		return;
+	if(legacy) harvested->SetTechLevel(harvestTechnology);
 
 	// Preons store their solar system coordinates in the galaxy, when they are harvested. This is the stargate
 	// destination when they are used to activate a ringworld stargate.

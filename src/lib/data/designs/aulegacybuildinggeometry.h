@@ -32,6 +32,7 @@ struct Batch
 	bool twoSided = false;
 	bool stairs = false;
 	bool collisionOnly = false;
+	bool depthOnly = false; // Original AuBuildingTri window effect 4: terrain mask.
 	bool empireFlag = false;
 	// Identifies an always-open door/hatch frame. Render its alpha-cutout art,
 	// but omit the full frame quad from collision and sight obstruction.
@@ -55,10 +56,19 @@ struct FloorState
 	bool roof = false;
 };
 
+struct ExteriorLight
+{
+	QVector3D position;
+	bool runway = false;
+	ExteriorLight() = default;
+	ExteriorLight(const QVector3D& location, bool isRunway) : position(location), runway(isRunway) {}
+};
+
 struct Mesh
 {
 	QVector<Batch> batches;
 	QVector<FloorState> floors;
+	QVector<ExteriorLight> exteriorLights;
 	QVector<AuLegacyShip::Rendering::HullOpening> wallOpenings;
 	QVector<AuLegacyShip::Rendering::HatchOpening> floorOpenings;
 	QVector3D minimum;

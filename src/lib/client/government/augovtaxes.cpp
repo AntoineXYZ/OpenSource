@@ -5,6 +5,7 @@
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
 #include "augovtaxes.h"
+#include "aulegacywealthlevydialog.h"
 //
 #include "auapp.h"
 #include "auframe.h"
@@ -96,6 +97,13 @@ AuGovTaxes::AuGovTaxes(QWidget* parent) : QWidget(parent)
 	row++;
 	lay->addWidget(pbapply, row,0, 1,2);
 	row++;
+	if(g_Au.IsLegacyGeneration())
+	{
+		auto* levy = new QPushButton(tr("Levy Wealth Tax"), this);
+		levy->setToolTip(tr("Issue an executive order to levy a tax on private wealth throughout the empire."));
+		connect(levy, &QPushButton::clicked, this, [this] { AuLegacyWealthLevyDialog dialog(this); dialog.exec(); });
+		lay->addWidget(levy, row++, 0, 1, 2);
+	}
 	lay->setColumnStretch(2, 1);
 	lay->setRowStretch(row, 1);
 	lay->setMargin(2);

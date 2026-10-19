@@ -1463,7 +1463,9 @@ public:
 
 	// Checks political stance of 'myEmpireId' toward 'otherEmpireId'. Makes first contact if empires did not previously know
 	// about each other. Makes dossier entries.
-	POLITICAL_STANCE PoliticalStanceMakeContact(quint32 myEmpireId, const DaAtom* other, quint32 otherEmpireId) const;
+	// Supply name snapshots when the caller already holds the locks used by Name().
+	POLITICAL_STANCE PoliticalStanceMakeContact(quint32 myEmpireId, const DaAtom* other, quint32 otherEmpireId,
+		const QString* myNameSnapshot = nullptr, const QString* otherNameSnapshot = nullptr) const;
 
 	// Non-recursive tally of atoms that contribute population to a world.
 	virtual quint32 Population() const
@@ -3614,6 +3616,21 @@ public:
 	inline bool IsAtBd() const
 	{
 		bool v = LockEnvironmentQuery()->IsAtBd();
+		UnlockEnvironmentQuery();
+		return v;
+	}
+
+	// A recovered floor/ceiling query, independent of modern building identity.
+	inline bool IsAtLegacyCityFloor() const
+	{
+		bool v = LockEnvironmentQuery()->IsAtLegacyCityFloor();
+		UnlockEnvironmentQuery();
+		return v;
+	}
+
+	inline bool IsInsideLegacyBuilding() const
+	{
+		bool v = LockEnvironmentQuery()->IsInsideLegacyBuilding();
 		UnlockEnvironmentQuery();
 		return v;
 	}

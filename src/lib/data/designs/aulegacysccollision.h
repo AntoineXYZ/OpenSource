@@ -67,7 +67,8 @@ public:
 	AuPoint ResolveDestination(const AuPoint& from, const AuPoint& to, const AuBox& bodyOffsets,
 		const AuPoint& gravityUp, double standingHeight, bool allowGroundSnap, AuPoint& hitNormal,
 		bool preserveGroundHeight = false, const AuDoorStateHash* doorStates = nullptr,
-		bool allowBoardingStep = false, QVector<MovementContact>* contacts = nullptr) const;
+		bool allowBoardingStep = false, QVector<MovementContact>* contacts = nullptr,
+		bool allowStairExit = false) const;
 
 	// Distances from the atom origin, matching the native capsule query contract.
 	// A hole has no implicit room-void floor or ceiling.

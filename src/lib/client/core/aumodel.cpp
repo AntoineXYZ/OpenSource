@@ -111,7 +111,7 @@ void AuModel::run()
 				sceneRef->SetOnLine(ACCT_Active, 0, startTime);
 #endif
 				DaSolarSystem* system = sceneRef->FindParentSolarSystem();
-				system->SetLastPersonScene();
+				system->SetLastPersonScene(sceneRef->EmpireId());
 
 				// Keep the star map up-to-date with the current unit's empire id. If it changes, the star map is erased.
 				bool mapCleared = g_AuClient.StarMapSetEmpire(sceneRef->EmpireId());	// Erases star map if empire changes.

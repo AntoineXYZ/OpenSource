@@ -5,6 +5,7 @@
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
 #include "dtchatchannel.h"
+#include "aulegacywealthlevy.h"
 //
 #include "auarenaready.h"
 #include "aubddesign.h"
@@ -155,6 +156,7 @@ DtChatChannel::DtChatChannel(int socketDesc, QObject* parent) : QThread(parent)/
 	connect(m_I, SIGNAL(GovSetTax(quint32, quint8, quint8, quint8)),
 			SIGNAL(GovSetTax(quint32, quint8, quint8, quint8)),
 			Qt::QueuedConnection);
+	connect(m_I, SIGNAL(LegacyWealthLevy(QByteArray)), SIGNAL(LegacyWealthLevy(QByteArray)), Qt::QueuedConnection);
 	connect(m_I, SIGNAL(GovSetThemeColor(quint32, quint8, QColor)),
 			SIGNAL(GovSetThemeColor(quint32, quint8, QColor)),
 			Qt::QueuedConnection);
@@ -5790,6 +5792,13 @@ void DtChatChannel::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 		}
 		break;
 
+	case DtChatChannelPacket::PV_LegacyWealthLevy:
+		{
+			QByteArray request;
+			if(AuLegacyCity::ReadWealthLevyEnvelope(block, request)) m_I->GovLegacyWealthLevy(request);
+		}
+		break;
+
 	case DtChatChannelPacket::PV_SetTax:
 		//qDebug("PV_SetTax:");
 		{
@@ -6631,7 +6640,7 @@ void DtChatChannel::SpawnLegacySc(quint32 designId, AuLegacyScProtocol::Reply& r
 	}
 
 	DaSc* ship = candidate.release();
-	ship->InitSystems(report.Quality());
+	ship->InitSystems(report.Quality(), report.LegacyStats()->Performance().techLevelUsed);
 	ship->SetEmpireId(person->EmpireId());
 	ship->SetName(report.DesignName());
 	ship->SetAccessPolicy(ACCESS_Enemy);

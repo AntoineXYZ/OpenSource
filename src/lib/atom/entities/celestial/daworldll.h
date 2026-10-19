@@ -158,6 +158,13 @@ public:
 		m_StanceColor = stanceColor;
 	}
 
+	inline AuBldSprite(const QString& cityName, const QColor& stanceColor, INDUSTRYID iid,
+			quint8 completedLevels, quint8 levelsUnderConstruction) :
+		AuBldHealth(0, 0, false), m_CityName(cityName), m_CompletedLevels(completedLevels),
+		m_IID(iid), m_IsBd(false), m_LevelsUnderConstruction(levelsUnderConstruction), m_StanceColor(stanceColor)
+	{
+	}
+
 	inline AuBldSprite(const AuBldSprite& c) : AuBldHealth(c)
 	{
 		m_CityName = c.m_CityName;
@@ -2531,6 +2538,11 @@ public:
 
 	void RenderCursor(const AuMatrix4x4& projection, const AuMatrix4x4& model, AuGLEffects& re, const AuPoint& nearLoc,
 			const AuGlobeLLF& hitRoad, const QColor& hitColor, const QColor& roadColor);
+
+	// Original building interiors and stairwell depth masks precede terrain.
+	void RenderLegacyCityInteriors(const AuMatrix4x4& projection, AuAtomRenderInfo& ari,
+		AuModelMatrixHash& matrices, const DaPerson* sceneAtom);
+	void InvalidateBuildingOverlaySprites() const { m_OverlayBuildings.clear(); }
 
 	// Renders things on the world that use the Sc shader. e.g. claim flag, road pavement.
 	virtual void RenderScWorld(const AuMatrix4x4& projection, const AuMatrix4x4& model, AuAtomRenderInfo& ari,

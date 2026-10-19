@@ -615,6 +615,7 @@ public:	// Methods
 
 	// tax values are 0-200 representing percentages from 0-100 in .5 percent incs.
 	void GovSetTax(quint8 income, quint8 sales, quint8 subsidy);
+	void GovLegacyWealthLevy(QByteArray request);
 
 	// 'theme' is a AuScFace::COLOR_THEME value.
 	void GovSetThemeColor(quint8 theme, const QColor& color);
@@ -947,6 +948,7 @@ signals:
 			quint8 reason, quint8 galaxy, QString sector, QString system, QString world);
 
 	void GovSetTax(quint32 empire, quint8 income, quint8 sales, quint8 subsidy);
+	void LegacyWealthLevy(QByteArray order);
 
 	void GovSetThemeColor(quint32 empire, quint8 theme, QColor color);
 

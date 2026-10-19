@@ -8,6 +8,7 @@
 #include "aulegacybuildinggeometry.h"
 #include "aulegacycityprotocol.h"
 #include "aulegacycitycatalogue.h"
+#include "aulegacycityproduction.h"
 #include "aulegacyshipequipment.h"
 #include "aumatrix4x4.h"
 #include "auqueryenvironment.h"
@@ -80,6 +81,111 @@ double DistanceToSite(DaWorldLL& world, const AuLegacyCity::Development& dev, co
 	{ const double gap = qMax(0.0, std::hypot(local.x,local.y)-width); return gap*gap; }
 	const double dx = qMax(0.0,std::abs(local.x)-width), dy = qMax(0.0,std::abs(local.y)-length);
 	return dx*dx+dy*dy;
+}
+
+void EconomyRequest(const AuLegacyCityProtocol::Request& request, AuLegacyCityProtocol::Reply& reply,
+	DaPerson& person, DaWorldLL& world, AuEther& ether, const AuPoint& origin)
+{
+	using namespace AuLegacyCityProtocol;
+	const auto* catalogue = AuLegacyCityCatalogue::BuiltIn();
+	if(!catalogue) { reply.message = QObject::tr("The legacy economy catalogue is unavailable."); return; }
+	quint32 cityId = request.cityId, developmentId = request.developmentId;
+	if(request.action == EconomyList && !cityId && !developmentId)
+	{
+		const auto* environment = person.LockEnvironmentQuery();
+		cityId = environment->LegacyCityId().GetID(); developmentId = environment->LegacyDevelopmentId();
+		person.UnlockEnvironmentQuery();
+	}
+	auto* city = dynamic_cast<DaLegacyCity*>(ether.FindNormalAtom(AuId(cityId)));
+	if(!city || city->IsDead() || city->Parent() != &world
+		|| (request.action == SetIndustryProcess && (!person.EmpireId() || person.EmpireId() != city->EmpireId())))
+	{
+		if(request.action != EconomyList) reply.message = QObject::tr("You must govern this city to configure its industry.");
+		return;
+	}
+	auto state = city->Snapshot();
+	const AuLegacyCity::Development* selected = nullptr;
+	for(const auto& development : state.developments)
+		if(development.id == developmentId && !development.demolished) { selected = &development; break; }
+	// A saved or stale UI target cannot operate a city from another site.
+	if(!selected || !ContainsSite(world, *selected, origin))
+	{ if(request.action != EconomyList) reply.message = QObject::tr("Stand at this industry to operate it."); return; }
+	reply.selectedCity = cityId; reply.selectedDevelopment = developmentId;
+	if(request.action == SetIndustryProcess)
+		reply.accepted = city->SetIndustryProcess(person, developmentId, request.processSlot,
+			request.manufacturingRecipe, request.minimumTechnology, request.citizenEnabled, reply.message);
+	else if(request.action == FetchIndustryMaterials || request.action == RunIndustryProcess)
+		reply.accepted = city->OperateIndustryProcess(person, developmentId, request.processSlot, true,
+			request.action == RunIndustryProcess, reply.message);
+	else reply.accepted = true;
+	state = city->Snapshot();
+	AuLegacyCity::ProductionState production, visible;
+	QString error;
+	if(!AuLegacyCity::DecodeProductionState(*catalogue, state.manufacturing, production, error))
+	{ reply.message = error; return; }
+	for(const auto& process : production.processes)
+		if(process.developmentId == developmentId
+			&& (person.EmpireId() == state.controllingEmpire || process.enabled)) visible.processes.append(process);
+	// This selected-development presentation never contains city inventory,
+	// accounts, another development's recipes or the process tool reserve.
+	if(!AuLegacyCity::EncodeProductionState(*catalogue, visible, reply.production, error))
+	{ reply.message = error; return; }
+	for(const auto& development : state.developments)
+		if(development.id == developmentId)
+		{
+			reply.economyIndustry = development.industryId; reply.economyTechnology = development.technology;
+			reply.economyLevels = development.completedLevels; reply.economyEmployees = development.employees;
+			if(development.industryId == 50 || development.industryId == 51 || development.industryId == 89)
+			{
+				const auto* construction = catalogue->ConstructionProcess(AuLegacyCity::ConstructionProcessId(development.constructionProcessId));
+				if(!construction) construction = catalogue->ConstructionProcessForIndustry(AuLegacyCity::IndustryId(development.industryId));
+				const double radius = construction ? construction->buildRadius * FeetPerMeter() : 0;
+				const float rockRadius = float(radius);
+				AuMatrix4x4 placement;
+				world.BuildingConstructionTransform(world.LocOfLL(development.location, development.altitudeMSL),
+					development.facingRadians, nullptr, AuPoint(), placement);
+				const AuPoint center = placement.Translation();
+				float water = 0;
+				if(development.industryId == 89)
+				{
+					unsigned int rocks = 0, shrubs = 0, trees = 0;
+					world.ResourceDistributionAt(placement, center, AuPoint(radius, radius, 0), rocks, shrubs, trees, water, 0);
+				}
+				const quint8 zone = quint8(world.OrbitZone());
+				const auto choices = AuLegacyCity::ProductionRecipeChoices(*catalogue, development.industryId,
+					[&](quint16 commodity) {
+						// QueryWellResources supplies water throughout a liquid-water world.
+						if(development.industryId == 51 && commodity == 83) return world.Hydrographics() && zone != 0 && zone != 4;
+						return world.TestRockResource(placement, center, AuPoint(rockRadius, rockRadius, 0),
+							COMMODITYID(catalogue->RuntimeCommodityId(AuLegacyCity::CommodityId(commodity))));
+					}, water != 0, zone);
+				reply.hasRecipeChoices = true;
+				for(const auto id : choices) reply.recipeChoices.append(id.value);
+			}
+			break;
+		}
+	reply.hasEconomy = true;
+}
+
+void BankRequest(const AuLegacyCityProtocol::Request& request, AuLegacyCityProtocol::Reply& reply,
+	DaPerson& person, DaWorldLL& world, AuEther& ether)
+{
+	AuLegacyCityProtocol::Request selected = request;
+	if(selected.action == AuLegacyCityProtocol::BankState && !selected.cityId && !selected.developmentId)
+	{
+		const auto* environment = person.LockEnvironmentQuery();
+		selected.cityId = environment->LegacyCityId().GetID();
+		selected.developmentId = environment->LegacyDevelopmentId();
+		person.UnlockEnvironmentQuery();
+	}
+	auto* city = dynamic_cast<DaLegacyCity*>(ether.FindNormalAtom(AuId(selected.cityId)));
+	if(!city || city->IsDead() || city->Parent() != &world)
+	{
+		if(selected.action != AuLegacyCityProtocol::BankState)
+			reply.message = QObject::tr("This bank is no longer on your current world. Refresh the bank window.");
+		return;
+	}
+	city->OperateBank(person, selected, reply);
 }
 
 void ListBuildings(DaWorldLL& world, const AuPoint& origin, AuLegacyCityProtocol::Reply& reply)
@@ -227,6 +333,10 @@ void DtChatChannel::ProcessLegacyConstructionRequest(const AuLegacyCityProtocol:
 	if(!world || !ether || !person->GetTransformRelativeToParent(avatarTransform, world))
 	{ reply.message = tr("Move onto a planet or ringworld to work on construction."); return; }
 	const AuPoint origin = avatarTransform.Translation();
+	if(IsEconomy(request.action))
+	{ EconomyRequest(request, reply, *person, *world, *ether, origin); return; }
+	if(IsBank(request.action))
+	{ BankRequest(request, reply, *person, *world, *ether); return; }
 	if(request.action == ConstructionList)
 	{
 		// Use the same environment target as F10. This also prefers the actual
@@ -299,6 +409,7 @@ void DtChatChannel::ProcessLegacyConstructionRequest(const AuLegacyCityProtocol:
 		created->SetPosAndOrient(AuAtomPos(world->Id(), placement));
 		state = AuLegacyCity::State(); state.name = request.cityName;
 		state.controllingEmpire = state.allegianceEmpire = person->EmpireId();
+		state.lastEmployment = state.lastPopulationCycle = AuTime::CurrentMSecsSinceEpoch();
 		QString error;
 		if(!created->SetState(state, error)) { reply.message = error; return; }
 		// Resolve the parent for validation while retaining private ownership.
@@ -374,13 +485,16 @@ void DtChatChannel::ProcessLegacyConstructionRequest(const AuLegacyCityProtocol:
 	switch(request.action)
 	{
 	case Build:
-		if(developmentId && !founding) changed = city->ExtendConstruction(*person, developmentId, request.levels, error);
+		if(developmentId && !founding) changed = city->ExtendConstruction(*person, developmentId, request.levels, error,
+			request.manufacturingRecipe, request.citizenEnabled);
 		else changed = city->BeginConstruction(*person, request.industryId, request.processId, request.designId,
 			request.material, location, request.headingDegrees * DEG2RAD, request.levels, error,
-			request.roadLengthMeters, request.roadWidthMeters, request.roadSlab, request.biodomeRadiusMeters);
+			request.roadLengthMeters, request.roadWidthMeters, request.roadSlab, request.biodomeRadiusMeters,
+			request.manufacturingRecipe, request.citizenEnabled);
 		if(changed && !developmentId) developmentId = city->Snapshot().developments.constLast().id;
 		break;
-	case Extend: changed = city->ExtendConstruction(*person, developmentId, request.levels, error); break;
+	case Extend: changed = city->ExtendConstruction(*person, developmentId, request.levels, error,
+		request.manufacturingRecipe, request.citizenEnabled); break;
 	case Halt: case Resume: changed = city->SetConstructionHalted(*person, developmentId, request.action == Halt, error); break;
 	case Contribute: changed = city->ContributeConstructionLabor(*person, developmentId, error, &reply.accepted); break;
 	case FetchMaterials: changed = city->FetchConstructionMaterials(*person, developmentId, error); break;

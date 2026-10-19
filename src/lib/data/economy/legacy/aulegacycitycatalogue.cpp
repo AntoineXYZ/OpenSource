@@ -406,6 +406,22 @@ bool AuLegacyCityCatalogue::Read(const QByteArray& source, AuLegacyCityCatalogue
 				|| !r.U8(record.craft) || !r.U8(record.minimumTechnology)) return false;
 			record.labor = record.serializedLabor & 0x7fffU;
 			record.isDefault = (record.serializedLabor & 0x8000U) != 0;
+			// GD has no nat field; apply the agreed exceptions to its true default.
+			switch(record.id.value)
+			{
+			case 12:  // Fertilizer using Atmosphere
+			case 14:  // Fertilizer using Air
+			case 23:  // Hydrogen using Natural Gas
+			case 58:  // Water using Air and Hydrogen
+			case 92:  // Hydrogen using Water
+			case 127: // Air using Water
+			case 170: // Water using Environment
+			case 171: // Water using Ice
+				record.naturalResourceQuality = false;
+				break;
+			default:
+				break;
+			}
 			return true;
 		})) return false;
 	if(!ReadTable(reader, accepted.m_components, accepted.m_tables, QStringLiteral("manufacturing_components"), 2420, true,

@@ -1777,7 +1777,7 @@ void DtSceneServer::SyncClient()
 
 	// Update on line status of scene atom right away in case we decide to ret for some reason.
 	pSceneAtom->SetOnLine(m_AccountType, SyncAveragePing(), syncStartTime);	// On-line status decays in DaPerson::Tick.
-	system->SetLastPersonScene();								// System needs the last time it was visited by an on-line person.
+	system->SetLastPersonScene(pSceneAtom->EmpireId());			// Visit refreshes this empire's legacy cities throughout the system.
 
 	// Update information about the current scene atom.
 	m_idUnitEmpire = pSceneAtom->EmpireId();

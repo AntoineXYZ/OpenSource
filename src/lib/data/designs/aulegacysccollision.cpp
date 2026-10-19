@@ -740,6 +740,36 @@ public:
 		}
 		return false;
 	}
+
+	bool StairExit(const AuPoint& from, const AuPoint& to, const Body& body, const AuPoint& up,
+		double standingHeight, AuPoint& destination, const AuDoorStateHash* doorStates) const
+	{
+		AuPoint normal; bool stair;
+		const double oldFloor = Floor(from, up, normal, stair, nullptr, doorStates);
+		if(!stair || normal.Dot(up) < .55 || normal.Dot(up) > .999
+			|| std::abs(oldFloor - standingHeight) > .25) return false;
+		AuPoint forward = to - from; forward -= up * forward.Dot(up);
+		if(forward.Length2() < 1e-16) return false;
+		forward.Unit();
+		double reach = 0;
+		for(const AuPoint& corner : body.corners) reach = std::max(reach, corner.Dot(forward));
+		const double maximumRise = .75;
+		const AuPoint probe = to + forward * reach + up * maximumRise;
+		const double floor = Floor(probe, up, normal, stair, nullptr, doorStates) - maximumRise;
+		if(stair || normal.Dot(up) < .999) return false;
+		const double adjustment = standingHeight + GroundTolerance - floor;
+		if(adjustment < -GroundTolerance || adjustment > maximumRise) return false;
+		const AuPoint candidate = to + up * std::max(0.0, adjustment);
+		const double rise = (candidate - from).Dot(up);
+		if(rise <= 0 || rise > maximumRise) return false;
+		const AuPoint raised = from + up * rise;
+		double fraction;
+		// Check both legs: neither a low ceiling nor a wall can be stepped through.
+		if(Sweep(from, raised, body, fraction, normal, nullptr, doorStates)
+			|| Sweep(raised, candidate, body, fraction, normal, nullptr, doorStates)) return false;
+		destination = candidate;
+		return true;
+	}
 };
 
 bool IsCollisionDesign(const AuScDesign& design)
@@ -1013,7 +1043,7 @@ bool CollisionWorld::IsBodyTransitionBlocked(const AuPoint& from, const AuPoint&
 AuPoint CollisionWorld::ResolveDestination(const AuPoint& from, const AuPoint& to, const AuBox& bodyOffsets,
 	const AuPoint& gravityUp, double standingHeight, bool allowGroundSnap, AuPoint& hitNormal,
 	bool preserveGroundHeight, const AuDoorStateHash* doorStates, bool allowBoardingStep,
-	QVector<MovementContact>* contacts) const
+	QVector<MovementContact>* contacts, bool allowStairExit) const
 {
 	hitNormal = AuPoint(0, 0, 0);
 	if(contacts) contacts->clear();
@@ -1022,6 +1052,8 @@ AuPoint CollisionWorld::ResolveDestination(const AuPoint& from, const AuPoint& t
 	AuPoint up = gravityUp; up.Unit();
 	if(up.IsZero()) return from;
 	AuPoint target = to;
+	if(allowStairExit && allowGroundSnap && std::isfinite(standingHeight) && standingHeight > 0
+		&& m_Impl->StairExit(from, to, body, up, standingHeight, target, doorStates)) return target;
 	if((preserveGroundHeight || allowBoardingStep) && std::isfinite(standingHeight) && standingHeight > 0)
 	{
 		double floor; AuPoint normal;

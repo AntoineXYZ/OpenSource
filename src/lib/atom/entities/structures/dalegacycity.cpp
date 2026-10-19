@@ -1,13 +1,22 @@
 #include "dalegacycity.h"
 #include "auatomrenderinfo.h"
+#include "auglmodel.h"
 #include "aucityreport.h"
 #include "aubox.h"
 #include "auglobal.h"
+#include "augllight.h"
 #include "aulegacybd.h"
 #include "aulegacybiodome.h"
 #include "aulegacybuildinggeometry.h"
 #include "aulegacycitycatalogue.h"
+#include "aulegacycityinventory.h"
 #include "aulegacyconstructionmaterials.h"
+#include "aulegacycitizenconstruction.h"
+#include "aulegacycityproduction.h"
+#include "aulegacycitypopulation.h"
+#include "aulegacycityinfrastructure.h"
+#include "aulegacyfinancetransfer.h"
+#include "audice.h"
 #include "augear.h"
 #include "auitem.h"
 #include "auterraininfo.h"
@@ -39,6 +48,31 @@
 namespace
 {
 AuPoint Point(const QVector3D& p) { return AuPoint(p.x(), p.y(), p.z()); }
+
+bool ExteriorLightsOn(const DaWorldLL& world, const AuLegacyCity::Development& development,
+	const AuMatrix4x4& placement)
+{
+	// DpBuilding::IsDark 0x5a1a10; DpGlobeRoad::IsDark 0x653810
+	// switches the whole road on when either endpoint is dark.
+	if(development.industryId != 2) return DaAtom::IsDark(world.QuerySunlight(placement.Translation()));
+	const double halfLength = development.roadLengthMeters * FeetPerMeter() / 2;
+	AuGlobeLLF start, end;
+	if(!world.LLOfLoc(end, placement.Project(AuPoint(0, halfLength, 0)))
+		|| !world.LLOfLoc(start, placement.Project(AuPoint(0, -halfLength, 0)))) return false;
+	return DaAtom::IsDark(world.QuerySunlight(world.LocOfLL(end, development.roadEndAltitudeMSL)))
+		|| DaAtom::IsDark(world.QuerySunlight(world.LocOfLL(start, development.roadStartAltitudeMSL)));
+}
+
+QColor ExteriorLightColor(bool runway, bool powered)
+{
+	// DaCity::RenderPostTerrain 0x2b2c20 keeps dim amber lights without
+	// electricity. Powered streets are sodium; runway slabs are mercury.
+	if(powered) return runway ? QColor(216, 247, 255) : QColor(255, 209, 178);
+	QColor color;
+	if(runway) color.setRgbF(.5f, .38627452f, .28039217f);
+	else color.setRgbF(.5f, .2882353f, .08039216f);
+	return color;
+}
 
 template<class Shader>
 void RenderFlag(Shader& shader, const AuMatrix4x4& model, const AuPoint& ambientUp,
@@ -302,6 +336,23 @@ bool ValidateDesigns(const AuLegacyCity::State& state, QString& error)
 			|| AuLegacyBd::Geometry::MaterialAtlas(dev.materialId).isEmpty())
 		{ error = QStringLiteral("Legacy development %1 has an incompatible design, industry or material.").arg(dev.id); return false; }
 	}
+	AuItemHash inventory;
+	AuLegacyCity::ProductionState production;
+	AuLegacyCity::AccountingState accounting;
+	if(!AuLegacyCity::ReadCityInventory(state.inventory, *catalogue, inventory, error)
+		|| !AuLegacyCity::DecodeProductionState(*catalogue, state.manufacturing, production, error)
+		|| !AuLegacyCity::DecodeAccounting(state.accounting, accounting, error)) return false;
+	for(const auto& process : production.processes)
+	{
+		const auto development = std::find_if(state.developments.cbegin(), state.developments.cend(), [&process](const AuLegacyCity::Development& value) {
+			return value.id == process.developmentId;
+		});
+		const auto* recipe = catalogue->ManufacturingProcess(AuLegacyCity::ManufacturingProcessId(process.processId));
+		if(development == state.developments.cend() || development->demolished || !recipe
+			|| recipe->industry.value != development->industryId
+			|| process.slot >= AuLegacyCity::ManufacturingSlots(development->industryId, development->completedLevels))
+		{ error = QStringLiteral("A legacy manufacturing process disagrees with its development."); return false; }
+	}
 	return true;
 }
 
@@ -450,16 +501,6 @@ int ConstructionThreat(DaWorldLL& world, const AuId& cityId, const AuLegacyCity:
 	return 0;
 }
 
-bool ReadConstructionInventory(const QByteArray& bytes, AuItemHash& inventory)
-{
-	if(bytes.isEmpty()) return true;
-	QDataStream in(bytes); in.setVersion(QDataStream::Qt_4_1);
-	quint32 count = 0; in >> count;
-	if(in.status() != QDataStream::Ok || count > 65535 || quint64(count) * 8 > quint64(bytes.size())) return false;
-	in.device()->seek(0); in >> inventory;
-	return in.status() == QDataStream::Ok && in.atEnd();
-}
-
 bool ComponentsComplete(const AuLegacyCity::Development& dev)
 {
 	for(const auto& component : dev.components)
@@ -492,6 +533,9 @@ struct DaLegacyCity::Runtime
 		AuGLVAO vao;
 		GLuint texture = 0;
 		bool twoSided = false;
+		bool interior = false;
+		bool depthOnly = false;
+		quint8 exteriorLens = 0; // 1: street light, 2: runway light.
 		QVector4D tint = QVector4D(1,1,1,1);
 		float selfIllumination = 0;
 	};
@@ -504,11 +548,14 @@ struct DaLegacyCity::Runtime
 	QMutex lock;
 	quint64 revision = 0, drawRevision = 0;
 	quint64 sourceRevision = 0;
+	quint64 overlayRevision = 0;
 	quint32 geometryEmpire = 0;
 	QVector<AuLegacyCity::Development> geometryState;
 	QVector<Building> buildings;
 	QVector<DrawBatch> drawBatches;
 	QVector<FlagDraw> flagDraws;
+	QVector<AuMatrix4x4> minePosts;
+	quint64 minePostRevision = 0, minePostTerrainRevision = 0;
 	quint64 siteRevision = 0, terrainRevision = 0, terrainDrawRevision = 0;
 	const DaWorldLL* siteWorld = nullptr;
 	QVector<AuLegacyCity::Development> siteState;
@@ -613,6 +660,15 @@ struct DaLegacyCity::Runtime
 					else for(int axis=0;axis<3;++axis)
 					{ building.mesh.minimum[axis]=qMin(building.mesh.minimum[axis],vertex.position[axis]); building.mesh.maximum[axis]=qMax(building.mesh.maximum[axis],vertex.position[axis]); }
 				}
+				for(auto& light : building.mesh.exteriorLights)
+				{
+					AuGlobeLL ll;
+					if(world->LLOfLoc(ll, placement.Project(Point(light.position))))
+					{
+						const AuPoint corrected = placement.UnProject(world->LocOfLL(ll, dev.altitudeMSL + light.position.z()));
+						light.position = QVector3D(float(corrected.x), float(corrected.y), float(corrected.z));
+					}
+				}
 			}
 			if(dev.demolished) building.mesh = AuLegacyBd::Geometry::Mesh();
 			if(dev.industryId == 2)
@@ -636,7 +692,10 @@ struct DaLegacyCity::Runtime
 			{
 				// Original building doorways and hatches are always open. Their
 				// textured frame quads must never become solid collision panels.
-				if(batch.doorId || batch.empireFlag) continue;
+				if(batch.doorId || batch.empireFlag || batch.depthOnly) continue;
+				// Match legacy spacecraft: collide with the smooth walking
+				// supports, leaving individual rendered risers/treads visual only.
+				if(batch.stairs && !batch.collisionOnly) continue;
 				AuLegacyShip::Rendering::Batch imported;
 				imported.vertices = batch.vertices;
 				imported.material = batch.stairs ? AuLegacyShip::Rendering::Material::StairTread
@@ -665,6 +724,26 @@ DaLegacyCity::DaLegacyCity(const DaLegacyCity& city) : DaAtom(city), m_Runtime(n
 { QReadLocker lock(&city.m_CityLock); m_City = city.m_City; }
 DaAtom* DaLegacyCity::Clone() const { return new DaLegacyCity(*this); }
 AuLegacyCity::State DaLegacyCity::Snapshot() const { QReadLocker lock(&m_CityLock); return m_City; }
+bool DaLegacyCity::WriteReportHistory(const AuCityReportHistory& history, QByteArray& bytes, QString& error)
+{
+	error.clear();
+	if(history.IsEmpty() || history.Count() > 240)
+	{ error = QStringLiteral("Invalid legacy city report history count."); return false; }
+	QByteArray raw;
+	QDataStream writer(&raw, QIODevice::WriteOnly); writer.setVersion(QDataStream::Qt_4_1);
+	writer << history;
+	if(writer.status() != QDataStream::Ok || raw.size() > 128 * 1024 * 1024)
+	{ error = QStringLiteral("Legacy city report history exceeds its expanded limit."); return false; }
+	// Keep existing small histories byte-identical. Large flag arrays repeat
+	// across 48 hours of reports, so compress rather than shorten retention.
+	QByteArray stored = raw.size() <= AuLegacyCity::MaximumStateBytes / 2
+		? raw : QByteArray("LCRH", 4) + qCompress(raw);
+	if(stored.size() > AuLegacyCity::MaximumStateBytes / 2)
+	{ error = QStringLiteral("Legacy city report history exceeds its storage envelope."); return false; }
+	bytes = stored;
+	return true;
+}
+
 bool DaLegacyCity::ReadReportHistory(const QByteArray& bytes, AuCityReportHistory& result)
 {
 	// The shared history assignment appends, so clear it using its existing
@@ -672,13 +751,23 @@ bool DaLegacyCity::ReadReportHistory(const QByteArray& bytes, AuCityReportHistor
 	const QByteArray emptyHistory(2, char(0));
 	QDataStream reset(emptyHistory); reset.setVersion(QDataStream::Qt_4_1); reset >> result;
 	if(bytes.size() < 2 || bytes.size() > AuLegacyCity::MaximumStateBytes / 2) return false;
-	QDataStream countReader(bytes); countReader.setVersion(QDataStream::Qt_4_1);
+	QByteArray raw = bytes;
+	if(bytes.startsWith("LCRH"))
+	{
+		if(bytes.size() < 8) return false;
+		QDataStream sizeReader(bytes.mid(4, 4));
+		quint32 expanded = 0; sizeReader >> expanded;
+		if(!expanded || expanded > 128 * 1024 * 1024) return false;
+		raw = qUncompress(bytes.mid(4));
+		if(quint32(raw.size()) != expanded) return false;
+	}
+	QDataStream countReader(raw); countReader.setVersion(QDataStream::Qt_4_1);
 	quint16 count = 0; countReader >> count;
 	if(countReader.status() != QDataStream::Ok || !count || count > 240) return false;
-	QDataStream reader(bytes); reader.setVersion(QDataStream::Qt_4_1);
+	QDataStream reader(raw); reader.setVersion(QDataStream::Qt_4_1);
 	AuCityReportHistory candidate; reader >> candidate;
 	// The shared display history applies its normal retention and inventory
-	// minimization. The original raw bytes remain intact in State and the DB.
+	// minimization. Storage retains the full history in raw or compressed form.
 	if(reader.status() != QDataStream::Ok || !reader.atEnd() || candidate.IsEmpty() || candidate.Count() > count) return false;
 	result = candidate;
 	return true;
@@ -687,6 +776,88 @@ bool DaLegacyCity::ReportHistory(AuCityReportHistory& result) const
 { return ReadReportHistory(Snapshot().reportHistory, result); }
 QString DaLegacyCity::Name() const { QReadLocker lock(&m_CityLock); return m_City.name; }
 quint32 DaLegacyCity::EmpireId() const { QReadLocker lock(&m_CityLock); return m_City.controllingEmpire; }
+quint32 DaLegacyCity::Population() const { QReadLocker lock(&m_CityLock); return quint32(m_City.population); }
+
+int DaLegacyCity::CanSpawnHere(quint32 empireId) const
+{
+	if(!g_Au.IsLegacyGeneration() || !IsNormal()) return 2;
+	const quint32 cityEmpire = EmpireId();
+	if(cityEmpire == empireId) return 0;
+	const auto stance = PoliticalStance(cityEmpire, empireId);
+	return stance == POL_Friend || stance == POL_Empire || stance == POL_Vassal ? 0 : 1;
+}
+
+AuPoint DaLegacyCity::SpawnLocation(const AuGlobeLLF* home) const
+{
+	const auto* world = dynamic_cast<const DaWorldLL*>(Parent());
+	if(!world) return AuPoint();
+	AuPoint origin = Location();
+	bool atHome = false;
+	if(home)
+	{
+		QMutexLocker lock(&m_Runtime->lock); m_Runtime->Ensure(*this);
+		for(const auto& building : m_Runtime->buildings)
+		{
+			const auto& dev = building.state;
+			if(dev.demolished || !dev.completedLevels || dev.location.Longitude() != home->Longitude()
+				|| dev.location.Latitude() != home->Latitude()) continue;
+			atHome = true;
+			AuMatrix4x4 placement;
+			world->BuildingConstructionTransform(world->LocOfLL(dev.location, dev.altitudeMSL),
+				dev.facingRadians, nullptr, AuPoint(), placement);
+			origin = placement.Translation();
+			const auto design = AuLegacyBd::Catalog::BuiltIn().Find(dev.designId);
+			if(!design) break;
+			// DpBuilding::SpawnLocation 0x5f0e10: prefer connected sleeping
+			// rooms. Otherwise use another connected interior room.
+			QVector<quint16> rooms;
+			bool sleeping = false;
+			for(const auto& room : design->rooms)
+			{
+				if(room.deck < dev.minimumDeck || room.deck > dev.maximumDeck) continue;
+				const bool preferred = room.roomType == 1 || room.roomType == 4 || room.roomType == 7 || room.roomType == 19;
+				if(!preferred && (sleeping || !(room.roomType == 2 || room.roomType == 3 || room.roomType == 5
+					|| room.roomType == 6 || room.roomType == 8 || room.roomType == 10 || room.roomType == 11
+					|| room.roomType == 14 || (room.roomType >= 16 && room.roomType <= 21)))) continue;
+				bool connected = false;
+				for(const auto& cell : building.paths.PathableCells())
+					if((cell.doorIndex >= 0 || cell.holeIndex >= 0 || cell.railingIndex >= 0)
+						&& (cell.room1 == room.roomId || cell.room2 == room.roomId)) { connected = true; break; }
+				if(!connected) continue;
+				if(preferred && !sleeping) { sleeping = true; rooms.clear(); }
+				rooms.append(room.roomId);
+			}
+			for(int attempt = 0; !rooms.isEmpty() && attempt < 100; ++attempt)
+			{
+				const quint16 room = rooms.takeAt(g_Au.Dice().Roll(1, rooms.size(), -1));
+				QVector<quint32> floors;
+				// AuPath::RandomFloorLocation 0xf8bf0 excludes unsupported
+				// openings and stair cells, preserving both opening room sides.
+				for(auto cell = building.paths.PathableCells().cbegin(); cell != building.paths.PathableCells().cend(); ++cell)
+				{
+					const bool opening = cell->doorIndex >= 0 || cell->holeIndex >= 0 || cell->railingIndex >= 0;
+					if(cell->room1 != room && !(opening && cell->room2 == room)) continue;
+					if((!(cell->flags & 8) && (cell->flags & 32)) || (!cell->room2 && (cell->flags & 8))
+						|| (cell->flags & 0xff00)) continue;
+					floors.append(cell.key());
+				}
+				if(floors.isEmpty()) continue;
+				const quint32 cell = floors.at(g_Au.Dice().Roll(1, floors.size(), -1));
+				return placement.Project(AuPoint((int((cell >> 8) & 255) - 128) * AuLegacyShip::CoordinateSpacing,
+					(int(cell & 255) - 128) * AuLegacyShip::CoordinateSpacing, qint16(cell >> 16) * AuLegacyBd::DeckHeight + 4));
+			}
+			break;
+		}
+	}
+	// DaWorldLL::CityRandomSpawnLoc 0x510370 and CitySpawnLoc 0x5104d0.
+	// Original vtable slots 0x738/0x730 use GetSurfaceLocation, including
+	// the water surface; the home fallback additionally starts four feet up.
+	const int dx = g_Au.Dice().Roll(1, 50), dy = g_Au.Dice().Roll(1, 50), dz = g_Au.Dice().Roll(1, 50);
+	AuGlobeLLF location;
+	if(!world->LLOfLoc(location, origin + AuPoint(dx, dy, dz)))
+		world->LLOfLoc(location, origin);
+	return atHome ? world->GetSurfaceLocation(location, 4) : world->GetSurfaceLocation(location);
+}
 
 bool DaLegacyCity::IsInScene(const DaPerson* sceneAtom, const AuPoint& cameraEnvironmentLocation) const
 {
@@ -803,6 +974,16 @@ void DaLegacyCity::UpdateSiteTerrain(AuAtomRenderInfo& ari, bool removed)
 	if(!world) return;
 	QMutexLocker lock(&m_Runtime->lock); m_Runtime->EnsureSites(*this, *world);
 	removed = removed || IsDead();
+	{
+		QReadLocker stateLock(&m_CityLock);
+		if(removed || m_Runtime->overlayRevision != m_CityRevision)
+		{
+			m_Runtime->overlayRevision = m_CityRevision;
+			// Construction can change levels without changing site terrain.
+			// Refresh only building sprites, including while standing still.
+			world->InvalidateBuildingOverlaySprites();
+		}
+	}
 	if(!removed && m_Runtime->terrainDrawRevision == m_Runtime->terrainRevision) return;
 	// Invalidate old sites as well, so moved/removed developments restore their
 	// natural terrain and flora. Release the city lock before terrain work.
@@ -820,7 +1001,11 @@ bool DaLegacyCity::SetState(const AuLegacyCity::State& state, QString& error)
 	if(!g_Au.IsLegacyGeneration()) { error = QStringLiteral("Legacy cities require a Legacy universe."); return false; }
 	QByteArray checked;
 	if(!AuLegacyCity::EncodeState(state, checked, error) || !ValidateDesigns(state, error)) return false;
-	{ QWriteLocker lock(&m_CityLock); m_City = state; ++m_CityRevision; }
+	{
+		QWriteLocker lock(&m_CityLock);
+		const qint64 lastVisit = m_City.lastVisit;
+		m_City = state; m_City.lastVisit = qMax(m_City.lastVisit, lastVisit); ++m_CityRevision;
+	}
 	SetModified();
 	return true;
 }
@@ -834,11 +1019,15 @@ int DaLegacyCity::ConstructionLevelLimit(quint8 industry, quint16 material)
 
 bool DaLegacyCity::BeginConstruction(DaPerson& person, quint8 industry, quint8 process, quint32 designId,
 	quint16 material, const AuGlobeLLF& location, double heading, quint8 levels, QString& error,
-	double roadLength, double roadWidth, bool roadSlab, double biodomeRadius)
+	double roadLength, double roadWidth, bool roadSlab, double biodomeRadius,
+	quint16 manufacturingRecipe, bool manufactureCitizen)
 {
 	if(!ConstructionAuthority(*this, person, true, error)) return false;
 	auto* world = dynamic_cast<DaWorldLL*>(Parent());
 	const auto* recipe = ConstructionRecipe(industry, process);
+	const auto* manufacturing = AuLegacyCityCatalogue::BuiltIn()->ManufacturingProcess(AuLegacyCity::ManufacturingProcessId(manufacturingRecipe));
+	if(manufacturingRecipe && (!manufacturing || manufacturing->industry.value != industry))
+	{ error = QStringLiteral("The selected manufacturing recipe belongs to a different industry."); return false; }
 	// Road pavement comes from its process, independently of the building
 	// material retained in the construction window.
 	if(industry==2 && recipe) material=recipe->id.value==3 ? 23 : 76;
@@ -1025,6 +1214,8 @@ bool DaLegacyCity::BeginConstruction(DaPerson& person, quint8 industry, quint8 p
 		{ error=QStringLiteral("This resource zone has reached its original military flag limit."); return false; }
 	}
 	if(!adjacent) { error = QStringLiteral("Build beside a completed city development or road."); return false; }
+	dev.selectedManufacturingRecipe = manufacturingRecipe;
+	dev.manufacturingCitizenEnabled = manufactureCitizen;
 	ConstructedDecks(dev);
 	InitializeConstruction(dev, SitePreparationLabor(*world,dev), ConstructionEnvironment(*world,location));
 	QWriteLocker lock(&m_CityLock);
@@ -1045,6 +1236,7 @@ bool DaLegacyCity::BeginConstruction(DaPerson& person, quint8 industry, quint8 p
 	if(industry == 1)
 	{
 		if(!person.EmpireId()) { error = QStringLiteral("Join an empire before founding a city."); return false; }
+		candidate.citizenSpecies = person.Species().Key();
 		// Validate the entire publishable city before consuming the flag.
 		dev.completedLevels = dev.targetLevels = 1; dev.laborRemaining=0; dev.components.clear(); ConstructedDecks(dev);
 		AuLegacyCity::Flag cityFlag; cityFlag.empire=person.EmpireId(); cityFlag.location=dev.location;
@@ -1064,13 +1256,15 @@ bool DaLegacyCity::BeginConstruction(DaPerson& person, quint8 industry, quint8 p
 		if(!flag) { person.UnlockGear(); error=QStringLiteral("An empire flag in your inventory is required to found a city."); return false; }
 		gear->RemoveItems(*flag); person.UnlockGear();
 	}
+	candidate.lastVisit = qMax(candidate.lastVisit, m_City.lastVisit);
 	m_City=std::move(candidate); ++m_CityRevision;
 	lock.unlock(); SetModified();
 	if(industry==1) { person.LockGearForWrite(); person.UpdateGearWeight(); person.UnlockGear(); }
 	return true;
 }
 
-bool DaLegacyCity::ExtendConstruction(DaPerson& person, quint32 id, quint8 levels, QString& error)
+bool DaLegacyCity::ExtendConstruction(DaPerson& person, quint32 id, quint8 levels, QString& error,
+	quint16 manufacturingRecipe, bool manufactureCitizen)
 {
 	if(!ConstructionAuthority(*this,person,true,error)) return false;
 	auto* world = dynamic_cast<DaWorldLL*>(Parent());
@@ -1078,6 +1272,9 @@ bool DaLegacyCity::ExtendConstruction(DaPerson& person, quint32 id, quint8 level
 	for(auto& dev : state.developments) if(dev.id == id)
 	{
 		const auto* recipe=ConstructionRecipe(dev.industryId,dev.constructionProcessId);
+		const auto* manufacturing = AuLegacyCityCatalogue::BuiltIn()->ManufacturingProcess(AuLegacyCity::ManufacturingProcessId(manufacturingRecipe));
+		if(manufacturingRecipe && (!manufacturing || manufacturing->industry.value != dev.industryId))
+		{ error = QStringLiteral("The selected manufacturing recipe belongs to a different industry."); return false; }
 		if(!world || !levels || dev.demolished || !dev.components.isEmpty() || !dev.constructed
 			|| !recipe || int(dev.completedLevels)+levels > AuLegacyCityCatalogue::BuiltIn()->ConstructionLevelLimit(recipe->id,
 				AuLegacyCity::CommodityId(dev.materialId),world->OrbitZone()!=OZONE_Inferno)
@@ -1086,6 +1283,8 @@ bool DaLegacyCity::ExtendConstruction(DaPerson& person, quint32 id, quint8 level
 		const quint8 expectedProcess=dev.constructionProcessId;
 		dev.constructionProcessId=recipe->id.value;
 		dev.targetLevels = quint8(dev.completedLevels+levels);
+		dev.selectedManufacturingRecipe = manufacturingRecipe;
+		dev.manufacturingCitizenEnabled = manufactureCitizen;
 		InitializeConstruction(dev,SitePreparationLabor(*world,dev),ConstructionEnvironment(*world,dev.location));
 		return ReplaceFinishedDevelopment(dev,expectedProcess,dev.completedLevels,error);
 	}
@@ -1107,6 +1306,7 @@ bool DaLegacyCity::ReplaceFinishedDevelopment(const AuLegacyCity::Development& r
 		current=replacement; current.citizenWorker=citizenWorker;
 		QByteArray checked;
 		if(!AuLegacyCity::EncodeState(candidate,checked,error) || !ValidateDesigns(candidate,error)) return false;
+		candidate.lastVisit = qMax(candidate.lastVisit, m_City.lastVisit);
 		m_City=std::move(candidate); ++m_CityRevision;
 		lock.unlock(); SetModified(); return true;
 	}
@@ -1135,6 +1335,7 @@ bool DaLegacyCity::DemolishDevelopment(DaPerson& person, quint32 id, bool clear,
 {
 	Q_UNUSED(clear);
 	if(!ConstructionAuthority(*this,person,true,error)) return false;
+	auto* world = dynamic_cast<DaWorldLL*>(Parent());
 	QWriteLocker lock(&m_CityLock);
 	auto state = m_City;
 	for(int i=0;i<state.developments.size();++i) if(state.developments[i].id == id)
@@ -1147,10 +1348,23 @@ bool DaLegacyCity::DemolishDevelopment(DaPerson& person, quint32 id, bool clear,
 		// DeleteConstruction 0x514bf0 deletes the development, with no synthetic
 		// rubble phase and no refund of materials already applied.
 		state.developments.removeAt(i);
+		AuLegacyCity::ProductionState production;
+		const auto* catalogue = AuLegacyCityCatalogue::BuiltIn();
+		if(!catalogue || !AuLegacyCity::DecodeProductionState(*catalogue, state.manufacturing, production, error)) return false;
+		// DeleteBuilding 0x28add0 calls ClearManufacturingProcesses, which
+		// destroys their applied materials without the recipe-change refund.
+		production.processes.erase(std::remove_if(production.processes.begin(), production.processes.end(), [id](const AuLegacyCity::ProductionProcess& process) {
+			return process.developmentId == id;
+		}), production.processes.end());
+		if(!AuLegacyCity::EncodeProductionState(*catalogue, production, state.manufacturing, error)) return false;
+		state.lastEmployment = 0;
 		QByteArray checked;
 		if(!AuLegacyCity::EncodeState(state,checked,error)) return false;
+		state.lastVisit = qMax(state.lastVisit, m_City.lastVisit);
 		m_City=std::move(state); ++m_CityRevision;
-		lock.unlock(); SetModified(); return true;
+		lock.unlock(); SetModified();
+		if(world) world->InvalidateEnvironmentRecursive();
+		return true;
 	}
 	error = QStringLiteral("The development no longer exists."); return false;
 }
@@ -1189,8 +1403,138 @@ bool DaLegacyCity::ChangeRoadConstruction(DaPerson& person, quint32 id, quint8 p
 	error=QStringLiteral("The road no longer exists."); return false;
 }
 
+AuLegacyCity::CitizenConstructionFacts DaLegacyCity::GatherCitizenConstructionFacts(
+	const AuLegacyCity::State& state, const AuLegacyCity::Development& development, qint64 now, bool materialsOnly) const
+{
+	AuLegacyCity::CitizenConstructionFacts facts;
+	facts.developmentId = development.id;
+	facts.completedLevels = development.completedLevels;
+	facts.processId = development.constructionProcessId;
+	facts.now = now;
+	auto* world = dynamic_cast<DaWorldLL*>(Parent());
+	if(!world || development.demolished || development.components.isEmpty() || development.halted
+		|| (!materialsOnly && !development.citizenWorker))
+	{ facts.blocked = true; return facts; }
+	facts.blocked = !materialsOnly && ConstructionThreat(*world, Id(), development, state.controllingEmpire) != 0;
+	facts.ringworld = OnRingworld();
+	facts.environment = ConstructionEnvironment(*world, development.location);
+	AuGlobeLL cityLL;
+	if(world->LLOfLoc(cityLL, Location()))
+		world->QueryNaturalResources(facts.natural, world->ResourceZone(cityLL.Longitude()));
+	// DpDevelopment::OperatedByCitizens 0x651540 fetches only after current
+	// site/material labor is exhausted. Ground items precede natural/stock.
+	if(materialsOnly || (!development.laborRemaining && !facts.blocked))
+		facts.groundItems = AuLegacyConstructionMaterials::ItemsAtSite(*world, Id(), development);
+	quint32 possibleLabor = 4;
+	for(const auto& component : development.components)
+		if(component.effect == CE_DecreasesTime) possibleLabor += component.commodityId == 3 ? 1 : 5;
+	if(!materialsOnly && development.completedLevels + 1 < development.targetLevels && development.laborRemaining <= possibleLabor)
+	{
+		auto next = development;
+		++next.completedLevels;
+		facts.nextPreparation = SitePreparationLabor(*world, next);
+	}
+	return facts;
+}
+
+bool DaLegacyCity::ApplyCitizenConstruction(AuLegacyCity::State& state, AuLegacyCity::Development& development,
+	AuItemHash& inventory, AuLegacyCity::ProductionState& production,
+	const AuLegacyCity::CitizenConstructionFacts& facts, bool& physicalChanged,
+	AuLegacyConstructionMaterials::Batch& materials, bool performLabor) const
+{
+	physicalChanged = false;
+	const auto* catalogue = AuLegacyCityCatalogue::BuiltIn();
+	if(!catalogue || (performLabor && (facts.blocked || !development.citizenWorker)) || development.id != facts.developmentId
+		|| development.completedLevels != facts.completedLevels || development.constructionProcessId != facts.processId
+		|| development.demolished || development.halted || development.components.isEmpty()) return false;
+	// A completed military base adds a flag. Reject work before consuming
+	// world materials when the bounded state cannot accept that completion.
+	if(performLabor && development.industryId == 10 && state.flags.size() >= 4096) return false;
+	AuLegacyCity::ProductionProcess components;
+	components.buildingTechnology = 0;
+	components.laborNeeded = development.laborRemaining;
+	for(const auto& source : development.components)
+	{
+		AuLegacyCity::ProductionComponent component;
+		component.commodityId = source.commodityId;
+		component.effect = source.effect;
+		component.quality = source.quality;
+		component.required = source.quantity;
+		component.applied = source.applied;
+		components.components.append(component);
+	}
+	bool changed = false;
+	if(!performLabor || !components.laborNeeded)
+	{
+		changed = materials.Fetch(facts.groundItems, *catalogue, components);
+		changed |= AuLegacyCity::FetchConstructionMaterials(*catalogue, components, inventory, production,
+			facts.natural, facts.ringworld);
+	}
+	components.laborNeeded = qMin(65535U, components.laborNeeded);
+	if(performLabor && components.laborNeeded)
+	{
+		const auto electricity = COMMODITYID(catalogue->RuntimeCommodityId(AuLegacyCity::CommodityId(3)));
+		const bool hasPower = facts.ringworld || inventory.RawCount(electricity);
+		bool missingTool = false;
+		for(const auto& component : components.components)
+			if(component.effect == CE_Required && !component.required && !component.applied)
+				if(component.commodityId == 3 ? !hasPower
+					: !AuLegacyCity::HasProductionTool(*catalogue, component.commodityId, production, inventory)) missingTool = true;
+		if(!missingTool)
+		{
+			quint32 labor = 4;
+			for(auto& component : components.components)
+			{
+				if(component.effect == CE_DecreasesTime)
+				{
+					const bool tool = component.commodityId == 3 ? hasPower
+						: AuLegacyCity::UseProductionTool(*catalogue, component.commodityId, production, inventory);
+					component.applied = tool ? 1 : 0;
+					if(tool) labor += component.commodityId == 3 ? 1 : 5;
+				}
+				else if(component.effect == CE_Required && !component.required && !component.applied)
+					component.applied = component.commodityId == 3 ? quint32(hasPower)
+						: quint32(AuLegacyCity::UseProductionTool(*catalogue, component.commodityId, production, inventory));
+			}
+			components.laborNeeded -= qMin(components.laborNeeded, labor);
+			changed = true;
+		}
+	}
+	const auto laborBefore = development.laborRemaining;
+	development.laborRemaining = qMin(65535U, components.laborNeeded);
+	for(int index = 0; index < development.components.size(); ++index)
+	{
+		auto& destination = development.components[index];
+		const auto& source = components.components[index];
+		changed |= destination.quality != source.quality || destination.applied != source.applied;
+		destination.quality = source.quality;
+		destination.applied = source.applied;
+	}
+	if(performLabor && !development.laborRemaining && ComponentsComplete(development))
+	{
+		++development.completedLevels;
+		ConstructedDecks(development);
+		if(development.completedLevels < development.targetLevels)
+			InitializeConstruction(development, facts.nextPreparation, facts.environment);
+		else development.components.clear();
+		if(development.industryId == 10)
+		{
+			AuLegacyCity::Flag flag;
+			flag.empire = state.controllingEmpire;
+			flag.location = development.location;
+			flag.level = 30;
+			flag.capturedAt = facts.now;
+			state.flags.append(flag);
+		}
+		state.lastEmployment = 0;
+		changed = physicalChanged = true;
+	}
+	return changed || laborBefore != development.laborRemaining;
+}
+
 bool DaLegacyCity::OperateConstruction(DaPerson* person, quint32 id, bool fetch, bool labor, QString& error, bool* accepted)
 {
+	AuLegacyFinanceTransfer transfer(person);
 	if(accepted) *accepted=false;
 	if(person && !ConstructionAuthority(*this,*person,false,error)) return false;
 	auto* world = dynamic_cast<DaWorldLL*>(Parent()); if(!world) return false;
@@ -1234,166 +1578,235 @@ bool DaLegacyCity::OperateConstruction(DaPerson* person, quint32 id, bool fetch,
 		// Only sample when this effort could finish the current level.
 		auto next=*original; ++next.completedLevels; nextPreparation=SitePreparationLabor(*world,next);
 	}
-	AuZoneResource natural; world->QueryNaturalResources(natural,world->ResourceZone(original->location.Longitude()));
+	AuGlobeLL cityLL;
+	if(!world->LLOfLoc(cityLL,Location())) return false;
+	AuZoneResource natural; world->QueryNaturalResources(natural,world->ResourceZone(cityLL.Longitude()));
 	const quint8 environment = ConstructionEnvironment(*world,original->location);
 	const auto* catalogue = AuLegacyCityCatalogue::BuiltIn(); if(!catalogue) return false;
+	const bool ringworld = OnRingworld();
+	quint16 completionRecipe = 0;
+	if(labor && AuLegacyCity::ManufacturingSlots(original->industryId, original->completedLevels + 1)
+		> AuLegacyCity::ManufacturingSlots(original->industryId, original->completedLevels))
+	{
+		AuMatrix4x4 placement;
+		const auto center = world->LocOfLL(original->location, original->altitudeMSL);
+		world->BuildingConstructionTransform(center, original->facingRadians, nullptr, AuPoint(), placement);
+		const auto* construction = ConstructionRecipe(original->industryId, original->constructionProcessId);
+		const double radius = construction ? construction->buildRadius * FeetPerMeter() : 0;
+		completionRecipe = AuLegacyCity::DefaultProductionRecipe(*catalogue, original->industryId, [&](quint16 historical) {
+			return world->TestRockResource(placement, center, AuPoint(radius, radius, radius),
+				COMMODITYID(catalogue->RuntimeCommodityId(AuLegacyCity::CommodityId(historical))));
+		});
+	}
 	const auto groundItems=fetch ? AuLegacyConstructionMaterials::ItemsAtSite(*world,Id(),*original) : QVector<DaItem*>();
-	QVector<DaItem*> changedItems,emptiedItems;
+	QHash<quint16,AuGearPos> ready;
+	if(person && labor)
+		for(const auto& component : original->components)
+			if(component.commodityId != 3 && (component.effect == CE_DecreasesTime
+				|| (component.effect == CE_Required && !component.quantity)))
+				ready.insert(component.commodityId,person->FindReadyItem(
+					COMMODITYID(catalogue->RuntimeCommodityId(AuLegacyCity::CommodityId(component.commodityId)))));
+	AuLegacyConstructionMaterials::Batch materials;
+	QVector<AuGearPos> wornGear;
+	double salary=0,salaryReward=0;
+	bool contributed=false;
 	QWriteLocker lock(&m_CityLock);
-	auto found = std::find_if(m_City.developments.begin(),m_City.developments.end(),[id](const AuLegacyCity::Development& dev){return dev.id==id;});
-	if(found == m_City.developments.end() || found->components.isEmpty() || found->demolished)
+	AuLegacyCity::State state=m_City;
+	auto found = std::find_if(state.developments.begin(),state.developments.end(),[id](const AuLegacyCity::Development& dev){return dev.id==id;});
+	if(found == state.developments.end() || found->components.isEmpty() || found->demolished)
 	{ error = QStringLiteral("There is no unfinished construction here."); return false; }
 	if(found->halted) { error = QStringLiteral("Resume construction before contributing materials or labor."); return false; }
+	// Completing a military base appends its flag. Reject before touching
+	// loose world cargo when that append would exceed the state codec bound.
+	if(labor && found->industryId == 10 && state.flags.size() >= 4096)
+	{ error = QStringLiteral("This city has reached its flag capacity; this military base cannot be completed."); return false; }
 	const qint64 now = QDateTime::currentMSecsSinceEpoch();
 	AuItemHash inventory;
-	if(!ReadConstructionInventory(m_City.inventory,inventory))
-	{ error = QStringLiteral("The city's material inventory is malformed."); return false; }
-	if(accepted) *accepted=true;
+	AuLegacyCity::ProductionState production;
+	AuLegacyCity::AccountingState accounting;
+	if(!AuLegacyCity::ReadCityInventory(state.inventory,*catalogue,inventory,error)
+		|| !AuLegacyCity::DecodeProductionState(*catalogue,state.manufacturing,production,error)
+		|| !AuLegacyCity::DecodeAccounting(state.accounting,accounting,error)) return false;
 	if(found->completedLevels!=original->completedLevels || found->constructionProcessId!=original->constructionProcessId
 		|| (found->completedLevels+1<found->targetLevels && found->laborRemaining<=possibleLabor && original->laborRemaining>possibleLabor))
 	{ error=QStringLiteral("Construction advanced while the site was being checked. Its current status is ready for the next effort."); return false; }
+	if(accepted) *accepted=true;
 	if(person && labor && now-m_ConstructionLaborTimes.value(person->Id().GetID(),0) < 1000)
 	{ error.clear(); return false; }
-	AuGear* gear = person && fetch ? person->LockGearForWrite() : nullptr;
-	bool playerGearChanged=false;
-	AuItemHash available;
-	if(gear) gear->CombineItemsForSale(available);
 	auto& dev = *found; bool changed = false, physicalChanged = false;
-	const quint32 laborBefore = dev.laborRemaining;
+	AuLegacyCity::ProductionProcess components;
+	components.laborNeeded=dev.laborRemaining;
+	for(const auto& source : dev.components)
+	{
+		AuLegacyCity::ProductionComponent component;
+		component.commodityId=source.commodityId; component.effect=source.effect;
+		component.quality=source.quality; component.required=source.quantity; component.applied=source.applied;
+		components.components.append(component);
+	}
 	if(fetch)
-		for(auto& component : dev.components)
-		{
-			if(!component.quantity || component.applied >= component.quantity) continue;
-			const auto runtime = COMMODITYID(catalogue->RuntimeCommodityId(AuLegacyCity::CommodityId(component.commodityId)));
-			DeProcessComponent working; working.SetCommodity(runtime,1); working.SetQuality(component.quality); working.SetEffect(COMPEFFECT(component.effect));
-			working.SetQtyConsumed(component.quantity); working.SetQtyApplied(component.applied);
-			auto apply = [&](AuItem& item) {
-				if(item.CommodityId()!=runtime || working.IsSatisfied() || !item.Count()) return;
-				const int needed = working.ApplyMaterial(item);
-				dev.laborRemaining = qMin(quint32(65535),dev.laborRemaining+quint32(qMax(0,needed)));
-			};
-			for(auto& item : inventory) apply(*item.second);
-			for(auto& item : available)
-			{
-				const quint32 count = item.second->Count(); apply(*item.second);
-				if(gear && item.second->Count() < count)
-				{
-					QScopedPointer<AuItem> removed(item.second->Clone()); removed->SetCount(count-item.second->Count());
-					gear->RemoveItems(*removed);
-					changed = playerGearChanged = true;
-				}
-			}
-			if(!working.IsSatisfied())
-			{
-				const int amount = natural.Fetch(runtime,1);
-				if(amount>0) { AuItem item(runtime,natural.Quality(runtime),0,amount); item.SetHitPoints(1); apply(item); }
-			}
-			changed = changed || component.applied != working.QtyApplied() || component.quality != working.Quality();
-			component.applied = working.QtyApplied(); component.quality = working.Quality();
-		}
-	if(gear) person->UnlockGear();
-	if(fetch)
-		for(auto& component : dev.components)
-		{
-			if(component.applied>=qMax(quint32(1),component.quantity)) continue;
-			const auto runtime=COMMODITYID(catalogue->RuntimeCommodityId(AuLegacyCity::CommodityId(component.commodityId)));
-			DeProcessComponent working; working.SetCommodity(runtime,1); working.SetQuality(component.quality); working.SetEffect(COMPEFFECT(component.effect));
-			working.SetQtyConsumed(component.quantity); working.SetQtyApplied(component.applied);
-			const quint32 added=AuLegacyConstructionMaterials::Fetch(groundItems,working,changedItems,emptiedItems);
-			dev.laborRemaining=qMin(quint32(65535),dev.laborRemaining+added);
-			changed=changed || component.applied!=working.QtyApplied() || component.quality!=working.Quality() || added;
-			component.applied=working.QtyApplied(); component.quality=working.Quality();
-		}
-	if(labor && dev.laborRemaining)
+	{
+		// ManufactureFetch(...,99) -> 0x516200: loose items/direct contents,
+		// then city-zone natural resources, ringworld power, vehicles and stock.
+		// Carried cargo is not a source; personal equipment supplies labor tools.
+		materials.Fetch(groundItems,*catalogue,components);
+		AuLegacyCity::FetchConstructionMaterials(*catalogue,components,inventory,production,natural,ringworld);
+	}
+	components.laborNeeded=qMin(65535U,components.laborNeeded);
+	if(labor && components.laborNeeded)
 	{
 		bool missingTool = false; int boost = 0;
+		const bool hasPower=ringworld || inventory.RawCount(COMMODITYID(catalogue->RuntimeCommodityId(AuLegacyCity::CommodityId(3))));
 		// Verify every unsatisfied required modifier before wearing any tool.
 		// DpDevelopment::ApplyConstructionLabor, AuAtom13 0x64b390.
-		for(const auto& component : dev.components)
+		for(const auto& component : components.components)
 		{
-			if(component.effect != CE_Required || component.quantity || component.applied) continue;
-			const auto runtime = COMMODITYID(catalogue->RuntimeCommodityId(AuLegacyCity::CommodityId(component.commodityId)));
-			const bool available = component.commodityId == 3 ? m_City.capacitor > 0
-				: (person && person->FindReadyItem(runtime).IsValid()) || inventory.RawCount(runtime)>0;
+			if(component.effect != CE_Required || component.required || component.applied) continue;
+			const bool available = component.commodityId == 3 ? hasPower : ready.value(component.commodityId).IsValid()
+				|| AuLegacyCity::HasProductionTool(*catalogue,component.commodityId,production,inventory);
 			if(!available) missingTool = true;
 		}
 		if(!missingTool)
-		for(auto& component : dev.components)
+		for(auto& component : components.components)
 		{
-			if((component.effect != CE_Required || component.quantity) && component.effect != CE_DecreasesTime) continue;
+			if((component.effect != CE_Required || component.required) && component.effect != CE_DecreasesTime) continue;
 			if(component.effect == CE_Required && component.applied) continue;
-			const auto runtime = COMMODITYID(catalogue->RuntimeCommodityId(AuLegacyCity::CommodityId(component.commodityId)));
-			const bool power = component.commodityId == 3 && m_City.capacitor > 0;
-			const AuGearPos ready = person ? person->FindReadyItem(runtime) : AuGearPos();
-			const bool tool = person && ready.IsValid();
-			const bool cityTool = inventory.RawCount(runtime)>0;
-			component.applied = power || tool || cityTool ? 1 : 0;
-			auto usePlayerTool=[&]() {
-				AuGear* equipped=person->LockGearForWrite(); AuItem* item=equipped->ItemAt(ready);
-				const int itemBoost=item ? item->GetLaborBoost() : 0;
-				const bool hasItem=item!=nullptr;
-				person->UnlockGear();
-				if(hasItem)
-				{
-					// Use the public gear API for wear, removal and notifications.
-					// Weight is refreshed below, after releasing the city lock.
-					person->UseGearItem(ready,IPS_Item,false);
-					playerGearChanged=true;
-				}
-				return itemBoost;
-			};
+			bool tool=false;
+			if(component.commodityId == 3) tool=hasPower;
+			else if(ready.value(component.commodityId).IsValid())
+			{ tool=true; wornGear.append(ready.value(component.commodityId)); }
+			else tool=AuLegacyCity::UseProductionTool(*catalogue,component.commodityId,production,inventory);
+			component.applied=tool ? 1 : 0;
 			if(component.effect == CE_DecreasesTime && component.applied)
-			{
-				if(power) ++boost;
-				else if(tool) boost += usePlayerTool();
-				else for(auto& entry : inventory) if(entry.second->CommodityId()==runtime && entry.second->Count())
-				{
-					boost += entry.second->GetLaborBoost();
-					if(!entry.second->UseItem()) entry.second->Consume(1);
-					break;
-				}
-			}
-			else if(component.effect == CE_Required && tool) usePlayerTool();
-			else if(component.effect == CE_Required && cityTool)
-				for(auto& entry : inventory) if(entry.second->CommodityId()==runtime && entry.second->Count())
-				{ if(!entry.second->UseItem()) entry.second->Consume(1); break; }
+				boost+=component.commodityId == 3 ? 1 : AuItem::GetLaborBoost();
 		}
 		if(!missingTool)
 		{
-			dev.laborRemaining -= qMin(dev.laborRemaining,quint32(4+boost)); changed = true;
+			components.laborNeeded-=qMin(components.laborNeeded,quint32(4+boost));
+			contributed=true;
 			if(person)
 			{
-				dev.lastPlayerLabor = now; m_ConstructionLaborTimes.insert(person->Id().GetID(),now);
-				if(m_ConstructionLaborTimes.size()>4096)
-					for(auto it=m_ConstructionLaborTimes.begin();it!=m_ConstructionLaborTimes.end();)
-						if(now-it.value()>60000) it=m_ConstructionLaborTimes.erase(it); else ++it;
+				dev.lastPlayerLabor=now;
+				// DaWorldLL::ApplyConstructionLabor 0x50df40 pays one crono
+				// per successful effort, from public works or the citizen bank.
+				const bool governmentWorks=dev.industryId == 2 || (dev.industryId >= 10 && dev.industryId <= 12)
+					|| dev.industryId == 123 || dev.industryId == 128;
+				const float balance=float(governmentWorks ? accounting.accounts.government : accounting.accounts.citizens);
+				const float gross=qMin(1.0f,balance);
+				salaryReward=double(1.0f-gross);
+				if(governmentWorks) accounting.accounts.Debit(AuLegacyCity::GovernmentExpense::Works,double(gross));
+				else accounting.accounts.Debit(AuLegacyCity::CitizenExpense::Salary,double(gross));
+				const float tax=(accounting.taxes.income/100.0f)*gross;
+				accounting.accounts.Credit(AuLegacyCity::GovernmentIncome::IncomeTax,double(tax),accounting.taxes.hasCapital);
+				salary=double(gross-tax);
 			}
 		}
 	}
-	// Retain original technology/quality stacks in city storage; discard only
-	// emptied stacks after materials and worn tools have consumed exact items.
-	for(auto it=inventory.begin();it!=inventory.end();) if(!it->second->Count()) { auto old=it++; inventory.Erase(old); } else ++it;
-	QByteArray stored; QDataStream inventoryOut(&stored,QIODevice::WriteOnly); inventoryOut.setVersion(QDataStream::Qt_4_1); inventoryOut << inventory;
-	m_City.inventory = stored;
-	if(!dev.laborRemaining && ComponentsComplete(dev))
+	dev.laborRemaining=qMin(65535U,components.laborNeeded);
+	for(int index=0;index<dev.components.size();++index)
 	{
+		dev.components[index].quality=components.components[index].quality;
+		dev.components[index].applied=components.components[index].applied;
+	}
+	if(labor && !dev.laborRemaining && ComponentsComplete(dev))
+	{
+		const auto priorProcessCount = AuLegacyCity::ManufacturingSlots(dev.industryId, dev.completedLevels);
 		++dev.completedLevels; ConstructedDecks(dev); changed = physicalChanged = true;
 		if(dev.completedLevels < dev.targetLevels) InitializeConstruction(dev,nextPreparation,environment);
 		else dev.components.clear();
+		// CompleteConstruction 0x510830 creates newly available process slots
+		// immediately, including the first mine/well's site-specific default.
+		for(quint16 slot = priorProcessCount; slot < AuLegacyCity::ManufacturingSlots(dev.industryId, dev.completedLevels); ++slot)
+		{
+			if(std::any_of(production.processes.cbegin(), production.processes.cend(), [&dev, slot](const AuLegacyCity::ProductionProcess& item) {
+				return item.developmentId == dev.id && item.slot == slot; })) continue;
+			quint16 recipeId = completionRecipe;
+			const auto first = std::find_if(production.processes.cbegin(), production.processes.cend(), [&dev](const AuLegacyCity::ProductionProcess& item) {
+				return item.developmentId == dev.id && item.slot == 0; });
+			if(dev.selectedManufacturingRecipe) recipeId = dev.selectedManufacturingRecipe;
+			else if(first != production.processes.cend()) recipeId = first->processId;
+			const auto* recipe = catalogue->ManufacturingProcess(AuLegacyCity::ManufacturingProcessId(recipeId));
+			if(!recipe) continue;
+			AuLegacyCity::ProductionProcess process;
+			process.developmentId = dev.id; process.slot = slot; process.enabled = dev.manufacturingCitizenEnabled;
+			if(AuLegacyCity::InitializeProductionProcess(*catalogue, process, recipeId,
+				AuLegacyCity::TechnologyOfProduct(dev.industryId, dev.technology, recipe->commodity.value, state.developments)))
+				production.processes.append(process);
+		}
 		if(dev.industryId == 10)
 		{
-			AuLegacyCity::Flag flag; flag.empire=m_City.controllingEmpire; flag.location=dev.location;
-			flag.level=30; flag.capturedAt=now; m_City.flags.append(flag);
+			AuLegacyCity::Flag flag; flag.empire=state.controllingEmpire; flag.location=dev.location;
+			flag.level=30; flag.capturedAt=now; state.flags.append(flag);
+		}
+		state.lastEmployment=0;
+	}
+	QByteArray checked;
+	if(!AuLegacyCity::WriteCityInventory(inventory,state.inventory,error)
+		|| !AuLegacyCity::EncodeProductionState(*catalogue,production,state.manufacturing,error)
+		|| !AuLegacyCity::EncodeAccounting(accounting,state.accounting,error)
+		|| !AuLegacyCity::EncodeState(state,checked,error)) return false;
+	QByteArray previous;
+	if(!AuLegacyCity::EncodeState(m_City,previous,error)) return false;
+	changed=previous!=checked;
+	if(!materials.Commit(error)) return false;
+	if(changed)
+	{
+		m_City=state; ++m_CityRevision;
+		if(person && contributed)
+		{
+			m_ConstructionLaborTimes.insert(person->Id().GetID(),now);
+			if(m_ConstructionLaborTimes.size()>4096)
+				for(auto it=m_ConstructionLaborTimes.begin();it!=m_ConstructionLaborTimes.end();)
+					if(now-it.value()>60000) it=m_ConstructionLaborTimes.erase(it); else ++it;
 		}
 	}
-	changed = changed || dev.laborRemaining != laborBefore || stored != before.inventory;
-	if(changed) ++m_CityRevision;
 	lock.unlock();
-	AuLegacyConstructionMaterials::Finalize(changedItems,emptiedItems);
-	if(person && playerGearChanged) { person->LockGearForWrite(); person->UpdateGearWeight(); person->UnlockGear(); }
+	materials.Finalize();
+	if(person)
+	{
+		for(const auto& position : wornGear) person->UseGearItem(position,IPS_Item);
+		if(salaryReward>0) person->Reward(salaryReward,REW_Salary);
+		if(salary>0) person->CreditAccount(salary);
+	}
 	if(changed) SetModified();
 	if(physicalChanged) world->InvalidateEnvironmentRecursive();
 	return changed;
+}
+
+bool DaLegacyCity::TestRoadConnection(const DaLegacyCity& other) const
+{
+	if(this == &other) return true;
+	const auto* world = dynamic_cast<const DaWorldLL*>(Parent());
+	if(!world || other.Parent() != world) return false;
+	const auto mine = Snapshot(), theirs = other.Snapshot();
+	const auto eligible = [](const AuLegacyCity::Development& road) {
+		// FINDDEV 0x1a excludes unfinished roads and landscaping, but includes
+		// both road strips and slabs (DpRoad::TestFindFilter 0x655fe0).
+		return road.industryId == 2 && !road.demolished && road.components.isEmpty()
+			&& road.constructionProcessId != 5 && road.constructionProcessId != 74
+			&& road.constructionProcessId != 80 && road.constructionProcessId != 81;
+	};
+	const auto ends = [world](const AuLegacyCity::Development& road, AuGlobeLLF& first, AuGlobeLLF& last) {
+		AuMatrix4x4 placement;
+		world->BuildingConstructionTransform(world->LocOfLL(road.location, road.altitudeMSL), road.facingRadians, nullptr, AuPoint(), placement);
+		const double halfLength = road.roadLengthMeters * FeetPerMeter() / 2;
+		return world->LLOfLoc(first, placement.Project(AuPoint(0, -halfLength, 0)))
+			&& world->LLOfLoc(last, placement.Project(AuPoint(0, halfLength, 0)));
+	};
+	for(const auto& road : mine.developments)
+	{
+		if(!eligible(road)) continue;
+		AuGlobeLLF first, last;
+		if(!ends(road, first, last)) continue;
+		for(const auto& target : theirs.developments)
+		{
+			if(!eligible(target)) continue;
+			AuGlobeLLF targetFirst, targetLast;
+			if(ends(target, targetFirst, targetLast)
+				&& (RoadContains(*world, target, targetFirst, targetLast, first, 0)
+					|| RoadContains(*world, target, targetFirst, targetLast, last, 0))) return true;
+		}
+	}
+	return false;
 }
 
 void DaLegacyCity::Tock(const AuTime& last, const AuTime& now, const AuScripts& scripts, DtTockTransactions& transactions)
@@ -1401,23 +1814,32 @@ void DaLegacyCity::Tock(const AuTime& last, const AuTime& now, const AuScripts& 
 	if(!g_Au.IsLegacyGeneration() || !g_Au.IsSceneWorker()) return;
 	DaAtom::Tock(last,now,scripts,transactions);
 	if(IsDead() || !last.IsNewPeriod(now,1000,Id().GetID())) return;
-	const auto state = Snapshot();
-	// One citizen per enabled construction job; population is city-wide. Full
-	// employment/economic allocation remains in stage 5.
-	int available = state.population;
-	for(const auto& dev : state.developments)
-		if(available>0 && dev.citizenWorker && !dev.halted && !dev.components.isEmpty())
-		{ --available; QString error; OperateConstruction(nullptr,dev.id,true,true,error); }
+	TockEconomy(last.MSecsSinceEpoch(), QDateTime::currentMSecsSinceEpoch());
 }
 
 void DaLegacyCity::SetName(const QString& name)
-{ auto state = Snapshot(); state.name = name; QString error; if(!SetState(state, error)) qWarning() << error; }
+{
+	if(!g_Au.IsLegacyGeneration()) return;
+	QWriteLocker lock(&m_CityLock);
+	if(m_City.name == name) return;
+	auto candidate = m_City;
+	candidate.name = name;
+	QByteArray checked; QString error;
+	if(!AuLegacyCity::EncodeState(candidate, checked, error)) { qWarning() << error; return; }
+	// A rename changes only the name. Publishing an earlier full snapshot here
+	// would overwrite concurrent bank, levy, import or population transactions.
+	m_City.name = name;
+	++m_CityRevision;
+	lock.unlock(); SetModified();
+}
 
 bool DaLegacyCity::ApplyPayload(const QByteArray& bytes, QString& error)
 {
 	AuLegacyCity::State state;
 	if(!g_Au.IsLegacyGeneration() || !AuLegacyCity::DecodeState(bytes, state, error) || !ValidateDesigns(state, error)) return false;
-	QWriteLocker lock(&m_CityLock); m_City = state; ++m_CityRevision;
+	QWriteLocker lock(&m_CityLock);
+	state.lastVisit = qMax(state.lastVisit, m_City.lastVisit);
+	m_City = state; ++m_CityRevision;
 	return true;
 }
 
@@ -1463,8 +1885,8 @@ bool DaLegacyCity::Refresh(DaAtom* counterpart, AuAtomRenderInfo* ari)
 	auto* city = dynamic_cast<DaLegacyCity*>(counterpart);
 	if(!city) return false;
 	DaAtom::Refresh(counterpart, ari);
-	const auto state = city->Snapshot();
-	{ QWriteLocker lock(&m_CityLock); m_City = state; ++m_CityRevision; }
+	auto state = city->Snapshot();
+	{ QWriteLocker lock(&m_CityLock); state.lastVisit = qMax(state.lastVisit, m_City.lastVisit); m_City = state; ++m_CityRevision; }
 	if(ari) UpdateSiteTerrain(*ari);
 	return false;
 }
@@ -1488,7 +1910,9 @@ void DaLegacyCity::Store(QSqlDatabase& db, bool insert) const
 	query.addBindValue(ModifyTime().UTC()); query.addBindValue(TockTime().UTC()); query.addBindValue(DeathTime().UTC());
 	query.addBindValue(state.name); query.addBindValue(state.controllingEmpire); query.addBindValue(state.allegianceEmpire);
 	query.addBindValue(state.population); query.addBindValue(state.satisfaction); query.addBindValue(AuLegacyCity::StateVersion);
-	query.addBindValue(bytes); query.addBindValue(state.reportHistory);
+	query.addBindValue(bytes);
+	// A null QByteArray binds as SQL NULL, but reportHistory requires a non-null bytea.
+	query.addBindValue(state.reportHistory.isNull() ? QByteArray("") : state.reportHistory);
 	if(!insert) query.addBindValue(Id().GetID());
 	if(!query.exec()) qWarning() << "Legacy city persistence failed:" << Id() << query.lastError().text();
 	else if(!insert && !query.numRowsAffected()) Insert(db);
@@ -1506,7 +1930,7 @@ bool DaLegacyCity::LoadSubatoms(AuEther& ether, QSqlDatabase& db, const AuId& wo
 	{
 		QSharedPointer<DaLegacyCity> city(new DaLegacyCity);
 		QString failure;
-		if((query.value(11).toUInt() != 1 && query.value(11).toUInt() != AuLegacyCity::StateVersion)
+		if(!AuLegacyCity::SupportedStateVersion(query.value(11).toUInt())
 			|| !city->ApplyPayload(query.value(12).toByteArray(), failure))
 		{ if(error) *error = QStringLiteral("Invalid saved legacy city %1: %2").arg(query.value(0).toString(), failure); return false; }
 		const auto state = city->Snapshot();
@@ -1519,6 +1943,42 @@ bool DaLegacyCity::LoadSubatoms(AuEther& ether, QSqlDatabase& db, const AuId& wo
 			query.value(4).toDouble(), query.value(5).toDouble(), query.value(6).toDouble()));
 		city->SetCreatedTime(query.value(7).toDateTime().toUTC()); city->SetModifyTime(query.value(8).toDateTime().toUTC());
 		city->SetTockTime(query.value(9).toDateTime().toUTC()); city->SetDeathTime(query.value(10).toDateTime().toUTC());
+		// The original loader used the parent world's creation time when no
+		// visit had ever been recorded, and clamped future saved visits to now.
+		const qint64 now = AuTime::CurrentMSecsSinceEpoch();
+		{
+			QWriteLocker lock(&city->m_CityLock);
+			// DaCity's constructor 0x26b710 initializes these caches, and
+			// LoadSubatoms 0x29c8b0 restores neither them nor the vehicle list.
+			// ApplyPayload/Refresh deliberately retain them during live transfers.
+			AuLegacyCity::ProductionState production;
+			AuLegacyCity::AccountingState accounting;
+			if(!AuLegacyCity::DecodeProductionState(*AuLegacyCityCatalogue::BuiltIn(), city->m_City.manufacturing, production, failure)
+				|| !AuLegacyCity::DecodeAccounting(city->m_City.accounting, accounting, failure))
+			{ if(error) *error = QStringLiteral("Invalid saved legacy city economy: %1").arg(failure); return false; }
+			production.vehicles.clear();
+			accounting.taxes = AuLegacyCity::TaxRates();
+			accounting.powerRequested = 0;
+			accounting.tributeSentToday = false;
+			accounting.unemployed = std::numeric_limits<quint32>::max();
+			accounting.foodPerMeal = 0;
+			city->m_City.lastEmployment = 0;
+			// Original development streams omit the constructor's employee cache.
+			for(auto& development : city->m_City.developments) development.employees = 0;
+			// The durable meal timestamp is clamped to the load time, matching
+			// the original loader; funded work and ledger activity survive.
+			city->m_City.lastPopulationCycle = qMin(city->m_City.lastPopulationCycle, now);
+			accounting.lastPopulationCycle = city->m_City.lastPopulationCycle;
+			if(!AuLegacyCity::EncodeProductionState(*AuLegacyCityCatalogue::BuiltIn(), production, city->m_City.manufacturing, failure)
+				|| !AuLegacyCity::EncodeAccounting(accounting, city->m_City.accounting, failure))
+			{ if(error) *error = QStringLiteral("Could not initialize legacy city economy: %1").arg(failure); return false; }
+			if(!city->m_City.lastVisit)
+			{
+				if(const DaAtom* parent = ether.FindAtom(world))
+					city->m_City.lastVisit = parent->CreatedTime().MSecsSinceEpoch();
+			}
+			else if(city->m_City.lastVisit > now) city->m_City.lastVisit = now;
+		}
 		pending.append(city);
 	}
 	// Ownership passes to the ether only after every row has validated.
@@ -1582,7 +2042,7 @@ DaAtom* DaLegacyCity::SightTarget(const DaAtom* observer, const AuPoint& eye,
 		for(const auto& batch : building.mesh.batches)
 		{
 			// Sight uses visible triangles; walking ramps are movement proxies.
-			if(batch.collisionOnly || batch.doorId || batch.empireFlag) continue;
+			if(batch.collisionOnly || batch.doorId || batch.empireFlag || batch.depthOnly) continue;
 			for(int i=0; i+2<batch.vertices.size(); i+=3)
 			{
 				const AuTriangle triangle(Point(batch.vertices[i].position), Point(batch.vertices[i+1].position), Point(batch.vertices[i+2].position));
@@ -1606,6 +2066,7 @@ bool DaLegacyCity::IsPathBlocked(const AuPoint& from, const AuPoint& to, AuPoint
 	const auto* creature = dynamic_cast<const DaCreature*>(actor);
 	// A gravity query can rebuild actor environment and re-enter the city.
 	const AuPoint gravityUp = creature ? creature->GravityNormal() : AuPoint();
+	const double standingHeight = creature ? creature->GroundHeightAboveCG() : 0;
 	QMutexLocker lock(&m_Runtime->lock); m_Runtime->Ensure(*this);
 	bool blocked = false; double closest = from.Distance2(to);
 	for(const auto& building : m_Runtime->buildings)
@@ -1626,6 +2087,16 @@ bool DaLegacyCity::IsPathBlocked(const AuPoint& from, const AuPoint& to, AuPoint
 		AuPoint localHit, localNormal;
 		if(building.collision->IsBodyPathBlocked(transform.UnProject(from), transform.UnProject(to), body, localHit, localNormal))
 		{
+			// Native checks also see the short straight chord between updates.
+			// Accept the same swept stair-to-floor route used by local movement.
+			if(creature && from.Distance2(to) <= 6.561679790026246 * 6.561679790026246)
+			{
+				AuPoint replayNormal;
+				const auto replay = building.collision->ResolveDestination(transform.UnProject(from), transform.UnProject(to),
+					body, transform.UnProjectVector(gravityUp), standingHeight, true, replayNormal,
+					false, nullptr, false, nullptr, true);
+				if(replay.Distance2(transform.UnProject(to)) < 1e-10) continue;
+			}
 			const auto candidate = transform.Project(localHit);
 			if(candidate.Distance2(from) <= closest)
 			{ hit = candidate; normal = transform.ProjectVector(localNormal); closest = candidate.Distance2(from); blocked = true; }
@@ -1666,7 +2137,7 @@ bool DaLegacyCity::FilterDestination(const DaAtom& actor, const AuPoint& from, A
 		else for(auto& corner : body.m_fCorners) corner = bodyTransform.ProjectVector(corner);
 		AuPoint normal;
 		const auto result = building.collision->ResolveDestination(transform.UnProject(from), transform.UnProject(to),
-			body, up, standingHeight, followGround, normal);
+			body, up, standingHeight, followGround, normal, false, nullptr, false, nullptr, true);
 		const auto destination = transform.Project(result);
 		if(destination.Distance2(to) > 1e-16) { changed = true; to = destination; }
 	}
@@ -1756,9 +2227,14 @@ void DaLegacyCity::QueryLegacyEnvironment(const DaAtom& actor, const AuPoint& lo
 		if(fall < d_GroundTolerance) query.m_OnGround = room ? OG_HardFloor : OG_Pavement;
 		const auto* cell = PathCell(building.paths, local);
 		if(cell && (cell->stairs || (cell->flags & 0xff00))) query.m_Environment |= EB_Stairs;
+		// ConnectBelow carries the well into its bottom landing as flag 4.
+		if(cell && (cell->flags & 4)) query.m_Environment |= EB_GravityWell;
 		if(room && room->roomType != 9 && (room->roomType < 22 || room->roomType > 24))
 		{
 			query.m_Environment |= EB_LegacyCity;
+			// DpBuilding::FloorHt/DeckBelow report weightlessness throughout
+			// authored gravity-well rooms, independently of city electricity.
+			if(room->roomType == 11) query.m_Environment |= EB_GravityWell;
 			if(cell && cell->type != 0 && cell->type != 1 && cell->type != 15 && cell->type != 18)
 				query.m_Environment |= EB_Pathable;
 			query.m_LegacyCityId = Id(); query.m_LegacyDevelopmentId = building.state.id;
@@ -1797,6 +2273,39 @@ void DaLegacyCity::DeleteDeviceObjects(AuAtomRenderInfo& ari)
 	DaAtom::DeleteDeviceObjects(ari);
 }
 
+void DaLegacyCity::GetRenderLightsRecursive(const DaPerson& person, const AuMatrix4x4& model,
+	QList<AuGLSun>& suns, QList<AuGLLight>& lights) const
+{
+	DaAtom::GetRenderLightsRecursive(person, model, suns, lights);
+	const auto* world = dynamic_cast<const DaWorldLL*>(Parent());
+	if(!world || !g_Au.IsLegacyGeneration()) return;
+	bool powered;
+	{ QReadLocker stateLock(&m_CityLock); powered = m_City.capacitor > 0; }
+	powered = powered || world->AtomType() == ATOM_WorldRingSection;
+	const AuMatrix4x4 worldModel = model * Transform().Inverse();
+	const double maximumDistance = 1000 * FeetPerMeter();
+	QMutexLocker lock(&m_Runtime->lock); m_Runtime->Ensure(*this);
+	for(const auto& building : m_Runtime->buildings)
+	{
+		if(building.mesh.exteriorLights.isEmpty()) continue;
+		AuMatrix4x4 placement;
+		world->BuildingConstructionTransform(world->LocOfLL(building.state.location, building.state.altitudeMSL),
+			building.state.facingRadians, nullptr, AuPoint(), placement);
+		if(!ExteriorLightsOn(*world, building.state, placement)) continue;
+		const AuMatrix4x4 lightModel = worldModel * placement;
+		for(const auto& light : building.mesh.exteriorLights)
+		{
+			const AuPoint location = lightModel.Project(Point(light.position));
+			if(location.Length2() > maximumDistance * maximumDistance) continue;
+			const float radius = float((light.runway ? 2 : 10) * FeetPerMeter());
+			// Use the existing nearest-local-light selection, so an entire city's
+			// fixtures do not displace the scene person's lamp or vehicle lights.
+			lights.append(AuGLLight(Id(), AuGLLight::Item, .005f, 1.f / (radius * radius),
+				ExteriorLightColor(light.runway, powered), location));
+		}
+	}
+}
+
 void DaLegacyCity::RenderEnvironmentObject(const AuMatrix4x4& projection, AuAtomRenderInfo& ari,
 	AuModelMatrixHash& matrices, const DaPerson* sceneAtom, AuRenderLastMap& last,
 	RENDERPASS pass, DaAtomList& sc, DaAtomList& scFog, DaAtomList& scGlobe,
@@ -1804,17 +2313,70 @@ void DaLegacyCity::RenderEnvironmentObject(const AuMatrix4x4& projection, AuAtom
 {
 	Q_UNUSED(last); Q_UNUSED(sc); Q_UNUSED(scFog); Q_UNUSED(scGlobe);
 	Q_UNUSED(scGlobeFog); Q_UNUSED(scRing); Q_UNUSED(scRingFog);
-	if(pass != PASS_Near || !ari.re || !g_Au.IsLegacyGeneration()) return;
+	if(pass == PASS_Near) RenderCity(projection, ari, matrices, sceneAtom, false);
+}
+
+void DaLegacyCity::RenderPreTerrain(const AuMatrix4x4& projection, AuAtomRenderInfo& ari,
+	AuModelMatrixHash& matrices, const DaPerson* sceneAtom)
+{
+	RenderCity(projection, ari, matrices, sceneAtom, true);
+}
+
+void DaLegacyCity::RenderCity(const AuMatrix4x4& projection, AuAtomRenderInfo& ari,
+	AuModelMatrixHash& matrices, const DaPerson* sceneAtom, bool beforeTerrain)
+{
+	if(!ari.re || !g_Au.IsLegacyGeneration()) return;
 	const auto* world = dynamic_cast<const DaWorldLL*>(Parent());
 	const auto model = matrices.constFind(Id());
 	if(!world || model == matrices.cend()) return;
 	UpdateSiteTerrain(ari);
 	QVector<AuLegacyCity::Flag> flags;
-	{ QReadLocker stateLock(&m_CityLock); flags = m_City.flags; }
+	bool powered;
+	{ QReadLocker stateLock(&m_CityLock); flags = m_City.flags; powered = m_City.capacitor > 0; }
+	powered = powered || world->AtomType() == ATOM_WorldRingSection;
 	// DaCity::EnclosureNeeded 0x28f190, also used by CreateDeviceObjects.
 	const bool enclosureNeeded = (world->Hydrographics() && world->AltitudeMSL(Transform().Translation()) <= -32)
 		|| !world->HasBreathableAtmosphere();
 	QMutexLocker lock(&m_Runtime->lock); m_Runtime->Ensure(*this);
+	if(m_Runtime->minePostRevision != m_Runtime->revision
+		|| m_Runtime->minePostTerrainRevision != m_Runtime->terrainRevision)
+	{
+		QVector<AuLegacyCity::Development> mines;
+		for(const auto& building : m_Runtime->buildings)
+			if(building.state.industryId == 50 && !building.state.demolished) mines.append(building.state);
+		const quint64 geometryRevision = m_Runtime->revision, terrainRevision = m_Runtime->terrainRevision;
+		// TerrainAltitudeMSL queries legacy sites, including this city.
+		lock.unlock();
+		QVector<AuMatrix4x4> posts;
+		for(const auto& mine : mines)
+		{
+			const auto* recipe = ConstructionRecipe(mine.industryId, mine.constructionProcessId);
+			if(!recipe) continue;
+			const double radius = float(recipe->buildRadius * FeetPerMeter());
+			AuMatrix4x4 placement;
+			world->BuildingConstructionTransform(world->LocOfLL(mine.location, mine.altitudeMSL),
+				mine.facingRadians, nullptr, AuPoint(), placement);
+			// DpBldMine::RenderGreebles 0x591620 places one original model
+			// at each site corner, on the terrain and aligned with globe up.
+			for(const QPoint& corner : {QPoint(-1, -1), QPoint(-1, 1), QPoint(1, 1), QPoint(1, -1)})
+			{
+				AuGlobeLL ll;
+				if(!world->LLOfLoc(ll, placement.Project(AuPoint(radius * corner.x(), radius * corner.y(), 0)))) continue;
+				const AuPoint location = world->LocOfLL(ll, world->TerrainAltitudeMSL(ll));
+				AuMatrix4x4 post;
+				post.Translate(location);
+				post *= AuPoint(0, 0, 1).GetAlignmentTransform(-world->GravityDir(location));
+				posts.append(post);
+			}
+		}
+		lock.relock(); m_Runtime->Ensure(*this);
+		if(geometryRevision == m_Runtime->revision && terrainRevision == m_Runtime->terrainRevision)
+		{
+			m_Runtime->minePosts = std::move(posts);
+			m_Runtime->minePostRevision = geometryRevision;
+			m_Runtime->minePostTerrainRevision = terrainRevision;
+		}
+	}
 	if(m_Runtime->drawRevision != m_Runtime->revision)
 	{
 		m_Runtime->DeleteDraw(ari, Id());
@@ -1841,6 +2403,8 @@ void DaLegacyCity::RenderEnvironmentObject(const AuMatrix4x4& projection, AuAtom
 					// native 2016 CW faces without changing normals or UV bindings.
 					triangles.append(AuTriTexNS(vertex(batch.vertices[i]), vertex(batch.vertices[i+2]), vertex(batch.vertices[i+1])));
 				Runtime::DrawBatch draw; draw.development = building.state.id; draw.twoSided = batch.twoSided;
+				draw.interior = batch.interior; draw.depthOnly = batch.depthOnly;
+				draw.exteriorLens = batch.textureSlot == 37 ? 1 : batch.textureSlot == 38 ? 2 : 0;
 				draw.vao.CreateForModelTexFog(*ari.re, triangles, GL_STATIC_DRAW);
 				QImage texture;
 				if(!batch.textureFile.isEmpty()) texture.load(batch.textureFile);
@@ -1850,6 +2414,10 @@ void DaLegacyCity::RenderEnvironmentObject(const AuMatrix4x4& projection, AuAtom
 				{
 					texture = atlas.copy(AuLegacyBd::Geometry::TextureTile(batch.textureSlot));
 					if(batch.textureSlot == 16) texture = texture.mirrored(true, false);
+					// Original effect 3 is a lamp lens, not a window cutout. Its
+					// half-alpha atlas must not disappear at the .91 window cutoff.
+					if(batch.textureSlot == 37 || batch.textureSlot == 38)
+						texture = texture.convertToFormat(QImage::Format_RGB32);
 				}
 				draw.tint = batch.tint; draw.selfIllumination = batch.selfIllumination;
 				// DpBuilding::RenderTexture (2016 AuAtom13 0x5eae80) uses
@@ -1861,6 +2429,10 @@ void DaLegacyCity::RenderEnvironmentObject(const AuMatrix4x4& projection, AuAtom
 				m_Runtime->drawBatches.append(draw);
 			}
 		}
+		// The original VAO reverses the generated list: depth masks follow
+		// visible interiors, so they cannot occlude the stairs already drawn.
+		std::stable_sort(m_Runtime->drawBatches.begin(), m_Runtime->drawBatches.end(),
+			[](const Runtime::DrawBatch& a, const Runtime::DrawBatch& b) { return a.depthOnly < b.depthOnly; });
 		m_Runtime->drawRevision = m_Runtime->revision;
 	}
 	auto& shader = ari.re->GLSL().ModelTexColorShader();
@@ -1885,8 +2457,12 @@ void DaLegacyCity::RenderEnvironmentObject(const AuMatrix4x4& projection, AuAtom
 	ari.re->glGetIntegerv(GL_FRONT_FACE, &previousFrontFace);
 	// All uploaded building batches use the original clockwise convention.
 	ari.re->glFrontFace(GL_CW);
+	GLboolean colorMask[4];
+	ari.re->glGetBooleanv(GL_COLOR_WRITEMASK, colorMask);
+	const bool depthClampEnabled = ari.re->glIsEnabled(GL_DEPTH_CLAMP);
 	for(const auto& draw : m_Runtime->drawBatches)
 	{
+		if(draw.interior != beforeTerrain) continue;
 		const auto found = std::find_if(m_Runtime->buildings.cbegin(), m_Runtime->buildings.cend(),
 			[&draw](const Runtime::Building& b) { return b.state.id == draw.development; });
 		if(found == m_Runtime->buildings.cend() || !draw.vao.VAO()) continue;
@@ -1899,19 +2475,62 @@ void DaLegacyCity::RenderEnvironmentObject(const AuMatrix4x4& projection, AuAtom
 		ambientUp.Unit();
 		shader.SetAmbientLightUp(ambientUp.x, ambientUp.y, ambientUp.z);
 		shader.SetColor(draw.tint.x(), draw.tint.y(), draw.tint.z(), draw.tint.w());
-		shader.SetGlow(draw.selfIllumination, draw.selfIllumination, draw.selfIllumination);
+		if(draw.exteriorLens && ExteriorLightsOn(*world, found->state, transform))
+		{
+			const QColor color = ExteriorLightColor(draw.exteriorLens == 2, powered);
+			shader.SetGlow(color.redF(), color.greenF(), color.blueF());
+		}
+		else shader.SetGlow(draw.selfIllumination, draw.selfIllumination, draw.selfIllumination);
 		if(draw.twoSided && cullingEnabled) ari.re->glDisable(GL_CULL_FACE);
+		if(draw.depthOnly)
+		{
+			ari.re->glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+			// Keep the terrain mask when the camera's near plane crosses it
+			// before crossing the terrain immediately beneath the entrance.
+			if(!depthClampEnabled) ari.re->glEnable(GL_DEPTH_CLAMP);
+		}
 		draw.vao.SelectGL(); draw.vao.DrawGL(); draw.vao.DeselectGL();
+		if(draw.depthOnly)
+		{
+			if(!depthClampEnabled) ari.re->glDisable(GL_DEPTH_CLAMP);
+			ari.re->glColorMask(colorMask[0], colorMask[1], colorMask[2], colorMask[3]);
+		}
 		if(draw.twoSided && cullingEnabled) ari.re->glEnable(GL_CULL_FACE);
 	}
 	if(sunsBlocked) shader.InvalidateSuns();
 	shader.Deselect();
+	if(beforeTerrain)
+	{
+		ari.re->glFrontFace(GLenum(previousFrontFace));
+		return;
+	}
 
 	for(int i = flags.size(); i < m_Runtime->flagDraws.size(); ++i)
 		if(m_Runtime->flagDraws[i].vao.VAO()) m_Runtime->flagDraws[i].vao.DeleteGL();
 	m_Runtime->flagDraws.resize(flags.size());
 	const float seconds = AuTime::CurrentMinCycle() * 60.f;
 	const auto* ring = dynamic_cast<const DaWorldRingSection*>(world);
+	if(!m_Runtime->minePosts.isEmpty())
+	{
+		AuGLModelInstance* post = ari.LoadModelThreaded(QStringLiteral(":data/mFencePost.3ds"), false, 1);
+		if(post && (post->HasGLModel() || post->GLModel(*ari.re)))
+		{
+			float shadowAngles[MAX_SUNS] = {};
+			if(ring) for(int sun = 0; sun < MAX_SUNS; ++sun)
+				shadowAngles[sun] = ring->ShadowPanelSunAngle(ari.re->Sun(sun).m_ShadowAngle);
+			for(const auto& placement : m_Runtime->minePosts)
+			{
+				const AuMatrix4x4 postModel = worldModel * placement;
+				const double depth = postModel.Translation().z;
+				if(depth >= 0 || depth < -g_Au.TreeViewRangeFt()) continue;
+				AuPoint ambientUp = postModel.ProjectVector(0, 0, 1); ambientUp.Unit();
+				if(ring) post->RenderFogRingworld(projection, postModel, *ari.re, shadowAngles,
+					ambientR, ambientG, ambientB, ambientUp, false, fogDensity, fogR, fogG, fogB);
+				else post->RenderFogGlobe(projection, postModel, *ari.re, worldModel.Translation(),
+					ambientR, ambientG, ambientB, ambientUp, false, fogDensity, fogR, fogG, fogB);
+			}
+		}
+	}
 	const auto renderFlags = [&]() {
 		for(int i = 0; i < flags.size(); ++i)
 		{

@@ -15,9 +15,11 @@ class AuItem;
 class DeConstructionProcess;
 class DeManufacturingProcess;
 class DpBody;
+namespace AuLegacyConstructionMaterials { class Batch; }
 
 class AUATOM_DLL DaItem : public DaAtom  
 {
+	friend class AuLegacyConstructionMaterials::Batch;
 protected:
 	enum CONTROLINPUT
 	{

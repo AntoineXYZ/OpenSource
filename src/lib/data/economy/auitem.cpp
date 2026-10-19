@@ -198,14 +198,17 @@ QString AuItem::HtmlDesc() const
 	if(!empireNameOfOrigin.isEmpty())
 		madeIn = QObject::tr("Made in <b>%1</b><br>").arg(empireNameOfOrigin);
 
+	// Original HtmlToolTipDesc 0xc6c50 displays stored TL0..31 as TL1..32.
+	QString heading = QStringLiteral("<b>%1</b><br>");
+	if(AuLegacyItemTechnologyActive())
+		heading += QObject::tr("Tech Level <b>TL%1</b><br>").arg(int(TechLevel()) + 1);
 	QString itemDesc;
 	if(Count() == 1)
-		itemDesc = QString("<b>%1</b><br>"
-				"Quality <b>%3 Q%4</b><br>"
+		itemDesc = (heading + QString("Quality <b>%3 Q%4</b><br>"
 				"%5"
 				"Condition <b>%6/%7hp</b><br>"
 				"Value <b>%L9%10</b><br>"
-				"Weight <b>%L8kg</b>")
+				"Weight <b>%L8kg</b>"))
 			.arg(ListName())
 			.arg(DbCommodity::QualityDesc(Quality()))
 			.arg(Quality())
@@ -216,13 +219,12 @@ QString AuItem::HtmlDesc() const
 			.arg(UnitCost(),0,'f',0)
 			.arg(g_Au.CurrencySymbol());
 	else
-		itemDesc = QString("<b>%1</b><br>"
-				"Quality <b>%3 Q%4</b><br>"
+		itemDesc = (heading + QString("Quality <b>%3 Q%4</b><br>"
 				"%5"
 				"Condition <b>%6/%7hp</b><br>"
 				"Units <b>%L13</b><br>"
 				"Value <b>%L9%10</b> Each, <b>%L11%10</b> Total<br>"
-				"Weight <b>%L8kg</b> Each, <b>%L12kg</b> Total")
+				"Weight <b>%L8kg</b> Each, <b>%L12kg</b> Total"))
 			.arg(ListName())
 			.arg(DbCommodity::QualityDesc(Quality()))
 			.arg(Quality())
@@ -1407,6 +1409,9 @@ QString AuItem::ListDesc(const QString& empireOfOrigin) const
 	else if(CommodityId() == CID_BdDesignDrawing ||
 			CommodityId() == CID_ScDesignDrawing)
 		name += QObject::tr(", drawing");	// Descriptive text is about the disk, not the design|mission.
+	// Original ListDesc 0xcdae0 omits TL1 but shows higher displayed levels.
+	if(AuLegacyItemTechnologyActive() && TechLevel())
+		name += QObject::tr(" TL%1").arg(int(TechLevel()) + 1);
 
 	QString madeIn;
 	if(!empireOfOrigin.isEmpty())

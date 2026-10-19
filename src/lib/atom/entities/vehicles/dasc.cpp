@@ -14150,7 +14150,7 @@ void DaSc::RecalcSystemsHealthMax()
 	m_SystemsLock.unlock();
 }
 
-void DaSc::InitSystems(quint8 quality)
+void DaSc::InitSystems(quint8 quality, int legacyConstructionTechnology)
 {
 	Q_ASSERT(quality);
 	if(g_Au.m_LogMessages & LOG_AtomCreate)
@@ -14168,7 +14168,7 @@ void DaSc::InitSystems(quint8 quality)
 
 	// Gather the listing of all ship systems.
 	// This is only done once for each valid design that is not in a design studio, unless it is refit.
-	GatherSystemsDataSystemsAndDesignLocked(quality);
+	GatherSystemsDataSystemsAndDesignLocked(quality, legacyConstructionTechnology);
 
 	// Start with all doors closed. They will be in whatever states they were left when the design was finalized.
 	m_DoorStates.CloseAllDoors();
@@ -14182,10 +14182,12 @@ void DaSc::InitSystems(quint8 quality)
 			//Id().GetID(), (const char*)Name().toAscii(), m_ssaShipSystems.count());
 }
 
-void DaSc::GatherSystemsDataSystemsAndDesignLocked(quint8 quality)
+void DaSc::GatherSystemsDataSystemsAndDesignLocked(quint8 quality, int legacyConstructionTechnology)
 {
 	m_ssaShipSystems.clear();
 	m_ssaShipSystems.GatherShipSystems(quality, m_Design);
+	if(m_Design.LegacyStats() && legacyConstructionTechnology >= 0 && legacyConstructionTechnology <= 255)
+		m_ssaShipSystems.InitializeLegacyTechnology(quint8(legacyConstructionTechnology));
 	m_tmSystemsUpg.Set();
 }
 
@@ -15888,7 +15890,7 @@ void DaSc::InitPreview(quint8 previewType, const QString& studioName, const AuSc
 		designName = tr("Unnamed Design");
 
 	if(!SetDesign(r)) return;
-	InitSystems(shipQ);
+	InitSystems(shipQ, r.LegacyStats() ? r.LegacyStats()->Performance().techLevelUsed : -1);
 	SetName(designName);
 	SetEmpireId(person.EmpireId());
 	SetWhereMade(studioName);
@@ -18114,7 +18116,13 @@ void DaSc::Refit(const AuRefitShip& refit, quint32 seconds)
 	m_DesignChg.Set();
 
 	// Update the listing of all ship systems.
-	GatherSystemsDataSystemsAndDesignLocked(QualityMade());
+	if(m_Design.LegacyStats())
+	{
+		// Modern volume refits cannot replace recovered installed TL or
+		// reset the legacy ship's existing system connections and damage.
+		if(m_ssaShipSystems.Reconcile(m_Design)) m_tmSystemsUpg.Set();
+	}
+	else GatherSystemsDataSystemsAndDesignLocked(QualityMade());
 	m_DesignLock.unlock();
 
 	UpdateSystemsHealthSystemsLocked();

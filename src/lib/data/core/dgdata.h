@@ -556,6 +556,9 @@ public:
 	// Randomly select a pirate empire id for an encounter in 'galaxy'. The returned pirate empire will have sufficient bd and sc
 	// blueprint preferences to encounter their ships, stations and bases in all possible environments.
 	quint32 RandomPirateEmpire(GALAXY galaxy) const;
+	// 2016 allegiance changes use role-based selection without encounter
+	// blueprint readiness, with agent/any-empire fallbacks.
+	quint32 SelectLegacyPirateEmpire() const;
 
 	void ReplaceEmpire(const DgEmpire& empire);	// Add/replace an empire record.
 

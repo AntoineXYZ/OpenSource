@@ -876,11 +876,11 @@ public:
 		SetModified(NOTIFY_Database);
 	}
 
-	void SetLastOfficerVisited();
+	void SetLastOfficerVisited(quint32 empireId = 0);
 
-	void SetLastPersonScene();
+	void SetLastPersonScene(quint32 empireId = 0);
 
-	void SetLastPersonVisited();
+	void SetLastPersonVisited(quint32 empireId = 0);
 
 	inline void SetLastPirateShip()
 	{

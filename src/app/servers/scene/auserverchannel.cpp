@@ -437,6 +437,8 @@ void AuServerChannel::incomingConnection(qintptr socketDescriptor)
 	connect(tserver, SIGNAL(GovSetTax(quint32, quint8, quint8, quint8)),
 			auSceneServerApp, SLOT(GovSetTaxUp(quint32, quint8, quint8, quint8)),
 			Qt::QueuedConnection);
+	connect(tserver, SIGNAL(LegacyWealthLevy(QByteArray)),
+			auSceneServerApp, SLOT(LegacyWealthLevyUp(QByteArray)), Qt::QueuedConnection);
 
 	connect(tserver, SIGNAL(GovSetThemeColor(quint32, quint8, QColor)),
 			auSceneServerApp, SLOT(GovSetThemeColorUp(quint32, quint8, QColor)),

@@ -1268,6 +1268,8 @@ public slots:
 	void GovSetJoinPasswordUp(quint32 empire, QByteArray passCrypt);
 
 	void GovSetTaxUp(quint32 empire, quint8 income, quint8 sales, quint8 subsidy);
+	void LegacyWealthLevyUp(QByteArray order);
+	void LegacyWealthLevyDown(QByteArray order);
 
 	// 'theme' is a AuScFace::COLOR_THEME enum value.
 	void GovSetThemeColorUp(quint32 empire, quint8 theme, QColor color);

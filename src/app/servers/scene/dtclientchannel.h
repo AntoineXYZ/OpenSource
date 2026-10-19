@@ -192,6 +192,7 @@ signals:
 	void RenameWormhole(AuId systemId, AuId toSystem,
 			qint8 polarity, quint32 empire, QString nuName);
 	void ReleaseBerth(AuId personId, AuId shipId);
+	void LegacyWealthLevy(QByteArray order);
 	void ReloadStory(quint32 storyInstance);
 	void RemoveStory(quint32 storyInstance);
 

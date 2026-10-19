@@ -193,6 +193,7 @@
 #include <QAction>
 #include <QCursor>
 #include <QDir>
+#include <QFile>
 #include <QFileDialog>
 #include <QKeyEvent>
 #include <QMenu>
@@ -1970,6 +1971,7 @@ void AuDesignerView::StopThreads()
 
 void AuDesignerView::initializeGL()
 {
+	Q_INIT_RESOURCE(aulegacycityconstructionui);
 	connect(context(), &QOpenGLContext::aboutToBeDestroyed, this, [this]() {
 		makeCurrent();
 		m_MM->ClearLegacySc();
@@ -1994,31 +1996,40 @@ void AuDesignerView::initializeGL()
 	// Create textures for every industry.
 	for(int iid=1; iid<IID_Count; iid++)
 	{
-		QString imgname(DbIndustry::BitmapName((INDUSTRYID)iid));
-		if(imgname.isEmpty())
-			continue;
-		QImage bmiid(imgname);
-		if(bmiid.isNull())
+		// Keep original sprite variants separate: a view can negotiate a
+		// different game generation after its OpenGL context was initialized.
+		for(int variant = 0; variant < 2; ++variant)
 		{
-			if(DbIndustry::BitmapName((INDUSTRYID)iid))
-				qWarning("error: AuDesignerView::initializeGL failed to load industry bitmap %s", DbIndustry::BitmapName((INDUSTRYID)iid));
-			continue;
+			QString imgname(DbIndustry::BitmapName((INDUSTRYID)iid));
+			if(imgname.isEmpty())
+				continue;
+			if(variant)
+			{
+				const QString original = iid == IID_Capitol ? QStringLiteral("bCapital.png")
+					: imgname.section(QLatin1Char('/'), -1);
+				imgname = QStringLiteral(":/legacy/cities/ui/%1").arg(original);
+				if(!QFile::exists(imgname)) continue;
+			}
+			QImage bmiid(imgname);
+			if(bmiid.isNull())
+			{
+				qWarning("error: AuDesignerView::initializeGL failed to load industry bitmap %s", qPrintable(imgname));
+				continue;
+			}
+			QImage bmt(bmiid.width()+2, bmiid.height()+2, QImage::Format_ARGB32);
+			if(bmt.isNull())
+				continue;
+			bmt.fill(Qt::transparent);
+
+			QPainter p(&bmt);
+			p.translate(0,bmiid.height()+2);	// Sprites use upside-down bitmaps.
+			p.scale(1,-1);
+			p.drawImage(1,1, bmiid);
+			p.end();
+
+			const QString texName = QString(variant ? "LegacyIID%1" : "IID%1").arg(iid);
+			m_RenderInfo->re->CreateTextureFromBitmap(STATIC_TEXTURE_ID, texName, bmt);
 		}
-		QImage bmt(bmiid.width()+2, bmiid.height()+2, QImage::Format_ARGB32);
-		if(bmt.isNull())
-			continue;
-		bmt.fill(Qt::transparent);
-
-		QPainter p(&bmt);
-		p.translate(0,bmiid.height()+2);		// The bitmap must be drawn up-side-down to appear right-side-up on sprites.
-		p.scale(1,-1);
-		p.drawImage(1,1, bmiid);
-		p.end();
-
-		//bmt.save(QString("%1.png").arg(iid));
-		//qDebug("Created image of industry %d for %s", iid, DbIndustry::BitmapName((INDUSTRYID)iid));
-		QString texName = QString("IID%1").arg(iid);
-		m_RenderInfo->re->CreateTextureFromBitmap(STATIC_TEXTURE_ID, texName, bmt);
 	}
 
 	// Start the targeting thread.

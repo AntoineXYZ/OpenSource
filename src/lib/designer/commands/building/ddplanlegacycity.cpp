@@ -7,6 +7,7 @@
 #include "aulegacybuildinggeometry.h"
 #include "aulegacybiodome.h"
 #include "aulegacycitycatalogue.h"
+#include "aulegacycityproduction.h"
 #include "aulegacycityconstruction.h"
 #include "aulegacycitystate.h"
 #include "daperson.h"
@@ -174,8 +175,14 @@ AuLegacyBd::Geometry::Mesh Preview(const AuLegacyCityProtocol::Request& request)
 		options.minimumDeck = design->MinimumDeck(); options.maximumDeck = design->MaximumDeck();
 		if(const auto* catalogue = AuLegacyCityCatalogue::BuiltIn())
 			if(const auto* recipe = catalogue->ConstructionProcess(AuLegacyCity::ConstructionProcessId(request.processId)))
-				if(recipe->stackLimit > 0 && recipe->stackLimit < 32)
+			{
+				options.maximumDeck = qMin(options.maximumDeck, catalogue->BuildingDesignMaximumDeck(
+					AuLegacyCity::IndustryId(request.industryId), AuLegacyCity::CommodityId(request.material)));
+				if(recipe->stackLimit == 32) options.minimumDeck = -2 * int(request.levels);
+				else if(request.industryId == 51 && request.levels <= 1) options.minimumDeck = 0;
+				else if(recipe->stackLimit > 0 && recipe->stackLimit < 32)
 					options.maximumDeck = qMin(options.maximumDeck, qMax(0, int(request.levels) - 1));
+			}
 		options.interior = false;
 		return AuLegacyBd::Geometry::Build(*design, options);
 	}
@@ -210,6 +217,8 @@ void DdPlanLegacyCity::UpdateSelection(const AuLegacyCityProtocol::Request& requ
 		&& request.action == m_Request.action;
 	const float heading = m_Request.headingDegrees;
 	m_Request = request; m_Request.headingDegrees = heading;
+	m_MaximumLevels = -1; m_SiteMaterial = 0; m_SiteDesignId = 0;
+	if(!sameProcess) { m_PreviousSiteWorld = 0; m_AvailableProducts.clear(); }
 	ChangeLevels(0);
 	m_Angle = request.targetX;
 	m_Request.targetX = m_Request.targetY = m_Request.targetZ = 0;
@@ -219,7 +228,15 @@ void DdPlanLegacyCity::UpdateSelection(const AuLegacyCityProtocol::Request& requ
 
 void DdPlanLegacyCity::SetCursor(const AuMatrix4x4& camera, DaPerson* person, const QPoint& pixel)
 {
-	const QPixmap icon = m_Interface ? m_Interface->PlacementIcon(m_Request) : QPixmap();
+	if(person && m_Request.action == AuLegacyCityProtocol::Build && m_Request.industryId != 2 && m_Request.industryId != 129)
+	{
+		AuPoint point;
+		if(const auto* world = m_pWnd->FindTerrainLocationAtPixel(person, pixel, point)) UpdateSite(*world, point);
+		else { m_MaximumLevels = 0; m_SiteMaterial = 0; }
+	}
+	auto cursor = m_Request;
+	if(m_SiteMaterial) cursor.material = m_SiteMaterial;
+	const QPixmap icon = m_Interface ? m_Interface->PlacementIcon(cursor) : QPixmap();
 	if(!person || !g_Au.IsLegacyGeneration() || icon.isNull())
 	{ DdCommand::SetCursor(camera, person, pixel); return; }
 	// 2016: DdPlanGlobeRoad::SetCursor (0x140327ba0) uses the native
@@ -236,10 +253,17 @@ void DdPlanLegacyCity::SetCursor(const AuMatrix4x4& camera, DaPerson* person, co
 	if(building && m_Request.levels)
 	{
 		painter.setFont(QFont(QStringLiteral("Arial"), 12, QFont::Bold));
-		const QString levels = QString::number(m_Request.levels);
+		const int count = m_MaximumLevels < 0 ? m_Request.levels : qMin(int(m_Request.levels), m_MaximumLevels);
+		const QString levels = QString::number(count);
 		painter.setPen(Qt::black); painter.drawText(QRect(1, 1, 32, 32), Qt::AlignLeft | Qt::AlignTop, levels);
-		painter.setPen(QColor(25, 229, 25)); painter.drawText(QRect(0, 0, 31, 31), Qt::AlignLeft | Qt::AlignTop, levels);
+		painter.setPen(count ? QColor(25, 229, 25) : QColor(229, 25, 25));
+		painter.drawText(QRect(0, 0, 31, 31), Qt::AlignLeft | Qt::AlignTop, levels);
 	}
+	if(building && m_Request.citizenEnabled)
+		if(const auto* catalogue = AuLegacyCityCatalogue::BuiltIn())
+			if(const auto* recipe = catalogue->ManufacturingProcess(AuLegacyCity::ManufacturingProcessId(m_Request.manufacturingRecipe)))
+				if(const auto* product = catalogue->Commodity(recipe->commodity))
+					painter.drawPixmap(QRectF(32, 0, 32, 32), QPixmap(product->descriptor.BitmapName()), QRectF());
 	painter.end(); m_pWnd->setCursor(QCursor(image));
 }
 
@@ -275,7 +299,7 @@ void DdPlanLegacyCity::ChangeLevels(int direction)
 	const auto* catalogue = AuLegacyCityCatalogue::BuiltIn(); if(!catalogue) return;
 	const int limit = catalogue->ConstructionLevelLimit(AuLegacyCity::ConstructionProcessId(m_Request.processId),
 		AuLegacyCity::CommodityId(m_Request.material));
-	const int maximum = qMax(1, limit);
+	const int maximum = qMax(1, m_MaximumLevels < 0 ? limit : m_MaximumLevels);
 	int levels = int(m_Request.levels) + direction;
 	// Original DdPlanGlobeBuilding wraps when stepping past either end.
 	// A settings change only clamps the existing selection to its new limit.
@@ -286,12 +310,116 @@ void DdPlanLegacyCity::ChangeLevels(int direction)
 	if(m_Interface) m_Interface->SetCursorLevels(m_Request.levels);
 }
 
+void DdPlanLegacyCity::ChangeProduct(int direction)
+{
+	if(!m_Request.citizenEnabled || !m_Interface) return;
+	QVector<quint16> choices = m_AvailableProducts;
+	if(choices.isEmpty() && m_Request.industryId != 50 && m_Request.industryId != 51 && m_Request.industryId != 89)
+		if(const auto* catalogue = AuLegacyCityCatalogue::BuiltIn())
+			for(const auto& recipe : catalogue->ManufacturingProcesses())
+				if(recipe.industry.value == m_Request.industryId) choices.append(recipe.id.value);
+	if(choices.isEmpty()) return;
+	const int current = choices.indexOf(m_Request.manufacturingRecipe);
+	m_Request.manufacturingRecipe = choices[(qMax(0, current) + direction + choices.size()) % choices.size()];
+	m_Interface->SetCursorProductChoices(choices, m_Request.manufacturingRecipe);
+}
+
+void DdPlanLegacyCity::UpdateSite(const DaWorldLL& world, const AuPoint& point)
+{
+	const auto* catalogue = AuLegacyCityCatalogue::BuiltIn();
+	const auto* recipe = catalogue ? catalogue->ConstructionProcess(AuLegacyCity::ConstructionProcessId(m_Request.processId)) : nullptr;
+	if(!recipe) return;
+	AuLegacyCity::Development site;
+	site.industryId = m_Request.industryId; site.materialId = m_Request.material;
+	site.designId = m_Request.designId;
+	if(!world.LLOfLoc(site.location, point)) return;
+	site.altitudeMSL = world.SurfaceAltitudeMSL(site.location);
+	if(world.Hydrographics() && site.altitudeMSL > -32 && site.altitudeMSL < 1) site.altitudeMSL = 1;
+	site.facingRadians = m_Request.headingDegrees * DEG2RAD - world.BuildingConstructionNorthAngle(point, nullptr);
+	const int previousExistingLevels = m_ExistingLevels;
+	m_ExistingLevels = 0;
+	ClearTarget hit;
+	if(FindClearTarget(world, point, hit) && hit.development.industryId == site.industryId)
+	{
+		site = hit.development; m_ExistingLevels = site.completedLevels;
+	}
+	const bool siteChanged = m_PreviousSiteWorld != world.Id().GetID()
+		|| m_PreviousSiteLocation.Latitude() != site.location.Latitude()
+		|| m_PreviousSiteLocation.Longitude() != site.location.Longitude();
+	AuMatrix4x4 placement;
+	const AuPoint center = world.LocOfLL(site.location, site.altitudeMSL);
+	world.BuildingConstructionTransform(center, site.facingRadians, nullptr, AuPoint(), placement);
+	unsigned int rocks = 0, shrubs = 0, trees = 0; float water = 0;
+	const double radius = recipe->buildRadius * FeetPerMeter();
+	// Original SetCursor 0x140321130 counts at most four resources and
+	// subtracts existing levels. Keep desired levels separate from this cap.
+	if(recipe->stackLimit >= 32 || site.industryId == 89)
+		world.ResourceDistributionAt(placement, center, AuPoint(radius, radius, 0), rocks, shrubs, trees, water, 4);
+	const int maximum = qMax(0, qMin(catalogue->ConstructionLevelLimit(recipe->id,
+		AuLegacyCity::CommodityId(site.materialId), world.OrbitZone() != OZONE_Inferno),
+		catalogue->ConstructionResourceLevelLimit(recipe->id, rocks, shrubs, trees)) - m_ExistingLevels);
+	if(maximum != m_MaximumLevels || m_SiteMaterial != site.materialId || previousExistingLevels != m_ExistingLevels
+		|| m_SiteDesignId != site.designId)
+		m_PreviewValid = false;
+	m_MaximumLevels = maximum; m_SiteMaterial = site.materialId;
+	m_SiteDesignId = site.designId;
+	m_SiteCenter = center; m_SiteFacing = site.facingRadians;
+	m_SiteMessage = maximum ? QString() : QObject::tr("No more levels can be built at this site.");
+	if(m_Request.citizenEnabled && (site.industryId == 50 || site.industryId == 51 || site.industryId == 89))
+	{
+		// Recovered cursor rules differ from F10: a well can always select
+		// water here. Natural gas tests the same outcrop as crude oil.
+		m_AvailableProducts.clear(); quint16 preferred = 0, fallback = 0;
+		bool currentAvailable = false, currentFallback = false;
+		for(const auto& product : catalogue->ManufacturingProcesses())
+		{
+			if(product.industry.value != site.industryId) continue;
+			const quint16 commodity = product.commodity.value;
+			const bool research = AuLegacyCity::IsProductionTechnology(commodity);
+			const bool defaultProduct = site.industryId == 89 ? product.id.value == 171
+				: commodity == (site.industryId == 50 ? 76 : 83);
+			bool available = research;
+			if(!research && site.industryId == 89)
+				available = product.id.value == 171 || (water > 0 && product.id.value == (world.OrbitZone() == OZONE_Inferno ? 252 : world.OrbitZone() == OZONE_Frigid ? 253 : 170));
+			else if(!research)
+				available = (site.industryId == 51 && commodity == 83) || world.TestRockResource(placement, center,
+					AuPoint(radius, radius, radius), COMMODITYID(catalogue->RuntimeCommodityId(AuLegacyCity::CommodityId(
+						site.industryId == 51 && commodity == 57 ? 23 : commodity))));
+			if(available)
+			{
+				m_AvailableProducts.append(product.id.value);
+				if(!research) { if(defaultProduct) fallback = product.id.value; else preferred = product.id.value; }
+			}
+			if(product.id.value == m_Request.manufacturingRecipe)
+			{ currentAvailable = available; currentFallback = defaultProduct; }
+		}
+		if(!currentAvailable || (currentFallback && siteChanged))
+			if(preferred || fallback) m_Request.manufacturingRecipe = preferred ? preferred : fallback;
+		if(m_Interface) m_Interface->SetCursorProductChoices(m_AvailableProducts, m_Request.manufacturingRecipe);
+	}
+	else if(m_Interface && !m_AvailableProducts.isEmpty())
+	{
+		m_AvailableProducts.clear();
+		for(const auto& product : catalogue->ManufacturingProcesses())
+			if(product.industry.value == site.industryId) m_AvailableProducts.append(product.id.value);
+		m_Interface->SetCursorProductChoices(m_AvailableProducts, m_Request.manufacturingRecipe);
+		m_AvailableProducts.clear();
+	}
+	m_PreviousSiteWorld = world.Id().GetID(); m_PreviousSiteLocation = site.location;
+}
+
 bool DdPlanLegacyCity::OnKeyDown(QKeyEvent* event)
 {
 	switch(event->key())
 	{
-	case Qt::Key_Left: ChangeRotation(1, event->modifiers() & Qt::ShiftModifier); return true;
-	case Qt::Key_Right: ChangeRotation(-1, event->modifiers() & Qt::ShiftModifier); return true;
+	case Qt::Key_Left:
+		if(event->modifiers() & Qt::ControlModifier) ChangeProduct(-1);
+		else ChangeRotation(1, event->modifiers() & Qt::ShiftModifier);
+		return true;
+	case Qt::Key_Right:
+		if(event->modifiers() & Qt::ControlModifier) ChangeProduct(1);
+		else ChangeRotation(-1, event->modifiers() & Qt::ShiftModifier);
+		return true;
 	case Qt::Key_Up: if(m_Request.industryId == 2) ChangeRotation(1, false); else ChangeMaterial(1); return true;
 	case Qt::Key_Down: if(m_Request.industryId == 2) ChangeRotation(-1, false); else ChangeMaterial(-1); return true;
 	case Qt::Key_Plus: case Qt::Key_Equal: ChangeLevels(1); return true;
@@ -333,6 +461,13 @@ void DdPlanLegacyCity::OnButtonDown(QMouseEvent* event)
 	bool submit = false;
 	if(world)
 	{
+		if(request.action == AuLegacyCityProtocol::Build && request.industryId != 2 && request.industryId != 129)
+		{
+			UpdateSite(*world, point);
+			if(!m_MaximumLevels) { m_pWnd->UnlockSceneAtom(); return; }
+			request = m_Request;
+			request.levels = quint8(qMin(int(request.levels), m_MaximumLevels));
+		}
 		if(request.action == AuLegacyCityProtocol::ClearLand)
 		{
 			ClearTarget hit;
@@ -393,10 +528,17 @@ void DdPlanLegacyCity::RenderCursor(const AuMatrix4x4& projection, const AuMatri
 	AuMatrix4x4 scene, terrain, placement;
 	if(!person->GetTransformRelativeToParent(scene, environment) || !world->GetTransformRelativeToParent(terrain, environment)) return;
 	AuLegacyCityProtocol::Request preview = m_Request;
+	if(m_MaximumLevels >= 0 && preview.industryId != 2 && preview.industryId != 129)
+		preview.levels = quint8(m_ExistingLevels + qMin(int(preview.levels), m_MaximumLevels));
+	if(m_SiteMaterial) { preview.material = m_SiteMaterial; preview.designId = m_SiteDesignId; }
 	AuPoint roadEnd;
 	const bool roadDrag = m_Request.industryId == 2 && m_HasStart && m_StartWorld == world->Id().GetID();
 	if(preview.action == AuLegacyCityProtocol::Build && preview.industryId != 2 && preview.industryId != 129)
-		preview.headingDegrees = float(std::remainder(preview.headingDegrees - world->BuildingConstructionNorthAngle(point, nullptr) * RAD2DEG, 360.));
+	{
+		// SetCursor samples this site before drawing each frame. Reuse its
+		// effective placement and limits instead of sampling the resources twice.
+		point = m_SiteCenter; preview.headingDegrees = float(m_SiteFacing * RAD2DEG);
+	}
 	if(m_Request.industryId == 129 && m_HasStart && m_StartWorld == world->Id().GetID())
 	{
 		AuGlobeLLF radiusLocation;
@@ -517,6 +659,19 @@ void DdPlanLegacyCity::RenderCursor(const AuMatrix4x4& projection, const AuMatri
 				const double radius = recipe->buildRadius * FeetPerMeter();
 				const AuPoint a(-radius, -radius, 1), b(radius, -radius, 1), c(radius, radius, 1), d(-radius, radius, 1);
 				AddLine(m_Preview, a, b); AddLine(m_Preview, b, c); AddLine(m_Preview, c, d); AddLine(m_Preview, d, a);
+				// DdPlanGlobeBuilding 0x14031db40/0x14031ed20: the radial
+				// front marker follows local +Y. Most reach the site edge;
+				// agricultural sites and parks use their smaller level radius.
+				double frontRadius = radius;
+				switch(preview.industryId)
+				{
+				case 30: case 32: frontRadius = double(42.650917f); break;
+				case 31: frontRadius = double(32.8084f); break;
+				case 113: frontRadius = double(65.6168f); break;
+				case 114: frontRadius = double(9.84252f); break;
+				default: break;
+				}
+				AddLine(m_Preview, AuPoint(), AuPoint(0, frontRadius, 0));
 			}
 		m_PreviewValid = true;
 	}
@@ -530,7 +685,7 @@ void DdPlanLegacyCity::RenderCursor(const AuMatrix4x4& projection, const AuMatri
 	effects.GLSL().LineShader().Select(); effects.GLSL().LineShader().SetProjectionModelView(projection * model);
 	if(m_Request.action == AuLegacyCityProtocol::ClearLand)
 		effects.GLSL().LineShader().SetColor(.9f, clearAllowed ? .35f : .1f, .1f, .9f);
-	else effects.GLSL().LineShader().SetColor(.1f, .9f, .1f, .9f);
+	else effects.GLSL().LineShader().SetColor(m_MaximumLevels == 0 ? .9f : .1f, m_MaximumLevels == 0 ? .1f : .9f, .1f, .9f);
 	effects.glEnable(GL_BLEND); effects.glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	if(!ground.isEmpty())
 	{
@@ -551,8 +706,14 @@ void DdPlanLegacyCity::RenderCursor(const AuMatrix4x4& projection, const AuMatri
 	effects.glDisable(GL_BLEND); effects.GLSL().LineShader().Deselect();
 	effects.glDepthMask(depthWrite);
 	if(depthTest) effects.glEnable(GL_DEPTH_TEST);
-	if(m_Request.action == AuLegacyCityProtocol::ClearLand || (m_Request.industryId != 2 && m_Request.industryId != 129)) return;
+	if(m_Request.action == AuLegacyCityProtocol::ClearLand) return;
 	QFont font; font.setPixelSize(14);
+	if(m_Request.industryId != 2 && m_Request.industryId != 129)
+	{
+		if(!m_SiteMessage.isEmpty()) effects.RenderText(pixel.x() + 16, pixel.y() + 24, m_SiteMessage,
+			font, QColor(255, 100, 70), info.glw->width(), info.glw->height());
+		return;
+	}
 	const QString text = m_Request.industryId == 2 ? (m_HasStart ? QObject::tr("Click road end — %1 m").arg(preview.roadLengthMeters, 0, 'f', 1) : QObject::tr("Click road start"))
 		: (m_HasStart ? QObject::tr("Click biodome radius — %1 m").arg(preview.biodomeRadiusMeters, 0, 'f', 1) : QObject::tr("Click biodome center"));
 	effects.RenderText(pixel.x() + 16, pixel.y() + 24, text, font, QColor(255, 230, 100), info.glw->width(), info.glw->height());

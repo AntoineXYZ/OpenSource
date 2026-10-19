@@ -20,6 +20,7 @@
 #include "daatom.h"
 #include "daatomlist.h"
 #include "dabd.h"
+#include "dalegacycity.h"
 #include "dadesignbase.h"
 #include "dadesignplane.h"
 #include "daeffect.h"
@@ -650,6 +651,8 @@ void AuSceneServerApp::StartThreads()
 		connect(m_tClientChannel, SIGNAL(SystemRevoked(AuId)), SLOT(SystemRevoked(AuId)),
 				Qt::QueuedConnection);
 		connect(m_tClientChannel, SIGNAL(ReleaseBerth(AuId, AuId)), SLOT(ReleaseBerthDown(AuId, AuId)),
+				Qt::QueuedConnection);
+		connect(m_tClientChannel, SIGNAL(LegacyWealthLevy(QByteArray)), SLOT(LegacyWealthLevyDown(QByteArray)),
 				Qt::QueuedConnection);
 		connect(m_tClientChannel, SIGNAL(SystemExplored(AuId, quint32)), SLOT(SolarSystemExploredDown(AuId, quint32)),
 				Qt::QueuedConnection);
@@ -2281,8 +2284,16 @@ void AuSceneServerApp::QueryAtomServer(AuId idAtom, quint32 empire, AuId atomToS
 			}
 			else
 			{
+				const auto* legacyCity = g_Au.IsLegacyGeneration() ? dynamic_cast<const DaLegacyCity*>(pAtom) : nullptr;
 				const DaBd* bd = dynamic_cast<const DaBd*>(pAtom);
-				if(bd)
+				if(legacyCity)
+				{
+					const int can = legacyCity->CanSpawnHere(empire);
+					result = can == 0 ? 1 : can == 2 ? 0 : 2;
+					if(g_Au.m_LogMessages & (LOG_AtomQuery|LOG_Spawn))
+						qDebug() << "AuSceneServerApp::QueryAtomServer found legacy city" << *legacyCity << "canSpawn" << can;
+				}
+				else if(bd)
 				{
 					// A bd spawn point is sought.
 					switch(bd->CanSpawnHere(empire))
@@ -3162,8 +3173,9 @@ void AuSceneServerApp::CreditCityBankDown(float fAmount, AuId cityId)
 		DaAtom* atom = ether.FindNormalAtom(cityId);
 		if(atom)
 		{
-			DaBd* bd = dynamic_cast<DaBd*>(atom);
-			if(bd)
+			if(auto* legacy = dynamic_cast<DaLegacyCity*>(atom))
+				legacy->ReceiveTaxLevy(fAmount);
+			else if(DaBd* bd = dynamic_cast<DaBd*>(atom))
 				bd->CreditAccountGovtTaxLevy(fAmount);
 		}
 		g_Au.UnlockEtheriumDelete();

@@ -5,6 +5,7 @@
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
 #include "dasentient.h"
+#include "aulegacyfinancetransfer.h"
 //
 #include "aubank.h"
 #include "aubddesign.h"
@@ -25380,6 +25381,7 @@ void DaSentient::DoOrderTransferMoneyFrom(DaVessel* ship)
 	DaVessel* otherShip = ship->MissionOrderTransferTarget(Id());
 	if(!otherShip)
 		return;
+	AuLegacyFinanceTransfer transfer(ship, otherShip);
 
 	// Determine the amount of money to transfer.
 	double money;
@@ -25403,6 +25405,7 @@ void DaSentient::DoOrderTransferMoneyTo(DaVessel* ship)
 	DaVessel* otherShip = ship->MissionOrderTransferTarget(Id());
 	if(!otherShip)
 		return;
+	AuLegacyFinanceTransfer transfer(ship, otherShip);
 
 	// Determine the amount of money to transfer.
 	double money;

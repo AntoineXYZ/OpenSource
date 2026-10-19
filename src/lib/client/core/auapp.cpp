@@ -28,6 +28,7 @@
 #include "daarena.h"
 #include "daasteroid.h"
 #include "daatomlist.h"
+#include "dalegacycity.h"
 #include "dadesigner.h"
 #include "dagalaxy.h"
 #include "daitem.h"
@@ -251,6 +252,7 @@ AuApp::AuApp(int& argc, char** argv) : QApplication(argc, argv), m_KeyFilter(thi
 	connect(m_I, SIGNAL(GovSetTax(quint32, quint8, quint8, quint8)),
 			SLOT(GovSetTax(quint32, quint8, quint8, quint8)),
 			Qt::QueuedConnection);
+	connect(m_I, SIGNAL(LegacyWealthLevy(QByteArray)), SLOT(LegacyWealthLevy(QByteArray)), Qt::QueuedConnection);
 	connect(m_I, SIGNAL(GovSetThemeColor(quint32, quint8, QColor)),
 			SLOT(GovSetThemeColor(quint32, quint8, QColor)),
 			Qt::QueuedConnection);
@@ -13674,8 +13676,9 @@ void AuApp::CreditCityBank(float fAmount, AuId cityId)
 	DaAtom* atom = ether.FindNormalAtom(cityId);
 	if(atom)
 	{
-		DaBd* bd = dynamic_cast<DaBd*>(atom);
-		if(bd)
+		if(auto* legacy = dynamic_cast<DaLegacyCity*>(atom))
+			legacy->ReceiveTaxLevy(fAmount);
+		else if(DaBd* bd = dynamic_cast<DaBd*>(atom))
 			bd->CreditAccountGovtTaxLevy(fAmount);
 	}
 	g_Au.UnlockEtheriumDelete();
@@ -14843,6 +14846,8 @@ void AuApp::CityMailRequestedSignal(AuId cityId, AuId unitId, quint32 unitEmpire
 	const DaBd* bd = dynamic_cast<const DaBd*>(atom);
 	if(bd && bd->EmpireId() == unitEmpire)
 		bd->MailLastReport(unitId);
+	else if(const auto* legacy = dynamic_cast<const DaLegacyCity*>(atom))
+		if(legacy->EmpireId() == unitEmpire) legacy->MailLastReport(unitId);
 	g_Au.UnlockEtheriumDelete();
 }
 

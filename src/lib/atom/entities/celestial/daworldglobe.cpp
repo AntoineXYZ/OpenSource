@@ -1236,6 +1236,7 @@ void DaWorldGlobe::RenderEnvironmentObject(const AuMatrix4x4& projection, AuAtom
 
 		// Render close up globe model.
 		const AuMatrix4x4& model = rmod.Matrix(Id());
+		RenderLegacyCityInteriors(projection, ari, rmod, sceneAtom);
 		RenderAtGlobe(projection, model, ari, viewerPos, ambientLight, fogDensity, fogcol[0], fogcol[1], fogcol[2]);
 
 		// Render plants
@@ -5239,7 +5240,7 @@ bool DaWorldGlobe::FilterDestinationLoc(DaAtom* moveAtom, const AuPoint& oldLoc,
 	// Moving atom is inside the atmosphere.
 	double stopMove = 0;				// How much movement was stopped for collision damage.
 	int stopReason;
-	if(moveAtom->IsAtBd())
+	if(moveAtom->IsAtBd() || moveAtom->IsAtLegacyCityFloor())
 	{
 		// Moving atom is in a building, could be on the roof.
 		if(nuCgAlt <= oldCgAlt)
@@ -10011,6 +10012,9 @@ AuPoint DaWorldGlobe::NextPathLocation(const AuPoint& /*fromLoc*/, const AuPoint
 
 bool DaWorldGlobe::ConstrainCamera(const DaAtom* subatom, AuMatrix4x4& camera) const
 {
+	// The 2016 indoor camera bypasses terrain, including underground rooms.
+	if(subatom->IsInsideLegacyBuilding()) return false;
+
 	// Create a matrix to calculate camera locations in my space.
 	AuMatrix4x4 m = subatom->Transform() * camera;
 

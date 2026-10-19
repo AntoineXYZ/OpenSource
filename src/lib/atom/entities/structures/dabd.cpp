@@ -15,6 +15,7 @@
 #include "augame.h"
 #include "auglmodelmaker.h"
 #include "aunoise.h"
+#include "aupowerproduction.h"
 #include "auroadmap.h"
 #include "auscdesign.h"
 #include "auscparts.h"
@@ -21094,55 +21095,9 @@ void DaBd::RunManufacturingProcesses(bool canOperate)
 			qint32 iOutputQuantity = (*mpi).LastOutputQuantity();
 			if((*mpi).CommodityId() == CID_Electricity)
 			{
-				// Electricity production by certain power plants is affected by environmental conditions.
-				if(IndustryId() == IID_WindPowerPlant)
+				if(IndustryId() == IID_WindPowerPlant || IndustryId() == IID_SolarPowerPlant)
 				{
-					// Wind increases with distance from sun.
-					// Adjust wind power output according to orbit zone.
-					switch(llworld->OrbitZone())
-					{
-					case OZONE_Inferno:
-						iOutputQuantity /= 4;
-						break;
-					case OZONE_Inner:
-						iOutputQuantity /= 2;
-						break;
-					case OZONE_Habitable:
-					case OZONE_DeepSpace:
-						// Nominal output in habitable zone.
-						break;
-					case OZONE_Outer:
-						iOutputQuantity *= 2;
-						break;
-					case OZONE_Frigid:
-						iOutputQuantity *= 4;
-						break;
-					}
-					(*mpi).SetLastOutput(iOutputQuantity, 255);	// Electricity is always max quality.
-				}
-				else if(IndustryId() == IID_SolarPowerPlant)
-				{
-					// Sunlight energy decreases with distance from sun.
-					// Adjust solar power output according to orbit zone.
-					switch(llworld->OrbitZone())
-					{
-					case OZONE_Inferno:
-						iOutputQuantity *= 4;
-						break;
-					case OZONE_Inner:
-						iOutputQuantity *= 2;
-						break;
-					case OZONE_Habitable:
-					case OZONE_DeepSpace:
-						// Nominal output in habitable zone.
-						break;
-					case OZONE_Outer:
-						iOutputQuantity /= 2;
-						break;
-					case OZONE_Frigid:
-						iOutputQuantity /= 4;
-						break;
-					}
+					iOutputQuantity = AuPowerProduction::ScaleForOrbit(iOutputQuantity, IndustryId(), llworld->OrbitZone());
 					(*mpi).SetLastOutput(iOutputQuantity, 255);	// Electricity is always max quality.
 				}
 			}

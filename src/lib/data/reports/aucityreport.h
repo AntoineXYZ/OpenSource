@@ -15,6 +15,7 @@
 #include "auknownpatents.h"
 #include "autime.h"
 #include "dbindustry.h"
+#include <QByteArray>
 
 #define d_AbandonDaysBegin				(2)						// Days since last visit, after which abandonment begins.
 #define d_CityReportInterval			((RealDaysPerUYear() * SecondsPerDay() / 365) / 4)	// Seconds in each city report period.
@@ -590,6 +591,9 @@ public:
 	quint32								m_AirSupply;			// At start of report. Not after air removed from inventory.
 	bool								m_AteEnoughFood;
 	AuBank								m_Bank;					// Bank account balance and activity.
+	QByteArray							m_LegacyAccounting;		// Optional separate 2016 citizen/treasury ledgers, report version 16.
+	qint8								m_LegacyMoraleChange = 0;	// Actual old-city cycle result; modern morale rules differ.
+	qint32								m_LegacyPopulationAfter = 0;
 	QString								m_CaptName;
 	QMap<AuSpecies, AuCityCitizen>		m_Citizens;
 	quint8								m_CityType;				// CITYTYPE of this report.

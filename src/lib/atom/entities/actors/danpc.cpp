@@ -5,6 +5,7 @@
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
 #include "danpc.h"
+#include "aulegacyfinancetransfer.h"
 //
 #include "auatomchat.h"
 #include "auatomrenderinfo.h"
@@ -6514,7 +6515,7 @@ void DaNpc::MinuteTock()
 								// Mark the solar system as visited so it does not decay. Pirates do not prevent decay.
 								// This is particularly important if I now decide to scuttle the ship. This gives the owner up to a
 								// week to retrieve their private ship before the system decays.
-								system->SetLastOfficerVisited();
+								system->SetLastOfficerVisited(EmpireId());
 							}
 						}
 					}
@@ -8755,6 +8756,8 @@ void DaNpc::CharacterRxBid(const AuCommBid* msg)
 	*/
 
 	// Insure the buyer can afford the cost.
+	DaPerson* person = dynamic_cast<DaPerson*>(sent);
+	AuLegacyFinanceTransfer transfer(person);
 	double fAccountBalance = sent->AccountBalance();
 	if(offerprice > fAccountBalance)
 	{
@@ -8768,7 +8771,6 @@ void DaNpc::CharacterRxBid(const AuCommBid* msg)
 
 	// Insure the buyer can store the merchandise.
 	AuItem* iNew = item->Clone();	// So we can mess with the count.
-	DaPerson* person = dynamic_cast<DaPerson*>(sent);
 	{
 		// Add the item(s) to the person's inventory one at a time to insure they fit.
 		iNew->SetCount(1);
@@ -10183,9 +10185,10 @@ void DaNpc::BodyHasDied(COMMODITYID weaponCID, quint8 weaponQ, WEAPONEFFECT effe
 				}
 
 				// Drop the item. The disk is created out of thin air so I will assign it a random quality value.
+				const quint8 logQuality = g_Au.IsLegacyGeneration() ? quint8(g_Au.Dice().Roll(2, 128, -1)) : g_Au.Dice().RandomQuality();
 				m_LogLock.lockForRead();
 				AuItemOfficerLog itemLog(Name(), home, shipName, shipDesc, shipPrivate, m_Log, CID_OfficerLog,
-						g_Au.Dice().RandomQuality(), EmpireId());
+						logQuality, EmpireId());
 				m_LogLock.unlock();
 
 				DropItem(itemLog);

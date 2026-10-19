@@ -5089,8 +5089,13 @@ const DaAtom* DaAtom::FindTrespasserRecursive(quint32 empireId, const AuPoint& s
 	return subs.FindTrespasserRecursive(empireId, systemLoc, sensorRange);
 }
 
-POLITICAL_STANCE DaAtom::PoliticalStanceMakeContact(quint32 myEmpireId, const DaAtom* other, quint32 otherEmpireId) const
+POLITICAL_STANCE DaAtom::PoliticalStanceMakeContact(quint32 myEmpireId, const DaAtom* other, quint32 otherEmpireId,
+	const QString* myNameSnapshot, const QString* otherNameSnapshot) const
 {
+	// AuAtom13 0x2123a0 treats a non-empire contact as neutral; matching
+	// identities, including two zero IDs, are members of the same empire.
+	if(g_Au.IsLegacyGeneration() && (!myEmpireId || !otherEmpireId))
+		return myEmpireId == otherEmpireId ? POL_Empire : POL_Neutral;
 	if(!myEmpireId)
 	{
 		// 'of' unit has no empire.
@@ -5192,8 +5197,8 @@ POLITICAL_STANCE DaAtom::PoliticalStanceMakeContact(quint32 myEmpireId, const Da
 		// master server gets done updating the empire record and propagates the change back to me. That produces a lot of mail.
 		// This change is not stored in the database until the master gets the notification and updates the database. It will then
 		// propagate a notification back down to the entire server farm that the empire records have changed.
-		QString myName(Name());	// Name function sometimes locks data for read.
-		QString otherName(other->Name());	// Name function sometimes locks data for read.
+		QString myName(myNameSnapshot ? *myNameSnapshot : Name());	// Name sometimes locks data for read.
+		QString otherName(otherNameSnapshot ? *otherNameSnapshot : other->Name());
 		DgData& gd = g_Au.LockDataForWrite();
 		if(!bKnownToMe)
 		{

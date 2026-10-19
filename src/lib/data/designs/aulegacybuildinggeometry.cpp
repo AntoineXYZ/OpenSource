@@ -67,7 +67,7 @@ struct Builder
 	void Triangle(int slot, int deck, bool interior, const QVector3D& a, const QVector3D& b,
 		const QVector3D& c, const QVector2D& ua = {0, 0}, const QVector2D& ub = {1, 0},
 		const QVector2D& uc = {1, 1}, quint32 doorId = 0, quint32 detailId = 0,
-		bool twoSided = false, bool stairs = false, bool collisionOnly = false)
+		bool twoSided = false, bool stairs = false, bool collisionOnly = false, bool depthOnly = false)
 	{
 		if(vertices + 3 > MaximumVertices)
 		{
@@ -76,8 +76,8 @@ struct Builder
 		QVector3D normal = QVector3D::crossProduct(b - a, c - a);
 		if(normal.lengthSquared() < 1e-12f) return;
 		normal.normalize();
-		const QString key = QStringLiteral("%1/%2/%3/%4/%5/%6/%7/%8")
-			.arg(slot).arg(deck).arg(interior).arg(doorId).arg(detailId).arg(twoSided).arg(stairs).arg(collisionOnly);
+		const QString key = QStringLiteral("%1/%2/%3/%4/%5/%6/%7/%8/%9")
+			.arg(slot).arg(deck).arg(interior).arg(doorId).arg(detailId).arg(twoSided).arg(stairs).arg(collisionOnly).arg(depthOnly);
 		int index = batchIndices.value(key, -1);
 		if(index < 0)
 		{
@@ -86,6 +86,7 @@ struct Builder
 			batch.doorId = doorId; batch.detailId = detailId; batch.twoSided = twoSided;
 			batch.stairs = stairs;
 			batch.collisionOnly = collisionOnly;
+			batch.depthOnly = depthOnly;
 			mesh.batches.append(batch);
 		}
 		QVector<AuLegacyShip::Rendering::Vertex>& result = mesh.batches[index].vertices;
@@ -298,7 +299,7 @@ int InteriorWallSlot(int roomType, double length)
 void ExteriorWalls(Builder& out, const QVector<Edge>& edges, const Design& design,
 	int deck, int material, bool interior)
 {
-	for(const QVector<Edge>& loop : Loops(MergeEdges(edges)))
+	for(const QVector<Edge>& loop : Loops(MergeEdges(edges, true)))
 	{
 		QVector<WallSpan> spans;
 		for(const Edge& edge : loop) spans += WallSpans(edge, design, deck, true);
@@ -405,17 +406,26 @@ void DeckSurfaces(Builder& out, const Raster& raster, const Design& design,
 				if(tag & 0x8000)
 				{
 					plane(window ? 12 : 11, deck - 1, false, true);
-					if(HasInterior(Type(tag))) plane(window ? 12 : 16, deck - 1, true, false);
+					plane(window ? 12 : 16, deck - 1, true, false);
 					continue;
 				}
+				// RenderInteriorFloors (2016 0x5ccc20) emits invisible, upward
+				// depth-writing triangles over ground-floor open-below rooms.
+				// Draw these after the interior and before terrain, never as floors.
+				if(deck == 0 && (tag & 0x2000) && options.interior)
+					out.Triangle(-1, deck, true, Position(PlanPoint(points[0]), 0),
+						Position(PlanPoint(points[1]), 0), Position(PlanPoint(points[2]), 0),
+						{}, {}, {}, 0, 0, false, false, false, true);
 				if(!(tag & 0x4000))
 				{
 					plane(window ? 12 : 8, deck, false, false);
 					if(window) plane(12, deck, true, true);
 				}
-				if(!(tag & 0x2000) && HasInterior(Type(tag)))
+				if(!(tag & 0x2000))
 				{
-					if(!window || (tag & 0x4000)) plane(18, deck, true, true);
+					if(HasInterior(Type(tag)) && (!window || (tag & 0x4000))) plane(18, deck, true, true);
+					// RenderInteriorCeilings depends on the floor-buffer flags,
+					// independently of the current room's interior classification.
 					if(tag & 0x4000) plane(16, deck - 1, true, false);
 				}
 				for(int side = 0; side < 3; ++side)
@@ -680,6 +690,7 @@ void StreetLight(Builder& out, const QPointF& location, int deck)
 	const double base = deck * AuLegacyBd::DeckHeight;
 	const float twoPi = 6.2831855f;
 	const QVector3D center = Position(location, base);
+	out.mesh.exteriorLights.append({center + QVector3D(0, 0, 25.5f), false});
 	QVector3D shaft[9], rim[9];
 	for(int i = 0; i <= 8; ++i)
 	{
@@ -692,11 +703,15 @@ void StreetLight(Builder& out, const QPointF& location, int deck)
 	for(int i = 1; i <= 8; ++i)
 	{
 		const float current = float(i) / 8, previous = float(i - 1) / 8;
-		out.Quad(7, deck, false, shaft[i - 1], shaft[i - 1] + QVector3D(0, 0, 25),
-			shaft[i] + QVector3D(0, 0, 25), shaft[i], {previous, 0}, {previous, 1}, {current, 1}, {current, 0});
-		out.Triangle(7, deck, false, rim[i - 1], apex, rim[i], {previous, 0}, {previous + .0625f, 1}, {current, 0});
-		out.Quad(37, deck, false, shaft[i - 1] + QVector3D(0, 0, 25), rim[i - 1], rim[i],
-			shaft[i] + QVector3D(0, 0, 25), {0, 0}, {0, 1}, {1, 1}, {1, 0});
+		// CreateStreetLight emits native clockwise faces. Builder expects
+		// counterclockwise faces, like the rest of the shared collision mesh.
+		// Reverse positions and their UVs together to keep the original art.
+		out.Quad(7, deck, false, shaft[i - 1], shaft[i],
+			shaft[i] + QVector3D(0, 0, 25), shaft[i - 1] + QVector3D(0, 0, 25),
+			{previous, 0}, {current, 0}, {current, 1}, {previous, 1});
+		out.Triangle(7, deck, false, rim[i - 1], rim[i], apex, {previous, 0}, {current, 0}, {previous + .0625f, 1});
+		out.Quad(37, deck, false, shaft[i - 1] + QVector3D(0, 0, 25), shaft[i] + QVector3D(0, 0, 25),
+			rim[i], rim[i - 1], {0, 0}, {1, 0}, {1, 1}, {0, 1});
 	}
 }
 
@@ -704,6 +719,7 @@ void RunwayLight(Builder& out, const QPointF& location)
 {
 	// DpDevelopment::CreateRunwayLight 0x64bc40: eight-sided one-foot
 	// fixture, 1/6-foot stem and half-foot light cap (BuildingTexture 38).
+	out.mesh.exteriorLights.append({Position(location, 1), true});
 	for(int i=0;i<8;++i)
 	{
 		const float a=float(i)*6.2831855f/8, b=float(i+1)*6.2831855f/8;
@@ -910,6 +926,7 @@ Mesh BuildProcedural(const AuLegacyCity::Development& dev)
 				const float altitude=float(dev.roadStartAltitudeMSL-dev.altitudeMSL
 					+(dev.roadEndAltitudeMSL-dev.roadStartAltitudeMSL)*(along/length));
 				const int firstBatch=out.mesh.batches.size();
+				const int firstLight=out.mesh.exteriorLights.size();
 				// Keep each fixture in its own batch while translating its grade.
 				out.batchIndices.clear();
 				if(dev.roadSlab)
@@ -917,6 +934,8 @@ Mesh BuildProcedural(const AuLegacyCity::Development& dev)
 				else StreetLight(out,QPointF(i%2 ? halfWidth : -halfWidth,along-length/2),0);
 				for(int batch=firstBatch;batch<out.mesh.batches.size();++batch)
 					for(auto& vertex : out.mesh.batches[batch].vertices) vertex.position.setZ(vertex.position.z()+altitude);
+				for(int light=firstLight;light<out.mesh.exteriorLights.size();++light)
+					out.mesh.exteriorLights[light].position.setZ(out.mesh.exteriorLights[light].position.z()+altitude);
 			}
 		}
 		// Even dirt roads with no above-ground triangles occupy their full site.

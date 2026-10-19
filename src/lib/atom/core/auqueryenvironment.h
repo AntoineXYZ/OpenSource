@@ -372,6 +372,17 @@ public:
 		return m_OnGround == OG_HardFloor || m_OnGround == OG_WoodFloor;
 	}
 
+	inline bool IsAtLegacyCityFloor() const
+	{
+		return m_Environment & EB_LegacyCityFloor;
+	}
+
+	inline bool IsInsideLegacyBuilding() const
+	{
+		return IsAtLegacyCityFloor() && m_LegacyRoomType != 0
+			&& (m_LegacyRoomType < 22 || m_LegacyRoomType > 24);
+	}
+
 	inline bool IsOnGround() const
 	{
 		return m_OnGround != OG_None;

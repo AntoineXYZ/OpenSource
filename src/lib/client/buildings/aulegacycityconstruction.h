@@ -7,6 +7,8 @@
 #include <QWidget>
 
 class AuBldConstruct;
+class AuLegacyCityBank;
+class AuLegacyCityManufacture;
 class QButtonGroup;
 class QCheckBox;
 class QComboBox;
@@ -16,6 +18,7 @@ class QPushButton;
 class QPixmap;
 class QStackedWidget;
 class QTimer;
+class QTabBar;
 
 // Original F11 city planning owns historical GD selections and commands.
 class AUCLIENT_DLL AuLegacyCityConstruction : public QWidget
@@ -28,7 +31,8 @@ public:
 	void SetCursorMaterial(quint16 material);
 	void SetCursorRoadSlab(bool slab);
 	void SetCursorLevels(quint8 levels) { if(m_Planning) m_ActiveRequest.levels = levels; }
-	void PlanningStopped() { m_Planning = false; }
+	void SetCursorProductChoices(const QVector<quint16>& allowed, quint16 selected);
+	void PlanningStopped();
 
 signals:
 	void PlanConstruction(AuLegacyCityProtocol::Request request);
@@ -83,6 +87,11 @@ protected:
 
 private:
 	AuBldConstruct* m_Labor;
+	AuLegacyCityManufacture* m_Manufacture;
+	AuLegacyCityBank* m_Bank;
+	QStackedWidget* m_LaborPages;
+	QTabBar* m_LaborTabs;
+	bool m_DualPages = false;
 	QLabel* m_Info;
 	QTimer *m_Timer, *m_Timeout;
 	QVector<AuLegacyCityProtocol::Entry> m_Entries;

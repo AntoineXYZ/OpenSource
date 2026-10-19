@@ -5,6 +5,7 @@
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
 #include "auatominterface.h"
+#include "aulegacyfinancetransfer.h"
 //
 #include "auanimalia.h"
 #include "auarenaready.h"
@@ -19,6 +20,8 @@
 #include "auscreport.h"
 #include "aushipment.h"
 #include "austory.h"
+#include "aulegacycityprotocol.h"
+#include "auqueryenvironment.h"
 #include "daarena.h"
 #include "dabd.h"
 #include "dalegacycity.h"
@@ -1892,6 +1895,7 @@ void AuAtomInterface::SendFunds(const AuId& toId, const QString& toName, double 
 	DaPerson* person = LockAvatar();
 	if(person)
 	{
+		AuLegacyFinanceTransfer transfer(person);
 		// Get info about the sending person.
 		personId = person->Id();
 		fromName = person->Name();
@@ -1966,6 +1970,7 @@ void AuAtomInterface::WithdrawShipFunds(double amount, const AuId& shipId)
 		DaVessel* ship = person->FindParentVesselInEnv();
 		if(ship && ship->Is(shipId) && ship->InChainOfCommand(person))
 		{
+			AuLegacyFinanceTransfer transfer(person, ship);
 			if(amount > ship->AccountBalance())
 				amount = ship->AccountBalance();
 			if(amount > 0)
@@ -1987,6 +1992,7 @@ void AuAtomInterface::DepositShipFunds(double amount, const AuId& shipId)
 		DaVessel* ship = person->FindParentVesselInEnv();
 		if(ship && ship->Is(shipId))
 		{
+			AuLegacyFinanceTransfer transfer(person, ship);
 			if(amount > person->AccountBalance())
 				amount = person->AccountBalance();
 			if(amount > 0)
@@ -2273,6 +2279,27 @@ void AuAtomInterface::CloseStory(quint32 storyInstance)
 
 void AuAtomInterface::GovSetCapital(int capitalType)
 {
+	if(g_Au.IsLegacyGeneration() && capitalType == 1)
+	{
+		DaPerson* person = LockAvatar();
+		if(person)
+		{
+			AuLegacyCityProtocol::Request request;
+			request.action = AuLegacyCityProtocol::SetEmpireCapital;
+			const auto* environment = person->LockEnvironmentQuery();
+			const AuId cityId = environment->LegacyCityId();
+			request.developmentId = environment->LegacyDevelopmentId();
+			person->UnlockEnvironmentQuery();
+			AuLegacyCityProtocol::Reply reply;
+			DaWorld* world = person->FindParentPlanetInEnv();
+			auto* city = world ? dynamic_cast<DaLegacyCity*>(world->FindIdRecursive(cityId)) : nullptr;
+			if(city) city->OperateBank(*person, request, reply);
+			else reply.message = tr("Stand at a capitol of your empire to designate its capital.");
+			if(!reply.message.isEmpty()) person->Thought(reply.message);
+		}
+		UnlockAvatar();
+		return;
+	}
 	int result = 0;
 	AuSpecies species;
 	quint32 empireId = 0;
@@ -3727,6 +3754,7 @@ void AuAtomInterface::TransferSendMoney(const AuId& otherShipId, double amount)
 	DaVessel* otherShip = 0;
 	if(TransferSetup(otherShipId, &ship, &otherShip))
 	{
+		AuLegacyFinanceTransfer transfer(ship, otherShip);
 		if(ship->AccountBalance() >= amount)
 		{
 			ship->DebitAccount(amount);
@@ -3814,6 +3842,7 @@ void AuAtomInterface::TransferTakeMoney(const AuId& otherShipId, double amount)
 	DaVessel* otherShip = 0;
 	if(TransferSetup(otherShipId, &ship, &otherShip))
 	{
+		AuLegacyFinanceTransfer transfer(ship, otherShip);
 		if(otherShip->AccountBalance() >= amount)
 		{
 			otherShip->DebitAccount(amount);
@@ -4254,6 +4283,7 @@ void AuAtomInterface::PostBounty(const AuId& victimId, const QString& victimName
 	DaPerson* person = LockAvatar();
 	if(person)
 	{
+		AuLegacyFinanceTransfer transfer(person);
 		if(reward < person->AccountBalance())
 		{
 			// The person has the money for the reward.
@@ -5253,6 +5283,7 @@ bool AuAtomInterface::ReportCityHistory(const AuId& cityId, bool& haveReport, Au
 void AuAtomInterface::MailCityLast(const AuId& cityId)
 {
 	// Try to find the city locally.
+	AuId targetCity = cityId;
 	bool foundCity = false;
 	quint32 personEmpire = 0;
 	bool personHasAgentPower = false;
@@ -5264,11 +5295,17 @@ void AuAtomInterface::MailCityLast(const AuId& cityId)
 		personId = person->Id();
 		personEmpire = person->EmpireId();
 		personHasAgentPower = person->HasAgentPower();
-		const DaAtom* atom = 0;
-		if(!cityId.IsNull())
-			atom = system->FindIdRecursive(cityId);
-		else if(!person->InBdCity().IsNull())
-			atom = system->FindIdRecursive(person->InBdCity());
+		if(targetCity.IsNull())
+		{
+			if(g_Au.IsLegacyGeneration())
+			{
+				const auto* environment = person->LockEnvironmentQuery();
+				targetCity = environment->LegacyCityId();
+				person->UnlockEnvironmentQuery();
+			}
+			if(targetCity.IsNull()) targetCity = person->InBdCity();
+		}
+		const DaAtom* atom = targetCity.IsNull() ? nullptr : system->FindIdRecursive(targetCity);
 		const DaBd* bd = dynamic_cast<const DaBd*>(atom);
 		if(bd)
 		{
@@ -5276,17 +5313,29 @@ void AuAtomInterface::MailCityLast(const AuId& cityId)
 			if(bd->EmpireId() == personEmpire || personHasAgentPower)
 				bd->MailLastReport(person->Id());
 		}
+		else if(const auto* legacy = dynamic_cast<const DaLegacyCity*>(atom))
+		{
+			foundCity = true;
+			if(legacy->EmpireId() == personEmpire || personHasAgentPower)
+				legacy->MailLastReport(person->Id());
+		}
 
 		if(!foundCity && personEmpire)
 		{
 			// City not found in my system. Try the entire root data.
-			const DaAtom* atom = person->Ether()->FindNormalAtom(cityId);
+			const DaAtom* atom = person->Ether()->FindNormalAtom(targetCity);
 			const DaBd* bd = dynamic_cast<const DaBd*>(atom);
 			if(bd)
 			{
 				foundCity = true;
 				if(bd->EmpireId() == personEmpire)
 					bd->MailLastReport(person->Id());
+			}
+			else if(const auto* legacy = dynamic_cast<const DaLegacyCity*>(atom))
+			{
+				foundCity = true;
+				if(legacy->EmpireId() == personEmpire)
+					legacy->MailLastReport(person->Id());
 			}
 		}
 	}
@@ -5295,7 +5344,7 @@ void AuAtomInterface::MailCityLast(const AuId& cityId)
 		return;
 
 	if(!foundCity)
-		emit CityMailRequestedSignal(cityId, personId, personEmpire);	// Initiate request for the mail up to master server.
+		emit CityMailRequestedSignal(targetCity, personId, personEmpire);	// Initiate request for the mail up to master server.
 }
 
 void AuAtomInterface::OrdnanceLoad(int rack, const AuItem& ord)
@@ -6875,6 +6924,7 @@ void AuAtomInterface::ScDesignExchangePurchase(quint32 designId, const AuGearPos
 		DaPerson* person = LockAvatar();
 		if(person)
 		{
+			AuLegacyFinanceTransfer transfer(person);
 			// Check stance toward buyer.
 			if(e.AccessibleTo(person->Id(), person->EmpireId()))
 			{
@@ -8118,6 +8168,7 @@ void AuAtomInterface::BdDesignExchangePurchase(quint32 designId, const AuGearPos
 		DaPerson* person = LockAvatar();
 		if(person)
 		{
+			AuLegacyFinanceTransfer transfer(person);
 			// Check stance toward buyer.
 			if(e.AccessibleTo(person->Id(), person->EmpireId()))
 			{
@@ -9298,6 +9349,7 @@ void AuAtomInterface::PayInsurer(double amount)
 	DaPerson* person = LockAvatar();
 	if(person)
 	{
+		AuLegacyFinanceTransfer transfer(person);
 		personId = person->Id();
 		personName = person->Name();
 		if(amount > person->AccountBalance())

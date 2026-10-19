@@ -1189,6 +1189,7 @@ bool DtClientChat::ReadPacket(const QByteArray& ba, QTcpSocket& /*tcpSocket*/)
 	case DtChatChannelPacket::PV_SetPoliticalStance:
 	case DtChatChannelPacket::PV_SetShieldPolicy:
 	case DtChatChannelPacket::PV_SetTax:
+	case DtChatChannelPacket::PV_LegacyWealthLevy:
 	case DtChatChannelPacket::PV_SetThemeColor:
 	case DtChatChannelPacket::PV_SpeciesRequest:
 	case DtChatChannelPacket::PV_WarCriteria:

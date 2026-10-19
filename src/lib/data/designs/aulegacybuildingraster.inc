@@ -152,7 +152,7 @@ struct Edge
 		: a(from), b(to), tag(room), adjacent(neighbor), owner(roomOwner), adjacentOwner(neighborOwner) {}
 };
 
-QVector<Edge> MergeEdges(const QVector<Edge>& edges)
+QVector<Edge> MergeEdges(const QVector<Edge>& edges, bool preserveJunctions = false)
 {
 	QHash<quint32, QVector<int>> starts, ends;
 	for(int i = 0; i < edges.size(); ++i)
@@ -173,6 +173,13 @@ QVector<Edge> MergeEdges(const QVector<Edge>& edges)
 			do
 			{
 				extended = false;
+				// ChaseBoundary retains a junction even when one pair of edges
+				// is collinear. Removing it disconnects touching room outlines
+				// and makes their offset wall profiles intersect at the corner.
+				const quint32 joint = PointKey(direction > 0 ? edge.b : edge.a);
+				// Interior partitions have an opposite-facing edge at every
+				// sample, so this outline-only rule must not split their doors.
+				if(preserveJunctions && (starts.value(joint).size() != 1 || ends.value(joint).size() != 1)) break;
 				const QVector<int> candidates = direction > 0
 					? starts.value(PointKey(edge.b)) : ends.value(PointKey(edge.a));
 				for(int candidate : candidates)
@@ -213,7 +220,7 @@ QVector<QVector<Edge>> Loops(const QVector<Edge>& edges)
 			loop.append(edge);
 			if(edge.b == loop.first().a) break;
 			next = -1;
-			double bestTurn = -4;
+			double bestTurn = 4;
 			const QPointF incoming = edge.b - edge.a;
 			for(int candidate : starts.value(PointKey(edge.b)))
 			{
@@ -221,7 +228,9 @@ QVector<QVector<Edge>> Loops(const QVector<Edge>& edges)
 				const QPointF outgoing = edges.at(candidate).b - edge.b;
 				const double turn = std::atan2(Cross(incoming, outgoing),
 					QPointF::dotProduct(incoming, outgoing));
-				if(turn > bestTurn) { next = candidate; bestTurn = turn; }
+				// Original ChaseBoundary follows the clockwise branch where
+				// rooms touch, keeping their profiles joined around the junction.
+				if(turn < bestTurn) { next = candidate; bestTurn = turn; }
 			}
 		}
 		if(loop.size() >= 3 && loop.last().b == loop.first().a) loops.append(loop);

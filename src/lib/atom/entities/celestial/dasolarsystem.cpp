@@ -20,6 +20,7 @@
 #include "dadesigner.h"
 #include "dagalaxy.h"
 #include "daitem.h"
+#include "dalegacycity.h"
 #include "danpc.h"
 #include "daperson.h"
 #include "dasc.h"
@@ -3114,7 +3115,7 @@ void DaSolarSystem::AdminGoTo(DaAtom* moveAtom, DaAtom* destAtom)
 			return;
 
 		// Insure this solar system is not dormant.
-		SetLastPersonVisited();
+		SetLastPersonVisited(moveAtom->EmpireId());
 
 		// Destination atom is a creature or city.
 
@@ -4184,7 +4185,20 @@ AuTime DaSolarSystem::PositiveStargateExpiry() const
 	return AuTime();
 }
 
-void DaSolarSystem::SetLastOfficerVisited()
+namespace
+{
+void RegisterLegacyCityVisits(DaSolarSystem& system, quint32 empireId)
+{
+	if(!g_Au.IsLegacyGeneration() || !empireId) return;
+	DaAtomList cities;
+	system.FindLegacyCitiesRecursive(cities);
+	const qint64 now = AuTime::CurrentMSecsSinceEpoch();
+	for(DaAtom* atom : cities)
+		if(auto* city = dynamic_cast<DaLegacyCity*>(atom)) city->RegisterEmpireVisit(empireId, now);
+}
+}
+
+void DaSolarSystem::SetLastOfficerVisited(quint32 empireId)
 {
 	bool callSetModified = false;
 	m_LastOfficerVisitLock.lockForWrite();
@@ -4198,22 +4212,23 @@ void DaSolarSystem::SetLastOfficerVisited()
 	m_LastOfficerVisitLock.unlock();
 	if(callSetModified)
 		SetModified(NOTIFY_Database);
+	RegisterLegacyCityVisits(*this, empireId);
 	if(!wasTicking)
 		TickTockRecursive();
 }
 
-void DaSolarSystem::SetLastPersonScene()
+void DaSolarSystem::SetLastPersonScene(quint32 empireId)
 {
 	m_LastPersonVisitLock.lockForWrite();
 	bool wasTicking = m_LastPersonScene.isValid() && m_LastPersonScene.ElapsedSec() <= 60*3;
 	m_LastPersonScene.restart();
 	m_LastPersonVisitLock.unlock();
-	SetLastPersonVisited();
+	SetLastPersonVisited(empireId);
 	if(!wasTicking)
 		TickTockRecursive();
 }
 
-void DaSolarSystem::SetLastPersonVisited()
+void DaSolarSystem::SetLastPersonVisited(quint32 empireId)
 {
 	// This gets called in every sync frame. Let's not call SetModified in every frame or the client will get an updated copy of
 	// this solar system in every frame.
@@ -4228,6 +4243,7 @@ void DaSolarSystem::SetLastPersonVisited()
 	m_LastPersonVisitLock.unlock();
 	if(callSetModified)
 		SetModified(NOTIFY_Database);
+	RegisterLegacyCityVisits(*this, empireId);
 }
 
 DaStar* DaSolarSystem::HengeSun(quint8 sun)

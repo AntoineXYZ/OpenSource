@@ -11,10 +11,12 @@
 #include "auhitnotify.h"
 #include "auitem.h"
 #include "aujob.h"
+#include "aulegacyfinancetransfer.h"
 #include "aumemory.h"
 #include "auplayerstats.h"
 #include "auroster.h"
 #include "dasentient.h"
+#include <QMutex>
 
 class AuBox;
 class AuCommAccept;
@@ -285,6 +287,8 @@ private:
 	AuPlayerStats						m_Stats;				// Statistics (internally guarded).
 
 private:
+	friend class AuLegacyFinanceTransfer;
+	mutable QMutex                     m_LegacyFinanceMutex{QMutex::Recursive};
 	mutable QReadWriteLock				m_PersonLock;
 	AuTime								m_ArenaEntered;			// Time arena was entered.
 	AuGear								m_ArenaExitInv;			// Gear when I entered arena, for restore on exit.
@@ -1020,6 +1024,7 @@ public:
 	virtual DaPerson* FindPersonRecursive() const;
 
 	void HandcraftItem(int mpid);
+	void HandcraftLegacyItem(int recipeId);
 
 	// Returns true if this person has ever begun construction of 'iid', regardless of whether they ever finished it.
 	bool HasConstructedBuildingHabitable(INDUSTRYID iid) const;
@@ -1263,6 +1268,7 @@ public:
 
 	inline void ReduceReward(double howMuch)
 	{
+		AuLegacyFinanceTransfer transfer(this);
 		m_RewardsLock.lockForWrite();
 		if(howMuch >= m_RewardsOwed)
 			m_RewardsOwed = 0;
@@ -1274,6 +1280,7 @@ public:
 
 	inline void ResetReward()
 	{
+		AuLegacyFinanceTransfer transfer(this);
 		m_RewardsLock.lockForWrite();
 		m_RewardsOwed = 0;
 		m_tmRewardChange.Set();

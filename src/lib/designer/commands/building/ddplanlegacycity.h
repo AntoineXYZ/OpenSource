@@ -31,6 +31,16 @@ private:
 	QPointer<AuLegacyCityConstruction> m_Interface;
 	AuLegacyCityProtocol::Request m_Request;
 	bool m_HasStart = false;
+	int m_MaximumLevels = -1;
+	int m_ExistingLevels = 0;
+	quint16 m_SiteMaterial = 0;
+	quint32 m_SiteDesignId = 0;
+	AuPoint m_SiteCenter;
+	double m_SiteFacing = 0;
+	quint32 m_PreviousSiteWorld = 0;
+	AuGlobeLLF m_PreviousSiteLocation;
+	QVector<quint16> m_AvailableProducts;
+	QString m_SiteMessage;
 	quint32 m_StartWorld = 0;
 	AuPoint m_Start;
 	double m_Angle = 90;
@@ -40,6 +50,8 @@ private:
 	void ChangeMaterial(int direction);
 	void ChangeLevels(int direction);
 	void ChangeRotation(int direction, bool fine);
+	void ChangeProduct(int direction);
+	void UpdateSite(const DaWorldLL& world, const AuPoint& point);
 	void ConstrainRoad(const DaWorldLL& world, AuPoint& point, bool constrain) const;
 };
 

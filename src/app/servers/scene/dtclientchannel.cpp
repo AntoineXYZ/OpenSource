@@ -5,6 +5,7 @@
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
 #include "dtclientchannel.h"
+#include "aulegacywealthlevy.h"
 //
 #include "audbglobal.h"
 #include "aujoboffer.h"
@@ -948,6 +949,13 @@ bool DtClientChannel::ReadPacket(const QByteArray& ba, QTcpSocket& tcpSocket)
 			personId << block;		// Person releasing their berth.
 			shipId << block;		// The ship they are moving to, may be 0.
 			emit ReleaseBerth(personId, shipId);
+		}
+		break;
+
+	case DtServerChannel::P_LegacyWealthLevy:
+		{
+			QByteArray order;
+			if(AuLegacyCity::ReadWealthLevyEnvelope(block, order)) emit LegacyWealthLevy(order);
 		}
 		break;
 

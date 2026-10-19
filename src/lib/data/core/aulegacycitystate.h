@@ -9,7 +9,8 @@
 
 namespace AuLegacyCity
 {
-constexpr quint8 StateVersion = 2;
+constexpr quint8 StateVersion = 3;
+inline bool SupportedStateVersion(quint32 version) { return version >= 1 && version <= StateVersion; }
 constexpr int MaximumStateBytes = 8 * 1024 * 1024;
 constexpr int MaximumDevelopments = 32768;
 
@@ -35,6 +36,12 @@ struct Development
 	qint8 maximumDeck = 0;
 	bool constructed = true;
 	quint8 completedLevels = 1;
+	quint8 technology = 0;
+	quint32 employees = 0; // Preserve the original 32-bit counter, including road accumulation.
+	// Original DeConstructionProcess MPID/WorkerOk, retained until the new
+	// level's production slot is initialized. Zero requests original defaults.
+	quint16 selectedManufacturingRecipe = 0;
+	bool manufacturingCitizenEnabled = true;
 	quint8 constructionProcessId = 0;
 	quint8 targetLevels = 1;
 	quint32 laborRemaining = 0;
@@ -68,6 +75,9 @@ struct State
 	qint8 satisfaction = 1;
 	float capacitor = 0;
 	qint64 lastVisit = 0;
+	qint64 lastEmployment = 0, lastPopulationCycle = 0;
+	qint64 lastAttack = 0;
+	QByteArray citizenSpecies;
 	QVector<Development> developments;
 	QVector<Flag> flags;
 	// Versioned opaque groups preserve ownership of future city-wide systems

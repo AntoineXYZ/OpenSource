@@ -11,6 +11,12 @@
 #include "dgdata.h"
 #include "audna.h"
 #include "dhdna.h"
+#include "aulegacycitycatalogue.h"
+#include "aulegacycitypopulation.h"
+#include "aulegacycityproduction.h"
+#include <algorithm>
+#include <initializer_list>
+#include <utility>
 
 #define d_AbandonDaysPerMoralePoint		(1)						// Days after d_AbandonDaysBegin per point of morale loss.
 
@@ -24,6 +30,109 @@ static int s_HomeFarm = 0;
 static int s_HomeHouse = 0;
 static int s_HomeOrchard = 0;
 static float s_BuildingVolumePerPerson = ((float)AuBdDesign::MaxVolume() / 721210);	// building volume allotted per person on Earth
+
+namespace
+{
+class CityReportCommoditySubKey
+{
+	CommoditySubKey m_QualityOrigin;
+	quint8 m_Technology;
+public:
+	CityReportCommoditySubKey(quint8 quality, quint32 origin, quint8 technology = 0)
+		: m_QualityOrigin(quality, origin), m_Technology(technology) {}
+	bool operator<(const CityReportCommoditySubKey& other) const
+	{
+		// Original report key: descending TL, quality, then empire. Modern
+		// reports pass zero technology, retaining the existing key ordering.
+		if(m_Technology != other.m_Technology) return m_Technology > other.m_Technology;
+		return m_QualityOrigin < other.m_QualityOrigin;
+	}
+};
+
+QString CityReportStockHtml(const AuItem& item, const QString& origin, bool legacy)
+{
+	if(!legacy || !item.TechLevel())
+	{
+		// The original report omits TL1 (stored zero), including on patents.
+		if(!item.EmpireOfOrigin()) return QObject::tr("<i>%1 Q%2</i>").arg(item.Count()).arg(item.Quality());
+		if(origin.isEmpty()) return QObject::tr("%1 Q%2").arg(item.Count()).arg(item.Quality());
+		return QObject::tr("%1 Q%2 Made in %3").arg(item.Count()).arg(item.Quality()).arg(origin);
+	}
+	const auto* catalogue = AuLegacyCityCatalogue::BuiltIn();
+	AuLegacyCity::CommodityId historical;
+	const bool technology = catalogue && catalogue->HistoricalCommodityId(quint16(item.CommodityId()), historical)
+		&& AuLegacyCity::IsProductionTechnology(historical.value);
+	QString text = technology ? QObject::tr("%1 TL%2").arg(item.Count()).arg(item.TechLevel() + 1)
+		: QObject::tr("%1 TL%3 Q%2").arg(item.Count()).arg(item.Quality()).arg(item.TechLevel() + 1);
+	if(!origin.isEmpty()) text += QObject::tr(" Made in %1").arg(origin);
+	if(!item.EmpireOfOrigin()) text = QStringLiteral("<i>%1</i>").arg(text);
+	return text;
+}
+
+QString LegacyAccountsHtml(const QByteArray& bytes, double previousTribute)
+{
+	AuLegacyCity::AccountingState accounting; QString error;
+	if(!AuLegacyCity::DecodeAccounting(bytes, accounting, error)) return QString();
+	const auto& accounts = accounting.accounts;
+	const QString currency = g_Au.CurrencySymbol();
+	QString html;
+	auto balance = [&html, &currency](const QString& label, double amount) {
+		html += QStringLiteral("<tr><td><b>%1</b></td><td></td><td style=\"text-align:right;\">%L2%3</td></tr>")
+			.arg(label.toHtmlEscaped()).arg(amount, 0, 'f', 0).arg(currency);
+	};
+	auto entries = [&html, &currency, &balance](const QString& heading,
+		std::initializer_list<std::pair<const char*, double>> values, bool expense) {
+		double total = 0;
+		html += QStringLiteral("<tr><td><b>%1</b></td><td></td><td></td></tr>").arg(heading.toHtmlEscaped());
+		for(const auto& value : values)
+		{
+			total += value.second;
+			if(value.second != 0)
+				html += QStringLiteral("<tr><td></td><td>%1</td><td style=\"text-align:right;\">%L2%3</td></tr>")
+					.arg(QObject::tr(value.first).toHtmlEscaped()).arg(value.second, 0, 'f', 0).arg(currency);
+		}
+		balance(QObject::tr("Sub Total"), expense ? -total : total);
+	};
+	auto citizenIncome = [&accounts](AuLegacyCity::CitizenIncome category) { return accounts.citizenIncome[std::size_t(category)]; };
+	auto citizenExpense = [&accounts](AuLegacyCity::CitizenExpense category) { return accounts.citizenExpenses[std::size_t(category)]; };
+	auto governmentIncome = [&accounts](AuLegacyCity::GovernmentIncome category) { return accounts.governmentIncome[std::size_t(category)]; };
+	auto governmentExpense = [&accounts](AuLegacyCity::GovernmentExpense category) { return accounts.governmentExpenses[std::size_t(category)]; };
+	html += QObject::tr("<b>GOVERNMENT ACCOUNT</b><div style=\"margin-left:10px;\"><table border=\"0\" cellpadding=\"2\" cellspacing=\"0\">");
+	if(previousTribute > 0) balance(QObject::tr("Previous Tribute"), previousTribute);
+	balance(QObject::tr("Starting Balance"), accounts.BeginningGovernmentBalance());
+	using GI = AuLegacyCity::GovernmentIncome;
+	using GE = AuLegacyCity::GovernmentExpense;
+	entries(QObject::tr("Income"), {
+		// Retain the original report labels even where ledger method names differ.
+		{"Tax Levy From Citizens", governmentIncome(GI::Confiscated)}, {"Deposit by Govt Official", governmentIncome(GI::Deposit)},
+		{"Income Tax", governmentIncome(GI::IncomeTax)}, {"Research and Development", governmentIncome(GI::Research)},
+		{"Sales Tax", governmentIncome(GI::SalesTax)}, {"Subsidy Tax", governmentIncome(GI::SubsidyTax)},
+		{"Tribute", governmentIncome(GI::TaxLevy)}}, false);
+	entries(QObject::tr("Expenses"), {
+		{"Public Works", governmentExpense(GE::Works)}, {"Research and Development", governmentExpense(GE::Research)},
+		{"Rewards", governmentExpense(GE::Rewards)}, {"Tribute", governmentExpense(GE::Tribute)},
+		{"Withdrawal by Govt Officials", governmentExpense(GE::Withdrawal)}}, true);
+	balance(QObject::tr("Current Balance"), accounts.government);
+	html += QStringLiteral("</table></div>");
+	html += QObject::tr("<b>CITIZEN ACCOUNTS</b><div style=\"margin-left:10px;\"><table border=\"0\" cellpadding=\"2\" cellspacing=\"0\">");
+	balance(QObject::tr("Starting Balance"), accounts.BeginningCitizenBalance());
+	using CI = AuLegacyCity::CitizenIncome;
+	using CE = AuLegacyCity::CitizenExpense;
+	entries(QObject::tr("Income"), {
+		{"Citizen Relocation", citizenIncome(CI::Immigrate)}, {"Citizen Loan Payments", citizenIncome(CI::Loans)},
+		{"Bullion Production", citizenIncome(CI::Mint)}, {"Payroll", citizenIncome(CI::Salary)},
+		{"Product Sales", citizenIncome(CI::Sales)}, {"Wholesale Sales", citizenIncome(CI::Wholesale)}}, false);
+	entries(QObject::tr("Expenses"), {
+		{"Architect Commissions", citizenExpense(CE::Commission)}, {"Tax Levy by Government", citizenExpense(CE::Confiscated)},
+		{"Citizen Relocation", citizenExpense(CE::Emigrate)}, {"Citizen Loans", citizenExpense(CE::Loans)},
+		{"Payroll", citizenExpense(CE::Salary)}, {"Product Purchases", citizenExpense(CE::Purchases)},
+		{"Rewards", citizenExpense(CE::Rewards)}, {"Wholesale Purchases", citizenExpense(CE::Wholesale)},
+		{"Withdrawals", citizenExpense(CE::Withdrawn)}}, true);
+	balance(QObject::tr("Current Balance"), accounts.citizens);
+	html += QStringLiteral("</table></div>");
+	return html;
+}
+}
 
 AuCityCitizen::AuCityCitizen(const AuSpecies& species, ECOROLE ecoRole, bool isAlien, quint32 population)
 {
@@ -239,6 +348,9 @@ AuCityReport::~AuCityReport()
 
 AuCityReport::AuCityReport(const AuCityReport& c) : m_Bank(c.m_Bank), m_Industries(c.m_Industries)
 {
+	m_LegacyAccounting = c.m_LegacyAccounting;
+	m_LegacyMoraleChange = c.m_LegacyMoraleChange;
+	m_LegacyPopulationAfter = c.m_LegacyPopulationAfter;
 	m_AirConsumed = c.m_AirConsumed;
 	m_AirSupply = c.m_AirSupply;
 	m_AteEnoughFood = c.m_AteEnoughFood;
@@ -330,6 +442,9 @@ const AuCityReport& AuCityReport::operator=(const AuCityReport& c)
 	m_AirSupply = c.m_AirSupply;
 	m_AteEnoughFood = c.m_AteEnoughFood;
 	m_Bank = c.m_Bank;
+	m_LegacyAccounting = c.m_LegacyAccounting;
+	m_LegacyMoraleChange = c.m_LegacyMoraleChange;
+	m_LegacyPopulationAfter = c.m_LegacyPopulationAfter;
 	m_CaptName = c.m_CaptName;
 	m_Citizens = c.m_Citizens;
 	m_CityType = c.m_CityType;
@@ -416,6 +531,16 @@ const AuCityReport& AuCityReport::operator=(const AuCityReport& c)
 
 void AuCityReport::operator>>(QDataStream& out) const
 {
+	const bool legacyAccounts = !m_LegacyAccounting.isEmpty();
+	if(legacyAccounts)
+	{
+		AuLegacyCity::AccountingState accounting; QString error;
+		if(m_CityType != CITY_City_Obsolete || m_LegacyPopulationAfter < 0 || m_LegacyAccounting.size() > 1024
+			|| m_Flags.size() > 4096
+			|| !AuLegacyCity::DecodeAccounting(m_LegacyAccounting, accounting, error))
+		{ out.setStatus(QDataStream::WriteFailed); return; }
+	}
+	const bool extendedLegacyFlags = legacyAccounts && m_Flags.size() > 255;
 	quint16 bits = 0x8000;			// Top bit says we have a version number. No top bit is version 0.
 	if(m_AteEnoughFood)
 		bits |= 0x0001;
@@ -446,7 +571,7 @@ void AuCityReport::operator>>(QDataStream& out) const
 		bits |= 0x4000;
 	out << bits;
 
-	const quint8 version = 15;
+	const quint8 version = extendedLegacyFlags ? 17 : legacyAccounts ? 16 : 15;
 	out << version;
 
 	out << m_AirConsumed;
@@ -458,7 +583,15 @@ void AuCityReport::operator>>(QDataStream& out) const
 	out << (quint8)m_Decayed[2];
 	out << m_DistressRpt;
 	out << *m_EventLog;
-	out << m_Flags;
+	if(extendedLegacyFlags)
+	{
+		// The common AuFlagArray count is one byte. The legacy-only tail
+		// retains the full supported array without changing that old format.
+		AuFlagArray prefix;
+		for(int index = 0; index < 255; ++index) prefix.append(m_Flags[index]);
+		out << prefix;
+	}
+	else out << m_Flags;
 	out << m_Galaxy;
 	out << m_HomesLg;
 	out << m_HomesMd;
@@ -538,10 +671,19 @@ void AuCityReport::operator>>(QDataStream& out) const
 	out << m_PopSeafarersDep;
 	out << m_PopWanderersArr;
 	out << m_PopWanderersDep;
+	if(legacyAccounts) out << m_LegacyAccounting << m_LegacyMoraleChange << m_LegacyPopulationAfter;
+	if(extendedLegacyFlags)
+	{
+		out << quint16(m_Flags.size());
+		for(const auto& flag : m_Flags) flag >> out;
+	}
 }
 
 void AuCityReport::operator<<(QDataStream& in)
 {
+	m_LegacyAccounting.clear();
+	m_LegacyMoraleChange = 0;
+	m_LegacyPopulationAfter = 0;
 	quint16 bits;
 	in >> bits;
 	m_AteEnoughFood = (bits & 0x0001);
@@ -920,11 +1062,53 @@ void AuCityReport::operator<<(QDataStream& in)
 		in >> m_PopWanderersArr;
 		in >> m_PopWanderersDep;
 	}
+	if(version >= 16)
+	{
+		quint32 size = 0;
+		in >> size;
+		if(in.status() != QDataStream::Ok || m_CityType != CITY_City_Obsolete || !size
+			|| size > 1024 || !in.device() || quint64(size) > quint64(in.device()->bytesAvailable()))
+		{ in.setStatus(QDataStream::ReadCorruptData); return; }
+		QByteArray accounting; accounting.resize(int(size));
+		if(in.readRawData(accounting.data(), int(size)) != int(size))
+		{ in.setStatus(QDataStream::ReadCorruptData); return; }
+		AuLegacyCity::AccountingState checked; QString error;
+		if(!AuLegacyCity::DecodeAccounting(accounting, checked, error))
+		{ in.setStatus(QDataStream::ReadCorruptData); return; }
+		m_LegacyAccounting = accounting;
+		in >> m_LegacyMoraleChange >> m_LegacyPopulationAfter;
+		if(m_LegacyPopulationAfter < 0) in.setStatus(QDataStream::ReadCorruptData);
+	}
+	if(version >= 17)
+	{
+		quint16 count = 0;
+		in >> count;
+		if(version != 17 || in.status() != QDataStream::Ok || m_CityType != CITY_City_Obsolete
+			|| m_LegacyAccounting.isEmpty() || count <= 255 || count > 4096 || m_Flags.size() != 255)
+		{ in.setStatus(QDataStream::ReadCorruptData); return; }
+		AuFlagArray flags;
+		for(quint16 index = 0; index < count; ++index)
+		{
+			AuFlag flag;
+			flag << in;
+			if(in.status() != QDataStream::Ok)
+			{ in.setStatus(QDataStream::ReadCorruptData); return; }
+			flag.m_IID = index == 0 ? IID_TownSquare : IID_BaseFlag;
+			flags.append(flag);
+		}
+		m_Flags = flags;
+	}
 }
 
 // static
 int AuCityReport::HomesPerLevel(INDUSTRYID iid)
 {
+	if(AuLegacyItemTechnologyActive())
+	{
+		const auto* catalogue = AuLegacyCityCatalogue::BuiltIn();
+		const auto* industry = catalogue ? catalogue->IndustryForRuntimeId(quint8(iid)) : nullptr;
+		return industry ? industry->populationPerLevel : 0;
+	}
 	// The homes/population value per industry level never changes
 	// during program execution so we'll look it up only once and
 	// share it with all other cities via static variables.
@@ -996,7 +1180,7 @@ qint8 AuCityReport::Morale() const
 	switch((CITYTYPE)m_CityType)
 	{
 	case CITY_City_Obsolete:
-		return 0;
+		return m_LegacyMoraleChange;
 	case CITY_Capitol:
 		return MoraleCapitol();
 	case CITY_MilitaryBase:
@@ -1007,6 +1191,7 @@ qint8 AuCityReport::Morale() const
 
 int AuCityReport::RequiredCantinas() const
 {
+	if(m_CityType == CITY_City_Obsolete) return int(m_PopOrig / 50);
 	switch((CITYTYPE)m_CityType)
 	{
 	case CITY_City_Obsolete:
@@ -1027,6 +1212,7 @@ int AuCityReport::RequiredCantinas() const
 
 int AuCityReport::RequiredHospitals() const
 {
+	if(m_CityType == CITY_City_Obsolete) return int(m_PopOrig / 80);
 	switch((CITYTYPE)m_CityType)
 	{
 	case CITY_City_Obsolete:
@@ -1048,6 +1234,7 @@ int AuCityReport::RequiredHospitals() const
 
 int AuCityReport::RequiredArenas() const
 {
+	if(m_CityType == CITY_City_Obsolete) return int(m_PopOrig / 175);
 	switch((CITYTYPE)m_CityType)
 	{
 	case CITY_City_Obsolete:
@@ -1069,6 +1256,7 @@ int AuCityReport::RequiredArenas() const
 
 int AuCityReport::RequiredCasinos() const
 {
+	if(m_CityType == CITY_City_Obsolete) return int(m_PopOrig / 200);
 	switch((CITYTYPE)m_CityType)
 	{
 	case CITY_City_Obsolete:
@@ -1090,6 +1278,7 @@ int AuCityReport::RequiredCasinos() const
 
 int AuCityReport::RequiredChurches() const
 {
+	if(m_CityType == CITY_City_Obsolete) return int(m_PopOrig / 45);
 	switch((CITYTYPE)m_CityType)
 	{
 	case CITY_City_Obsolete:
@@ -1111,6 +1300,7 @@ int AuCityReport::RequiredChurches() const
 
 int AuCityReport::RequiredGrocery() const
 {
+	if(m_CityType == CITY_City_Obsolete) return int(m_PopOrig / 100);
 	switch((CITYTYPE)m_CityType)
 	{
 	case CITY_City_Obsolete:
@@ -1132,6 +1322,7 @@ int AuCityReport::RequiredGrocery() const
 
 int AuCityReport::RequiredParks() const
 {
+	if(m_CityType == CITY_City_Obsolete) return int(m_PopOrig / 90);
 	switch((CITYTYPE)m_CityType)
 	{
 	case CITY_City_Obsolete:
@@ -1153,6 +1344,7 @@ int AuCityReport::RequiredParks() const
 
 int AuCityReport::RequiredRetail() const
 {
+	if(m_CityType == CITY_City_Obsolete) return int(m_PopOrig / 55);
 	switch((CITYTYPE)m_CityType)
 	{
 	case CITY_City_Obsolete:
@@ -1173,6 +1365,7 @@ int AuCityReport::RequiredRetail() const
 
 int AuCityReport::RequiredUniversities() const
 {
+	if(m_CityType == CITY_City_Obsolete) return int(m_PopOrig / 70);
 	switch((CITYTYPE)m_CityType)
 	{
 	case CITY_City_Obsolete:
@@ -1201,6 +1394,7 @@ int AuCityReport::RequiredUniversities() const
 
 int AuCityReport::RequiredZoos() const
 {
+	if(m_CityType == CITY_City_Obsolete) return int(m_PopOrig / 150);
 	switch((CITYTYPE)m_CityType)
 	{
 	case CITY_City_Obsolete:
@@ -1912,7 +2106,7 @@ QString AuCityReport::ReportHtml(const AuCityReport& prevReport, bool mailFormat
 	switch((CITYTYPE)m_CityType)
 	{
 	case CITY_City_Obsolete:
-		return "";
+		return ReportCapitol(prevReport, mailFormat);
 	case CITY_Capitol:
 		return ReportCapitol(prevReport, mailFormat);
 	case CITY_MilitaryBase:
@@ -1923,6 +2117,7 @@ QString AuCityReport::ReportHtml(const AuCityReport& prevReport, bool mailFormat
 
 QString AuCityReport::ReportCapitol(const AuCityReport& prevReport, bool mailFormat) const
 {
+	using CommoditySubKey = CityReportCommoditySubKey;
 	QString rpt;	// This will be our return value.
 	if(mailFormat)
 	{
@@ -2033,11 +2228,47 @@ QString AuCityReport::ReportCapitol(const AuCityReport& prevReport, bool mailFor
 
 	// Tally homes.
 	unsigned int homesTotal = m_HomesLg + m_HomesMd + m_HomesSm;
+	const bool legacyCity = m_CityType == CITY_City_Obsolete && !m_LegacyAccounting.isEmpty();
+	if(legacyCity)
+		homesTotal = Homes(IID_Apartment) + Homes(IID_Hotel) + Homes(IID_Farm) + Homes(IID_House) + Homes(IID_Orchard);
 
 	// Adjust satisfaction based on various factors.
-	rpt += QObject::tr("<b>MORALE %1</b><p style=\"margin-left: 10px;\">").arg(MoraleCapitol());
+	rpt += QObject::tr("<b>MORALE %1</b><p style=\"margin-left: 10px;\">").arg(Morale());
 	int iSatChange = 0;
 	int req_hospitals = 0;
+	if(legacyCity)
+	{
+		// The old city already applied its original morale and population
+		// rules. Replaying modern rules here gives incorrect guidance.
+		iSatChange = m_LegacyMoraleChange;
+		rpt += QObject::tr("Satisfaction %1 to %2.<br>").arg(m_SatOrig)
+			.arg(m_PopOrig ? std::max(-20, std::min(20, int(m_SatOrig) + iSatChange)) : 1);
+		if(m_PopOrig)
+		{
+			if(!m_HasBreathableAtmo && m_AirSupply < m_PopOrig)
+				rpt += QObject::tr("More air is needed.<br>");
+			if(!m_AteEnoughFood) rpt += QObject::tr("More food is needed.<br>");
+			if(m_PopOrig > homesTotal && !m_HasDestroyedBuildings)
+				rpt += QObject::tr("More homes needed: %L1.<br>").arg(m_PopOrig - homesTotal);
+			if(!m_HasDestroyedBuildings)
+			{
+				const auto* catalogue = AuLegacyCityCatalogue::BuiltIn();
+				for(const auto& service : {std::pair<int, int>{112, 175}, {105, 50}, {102, 200}, {120, 45},
+					{103, 100}, {121, 80}, {114, 90}, {124, 60}, {104, 55}, {125, 70}, {113, 150}})
+				{
+					if(!catalogue) break;
+					const auto* industry = catalogue->Industry(AuLegacyCity::IndustryId(service.first));
+					const int deficit = int(m_PopOrig / service.second)
+						- BuildingLevels(INDUSTRYID(catalogue->RuntimeIndustryId(AuLegacyCity::IndustryId(service.first))));
+					if(industry && deficit > 0)
+						rpt += QObject::tr("%1 wanted: %2.<br>").arg(industry->name.toHtmlEscaped()).arg(deficit);
+				}
+			}
+		}
+		else rpt += QObject::tr("No citizens.<br>");
+	}
+	else
+	{
 	if(m_PopOrig)
 	{
 		// Air/Power Consumption
@@ -2484,6 +2715,7 @@ QString AuCityReport::ReportCapitol(const AuCityReport& prevReport, bool mailFor
 	}
 	else
 		rpt += QObject::tr("No citizens.<br>");
+	}
 
 	if(rpt.right(4) == "<br>")
 		rpt = rpt.left(rpt.count() - 4);	// Drop the trailing <br>.
@@ -2497,8 +2729,15 @@ QString AuCityReport::ReportCapitol(const AuCityReport& prevReport, bool mailFor
 		nusat = 127;
 
 	// Report population changes, based on nu morale, starvation and suffocation.
-	rpt += QObject::tr("<b>POPULATION %L1</b><p style=\"margin-left: 10px;\">").arg(m_PopOrig);
-	if(m_PopBirths || m_PopDeaths ||
+	rpt += QObject::tr("<b>POPULATION %L1</b><p style=\"margin-left: 10px;\">")
+		.arg(legacyCity ? quint32(m_LegacyPopulationAfter) : m_PopOrig);
+	if(legacyCity)
+	{
+		const qint64 change = qint64(m_LegacyPopulationAfter) - m_PopOrig;
+		if(change) rpt += QObject::tr("Change %L1, from %L2 citizens.<br>").arg(change).arg(m_PopOrig);
+		else rpt += QObject::tr("No change.<br>");
+	}
+	else if(m_PopBirths || m_PopDeaths ||
 			m_PopIndigenousArr || m_PopIndigenousDep ||
 			m_PopSeafarersArr || m_PopSeafarersDep ||
 			m_PopTravellersArr || m_PopTravellersDep ||
@@ -2649,7 +2888,13 @@ QString AuCityReport::ReportCapitol(const AuCityReport& prevReport, bool mailFor
 	rpt += "</p>";
 
 	// Homes
-	rpt += QObject::tr("<b>HOMES %6</b>"
+	if(m_CityType == CITY_City_Obsolete)
+	{
+		rpt += QObject::tr("<b>HOMES %1</b><p style=\"margin-left:10px;\">Apartments %2<br>Condominiums %3<br>Farms %4<br>Houses %5<br>Orchards %6</p>")
+			.arg(Homes(IID_Apartment) + Homes(IID_Hotel) + Homes(IID_Farm) + Homes(IID_House) + Homes(IID_Orchard))
+			.arg(Homes(IID_Apartment)).arg(Homes(IID_Hotel)).arg(Homes(IID_Farm)).arg(Homes(IID_House)).arg(Homes(IID_Orchard));
+	}
+	else rpt += QObject::tr("<b>HOMES %6</b>"
 			"<p style=\"margin-left: 10px;\">"
 				"Large %9<br>"
 				"Medium %8<br>"
@@ -2661,7 +2906,10 @@ QString AuCityReport::ReportCapitol(const AuCityReport& prevReport, bool mailFor
 		.arg(m_HomesLg);
 
 	// Jobs
-	rpt += QObject::tr("<b>JOBS %1</b>"
+	if(m_CityType == CITY_City_Obsolete)
+		rpt += QObject::tr("<b>JOBS %1</b><p style=\"margin-left:10px;\">Non-Construction %2<br>Construction %3<br>Repair %4</p>")
+			.arg(m_Jobs + m_JobsRepair).arg(m_JobsNonConst).arg(m_Jobs - m_JobsNonConst).arg(m_JobsRepair);
+	else rpt += QObject::tr("<b>JOBS %1</b>"
 			"<p style=\"margin-left: 10px;\">"
 			"Construction %2<br>"
 			"Manufacturing %3<br>"
@@ -2679,13 +2927,21 @@ QString AuCityReport::ReportCapitol(const AuCityReport& prevReport, bool mailFor
 	{
 		rpt += QObject::tr("<b>POWER RESERVE %L1</b><p style=\"margin-left: 10px;\">").arg(m_Power);
 		rpt += QObject::tr("Reserve Capacity %L1<br>").arg(m_iCapacitor);
+		if(!m_LegacyAccounting.isEmpty())
+		{
+			AuLegacyCity::AccountingState accounting; QString error;
+			if(AuLegacyCity::DecodeAccounting(m_LegacyAccounting, accounting, error))
+				rpt += QObject::tr("Total Power Consumed %L1<br>").arg(accounting.powerRequested);
+		}
 		int percent = Percent(m_Power, m_iCapacitor);
 		rpt += QObject::tr("%1% Reserve").arg(percent);
 		rpt += "</p>";
 	}
 
 	// Show info about taxes accumulated and spent locally.
-	if(BuildingLevels(IID_Bank))
+	if(BuildingLevels(IID_Bank) && !m_LegacyAccounting.isEmpty())
+		rpt += LegacyAccountsHtml(m_LegacyAccounting, m_LastTribute);
+	else if(BuildingLevels(IID_Bank))
 	{
 		rpt += QObject::tr("<b>BANK %L1%2</b><p style=\"margin-left: 10px;\">")
 			.arg(m_Bank.BalanceEnding(), 0,'f',0)
@@ -2851,7 +3107,8 @@ QString AuCityReport::ReportCapitol(const AuCityReport& prevReport, bool mailFor
 				rpt += QObject::tr("Air: %L1 total units in stock<br>").arg(m_AirSupply);
 				rpt += QObject::tr("Air Consumption: %L1 units per report period<br>").arg(m_PopOrig);
 			}
-			rpt += QObject::tr("Food: %L1 total nutrition value in stock<br>").arg(m_FoodUnits);
+			rpt += (legacyCity ? QObject::tr("Food: %L1 total units in stock<br>")
+				: QObject::tr("Food: %L1 total nutrition value in stock<br>")).arg(m_FoodUnits);
 			rpt += QObject::tr("Food Consumption: %L1 nutrition value per report period<br>").arg(m_FoodPerMeal * m_PopOrig);
 		}
 		//rpt += QObject::tr("Storage Capacity Per Commodity %1<br>").arg(m_iStorage);
@@ -2914,36 +3171,17 @@ QString AuCityReport::ReportCapitol(const AuCityReport& prevReport, bool mailFor
 
 			if(iit != pi->end())
 			{
-				CommoditySubKey key((*it).second->Quality(), (*it).second->EmpireOfOrigin());
-				if((*it).second->EmpireOfOrigin())
+				const AuItem& item = *(*it).second;
+				const bool legacy = m_CityType == CITY_City_Obsolete;
+				CommoditySubKey key(item.Quality(), item.EmpireOfOrigin(), legacy ? item.TechLevel() : 0);
+				QString empireOfOrigin;
+				if(item.EmpireOfOrigin() && item.EmpireOfOrigin() != EmpireId(0))
 				{
-					// The item has a known empire of origin.
-					QString empireOfOrigin;
-					if((*it).second->EmpireOfOrigin() != EmpireId(0))
-					{
-						// Item was created in another empire.
-						const DgData& gd = g_Au.LockDataForRead();
-						gd.EmpireName((*it).second->EmpireOfOrigin(), empireOfOrigin);
-						g_Au.UnlockData();
-					}
-					if(!empireOfOrigin.isEmpty())
-					{
-						// Item was created in another empire.
-						(*iit).insert(key, QObject::tr("%1 Q%2 Made in %3").arg((*it).second->Count())
-								.arg((*it).second->Quality())
-								.arg(empireOfOrigin));
-					}
-					else
-					{
-						// Item was created in my empire.
-						(*iit).insert(key, QObject::tr("%1 Q%2").arg((*it).second->Count()).arg((*it).second->Quality()));
-					}
+					const DgData& gd = g_Au.LockDataForRead();
+					gd.EmpireName(item.EmpireOfOrigin(), empireOfOrigin);
+					g_Au.UnlockData();
 				}
-				else
-				{
-					// The item does not have a known empire of origin. Probably hand made or a carcass.
-					(*iit).insert(key, QObject::tr("<i>%1 Q%2</i>").arg((*it).second->Count()).arg((*it).second->Quality()));
-				}
+				(*iit).insert(key, CityReportStockHtml(item, empireOfOrigin, legacy));
 			}
 		}
 		for(AuItemHash::const_iterator it = m_Tools->begin(); it != m_Tools->end(); it++)
@@ -2962,37 +3200,17 @@ QString AuCityReport::ReportCapitol(const AuCityReport& prevReport, bool mailFor
 
 			if(iit != invToolInUse.end())
 			{
-				CommoditySubKey key((*it).second->Quality(), (*it).second->EmpireOfOrigin());
-				if((*it).second->EmpireOfOrigin())
+				const AuItem& item = *(*it).second;
+				const bool legacy = m_CityType == CITY_City_Obsolete;
+				CommoditySubKey key(item.Quality(), item.EmpireOfOrigin(), legacy ? item.TechLevel() : 0);
+				QString empireOfOrigin;
+				if(item.EmpireOfOrigin() && item.EmpireOfOrigin() != EmpireId(0))
 				{
-					// The item has a known empire of origin.
-					QString empireOfOrigin;
-					if((*it).second->EmpireOfOrigin() != EmpireId(0))
-					{
-						// Item was created in another empire.
-						const DgData& gd = g_Au.LockDataForRead();
-						gd.EmpireName((*it).second->EmpireOfOrigin(), empireOfOrigin);
-						g_Au.UnlockData();
-					}
-					if(!empireOfOrigin.isEmpty())
-					{
-						// Item was created in another empire.
-						(*iit).insert(key, QObject::tr("%1 Q%2 Made in %3")
-								.arg((*it).second->Count())
-								.arg((*it).second->Quality())
-								.arg(empireOfOrigin));
-					}
-					else
-					{
-						// Item was created in my empire.
-						(*iit).insert(key, QObject::tr("%1 Q%2").arg((*it).second->Count()).arg((*it).second->Quality()));
-					}
+					const DgData& gd = g_Au.LockDataForRead();
+					gd.EmpireName(item.EmpireOfOrigin(), empireOfOrigin);
+					g_Au.UnlockData();
 				}
-				else
-				{
-					// The item does not have a known empire of origin. Probably hand made or a carcass.
-					(*iit).insert(key, QObject::tr("<i>%1 Q%2</i>").arg((*it).second->Count()).arg((*it).second->Quality()));
-				}
+				(*iit).insert(key, CityReportStockHtml(item, empireOfOrigin, legacy));
 			}
 		}
 
@@ -3436,6 +3654,7 @@ QString AuCityReport::ReportCapitol(const AuCityReport& prevReport, bool mailFor
 
 QString AuCityReport::ReportHQ(const AuCityReport& prevReport, bool mailFormat) const
 {
+	using CommoditySubKey = CityReportCommoditySubKey;
 	QString rpt;	// This will be our return value.
 	if(mailFormat)
 	{
@@ -4165,7 +4384,9 @@ QString AuCityReport::ReportHQ(const AuCityReport& prevReport, bool mailFormat) 
 	}
 
 	// Show info about taxes accumulated and spent locally.
-	if(BuildingLevels(IID_Bank))
+	if(BuildingLevels(IID_Bank) && !m_LegacyAccounting.isEmpty())
+		rpt += LegacyAccountsHtml(m_LegacyAccounting, m_LastTribute);
+	else if(BuildingLevels(IID_Bank))
 	{
 		rpt += QObject::tr("<b>BANK %L1%2</b><p style=\"margin-left: 10px;\">")
 			.arg(m_Bank.BalanceEnding(), 0,'f',0)
@@ -4377,36 +4598,17 @@ QString AuCityReport::ReportHQ(const AuCityReport& prevReport, bool mailFormat) 
 
 			if(iit != pi->end())
 			{
-				CommoditySubKey key((*it).second->Quality(), (*it).second->EmpireOfOrigin());
-				if((*it).second->EmpireOfOrigin())
+				const AuItem& item = *(*it).second;
+				const bool legacy = m_CityType == CITY_City_Obsolete;
+				CommoditySubKey key(item.Quality(), item.EmpireOfOrigin(), legacy ? item.TechLevel() : 0);
+				QString empireOfOrigin;
+				if(item.EmpireOfOrigin() && item.EmpireOfOrigin() != EmpireId(0))
 				{
-					// The item has a known empire of origin.
-					QString empireOfOrigin;
-					if((*it).second->EmpireOfOrigin() != EmpireId(0))
-					{
-						// Item was created in another empire.
-						const DgData& gd = g_Au.LockDataForRead();
-						gd.EmpireName((*it).second->EmpireOfOrigin(), empireOfOrigin);
-						g_Au.UnlockData();
-					}
-					if(!empireOfOrigin.isEmpty())
-					{
-						// Item was created in another empire.
-						(*iit).insert(key, QObject::tr("%1 Q%2 Made in %3").arg((*it).second->Count())
-								.arg((*it).second->Quality())
-								.arg(empireOfOrigin));
-					}
-					else
-					{
-						// Item was created in my empire.
-						(*iit).insert(key, QObject::tr("%1 Q%2").arg((*it).second->Count()).arg((*it).second->Quality()));
-					}
+					const DgData& gd = g_Au.LockDataForRead();
+					gd.EmpireName(item.EmpireOfOrigin(), empireOfOrigin);
+					g_Au.UnlockData();
 				}
-				else
-				{
-					// The item does not have a known empire of origin. Probably hand made or a carcass.
-					(*iit).insert(key, QObject::tr("<i>%1 Q%2</i>").arg((*it).second->Count()).arg((*it).second->Quality()));
-				}
+				(*iit).insert(key, CityReportStockHtml(item, empireOfOrigin, legacy));
 			}
 		}
 		for(AuItemHash::const_iterator it = m_Tools->begin(); it != m_Tools->end(); it++)
@@ -4425,37 +4627,17 @@ QString AuCityReport::ReportHQ(const AuCityReport& prevReport, bool mailFormat) 
 
 			if(iit != invToolInUse.end())
 			{
-				CommoditySubKey key((*it).second->Quality(), (*it).second->EmpireOfOrigin());
-				if((*it).second->EmpireOfOrigin())
+				const AuItem& item = *(*it).second;
+				const bool legacy = m_CityType == CITY_City_Obsolete;
+				CommoditySubKey key(item.Quality(), item.EmpireOfOrigin(), legacy ? item.TechLevel() : 0);
+				QString empireOfOrigin;
+				if(item.EmpireOfOrigin() && item.EmpireOfOrigin() != EmpireId(0))
 				{
-					// The item has a known empire of origin.
-					QString empireOfOrigin;
-					if((*it).second->EmpireOfOrigin() != EmpireId(0))
-					{
-						// Item was created in another empire.
-						const DgData& gd = g_Au.LockDataForRead();
-						gd.EmpireName((*it).second->EmpireOfOrigin(), empireOfOrigin);
-						g_Au.UnlockData();
-					}
-					if(!empireOfOrigin.isEmpty())
-					{
-						// Item was created in another empire.
-						(*iit).insert(key, QObject::tr("%1 Q%2 Made in %3")
-								.arg((*it).second->Count())
-								.arg((*it).second->Quality())
-								.arg(empireOfOrigin));
-					}
-					else
-					{
-						// Item was created in my empire.
-						(*iit).insert(key, QObject::tr("%1 Q%2").arg((*it).second->Count()).arg((*it).second->Quality()));
-					}
+					const DgData& gd = g_Au.LockDataForRead();
+					gd.EmpireName(item.EmpireOfOrigin(), empireOfOrigin);
+					g_Au.UnlockData();
 				}
-				else
-				{
-					// The item does not have a known empire of origin. Probably hand made or a carcass.
-					(*iit).insert(key, QObject::tr("<i>%1 Q%2</i>").arg((*it).second->Count()).arg((*it).second->Quality()));
-				}
+				(*iit).insert(key, CityReportStockHtml(item, empireOfOrigin, legacy));
 			}
 		}
 
@@ -4730,6 +4912,8 @@ quint64 AuCityReport::MemoryUsage() const
 	mem += sizeof(m_AirSupply);
 	mem += sizeof(m_AteEnoughFood);
 	mem += sizeof(m_Bank);
+	mem += sizeof(m_LegacyAccounting) + m_LegacyAccounting.capacity();
+	mem += sizeof(m_LegacyMoraleChange) + sizeof(m_LegacyPopulationAfter);
 	mem += StringMemoryUsage(m_CaptName);
 	mem += sizeof(m_CityType);
 	mem += sizeof(m_ConsumedLiquor);

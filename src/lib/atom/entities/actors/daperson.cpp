@@ -30,6 +30,7 @@
 #include "daasteroid.h"
 #include "daatomlist.h"
 #include "dabd.h"
+#include "dalegacycity.h"
 #include "dacapsule.h"
 #include "dadesigner.h"
 #include "dagalaxy.h"
@@ -5093,7 +5094,41 @@ void DaPerson::ProcessControlInput(const DiControlInputArray& aActiveControls, D
 			{
 				// Spawn tie to the developed terrain tile in which the person is standing.
 				QString partingThought;
-				if(BdId().IsNull())
+				if(g_Au.IsLegacyGeneration())
+				{
+					const auto* environment = LockEnvironmentQuery();
+					const AuId cityId = environment->LegacyCityId();
+					const quint32 developmentId = environment->LegacyDevelopmentId();
+					UnlockEnvironmentQuery();
+					const auto* world = FindParentWorldInEnv();
+					const auto* city = world ? dynamic_cast<const DaLegacyCity*>(world->FindIdRecursive(cityId)) : nullptr;
+					const auto* system = world ? world->FindParentSolarSystemInEnv() : nullptr;
+					partingThought = tr("To declare a home, I must first move to a building.");
+					if(city && system)
+					{
+						const auto state = city->Snapshot();
+						for(const auto& development : state.developments)
+							if(development.id == developmentId && !development.demolished)
+							{
+								if(development.industryId == 2)
+									partingThought = tr("This road will not make a good home. I should move to a building, preferably one with a bedroom.");
+								else if(!development.industryId)
+									partingThought = tr("This zone of the city is off limits. I should move to a building, preferably one with a bedroom.");
+								else if(city->CanSpawnHere(EmpireId()) != 0)
+									partingThought = tr("I can't declare this building my home. Its city is not friendly toward my empire.");
+								else if(state.controllingEmpire != state.allegianceEmpire)
+									partingThought = tr("I can't declare %1 to be my home. This city is occupied.").arg(state.name);
+								else
+								{
+									SetSpawnCity(cityId, state.name, development.location, system->Id(), system->Name());
+									partingThought = tr("I declare this building in %1 to be my home.").arg(state.name);
+									SetModified();
+								}
+								break;
+							}
+					}
+				}
+				else if(BdId().IsNull())
 				{
 					partingThought = tr("To declare a home, I must first move to a building.");
 				}
@@ -8018,6 +8053,22 @@ void DaPerson::Tock(const AuTime& last, const AuTime& now, const AuScripts& scri
 						// Spawn tie to invalid city id works ok. The player gets reassigned appropriately when they die.
 						if(InIndustry() != IID_None)
 						{
+							if(g_Au.IsLegacyGeneration())
+							{
+								const auto* environment = LockEnvironmentQuery();
+								const AuId cityId = environment->LegacyCityId();
+								UnlockEnvironmentQuery();
+								const AuGlobeLLF development = InIndustryLL();
+								const auto* city = dynamic_cast<const DaLegacyCity*>(world->FindIdRecursive(cityId));
+								const auto* system = world->FindParentSolarSystemInEnv();
+								if(city && city->IsNormal() && system)
+								{
+									if(city->EmpireId() == EmpireId())
+										SetSpawnCity(cityId, city->Name(), development, system->Id(), system->Name());
+									else ClearSpawnCity();
+									SetModified();
+								}
+							}
 							const DaBd* bd = world->FindBd(BdId());
 							const DaSolarSystem* system = world->FindParentSolarSystemInEnv();
 							if(bd && system)
@@ -8275,7 +8326,7 @@ void DaPerson::Tock(const AuTime& last, const AuTime& now, const AuScripts& scri
 								// Mark the solar system as visited so it does not decay. Pirates do not prevent decay.
 								// This is particularly important if I now decide to scuttle the ship. This gives the owner up to a
 								// week to retrieve their private ship before the system decays.
-								system->SetLastOfficerVisited();
+								system->SetLastOfficerVisited(EmpireId());
 							}
 						}
 					}
@@ -8344,6 +8395,7 @@ void DaPerson::Tock(const AuTime& last, const AuTime& now, const AuScripts& scri
 
 void DaPerson::Reward(double fReward, REWARDTYPE rewardType)
 {
+	AuLegacyFinanceTransfer transfer(this);
 	// Increase amount owed to player by empire
 	if(fReward != 0)
 	{
@@ -8551,6 +8603,20 @@ void DaPerson::Respawn(bool forceLocal)
 		}
 	}
 
+	const auto finishLegacyCitySpawn = [this](DaAtom* atom, const AuGlobeLLF* home) -> bool {
+		if(!g_Au.IsLegacyGeneration()) return false;
+		auto* city = dynamic_cast<DaLegacyCity*>(atom);
+		if(!city) return false;
+		if(home) city->PoliticalStanceMakeContact(city->EmpireId(), this, EmpireId());
+		if(city->CanSpawnHere(EmpireId()) || (!home && city->EmpireId() != EmpireId())) return false;
+		auto* world = dynamic_cast<DaWorldLL*>(city->Parent());
+		if(!world) return false;
+		const AuPoint location = city->SpawnLocation(home);
+		ForcePosStop(AuAtomPos(world->Id(), AuMatrix4x4()));
+		FinishSpawn(location);
+		return true;
+	};
+
 	// Try to spawn at the person's home building.
 	if(!SpawnCity().IsNull())
 	{
@@ -8562,7 +8628,14 @@ void DaPerson::Respawn(bool forceLocal)
 		{
 			// The spawn atom was found; it must be a building.
 			DaBd* bd = dynamic_cast<DaBd*>(spawnAtom);
-			if(bd)
+			if(g_Au.IsLegacyGeneration() && dynamic_cast<DaLegacyCity*>(spawnAtom))
+			{
+				const AuGlobeLLF home = SpawnDevLL();
+				if(finishLegacyCitySpawn(spawnAtom, &home)) return;
+				ClearSpawnCity();
+				SetModified();
+			}
+			else if(bd)
 			{
 				// The bd building was found. Is it a viable spawn point?
 				// NOTE: This test needs to match the one in AuSceneServerApp::QueryAtomServer.
@@ -8627,6 +8700,7 @@ void DaPerson::Respawn(bool forceLocal)
 		DaAtom* capatom = system->FindIdRecursive(capitolG);
 		if(capatom)
 		{
+			if(finishLegacyCitySpawn(capatom, nullptr)) return;
 			DaBd* bd = dynamic_cast<DaBd*>(capatom);
 			if(bd)
 			{
@@ -8647,7 +8721,7 @@ void DaPerson::Respawn(bool forceLocal)
 				}
 				// The capitol building is no longer friendly to the player.
 			}
-			else
+			else if(!g_Au.IsLegacyGeneration() || !dynamic_cast<DaLegacyCity*>(capatom))
 				qWarning() << "error: DaPerson::Respawn" << *this << "capatom" << *capatom << "is not a building";
 			// Try random empire city.
 		}
@@ -8676,7 +8750,14 @@ void DaPerson::Respawn(bool forceLocal)
 		// It's not likely to randomly generate the same city again when I actually arrive there. I just have to trust that
 		// it sends me to a system that contains at least one empire city; I don't have to end up in that exact city.
 		DaAtomList cities;
-		system->FindBdRecursive(cities, EmpireId());
+		if(g_Au.IsLegacyGeneration())
+		{
+			DaAtomList legacyCities;
+			system->FindLegacyCitiesRecursive(legacyCities);
+			for(auto* city : legacyCities)
+				if(city->IsNormal() && city->EmpireId() == EmpireId()) cities.append(city);
+		}
+		else system->FindBdRecursive(cities, EmpireId());
 		cities.RemoveAtomId(capitolU);
 		cities.RemoveAtomId(capitolG);
 		cities.RemoveAtomId(SpawnCity());
@@ -8707,6 +8788,7 @@ void DaPerson::Respawn(bool forceLocal)
 		DaAtom* ranatom = system->FindIdRecursive(randomCity);
 		if(ranatom)
 		{
+			if(finishLegacyCitySpawn(ranatom, nullptr)) return;
 			DaBd* bd = dynamic_cast<DaBd*>(ranatom);
 			if(bd)
 			{
@@ -8726,7 +8808,7 @@ void DaPerson::Respawn(bool forceLocal)
 				}
 				// The random city is no longer friendly to the player.
 			}
-			else
+			else if(!g_Au.IsLegacyGeneration() || !dynamic_cast<DaLegacyCity*>(ranatom))
 				qWarning() << "error: DaPerson::Respawn" << *this << "ranatom" << *ranatom << "is not a building";
 			// Try universe capital city.
 		}
@@ -8756,6 +8838,7 @@ void DaPerson::Respawn(bool forceLocal)
 		DaAtom* capatom = system->FindIdRecursive(capitolU);
 		if(capatom)
 		{
+			if(finishLegacyCitySpawn(capatom, nullptr)) return;
 			DaBd* bd = dynamic_cast<DaBd*>(capatom);
 			if(bd)
 			{
@@ -8776,7 +8859,7 @@ void DaPerson::Respawn(bool forceLocal)
 				}
 				// The capitol building is no longer friendly to the player.
 			}
-			else
+			else if(!g_Au.IsLegacyGeneration() || !dynamic_cast<DaLegacyCity*>(capatom))
 				qWarning() << "error: DaPerson::Respawn" << *this << "capatom" << *capatom << "is not a building";
 		}
 		else
@@ -8970,6 +9053,13 @@ void DaPerson::FinishSpawn(const AuPoint& loc)
 
 	if(!inBerth)
 	{
+		AuId spawnCityHere = BdId();
+		if(g_Au.IsLegacyGeneration())
+		{
+			const auto* environment = LockEnvironmentQuery();
+			spawnCityHere = environment->LegacyCityId();
+			UnlockEnvironmentQuery();
+		}
 		if(IsMouthSubmerged())
 		{
 			// I am submerged?
@@ -8984,7 +9074,7 @@ void DaPerson::FinishSpawn(const AuPoint& loc)
 					QString text = tr("I instinctively closed my visor after recalling submerged.");
 					AddCondition(new AuConThought(text, AuTime::Now()));
 				}
-				else if(BdId() == SpawnCity())
+				else if(spawnCityHere == SpawnCity())
 				{
 					// I respawned at my home but I can't breathe. Let me die and spawn elsewhere.
 					ClearSpawnCity();
@@ -12776,6 +12866,8 @@ AuItem* DaPerson::UseItemOnTarget(AuItem* item, const AuId& target, unsigned int
 				replacementItem = AuItem::Create(CID_DNASample, item->Quality(), item->EmpireOfOrigin());
 				if(replacementItem)
 				{
+					// Original UseItemOnTarget 0x35c020 passes the kit TL to Create.
+					if(g_Au.IsLegacyGeneration()) replacementItem->SetTechLevel(item->TechLevel());
 					replacementItem->SetHitPoints(item->HitPoints());
 					AuItemDNA* repDNA = dynamic_cast<AuItemDNA*>(replacementItem);
 					Q_ASSERT(repDNA);
@@ -13568,6 +13660,8 @@ AuItem* DaPerson::UseItemOnTarget(AuItem* item, const AuId& target, unsigned int
 							replacementItem = AuItem::Create(CID_DNASample, item->Quality(), item->EmpireOfOrigin());
 							if(replacementItem)
 							{
+								// Original UseItemOnTarget 0x35c020 retains the kit's TL here too.
+								if(g_Au.IsLegacyGeneration()) replacementItem->SetTechLevel(item->TechLevel());
 								replacementItem->SetHitPoints(item->HitPoints());
 								AuItemDNA* repDNA = dynamic_cast<AuItemDNA*>(replacementItem);
 								Q_ASSERT(repDNA);
@@ -15441,12 +15535,14 @@ bool DaPerson::IsSightTarget(const DaAtom* toWho) const
 
 void DaPerson::LoanBorrow(double amount)
 {
+	AuLegacyFinanceTransfer transfer(this);
 	if(amount <= 0)
 		return;
 	m_PersonLock.lockForWrite();
 	m_LoanBalance += amount;
 #if !defined(Q_OS_WIN)
-	m_LoanBalance = round(m_LoanBalance * 100.) / 100.;	// Round to the nearest .01.
+	if(!g_Au.IsLegacyGeneration())
+		m_LoanBalance = round(m_LoanBalance * 100.) / 100.;	// Round to the nearest .01.
 #endif
 	m_tmBalanceChange.Set();
 	m_PersonLock.unlock();
@@ -15455,6 +15551,7 @@ void DaPerson::LoanBorrow(double amount)
 
 void DaPerson::LoanPay(double amount)
 {
+	AuLegacyFinanceTransfer transfer(this);
 	if(amount <= 0)
 		return;
 	m_PersonLock.lockForWrite();
@@ -15462,7 +15559,8 @@ void DaPerson::LoanPay(double amount)
 	if(m_LoanBalance < 0)
 		m_LoanBalance = 0;
 #if !defined(Q_OS_WIN)
-	m_LoanBalance = round(m_LoanBalance * 100.) / 100.;	// Round to the nearest .01.
+	if(!g_Au.IsLegacyGeneration())
+		m_LoanBalance = round(m_LoanBalance * 100.) / 100.;	// Round to the nearest .01.
 #endif
 	m_tmBalanceChange.Set();
 	m_PersonLock.unlock();
@@ -15471,6 +15569,7 @@ void DaPerson::LoanPay(double amount)
 
 void DaPerson::CreditAccount(double amount)
 {
+	AuLegacyFinanceTransfer transfer(this);
 	if(amount == 0)
 		return;
 	if(amount < 0)
@@ -15480,7 +15579,7 @@ void DaPerson::CreditAccount(double amount)
 	if(m_AccountBalance < 0)	// Could happen when 'amount' is negative.
 		m_AccountBalance = 0;
 #if !defined(Q_OS_WIN)
-	else
+	else if(!g_Au.IsLegacyGeneration())
 	{
 		m_AccountBalance = round(m_AccountBalance * 100.) / 100.;	// Round to the nearest .01.
 		if(m_AccountBalance > 1000000000000000)
@@ -15494,6 +15593,7 @@ void DaPerson::CreditAccount(double amount)
 
 void DaPerson::DebitAccount(double amount)
 {
+	AuLegacyFinanceTransfer transfer(this);
 	if(amount == 0)
 		return;
 	m_PersonLock.lockForWrite();
@@ -15501,7 +15601,7 @@ void DaPerson::DebitAccount(double amount)
 	if(m_AccountBalance < 0)
 		m_AccountBalance = 0;
 #if !defined(Q_OS_WIN)
-	else
+	else if(!g_Au.IsLegacyGeneration())
 		m_AccountBalance = round(m_AccountBalance * 100.) / 100.;	// Round to the nearest .01.
 #endif
 	m_tmBalanceChange.Set();
@@ -16171,6 +16271,7 @@ void DaPerson::SetOnLine(ACCOUNT acctType, unsigned int avgPingMs, const AuTime&
 
 void DaPerson::HandcraftItem(int mpid)
 {
+	if(g_Au.IsLegacyGeneration()) { HandcraftLegacyItem(mpid); return; }
 	AuEther* ether = Ether();
 	if(!ether)
 		return;
@@ -19434,8 +19535,9 @@ void DaPerson::BodyHasDied(COMMODITYID weaponCID, quint8 weaponQ, WEAPONEFFECT e
 			}
 
 			// Drop the item. The disk is created out of thin air so I will assign it a random quality value.
+			const quint8 logQuality = g_Au.IsLegacyGeneration() ? quint8(g_Au.Dice().Roll(2, 128, -1)) : QualityBaseline();
 			m_PersonLock.lockForRead();
-			AuItemOfficerLog itemLog(Name(), home, shipName, shipDesc, shipPrivate, m_Log, CID_OfficerLog, QualityBaseline(),
+			AuItemOfficerLog itemLog(Name(), home, shipName, shipDesc, shipPrivate, m_Log, CID_OfficerLog, logQuality,
 					EmpireId());
 			m_PersonLock.unlock();
 
@@ -19642,6 +19744,7 @@ void DaPerson::TransporterSetLongLat(const AuGlobeLLF& ll)
 // Borrow 'amount' from the bank.
 void DaPerson::BankLoan(double amount, const AuId& opBd)
 {
+	AuLegacyFinanceTransfer transfer(this);
 	if(InIndustry() != IID_Bank && InIndustry() != IID_Capitol)
 	{
 		Thought(tr("I must go to a bank to take out a loan."));
@@ -19689,6 +19792,7 @@ void DaPerson::BankLoan(double amount, const AuId& opBd)
 // Pay 'amount' toward my current bank loan debt.
 void DaPerson::BankPay(double amount, const AuId& opBd)
 {
+	AuLegacyFinanceTransfer transfer(this);
 	if(InIndustry() != IID_Bank && InIndustry() != IID_Capitol)
 	{
 		Thought(tr("I must go to a bank to make a loan payment."));
@@ -21318,6 +21422,7 @@ void DaPerson::QuitClaimWorld()
 
 void DaPerson::BdStoreBuyItem(const AuItem& buyItem, const AuItem& offerItem, const AuId& opBd)
 {
+	AuLegacyFinanceTransfer transfer(this);
 	DaBd* bd = BdOp(opBd);
 	if(!bd)
 		return;
@@ -21621,6 +21726,7 @@ AuId DaPerson::BdRename(const QString& nuName, const AuId& opBd)
 
 void DaPerson::BdManufactureSpacecraftBuyCompanyShip(quint32 designId, AuGearPos pos, const AuId& opBd)
 {
+	AuLegacyFinanceTransfer transfer(this);
 	DaBd* bd = BdOp(opBd);
 	if(!bd)
 		return;
@@ -24856,6 +24962,11 @@ void DaPerson::CommAccept(const AuCommAccept& msg)
 	DaPerson* buyerPerson = dynamic_cast<DaPerson*>(buyer);	// Set if buyer is a person; else 0.
 	DaNpc* buyerChar = dynamic_cast<DaNpc*>(buyer);			// Set if buyer is a story character; else 0.
 	DaVessel* buyerShip = 0;								// Set if buyer is a person aboard a ship; else 0.
+	// Cargo lookup can fall back to personal inventory, and two people aboard
+	// the same ship trade personally. Lock every candidate account together
+	// before either balance checks or gear locks, in a consistent actor order.
+	const DaVessel* buyerFinanceShip = buyerPerson ? buyerPerson->FindParentVesselInEnv() : nullptr;
+	AuLegacyFinanceTransfer transfer(this, buyerPerson, sellerShip, buyerFinanceShip);
 	if(buyerBd)
 	{
 		// Insure physical locations permit acceptance of the offer.

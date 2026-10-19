@@ -840,7 +840,9 @@ public:
 	{
 		// Water IsFood but it does not have any food nutrition value. Quality should not give it any.
 		const DbCommodity& bCom = Commodity();
-		int food = QualityBoosted(bCom.m_food);
+		int food = AuLegacyItemTechnologyActive()
+			? int(bCom.m_food) + (int(TechLevel()) * int(bCom.m_food) * 5) / 100
+			: QualityBoosted(bCom.m_food);
 		if(!food)
 			return 0;
 		return food + m_Quality/10;
@@ -946,7 +948,9 @@ public:
 	inline short int IntoxicantValue() const
 	{
 		const DbCommodity& bCom = Commodity();
-		int food = QualityBoosted(bCom.m_food);
+		int food = AuLegacyItemTechnologyActive()
+			? int(bCom.m_food) + (int(TechLevel()) * int(bCom.m_food) * 5) / 100
+			: QualityBoosted(bCom.m_food);
 		if(!food)
 			return 0;
 		return food + m_Quality/10;
@@ -984,11 +988,17 @@ public:
 	// True if this item has a higher quality than 'item'.
 	inline int IsBetter(const AuItem& item) const
 	{
+		// AuData13 0x31af0: legacy comparison orders TL before quality,
+		// including an equal-quality item at the same TL in the tally.
+		if(AuLegacyItemTechnologyActive())
+			return TechLevel() > item.TechLevel() || (TechLevel() == item.TechLevel() && Quality() >= item.Quality());
 		return Quality() > item.Quality();
 	}
 
 	inline int IsEqualOrBetter(const AuItem& item) const
 	{
+		if(AuLegacyItemTechnologyActive())
+			return TechLevel() > item.TechLevel() || (TechLevel() == item.TechLevel() && Quality() >= item.Quality());
 		return Quality() >= item.Quality();
 	}
 

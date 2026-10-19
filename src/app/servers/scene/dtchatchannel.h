@@ -220,6 +220,7 @@ signals:
 			quint8 reason, quint8 galaxy, QString sector, QString system, QString world);
 
 	void GovSetTax(quint32 empire, quint8 income, quint8 sales, quint8 subsidy);
+	void LegacyWealthLevy(QByteArray order);
 
 	void GovSetThemeColor(quint32 empire, quint8 theme, QColor color);
 

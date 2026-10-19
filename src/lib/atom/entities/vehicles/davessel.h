@@ -20,6 +20,7 @@
 #include "auspecies.h"
 #include "dacapsule.h"
 #include "dewaypoint.h"
+#include <QMutex>
 
 class AuCommBeamOver;
 class AuCommBeamVehicleAtom;
@@ -166,6 +167,8 @@ protected:
 
 protected:
 	// Ships treasury
+	friend class AuLegacyFinanceTransfer;
+	mutable QMutex                     m_LegacyFinanceMutex{QMutex::Recursive};
 	mutable QReadWriteLock				m_AccountLock;
 	double								m_Bank;					// Current currency aboard ship
 	double								m_BankSubsidyTax;		// Subsidy taxes accumulated aboard this ship for its empire.

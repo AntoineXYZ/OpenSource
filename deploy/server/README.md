@@ -600,16 +600,38 @@ player labor, enables citizen labor, and halts or resumes projects. Extensions
 retain the existing building's design and material. A new town square requires
 an empire flag and a valid city name.
 
-Construction progress uses legacy city state version 2. Reset the universe after
-schema changes; fresh database initialization creates the current legacy city
-tables. The packaged schema does not migrate existing databases.
+Construction and economy use legacy city state version 3. Fresh database
+initialization creates the current legacy city tables. For an existing universe,
+stop the servers and apply `postgres/schema/legacycities.sql` to `auUniverse`
+using the existing deployment database administration procedure. That script
+updates the version constraint and retains version-1/2 envelopes; ordinary city
+saves write version 3. Rebuild both client and servers manually before resuming.
 
 After a manual client/server build, verify founding with and without a flag,
 material shortages and repeated labor, halt/resume, multi-level completion and
 extensions, each road/landscaping type, demolition and town-square deletion
 restrictions, and restart/reconnect with work partially complete. Check the
-separate F10/F11 windows and a modern server as well. Economy, population growth,
-powered life support, services and political lifecycle remain later stages.
+separate F10/F11 windows and a modern server as well. Stage-5 economy recovery is
+in progress: manufacturing, storage, workforce, population, bank accounts and
+commerce need manual build and runtime acceptance. Ship services and the full
+political lifecycle remain later stages.
+
+F10 now exposes historical manufacturing recipes, citizen employment and minimum
+TL, plus bank loans, treasury transfers, reward redemption and capital
+designation at the appropriate sites. The Govern Taxes page provides the wealth
+levy. Citizens and government use separate city accounts. Original capital
+recognition is cached until the next city cycle: government deposits made before
+recognition are deducted from the player but discarded by the treasury. The bank
+page displays that condition. DNA3 citizens retain the original calculations;
+DNA4 citizens use their existing body and diet data within the legacy economy.
+
+For economy acceptance, include a complete food/air/power chain, worker
+shortages, housing and service morale, mixed quality/TL inputs, research and
+building upgrades, recipe-change refunds, livestock and caged animals, bank
+loans and both account ledgers, all tax categories and a wealth levy, connected
+city trade and power, and save/restart during running production. City population
+and account reports normally advance about every 13 minutes. Static catalogue
+checks do not replace these manual checks.
 
 ### Legacy spacecraft storage
 

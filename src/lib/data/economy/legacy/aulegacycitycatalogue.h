@@ -104,8 +104,8 @@ struct ManufacturingProcessRecord
 	quint8 craft = 0;
 	quint8 minimumTechnology = 0;
 	bool isDefault = false;
-	// DbManufacturingProcess::Rx omits m_nat. The 2016 constructor default
-	// is true; this is cache behavior, not recovered server SQL evidence.
+	// GD omits m_nat. Keep the true default; the loader applies the eight
+	// user-approved recovery exceptions by historical process ID.
 	bool naturalResourceQuality = true;
 	bool naturalFlagSerialized = false;
 	RecordSource source;

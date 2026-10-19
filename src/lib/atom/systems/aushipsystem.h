@@ -27,6 +27,7 @@ private:
 	quint32			m_PowerConsumption;		// Sum of power suppliers connected to this consumer, up to m_HealthMax.
 	quint8			m_Quality;				// System quality.
 	quint8			m_System;				// System type. SYSTEM
+	quint8			m_TechLevel;			// Independent 2016 installed-system technology.
 	quint16			m_Which;				// System 'which'
 
 public:
@@ -38,6 +39,8 @@ public:
 public:
 	void operator<<(QDataStream& in);
 	void operator>>(QDataStream& out) const;
+	void Load(QDataStream& in, bool includeTechnology = false);
+	void Store(QDataStream& out, bool includeTechnology = false) const;
 
 	inline bool operator==(const AuShipSystem& c) const
 	{
@@ -156,12 +159,15 @@ public:
 		return m_Quality;
 	}
 
+	quint8 TechLevel() const { return m_TechLevel; }
+	void SetTechLevel(quint8 technology) { m_TechLevel = technology; }
+
 	inline void ResetPowerConsumptionCurrent()
 	{
 		m_PowerConsumption = 0;
 	}
 
-	void Rx(QDataStream& fromServer);
+	void Rx(QDataStream& fromServer, bool includeTechnology = false);
 
 	inline void SetConnectedConsumer(int iNewConsumer)
 	{
@@ -190,7 +196,7 @@ public:
 		return AuSysId(GetSystemType(), GetSystemWhich());
 	}
 
-	void Tx(QDataStream& toClient) const;
+	void Tx(QDataStream& toClient, bool includeTechnology = false) const;
 };
 
 inline unsigned int qHash(const AuShipSystem& key)
@@ -210,6 +216,11 @@ private:
 	quint8			m_HullQuality;			// Fuel, Hold and Hull systems.
 	quint16			m_PowerPlantModule;		// Power plant module currently installed.
 	quint8			m_PowerPlantQuality;	// PowerPlant system.
+	bool			m_HasLegacyTechnology = false;
+	quint8			m_CapacitorTechnology = 0;
+	quint8			m_CnCTechnology = 0;
+	quint8			m_HullTechnology = 0;
+	quint8			m_PowerPlantTechnology = 0;
 
 public:
 	AuShipSystemArray();
@@ -231,6 +242,12 @@ public:
 	// 'quality' becomes the starting quality of all systems. They can individually change over time after that.
 	void GatherShipSystems(quint8 quality, const AuBdReport& design);
 	void GatherShipSystems(quint8 quality, const AuScReport& design);
+
+	// Old post-TL-nerf saves have no recoverable installed technology.
+	bool HasLegacyTechnology() const { return m_HasLegacyTechnology; }
+	void InitializeLegacyTechnology(quint8 technology);
+	quint8 SystemTechLevel(SYSTEM system, quint16 which) const;
+	bool SetSystemTechLevel(const AuSysId& sysId, quint8 technology);
 
 	unsigned int GetPowerConsumption(SYSTEM system, quint16 which) const;
 
@@ -297,7 +314,8 @@ public:
 	// Returns true if changes were made.
 	// Returns false if nothing changes.
 	bool Reconcile(const AuBdReport& design);
-	bool Reconcile(const AuScReport& design);
+	// New legacy systems require the ship's explicit original construction TL.
+	bool Reconcile(const AuScReport& design, int legacyConstructionTechnology = -1);
 
 	// This could also be a downgrade.
 	bool UpgradeSystem(SYSTEM system, COMMODITYID cid, quint8 quality);

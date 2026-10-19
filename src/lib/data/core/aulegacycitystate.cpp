@@ -1,4 +1,5 @@
 #include "aulegacycitystate.h"
+#include "aulegacycitycatalogue.h"
 #include <QBuffer>
 #include <QDataStream>
 #include <QSet>
@@ -31,7 +32,7 @@ bool Valid(const State& state, QString& error)
 {
 	if(state.name.size() > 128 || state.population < 0 || state.satisfaction < -20 || state.satisfaction > 20
 		|| !std::isfinite(state.capacitor) || state.capacitor < 0
-		|| state.developments.size() > MaximumDevelopments || state.flags.size() > 4096)
+		|| state.developments.size() > MaximumDevelopments || state.flags.size() > 4096 || state.citizenSpecies.size() > 4096)
 	{ error = QStringLiteral("Invalid legacy city summary or collection size."); return false; }
 	QSet<quint32> ids;
 	for(const Development& dev : state.developments)
@@ -43,6 +44,7 @@ bool Valid(const State& state, QString& error)
 			|| !std::isfinite(dev.location.Latitude()) || !std::isfinite(dev.location.Longitude())
 			|| std::abs(dev.location.Latitude()) > PIf / 2 || std::abs(dev.location.Longitude()) > PIf
 			|| !dev.targetLevels || dev.targetLevels > 32 || dev.completedLevels > 128
+			|| dev.technology > 31
 			|| dev.components.size() > 128 || dev.laborRemaining > 65535
 			|| !std::isfinite(dev.roadLengthMeters) || dev.roadLengthMeters < 1 || dev.roadLengthMeters > 1000
 			|| !std::isfinite(dev.roadWidthMeters) || dev.roadWidthMeters < 1 || dev.roadWidthMeters > 100
@@ -53,6 +55,13 @@ bool Valid(const State& state, QString& error)
 			if(!component.commodityId || component.effect < 1 || component.effect > 6
 				|| component.quantity > 65535 || component.applied > qMax(quint32(1), component.quantity))
 			{ error = QStringLiteral("Invalid legacy construction component."); return false; }
+		if(dev.selectedManufacturingRecipe)
+		{
+			const auto* catalogue = AuLegacyCityCatalogue::BuiltIn();
+			const auto* recipe = catalogue ? catalogue->ManufacturingProcess(ManufacturingProcessId(dev.selectedManufacturingRecipe)) : nullptr;
+			if(!recipe || recipe->industry.value != dev.industryId)
+			{ error = QStringLiteral("Invalid pending legacy manufacturing recipe."); return false; }
+		}
 		ids.insert(dev.id);
 	}
 	for(const Flag& flag : state.flags)
@@ -88,10 +97,12 @@ bool EncodeState(const State& state, QByteArray& output, QString& error)
 			<< quint16(dev.components.size());
 		for(const auto& component : dev.components)
 			out << component.commodityId << component.effect << component.quality << component.quantity << component.applied;
+		out << dev.technology << dev.employees << dev.selectedManufacturingRecipe << dev.manufacturingCitizenEnabled;
 	}
 	out << quint32(state.flags.size());
 	for(const Flag& flag : state.flags) out << flag.empire << flag.location << flag.level << flag.capturedAt;
 	out << state.inventory << state.manufacturing << state.accounting << state.reportHistory;
+	out << state.lastEmployment << state.lastPopulationCycle << state.citizenSpecies << state.lastAttack;
 	if(out.status() != QDataStream::Ok || bytes.size() > MaximumStateBytes)
 	{ error = QStringLiteral("Legacy city state exceeds its envelope limit."); return false; }
 	output = bytes;
@@ -108,7 +119,7 @@ bool DecodeState(const QByteArray& bytes, State& output, QString& error)
 	quint16 magic = 0; quint8 version = 0;
 	in >> magic >> version;
 	State state;
-	if(magic != 0x4c43 || (version != 1 && version != StateVersion) || !String(in, state.name))
+	if(magic != 0x4c43 || !SupportedStateVersion(version) || !String(in, state.name))
 	{ error = QStringLiteral("Unsupported or malformed legacy city envelope."); return false; }
 	in >> state.controllingEmpire >> state.allegianceEmpire >> state.loyalPopulation >> state.population
 		>> state.satisfaction >> state.capacitor >> state.lastVisit;
@@ -143,6 +154,13 @@ bool DecodeState(const QByteArray& bytes, State& output, QString& error)
 			}
 		}
 		else dev.targetLevels = quint8(qBound(1, int(dev.completedLevels), 32));
+		if(version >= 3)
+		{
+			quint8 citizenEnabled = 0;
+			in >> dev.technology >> dev.employees >> dev.selectedManufacturingRecipe >> citizenEnabled;
+			if(citizenEnabled > 1) { error = QStringLiteral("Invalid pending legacy manufacturing worker flag."); return false; }
+			dev.manufacturingCitizenEnabled = citizenEnabled != 0;
+		}
 		state.developments.append(dev);
 	}
 	in >> count;
@@ -151,8 +169,16 @@ bool DecodeState(const QByteArray& bytes, State& output, QString& error)
 	for(quint32 i = 0; i < count; ++i)
 	{ Flag flag; in >> flag.empire >> flag.location >> flag.level >> flag.capturedAt; state.flags.append(flag); }
 	if(!Bytes(in, state.inventory, MaximumStateBytes / 2) || !Bytes(in, state.manufacturing, MaximumStateBytes / 2)
-		|| !Bytes(in, state.accounting, MaximumStateBytes / 2) || !Bytes(in, state.reportHistory, MaximumStateBytes / 2)
-		|| in.status() != QDataStream::Ok || !in.atEnd() || !Valid(state, error))
+		|| !Bytes(in, state.accounting, MaximumStateBytes / 2) || !Bytes(in, state.reportHistory, MaximumStateBytes / 2))
+	{ error = QStringLiteral("Malformed legacy city state groups."); return false; }
+	if(version >= 3)
+	{
+		in >> state.lastEmployment >> state.lastPopulationCycle;
+		if(!Bytes(in, state.citizenSpecies, 4096))
+		{ error = QStringLiteral("Invalid legacy city citizen species."); return false; }
+		in >> state.lastAttack;
+	}
+	if(in.status() != QDataStream::Ok || !in.atEnd() || !Valid(state, error))
 	{ if(error.isEmpty()) error = QStringLiteral("Malformed legacy city state or trailing data."); return false; }
 	output = state;
 	return true;

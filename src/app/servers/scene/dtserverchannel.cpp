@@ -5,6 +5,7 @@
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 
 #include "dtserverchannel.h"
+#include "aulegacywealthlevy.h"
 //
 #include "audbglobal.h"
 #include "dadesignplane.h"
@@ -1682,6 +1683,13 @@ void DtServerChannel::ReadPacket(const QByteArray& ba, QTcpSocket& /*tcpSocket*/
 			block >> crit;
 
 			emit GovSetWarCriteria(empire, crit);
+		}
+		break;
+
+	case P_LegacyWealthLevy:
+		{
+			QByteArray order;
+			if(AuLegacyCity::ReadWealthLevyEnvelope(block, order)) emit LegacyWealthLevy(order);
 		}
 		break;
 

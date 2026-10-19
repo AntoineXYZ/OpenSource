@@ -20,6 +20,7 @@ AuShipSystem::AuShipSystem()
 	m_PowerConsumption = 0;
 	m_Quality = 1;
 	m_System = 0;
+	m_TechLevel = 0;
 	m_Which = 0;
 }
 
@@ -35,6 +36,7 @@ AuShipSystem::AuShipSystem(SYSTEM system, quint16 which, COMMODITYID module, qui
 	m_PowerConsumption = totalUnits;
 	m_Quality = quality;
 	m_System = system;
+	m_TechLevel = 0;
 	m_Which = which;
 }
 
@@ -53,15 +55,22 @@ AuShipSystem::AuShipSystem(const AuShipSystem& rhs)
 	m_PowerConsumption = rhs.m_PowerConsumption;
 	m_Quality = rhs.m_Quality;
 	m_System = rhs.m_System;
+	m_TechLevel = rhs.m_TechLevel;
 	m_Which = rhs.m_Which;
 }
 
 void AuShipSystem::operator>>(QDataStream& out) const
 {
+	Store(out);
+}
+
+void AuShipSystem::Store(QDataStream& out, bool includeTechnology) const
+{
 	// Statistics
 	out << m_System;
 	out << m_Which;
 	out << m_Quality;
+	if(includeTechnology) out << m_TechLevel;
 	out << m_IsOverclocked;
 	out << m_Module;
 
@@ -79,7 +88,12 @@ void AuShipSystem::operator>>(QDataStream& out) const
 void AuShipSystem::operator<<(QDataStream& in)
 {
 	// AuShipSystemArray uses my quality as a version number.
-	bool readTL = m_Quality == 255;
+	Load(in, m_Quality == 255);
+}
+
+void AuShipSystem::Load(QDataStream& in, bool includeTechnology)
+{
+	m_TechLevel = 0;
 
 	// Statistics
 	in >> m_System;
@@ -87,11 +101,7 @@ void AuShipSystem::operator<<(QDataStream& in)
 	in >> m_Quality;
 	if(!m_Quality)
 		m_Quality = 1;
-	if(readTL)
-	{
-		quint8 tl;
-		in >> tl;
-	}
+	if(includeTechnology) in >> m_TechLevel;
 	in >> m_IsOverclocked;
 	in >> m_Module;
 
@@ -108,24 +118,27 @@ void AuShipSystem::operator<<(QDataStream& in)
 
 // Server sends only a subset of the system data, not connections.
 // Just enough so the client can determine the quality of each system.
-void AuShipSystem::Tx(QDataStream& toClient) const
+void AuShipSystem::Tx(QDataStream& toClient, bool includeTechnology) const
 {
 	toClient << m_System;
 	toClient << m_Which;
 	toClient << m_Quality;
+	if(includeTechnology) toClient << m_TechLevel;
 	toClient << m_Module;
 	toClient << m_PowerConsumption;
 }
 
 // Client gets only a subset of the system data, not connections.
 // Just enough so the client can determine the quality of each system.
-void AuShipSystem::Rx(QDataStream& fromServer)
+void AuShipSystem::Rx(QDataStream& fromServer, bool includeTechnology)
 {
+	m_TechLevel = 0;
 	fromServer >> m_System;
 	fromServer >> m_Which;
 	fromServer >> m_Quality;
 	if(!m_Quality)
 		m_Quality = 1;
+	if(includeTechnology) fromServer >> m_TechLevel;
 	fromServer >> m_Module;
 	fromServer >> m_PowerConsumption;
 }
@@ -146,19 +159,23 @@ AuShipSystemArray::AuShipSystemArray()
 
 void AuShipSystemArray::operator>>(QDataStream& out) const
 {
-	quint16 countver = 0xc000 | count();	// b15=capacitor added, b14=TL nerfed.
+	quint16 countver = (m_HasLegacyTechnology ? 0x8000 : 0xc000) | count();	// b15=capacitor added, b14=TL nerfed.
 	out << countver;
 	for(const_iterator it = constBegin(); it != constEnd(); it++)
-		(*it) >> out;
+		(*it).Store(out, m_HasLegacyTechnology);
 
 	out << m_CapacitorModule;
 	out << m_CapacitorQuality;
+	if(m_HasLegacyTechnology) out << m_CapacitorTechnology;
 	out << m_CnCModule;
 	out << m_CnCQuality;
+	if(m_HasLegacyTechnology) out << m_CnCTechnology;
 	out << m_HullModule;
 	out << m_HullQuality;
+	if(m_HasLegacyTechnology) out << m_HullTechnology;
 	out << m_PowerPlantModule;
 	out << m_PowerPlantQuality;
+	if(m_HasLegacyTechnology) out << m_PowerPlantTechnology;
 }
 
 void AuShipSystemArray::operator<<(QDataStream& in)
@@ -167,19 +184,18 @@ void AuShipSystemArray::operator<<(QDataStream& in)
 	in >> countver;
 
 	bool tlNerfed = countver & 0x4000;
+	m_HasLegacyTechnology = !tlNerfed;
+	m_CapacitorTechnology = m_CnCTechnology = m_HullTechnology = m_PowerPlantTechnology = 0;
 
 	clear();
 	quint16 num = countver & 0x3fff;
 	for(;num;num--)
 	{
 		AuShipSystem ss;
-		if(!tlNerfed)
-			ss.SetReadTL();
-		ss << in;
+		ss.Load(in, m_HasLegacyTechnology);
 		append(ss);
 	}
 
-	quint8 tl;
 	if(countver & 0x8000)
 	{
 		in >> m_CapacitorModule;
@@ -187,7 +203,7 @@ void AuShipSystemArray::operator<<(QDataStream& in)
 		if(!m_CapacitorQuality)
 			m_CapacitorQuality = 1;
 		if(!tlNerfed)
-			in >> tl;
+			in >> m_CapacitorTechnology;
 	}
 	else
 	{
@@ -200,17 +216,17 @@ void AuShipSystemArray::operator<<(QDataStream& in)
 	if(!m_CnCQuality)
 		m_CnCQuality = 1;
 	if(!tlNerfed)
-		in >> tl;
+		in >> m_CnCTechnology;
 	in >> m_HullModule;
 	in >> m_HullQuality;
 	if(!m_HullQuality)
 		m_HullQuality = 1;
 	if(!tlNerfed)
-		in >> tl;
+		in >> m_HullTechnology;
 	in >> m_PowerPlantModule;
 	in >> m_PowerPlantQuality;
 	if(!tlNerfed)
-		in >> tl;
+		in >> m_PowerPlantTechnology;
 }
 
 void AuShipSystemArray::Rx(QDataStream& fromServer)
@@ -218,10 +234,13 @@ void AuShipSystemArray::Rx(QDataStream& fromServer)
 	clear();
 	quint16 num;
 	fromServer >> num;
+	m_HasLegacyTechnology = num & 0x8000;
+	num &= 0x7fff;
+	m_CapacitorTechnology = m_CnCTechnology = m_HullTechnology = m_PowerPlantTechnology = 0;
 	for(;num;num--)
 	{
 		AuShipSystem ss;
-		ss.Rx(fromServer);
+		ss.Rx(fromServer, m_HasLegacyTechnology);
 		append(ss);
 	}
 
@@ -229,34 +248,108 @@ void AuShipSystemArray::Rx(QDataStream& fromServer)
 	fromServer >> m_CapacitorQuality;
 	if(!m_CapacitorQuality)
 		m_CapacitorQuality = 1;
+	if(m_HasLegacyTechnology) fromServer >> m_CapacitorTechnology;
 	fromServer >> m_CnCModule;
 	fromServer >> m_CnCQuality;
 	if(!m_CnCQuality)
 		m_CnCQuality = 1;
+	if(m_HasLegacyTechnology) fromServer >> m_CnCTechnology;
 	fromServer >> m_HullModule;
 	fromServer >> m_HullQuality;
 	if(!m_HullQuality)
 		m_HullQuality = 1;
+	if(m_HasLegacyTechnology) fromServer >> m_HullTechnology;
 	fromServer >> m_PowerPlantModule;
 	fromServer >> m_PowerPlantQuality;
 	if(!m_PowerPlantQuality)
 		m_PowerPlantQuality = 1;
+	if(m_HasLegacyTechnology) fromServer >> m_PowerPlantTechnology;
 }
 
 void AuShipSystemArray::Tx(QDataStream& toClient) const
 {
-	toClient << (quint16)count();
+	toClient << quint16((m_HasLegacyTechnology ? 0x8000 : 0) | count());
 	for(const_iterator it = constBegin(); it != constEnd(); it++)
-		(*it).Tx(toClient);
+		(*it).Tx(toClient, m_HasLegacyTechnology);
 
 	toClient << m_CapacitorModule;
 	toClient << m_CapacitorQuality;
+	if(m_HasLegacyTechnology) toClient << m_CapacitorTechnology;
 	toClient << m_CnCModule;
 	toClient << m_CnCQuality;
+	if(m_HasLegacyTechnology) toClient << m_CnCTechnology;
 	toClient << m_HullModule;
 	toClient << m_HullQuality;
+	if(m_HasLegacyTechnology) toClient << m_HullTechnology;
 	toClient << m_PowerPlantModule;
 	toClient << m_PowerPlantQuality;
+	if(m_HasLegacyTechnology) toClient << m_PowerPlantTechnology;
+}
+
+void AuShipSystemArray::InitializeLegacyTechnology(quint8 technology)
+{
+	m_HasLegacyTechnology = true;
+	m_CapacitorTechnology = m_CnCTechnology = m_HullTechnology = m_PowerPlantTechnology = technology;
+	for(AuShipSystem& system : *this) system.SetTechLevel(technology);
+}
+
+quint8 AuShipSystemArray::SystemTechLevel(SYSTEM system, quint16 which) const
+{
+	if(!m_HasLegacyTechnology) return 0;
+	switch(system)
+	{
+	case SYS_CommandAndControl:
+		return m_CnCTechnology;
+	case SYS_Fuel:
+	case SYS_Hold:
+	case SYS_Hull:
+	case SYS_Count:
+		return m_HullTechnology;
+	case SYS_Capacitor:
+		return m_CapacitorTechnology;
+	case SYS_PowerPlant:
+		return m_PowerPlantTechnology;
+	default:
+		for(const AuShipSystem& installed : *this)
+			if(installed.GetSystemType() == system && installed.GetSystemWhich() == which)
+				return installed.TechLevel();
+		return 0;
+	}
+}
+
+bool AuShipSystemArray::SetSystemTechLevel(const AuSysId& sysId, quint8 technology)
+{
+	if(!m_HasLegacyTechnology) return false;
+	quint8* current = nullptr;
+	switch(sysId.System())
+	{
+	case SYS_CommandAndControl:
+		current = &m_CnCTechnology;
+		break;
+	case SYS_Fuel:
+	case SYS_Hold:
+	case SYS_Hull:
+		current = &m_HullTechnology;
+		break;
+	case SYS_Capacitor:
+		current = &m_CapacitorTechnology;
+		break;
+	case SYS_PowerPlant:
+		current = &m_PowerPlantTechnology;
+		break;
+	default:
+		for(AuShipSystem& installed : *this)
+			if(installed.SysId() == sysId)
+			{
+				if(installed.TechLevel() == technology) return false;
+				installed.SetTechLevel(technology);
+				return true;
+			}
+		return false;
+	}
+	if(*current == technology) return false;
+	*current = technology;
+	return true;
 }
 
 COMMODITYID AuShipSystemArray::SystemModule(SYSTEM system, const quint16 which) const
@@ -443,6 +536,8 @@ void AuShipSystemArray::GatherShipSystems(quint8 quality, const AuScReport& desi
 {
 	Q_ASSERT(quality);
 	clear();
+	m_HasLegacyTechnology = false;
+	m_CapacitorTechnology = m_CnCTechnology = m_HullTechnology = m_PowerPlantTechnology = 0;
 
 	// Store quality of systems that do not have interconnections.
 	m_CapacitorQuality = quality;
@@ -578,6 +673,8 @@ void AuShipSystemArray::GatherShipSystems(quint8 quality, const AuBdReport& desi
 {
 	Q_ASSERT(quality);
 	clear();
+	m_HasLegacyTechnology = false;
+	m_CapacitorTechnology = m_CnCTechnology = m_HullTechnology = m_PowerPlantTechnology = 0;
 
 	// Store quality of systems that do not have interconnections.
 	if(design.CapacitorUnits())
@@ -1213,7 +1310,7 @@ bool AuShipSystemArray::Reconcile(const AuBdReport& design)
 	return reconcileNeeded;
 }
 
-bool AuShipSystemArray::Reconcile(const AuScReport& design)
+bool AuShipSystemArray::Reconcile(const AuScReport& design, int legacyConstructionTechnology)
 {
 	// Get systems from 'design'.
 	AuShipSystemArray ck;
@@ -1240,6 +1337,27 @@ bool AuShipSystemArray::Reconcile(const AuScReport& design)
 
 	if(reconcileNeeded && design.LegacyStats())
 	{
+		if(m_HasLegacyTechnology)
+		{
+			// Existing records carry their installed TL. Only new records need
+			// the explicit original construction TL; quality cannot recover it.
+			if(legacyConstructionTechnology >= 0 && legacyConstructionTechnology <= 255)
+				ck.InitializeLegacyTechnology(quint8(legacyConstructionTechnology));
+			else
+			{
+				for(const AuShipSystem& system : ck)
+					if(!HasSystem(system.SysId()))
+					{
+						qWarning() << "AuShipSystemArray::Reconcile needs legacy construction technology";
+						return false;
+					}
+				ck.m_HasLegacyTechnology = true;
+			}
+			ck.m_CapacitorTechnology = m_CapacitorTechnology;
+			ck.m_CnCTechnology = m_CnCTechnology;
+			ck.m_HullTechnology = m_HullTechnology;
+			ck.m_PowerPlantTechnology = m_PowerPlantTechnology;
+		}
 		// Adding newly operational systems to an existing legacy ship must not
 		// reset its current modules, damage, or power-relay connections.
 		for(int index = 0; index < ck.size(); ++index)

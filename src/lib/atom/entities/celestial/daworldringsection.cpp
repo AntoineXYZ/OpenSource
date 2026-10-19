@@ -1000,6 +1000,7 @@ void DaWorldRingSection::RenderEnvironmentObject(const AuMatrix4x4& projection, 
 		}
 
 		// Render close up globe model.
+		RenderLegacyCityInteriors(projection, ari, rmod, sceneAtom);
 		RenderAtGlobe(projection, model, ari, viewerPos, ambientLight, fogDensity, fogcol[0], fogcol[1], fogcol[2]);
 
 		// Render rocks.
@@ -5393,7 +5394,7 @@ bool DaWorldRingSection::FilterDestinationLoc(DaAtom* moveAtom, const AuPoint& o
 	// Moving atom is inside the atmosphere.
 	double stopMove = 0;				// How much movement was stopped for collision damage.
 	int stopReason;
-	if(moveAtom->IsAtBd())
+	if(moveAtom->IsAtBd() || moveAtom->IsAtLegacyCityFloor())
 	{
 		// Moving atom is in a building, could be on the roof.
 		if(nuCgAlt <= oldCgAlt)
@@ -11487,6 +11488,9 @@ AuPoint DaWorldRingSection::NextPathLocation(const AuPoint& /*fromLoc*/, const A
 
 bool DaWorldRingSection::ConstrainCamera(const DaAtom* subatom, AuMatrix4x4& camera) const
 {
+	// The 2016 indoor camera bypasses terrain, including underground rooms.
+	if(subatom->IsInsideLegacyBuilding()) return false;
+
 	// Create a matrix to calculate camera locations in my space.
 	AuMatrix4x4 m = subatom->Transform() * camera;
 

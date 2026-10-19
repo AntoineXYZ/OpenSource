@@ -7,7 +7,17 @@
 #include <QHash>
 #include <QScopedPointer>
 
+class AuCityReport;
 class AuCityReportHistory;
+class AuItemHash;
+class DaItem;
+namespace AuLegacyCity { struct CitizenConstructionFacts; struct ProductionState; }
+namespace AuLegacyCity { struct PopulationRuntimeFacts; struct PopulationRuntimeReport; struct AccountingState; struct EmploymentTotals; }
+namespace AuLegacyCity { struct CityConnection; class PowerImportBatch; }
+namespace AuLegacyCity { struct WealthLevyOrder; }
+namespace AuLegacyCity { struct DevelopmentSupplyFacts; struct AccountingState; }
+namespace AuLegacyCityProtocol { struct Request; struct Reply; }
+namespace AuLegacyConstructionMaterials { class Batch; }
 
 // City-owned legacy developments have no DaBd identity or modern economics.
 // Legacy construction remains city-owned and uses the historical GD recipes.
@@ -31,21 +41,66 @@ public:
 	QString Name() const override;
 	void SetName(const QString& name) override;
 	quint32 EmpireId() const override;
+	quint32 Population() const override;
+	// Same eligibility for local respawn and the worker's cross-server query.
+	int CanSpawnHere(quint32 empireId) const;
+	// A tied development uses its original room/path spawn rules; other city
+	// destinations use the historical random ground point near the town square.
+	AuPoint SpawnLocation(const AuGlobeLLF* home = nullptr) const;
 	AuLegacyCity::State Snapshot() const;
+	void RegisterEmpireVisit(quint32 empireId, qint64 now);
 	// Newly authored shared display envelope; no 2016 database binary import.
 	bool ReportHistory(AuCityReportHistory& result) const;
 	static bool ReadReportHistory(const QByteArray& bytes, AuCityReportHistory& result);
+	static bool WriteReportHistory(const AuCityReportHistory& history, QByteArray& bytes, QString& error);
+	// Gather world/global facts before the city transaction. Completion reads
+	// only the supplied state and inventories and preserves the precycle snapshot.
+	AuCityReport GatherCityReport(const AuLegacyCity::State& state,
+		const AuLegacyCity::PopulationRuntimeFacts& facts) const;
+	bool CompleteCityReport(AuCityReport& report, const AuLegacyCity::State& state,
+		const AuItemHash& initialInventory, const AuItemHash& inventory,
+		const AuLegacyCity::ProductionState& production, const AuLegacyCity::AccountingState& accounting,
+		const AuLegacyCity::PopulationRuntimeReport& population, const AuLegacyCity::EmploymentTotals& employment,
+		qint64 now, QString& error) const;
+	void MailLastReport(const AuId& toId) const;
+	void SendCityReport(const AuCityReport& report, const AuCityReport* previous = nullptr);
 	bool SetState(const AuLegacyCity::State& state, QString& error);
 	bool BeginConstruction(DaPerson& person, quint8 industryId, quint8 processId, quint32 designId,
 		quint16 materialId, const AuGlobeLLF& location, double headingRadians, quint8 levels, QString& error,
-		double roadLengthMeters = 10, double roadWidthMeters = 10, bool roadSlab = false, double biodomeRadiusMeters = 100);
-	bool ExtendConstruction(DaPerson& person, quint32 developmentId, quint8 additionalLevels, QString& error);
+		double roadLengthMeters = 10, double roadWidthMeters = 10, bool roadSlab = false, double biodomeRadiusMeters = 100,
+		quint16 manufacturingRecipe = 0, bool manufactureCitizen = true);
+	bool ExtendConstruction(DaPerson& person, quint32 developmentId, quint8 additionalLevels, QString& error,
+		quint16 manufacturingRecipe = 0, bool manufactureCitizen = true);
 	bool SetConstructionHalted(DaPerson& person, quint32 developmentId, bool halted, QString& error);
 	bool ContributeConstructionLabor(DaPerson& person, quint32 developmentId, QString& error, bool* accepted = nullptr);
 	bool FetchConstructionMaterials(DaPerson& person, quint32 developmentId, QString& error);
 	bool ChangeRoadConstruction(DaPerson& person, quint32 developmentId, quint8 processId, QString& error);
 	bool EmployConstructionWorker(DaPerson& person, quint32 developmentId, bool enabled, QString& error);
 	bool DemolishDevelopment(DaPerson& person, quint32 developmentId, bool clearLand, QString& error);
+	bool SetIndustryProcess(DaPerson& person, quint32 developmentId, quint16 processSlot,
+		quint16 processId, quint8 minimumTechnology, bool enabled, QString& error);
+	bool OperateIndustryProcess(DaPerson& person, quint32 developmentId, quint16 processSlot,
+		bool fetch, bool run, QString& error);
+	bool OperateBank(DaPerson& person, const AuLegacyCityProtocol::Request& request,
+		AuLegacyCityProtocol::Reply& reply);
+	void ReceiveTaxLevy(double amount);
+	void ApplyWealthLevy(const AuLegacyCity::WealthLevyOrder& order);
+	bool Revolt(const QString& reason);
+	void NotifyRevolt(quint32 oldEmpire, quint32 newEmpire, bool captured, const QString& reason);
+	bool ReceiveConfiscatedWealth(quint32 empire, double amount);
+	AuLegacyCity::CitizenConstructionFacts GatherCitizenConstructionFacts(const AuLegacyCity::State& state,
+		const AuLegacyCity::Development& development, qint64 now, bool materialsOnly = false) const;
+	AuLegacyCity::DevelopmentSupplyFacts GatherDevelopmentSupplyFacts(const AuLegacyCity::State& state,
+		const AuLegacyCity::Development& development, qint64 now) const;
+	bool SupplyDevelopmentMaterials(AuLegacyCity::State& state, AuLegacyCity::Development& development,
+		AuItemHash& inventory, AuLegacyCity::ProductionState& production, AuLegacyCity::AccountingState& accounting,
+		const AuLegacyCity::DevelopmentSupplyFacts& facts, AuLegacyConstructionMaterials::Batch& materials) const;
+	// Applies to caller-owned transaction state; no city/world/environment locks
+	// are acquired here. Publish/finalize physical items after committing it.
+	bool ApplyCitizenConstruction(AuLegacyCity::State& state, AuLegacyCity::Development& development,
+		AuItemHash& inventory, AuLegacyCity::ProductionState& production,
+		const AuLegacyCity::CitizenConstructionFacts& facts, bool& physicalChanged,
+		AuLegacyConstructionMaterials::Batch& materials, bool performLabor = true) const;
 	static int ConstructionLevelLimit(quint8 industryId, quint16 materialId);
 	void operator>>(QDataStream& out) const override;
 	void operator<<(QDataStream& in) override;
@@ -69,6 +124,7 @@ public:
 		AuPoint& hitLocation, AuPoint& hitNormal, const DaAtom* actor) override;
 	bool FilterDestination(const DaAtom& actor, const AuPoint& fromWorld,
 		AuPoint& toWorld, const AuBox& body) const;
+	bool TestRoadConnection(const DaLegacyCity& other) const;
 	// Original square site and its ten-meter terrain blend margin. Both height
 	// and flora queries use this path, independently of rendered room floors.
 	double AdjustSiteTerrain(const DaWorldLL& world, double altitudeMSL, const AuGlobeLL& ll,
@@ -81,11 +137,18 @@ public:
 	bool Route(quint32 developmentId, const AuPoint& fromWorld, const AuPoint& toWorld,
 		QVector<AuLegacyBd::Paths::RoutePoint>& points, bool useGroundLevelDoors = true) const;
 	void DeleteDeviceObjects(AuAtomRenderInfo& ari) override;
+	void GetRenderLightsRecursive(const DaPerson& person, const AuMatrix4x4& model,
+		QList<AuGLSun>& suns, QList<AuGLLight>& lights) const override;
+	void RenderPreTerrain(const AuMatrix4x4& projection, AuAtomRenderInfo& ari,
+		AuModelMatrixHash& matrices, const DaPerson* sceneAtom);
 	void RenderEnvironmentObject(const AuMatrix4x4& projection, AuAtomRenderInfo& ari,
 		AuModelMatrixHash& matrices, const DaPerson* sceneAtom, AuRenderLastMap& last,
 		RENDERPASS pass, DaAtomList& sc, DaAtomList& scFog, DaAtomList& scGlobe,
 		DaAtomList& scGlobeFog, DaAtomList& scRing, DaAtomList& scRingFog) override;
 private:
+	void RenderCity(const AuMatrix4x4& projection, AuAtomRenderInfo& ari,
+		AuModelMatrixHash& matrices, const DaPerson* sceneAtom, bool beforeTerrain);
+	friend class AuLegacyCity::PowerImportBatch;
 	DaLegacyCity(const DaLegacyCity& city);
 	mutable QReadWriteLock m_CityLock;
 	AuLegacyCity::State m_City;
@@ -97,6 +160,8 @@ private:
 	void UpdateSiteTerrain(AuAtomRenderInfo& ari, bool removed = false);
 	void Store(QSqlDatabase& db, bool insert) const;
 	bool OperateConstruction(DaPerson* person, quint32 developmentId, bool fetch, bool labor, QString& error, bool* accepted = nullptr);
+	void TockEconomy(qint64 previous, qint64 now);
+	void ImportCityGoods(const QVector<AuLegacyCity::CityConnection>& connections);
 	bool ReplaceFinishedDevelopment(const AuLegacyCity::Development& development,
 		quint8 expectedProcess, quint8 expectedLevels, QString& error);
 };

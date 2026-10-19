@@ -565,6 +565,7 @@ public:
 	quint32 UploadLegacyScDesign(const QString& sourceName, const QString& name, const QByteArray& source);
 	quint32 SpawnLegacyScDesign(quint32 designId);
 	quint32 RequestLegacyCityTool(AuLegacyCityProtocol::Request request);
+	void RequestLegacyWealthLevy(quint8 percent, const QString& statement, quint8 exemptions);
 
 	void EmpireChangeEmperor(quint32 empireId, const AuId& avatarId, const QString& avatarName);
 
@@ -1353,6 +1354,7 @@ public slots:
 	void GovSetJoinPasswordUp(quint32 empire, QByteArray passCrypt);
 
 	void GovSetTax(quint32 empire, quint8 income, quint8 sales, quint8 subsidy);
+	void LegacyWealthLevy(QByteArray order);
 
 	void GovSetTaxes(double income, double sales, double subsidy);
 

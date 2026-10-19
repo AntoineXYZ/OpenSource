@@ -5,10 +5,13 @@
 #include "auid.h"
 #include "aulegacycitystate.h"
 #include <QVector>
+#include <memory>
 
 class DaItem;
 class DaWorldLL;
-class DeProcessComponent;
+class AuLegacyCityCatalogue;
+class QString;
+namespace AuLegacyCity { struct ProductionProcess; }
 
 namespace AuLegacyConstructionMaterials
 {
@@ -17,15 +20,27 @@ namespace AuLegacyConstructionMaterials
 AUATOM_DLL QVector<DaItem*> ItemsAtSite(DaWorldLL& world, const AuId& cityId,
 	const AuLegacyCity::Development& development);
 
-// Applies exact world item stacks and direct container contents. Only item
-// locks are taken here. Depleted atoms remain alive until Finalize, so the
-// caller can safely hold its city write lock while updating the component.
-AUATOM_DLL quint32 Fetch(const QVector<DaItem*>& items, DeProcessComponent& component,
-	QVector<DaItem*>& changedItems, QVector<DaItem*>& emptiedItems);
-
-// Publish partial container/stack updates and kill depleted loose item atoms.
-// Call after releasing the city and player-gear locks.
-AUATOM_DLL void Finalize(const QVector<DaItem*>& changedItems, const QVector<DaItem*>& emptiedItems);
+// One batch spans a complete city transaction. Fetch edits owned clones only,
+// reusing each clone across citizen construction and deposit supply callbacks.
+// Commit validates all observed items before replacing any live item. Call it
+// after city serialization and before publishing city/power/farm changes.
+class AUATOM_DLL Batch
+{
+public:
+	Batch();
+	~Batch();
+	Batch(const Batch&) = delete;
+	Batch& operator=(const Batch&) = delete;
+	bool Fetch(const QVector<DaItem*>& items, const AuLegacyCityCatalogue& catalogue,
+		AuLegacyCity::ProductionProcess& components);
+	bool Commit(QString& error);
+	// Notify updates/kill consumed loose atoms after publishing the city and
+	// releasing city/gear locks. Atom-deletion protection remains caller-owned.
+	void Finalize();
+private:
+	struct Data;
+	std::unique_ptr<Data> m_Data;
+};
 }
 
 #endif

@@ -155,6 +155,7 @@ public:
 		P_RequestItemDesignIds,	// Sent by sub to boss to get more item design ids.
 		P_ItDesignDeactivated,
 		P_GovSetJoinPass,	// Sent by sub to boss with empire and passCrypt
+		P_LegacyWealthLevy,	// Legacy executive order; upward authorization then downward broadcast.
 	};
 
 public:
@@ -566,6 +567,7 @@ signals:
 	void GovSetJoinPassword(quint32 empire, QByteArray passCrypt);
 
 	void GovSetTax(quint32 empire, quint8 income, quint8 sales, quint8 subsidy);
+	void LegacyWealthLevy(QByteArray order);
 
 	void GovSetThemeColor(quint32 empire, quint8 theme, QColor color);
 

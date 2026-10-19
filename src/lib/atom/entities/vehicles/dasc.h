@@ -645,7 +645,7 @@ public:	// Methods
 
 	// Initializes this ship's m_ssaShipSystems systems data.
 	// This is only called once in the lifetime of this ship atom, at the time it is first created.
-	void InitSystems(quint8 quality);
+	void InitSystems(quint8 quality, int legacyConstructionTechnology = -1);
 
 	// Updates m_ssaShipSystems to match the systems reported by my design.
 	void ReconcileSystems();
@@ -1217,7 +1217,7 @@ protected:
 
 	void FixTurboLiftAirBug();
 
-	void GatherSystemsDataSystemsAndDesignLocked(quint8 quality);
+	void GatherSystemsDataSystemsAndDesignLocked(quint8 quality, int legacyConstructionTechnology = -1);
 
 	// Calls g_Au.LockScDesignsForRead.
 	// Returns 0 if my design is not found.
