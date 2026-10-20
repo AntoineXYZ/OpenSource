@@ -1,6 +1,8 @@
 #include "dalegacycity.h"
 #include "auatomrenderinfo.h"
+#include "auether.h"
 #include "auglmodel.h"
+#include "auglmodelmaker.h"
 #include "aucityreport.h"
 #include "aubox.h"
 #include "auglobal.h"
@@ -27,9 +29,11 @@
 #include "aunoise.h"
 #include "autriangle.h"
 #include "daanimal.h"
+#include "dabd.h"
 #include "dacreature.h"
 #include "daatomlist.h"
 #include "daperson.h"
+#include "dadesigner.h"
 #include "dgdata.h"
 #include "daworldll.h"
 #include "daworldringsection.h"
@@ -39,9 +43,13 @@
 #include <QCryptographicHash>
 #include <QFile>
 #include <QMutexLocker>
+#include <QElapsedTimer>
+#include <QRunnable>
+#include <QThreadPool>
 #include <QSqlError>
 #include <QSqlQuery>
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <limits>
 
@@ -245,21 +253,31 @@ double TerrainLevelRadius(quint8 industry, const AuLegacyCityCatalogue& catalogu
 	return meters < 0 ? -1 : double(float(meters * FeetPerMeter()));
 }
 
+bool SameTerrainSite(const AuLegacyCity::Development& p, const AuLegacyCity::Development& q)
+{
+	return p.industryId == q.industryId && p.constructionProcessId == q.constructionProcessId && p.materialId == q.materialId && p.location == q.location
+		&& p.altitudeMSL == q.altitudeMSL && p.facingRadians == q.facingRadians
+		&& p.constructed == q.constructed && p.demolished == q.demolished && p.roadSlab == q.roadSlab
+		&& p.components.isEmpty() == q.components.isEmpty()
+		&& p.roadLengthMeters == q.roadLengthMeters && p.roadWidthMeters == q.roadWidthMeters
+		&& p.roadStartAltitudeMSL == q.roadStartAltitudeMSL && p.roadEndAltitudeMSL == q.roadEndAltitudeMSL
+		&& p.biodomeRadiusMeters == q.biodomeRadiusMeters;
+}
+
 bool SameTerrainSites(const QVector<AuLegacyCity::Development>& a, const QVector<AuLegacyCity::Development>& b)
 {
 	if(a.size() != b.size()) return false;
 	for(int i = 0; i < a.size(); ++i)
 	{
-		const auto& p = a[i]; const auto& q = b[i];
-		if(p.industryId != q.industryId || p.constructionProcessId != q.constructionProcessId || p.materialId != q.materialId || p.location != q.location
-			|| p.altitudeMSL != q.altitudeMSL || p.facingRadians != q.facingRadians
-			|| p.constructed != q.constructed || p.demolished != q.demolished || p.roadSlab != q.roadSlab
-			|| p.components.isEmpty()!=q.components.isEmpty()
-			|| p.roadLengthMeters != q.roadLengthMeters || p.roadWidthMeters != q.roadWidthMeters
-			|| p.roadStartAltitudeMSL != q.roadStartAltitudeMSL || p.roadEndAltitudeMSL != q.roadEndAltitudeMSL
-			|| p.biodomeRadiusMeters != q.biodomeRadiusMeters) return false;
+		if(a[i].id != b[i].id || !SameTerrainSite(a[i], b[i])) return false;
 	}
 	return true;
+}
+
+bool SameBuildingGeometry(const AuLegacyCity::Development& a, const AuLegacyCity::Development& b)
+{
+	return a.id == b.id && a.designId == b.designId && a.minimumDeck == b.minimumDeck
+		&& a.maximumDeck == b.maximumDeck && a.completedLevels == b.completedLevels && SameTerrainSite(a, b);
 }
 
 bool SameGeometry(const QVector<AuLegacyCity::Development>& a, const QVector<AuLegacyCity::Development>& b)
@@ -520,13 +538,6 @@ struct DaLegacyCity::Runtime
 		float radius = 0;
 		float halfWidth = 0, halfLength = 0;
 	};
-	struct Building
-	{
-		AuLegacyCity::Development state;
-		AuLegacyBd::Geometry::Mesh mesh;
-		QSharedPointer<AuLegacyScGeometry::CollisionWorld> collision;
-		AuLegacyBd::Paths::Graph paths;
-	};
 	struct DrawBatch
 	{
 		quint32 development = 0;
@@ -539,6 +550,65 @@ struct DaLegacyCity::Runtime
 		QVector4D tint = QVector4D(1,1,1,1);
 		float selfIllumination = 0;
 	};
+	struct PreparedDraw
+	{
+		DrawBatch draw;
+		AuModelTexFogVertexData vertices;
+		QString textureKey;
+		QImage texture;
+		bool buildingAtlas = false;
+	};
+	struct RenderData { QVector<PreparedDraw> draws; };
+	struct Building
+	{
+		AuLegacyCity::Development state;
+		AuLegacyBd::Geometry::Mesh mesh;
+		QSharedPointer<AuLegacyScGeometry::CollisionWorld> collision;
+		AuLegacyBd::Paths::Graph paths;
+		QSharedPointer<const RenderData> render;
+	};
+	struct Job
+	{
+		std::atomic<bool> cancelled{false}, finished{false};
+		quint64 revision = 0;
+		AuId worldId;
+		QVector<AuLegacyCity::Development> developments;
+		QVector<Site> sites;
+		QVector<Building> previous, result;
+		bool succeeded = false;
+	};
+	struct BuildTask : QRunnable
+	{
+		explicit BuildTask(const QSharedPointer<Job>& value) : job(value) {}
+		void run() override;
+		QSharedPointer<Job> job;
+	};
+	struct RetireTask : QRunnable
+	{
+		QSharedPointer<Job> job;
+		void run() override { job.reset(); }
+	};
+	struct Upload
+	{
+		QSharedPointer<const RenderData> source;
+		QVector<DrawBatch> draws;
+		int next = 0;
+	};
+	struct MinePostJob
+	{
+		std::atomic<bool> cancelled{false}, finished{false};
+		AuId worldId;
+		quint64 geometryRevision = 0, terrainRevision = 0;
+		QVector<AuLegacyCity::Development> mines;
+		QVector<AuMatrix4x4> result;
+		bool succeeded = false;
+	};
+	struct MinePostTask : QRunnable
+	{
+		explicit MinePostTask(const QSharedPointer<MinePostJob>& value) : job(value) {}
+		void run() override;
+		QSharedPointer<MinePostJob> job;
+	};
 	struct FlagDraw
 	{
 		AuGLVAO vao;
@@ -546,6 +616,9 @@ struct DaLegacyCity::Runtime
 		quint32 empire = 0;
 	};
 	QMutex lock;
+	bool asynchronous = false;
+	quint64 requestedRevision = 0, builtRevision = 0;
+	QSharedPointer<Job> job;
 	quint64 revision = 0, drawRevision = 0;
 	quint64 sourceRevision = 0;
 	quint64 overlayRevision = 0;
@@ -553,13 +626,21 @@ struct DaLegacyCity::Runtime
 	QVector<AuLegacyCity::Development> geometryState;
 	QVector<Building> buildings;
 	QVector<DrawBatch> drawBatches;
+	QHash<quint32, QSharedPointer<const RenderData>> drawnModels;
+	QHash<quint32, Upload> uploads;
 	QVector<FlagDraw> flagDraws;
 	QVector<AuMatrix4x4> minePosts;
+	QSharedPointer<MinePostJob> minePostJob;
 	quint64 minePostRevision = 0, minePostTerrainRevision = 0;
 	quint64 siteRevision = 0, terrainRevision = 0, terrainDrawRevision = 0;
 	const DaWorldLL* siteWorld = nullptr;
 	QVector<AuLegacyCity::Development> siteState;
 	QVector<Site> sites, renderedSites;
+	~Runtime()
+	{
+		if(job) job->cancelled.store(true, std::memory_order_release);
+		if(minePostJob) minePostJob->cancelled.store(true, std::memory_order_release);
+	}
 	double AdjustTerrain(const DaWorldLL& world, double altitudeMSL, const AuGlobeLL& ll,
 		int& levelSites, bool& hideRocks, int& hideGrass, bool& hideShrubs,
 		bool& hideTrees, WORLDTEX_TYPE& pavementType) const;
@@ -567,11 +648,16 @@ struct DaLegacyCity::Runtime
 	void EnsureSites(const DaLegacyCity& city, const DaWorldLL& world)
 	{
 		QReadLocker stateLock(&city.m_CityLock);
-		if(siteWorld == &world && siteRevision == city.m_CityRevision) return;
-		siteRevision = city.m_CityRevision;
-		if(siteWorld == &world && SameTerrainSites(siteState, city.m_City.developments)) return;
+		EnsureSites(city.m_City.developments, city.m_CityRevision, world);
+	}
+
+	void EnsureSites(const QVector<AuLegacyCity::Development>& developments, quint64 currentRevision, const DaWorldLL& world)
+	{
+		if(siteWorld == &world && siteRevision == currentRevision) return;
+		siteRevision = currentRevision;
+		if(siteWorld == &world && SameTerrainSites(siteState, developments)) return;
 		siteWorld = &world;
-		siteState = city.m_City.developments;
+		siteState = developments;
 		sites.clear();
 		if(const auto* catalogue = AuLegacyCityCatalogue::BuiltIn())
 			for(const auto& dev : siteState)
@@ -600,21 +686,155 @@ struct DaLegacyCity::Runtime
 	void Ensure(const DaLegacyCity& city)
 	{
 		const auto* world=dynamic_cast<const DaWorldLL*>(city.Parent());
-		if(world) EnsureSites(city,*world);
-		QReadLocker stateLock(&city.m_CityLock);
-		if(sourceRevision == city.m_CityRevision) return;
-		const bool unchanged=sourceRevision && geometryEmpire==city.m_City.controllingEmpire
-			&& SameGeometry(geometryState,city.m_City.developments);
-		sourceRevision=city.m_CityRevision;
-		if(unchanged)
+		QVector<AuLegacyCity::Development> developments;
 		{
-			for(int i=0;i<buildings.size();++i) buildings[i].state=city.m_City.developments[i];
-			return;
+			QReadLocker stateLock(&city.m_CityLock);
+			// Terrain and geometry must describe the same state even if a network
+			// update arrives while this snapshot is being taken.
+			if(world) EnsureSites(city.m_City.developments, city.m_CityRevision, *world);
+			if(sourceRevision == city.m_CityRevision && (builtRevision == requestedRevision
+				|| (job && !job->finished.load(std::memory_order_acquire)))) return;
+			developments = city.m_City.developments;
+			if(sourceRevision != city.m_CityRevision)
+			{
+				sourceRevision = city.m_CityRevision;
+				if(!requestedRevision || geometryEmpire != city.m_City.controllingEmpire
+					|| !SameGeometry(geometryState, developments))
+				{
+					geometryState = developments; geometryEmpire = city.m_City.controllingEmpire;
+					++requestedRevision;
+					if(job) job->cancelled.store(true, std::memory_order_release);
+				}
+			}
 		}
-		geometryState=city.m_City.developments; geometryEmpire=city.m_City.controllingEmpire;
-		buildings.clear();
-		for(const auto& dev : city.m_City.developments)
+		if(asynchronous)
 		{
+			// Poll only. A job owns its snapshots and outlives a departing city;
+			// neither render nor environment/collision queries wait for it.
+			if(job && job->finished.load(std::memory_order_acquire))
+			{
+				if(job->revision == requestedRevision && job->succeeded
+					&& !job->cancelled.load(std::memory_order_acquire))
+				{
+					buildings.swap(job->result); builtRevision = requestedRevision; ++revision;
+				}
+				// Reclaim obsolete meshes/BVHs on a worker too. Transfer the last
+				// runtime reference before scheduling, so cleanup cannot race ahead
+				// and leave the render thread doing the final deletion.
+				auto* retire = new RetireTask;
+				retire->job.swap(job);
+				QThreadPool::globalInstance()->start(retire, -1);
+			}
+			if(!job && builtRevision != requestedRevision)
+			{
+				job.reset(new Job);
+				job->revision = requestedRevision; job->developments = developments;
+				job->previous = buildings; job->sites = sites;
+				if(world) job->worldId = world->Id();
+				QThreadPool::globalInstance()->start(new BuildTask(job), 0);
+			}
+		}
+		else if(builtRevision != requestedRevision)
+		{
+			// Authority still needs collision/path data immediately. Its work is
+			// independent of the scene replica and never holds the city state lock.
+			const auto previous = buildings;
+			Build(developments, world, previous, nullptr, false);
+			builtRevision = requestedRevision; ++revision;
+		}
+		QHash<quint32, const AuLegacyCity::Development*> latest;
+		for(const auto& dev : developments) latest.insert(dev.id, &dev);
+		for(auto& building : buildings)
+		{
+			const auto found = latest.constFind(building.state.id);
+			if(found != latest.cend() && SameBuildingGeometry(building.state, **found)) building.state = **found;
+		}
+	}
+
+	static QSharedPointer<const RenderData> PrepareRender(const Building& building,
+		QHash<quint16, QImage>& atlases, QHash<QString, QImage>& textures)
+	{
+		QSharedPointer<RenderData> result(new RenderData);
+		const quint16 material = building.state.materialId;
+		const quint16 atlasMaterial = building.state.industryId == 2 && material == 23 ? 76 : material;
+		for(const auto& batch : building.mesh.batches)
+		{
+			if(batch.collisionOnly || batch.empireFlag) continue;
+			PreparedDraw prepared;
+			prepared.draw.development = building.state.id;
+			prepared.draw.twoSided = batch.twoSided; prepared.draw.interior = batch.interior;
+			prepared.draw.depthOnly = batch.depthOnly;
+			prepared.draw.exteriorLens = batch.textureSlot == 37 ? 1 : batch.textureSlot == 38 ? 2 : 0;
+			prepared.draw.tint = batch.tint; prepared.draw.selfIllumination = batch.selfIllumination;
+			prepared.buildingAtlas = batch.textureFile.isEmpty() && batch.textureSlot >= 0;
+			prepared.textureKey = QStringLiteral("legacy-city/%1/%2/%3").arg(material).arg(batch.textureSlot).arg(batch.textureFile);
+			if(!textures.contains(prepared.textureKey))
+			{
+				QImage texture;
+				if(!batch.textureFile.isEmpty()) texture.load(batch.textureFile);
+				else if(batch.textureSlot < 0)
+				{ texture = QImage(1, 1, QImage::Format_ARGB32); texture.fill(Qt::white); }
+				else
+				{
+					if(!atlases.contains(atlasMaterial)) atlases.insert(atlasMaterial, QImage(AuLegacyBd::Geometry::MaterialAtlas(atlasMaterial)));
+					texture = atlases.value(atlasMaterial).copy(AuLegacyBd::Geometry::TextureTile(batch.textureSlot));
+					if(batch.textureSlot == 16) texture = texture.mirrored(true, false);
+					// Lamp lenses use effect 3, not the window alpha cutoff.
+					if(batch.textureSlot == 37 || batch.textureSlot == 38) texture = texture.convertToFormat(QImage::Format_RGB32);
+				}
+				textures.insert(prepared.textureKey, texture);
+			}
+			prepared.texture = textures.value(prepared.textureKey);
+			const QVector2D inset = prepared.buildingAtlas ? AuLegacyBd::Geometry::TextureInset(batch.textureSlot) : QVector2D();
+			// Bound each GL upload, including exceptionally large authored rooms.
+			const int chunkVertices = 12288;
+			for(int first = 0; first + 2 < batch.vertices.size(); first += chunkVertices)
+			{
+				PreparedDraw chunk = prepared;
+				const int end = qMin(first + chunkVertices, batch.vertices.size());
+				chunk.vertices.normal.reserve((end - first) * 3);
+				chunk.vertices.position.reserve((end - first) * 3);
+				chunk.vertices.texCoordShine.reserve((end - first) * 3);
+				for(int i = first; i + 2 < end; i += 3)
+					// CPU collision uses CCW. The original renderer submits CW.
+					for(int corner : {0, 2, 1})
+					{
+						const auto& vertex = batch.vertices[i + corner];
+						for(int axis = 0; axis < 3; ++axis)
+						{
+							chunk.vertices.normal.append(vertex.normal[axis]);
+							chunk.vertices.position.append(vertex.position[axis]);
+						}
+						chunk.vertices.texCoordShine.append(inset.x() + vertex.uv.x() * (1 - 2 * inset.x()));
+						chunk.vertices.texCoordShine.append(inset.y() + vertex.uv.y() * (1 - 2 * inset.y()));
+						chunk.vertices.texCoordShine.append(0);
+					}
+				result->draws.append(std::move(chunk));
+			}
+		}
+		return result;
+	}
+
+	void Build(const QVector<AuLegacyCity::Development>& developments, const DaWorldLL* world,
+		const QVector<Building>& previous, const std::atomic<bool>* cancelled, bool prepareRender)
+	{
+		QHash<quint32, const Building*> old;
+		QVector<AuLegacyCity::Development> oldStates;
+		for(const auto& building : previous) { old.insert(building.state.id, &building); oldStates.append(building.state); }
+		const bool reuseBiodomes = SameTerrainSites(oldStates, developments);
+		QHash<quint16, QImage> atlases;
+		QHash<QString, QImage> textures;
+		buildings.clear();
+		for(const auto& dev : developments)
+		{
+			if(cancelled && cancelled->load(std::memory_order_acquire)) return;
+			const auto found = old.constFind(dev.id);
+			if(found != old.cend() && SameBuildingGeometry((*found)->state, dev)
+				&& (dev.industryId != 129 || reuseBiodomes) && (!prepareRender || (*found)->render))
+			{
+				Building building = **found; building.state = dev;
+				buildings.append(std::move(building)); continue;
+			}
 			const auto design = AuLegacyBd::Catalog::BuiltIn().Find(dev.designId);
 			if(!design && dev.designId) continue; // Loader rejects unknown authored designs.
 			Building building;
@@ -703,25 +923,187 @@ struct DaLegacyCity::Runtime
 				collisionMesh.batches.append(imported);
 			}
 			building.collision.reset(new AuLegacyScGeometry::CollisionWorld(collisionMesh));
-			buildings.append(building);
+			if(prepareRender) building.render = PrepareRender(building, atlases, textures);
+			buildings.append(std::move(building));
 		}
-		++revision;
 	}
 
 	void DeleteDraw(AuAtomRenderInfo& ari, const AuId& id)
 	{
 		for(auto& batch : drawBatches) if(batch.vao.VAO()) batch.vao.DeleteGL();
+		for(auto& upload : uploads) for(auto& batch : upload.draws) if(batch.vao.VAO()) batch.vao.DeleteGL();
 		for(auto& flag : flagDraws) if(flag.vao.VAO()) flag.vao.DeleteGL();
 		flagDraws.clear();
-		drawBatches.clear(); drawRevision = 0;
+		drawBatches.clear(); drawnModels.clear(); uploads.clear(); drawRevision = 0;
 		if(ari.re) ari.re->DeleteTextures(id.GetID());
+	}
+
+	void UploadDraw(AuAtomRenderInfo& ari, const AuId& id)
+	{
+		if(drawRevision == revision && uploads.isEmpty()) return;
+		QHash<quint32, QSharedPointer<const RenderData>> wanted;
+		for(const auto& building : buildings) wanted.insert(building.state.id, building.render);
+		// Retain the old VAOs while a replacement uploads. Discard only removed
+		// developments and obsolete partial uploads; textures are shared by key.
+		for(auto it = uploads.begin(); it != uploads.end(); )
+			if(!wanted.contains(it.key()) || wanted.value(it.key()) != it->source)
+			{
+				for(auto& batch : it->draws) if(batch.vao.VAO()) batch.vao.DeleteGL();
+				it = uploads.erase(it);
+			}
+			else ++it;
+		for(int i = drawBatches.size() - 1; i >= 0; --i)
+			if(!wanted.contains(drawBatches[i].development))
+			{
+				if(drawBatches[i].vao.VAO()) drawBatches[i].vao.DeleteGL();
+				drawBatches.removeAt(i);
+			}
+		for(auto it = drawnModels.begin(); it != drawnModels.end(); )
+			if(!wanted.contains(it.key())) it = drawnModels.erase(it); else ++it;
+
+		QElapsedTimer& budget = ari.mm.LegacyUploadBudget();
+		for(const auto& building : buildings)
+		{
+			const auto source = building.render;
+			if(!source || drawnModels.value(building.state.id) == source) continue;
+			if(!budget.isValid()) budget.start();
+			if(budget.nsecsElapsed() >= 4000000) return;
+			auto& upload = uploads[building.state.id];
+			upload.source = source;
+			while(upload.next < source->draws.size())
+			{
+				if(budget.nsecsElapsed() >= 4000000) return;
+				const auto& prepared = source->draws[upload.next];
+				DrawBatch draw = prepared.draw;
+				draw.texture = ari.re->UseTexture(id.GetID(), prepared.textureKey);
+				if(!draw.texture)
+				{
+					// Original building atlas filters: GL_LINEAR, no mipmaps.
+					draw.texture = ari.re->CreateTextureFromBitmap(id.GetID(), prepared.textureKey,
+						prepared.texture, GL_LINEAR, prepared.buildingAtlas ? GL_LINEAR : GL_LINEAR_MIPMAP_LINEAR,
+						!prepared.buildingAtlas);
+					if(budget.nsecsElapsed() >= 4000000) return;
+				}
+				draw.vao.CreateForModelTexFog(*ari.re, prepared.vertices, GL_STATIC_DRAW);
+				upload.draws.append(draw); ++upload.next;
+			}
+			for(int i = drawBatches.size() - 1; i >= 0; --i)
+				if(drawBatches[i].development == building.state.id)
+				{
+					if(drawBatches[i].vao.VAO()) drawBatches[i].vao.DeleteGL();
+					drawBatches.removeAt(i);
+				}
+			drawBatches += upload.draws;
+			drawnModels.insert(building.state.id, source);
+			uploads.remove(building.state.id);
+			// Terrain masks follow visible interiors, as in the original VAO.
+			std::stable_sort(drawBatches.begin(), drawBatches.end(),
+				[](const DrawBatch& a, const DrawBatch& b) { return a.depthOnly < b.depthOnly; });
+		}
+		drawRevision = revision;
 	}
 };
 
-DaLegacyCity::DaLegacyCity() : m_Runtime(new Runtime) {}
+void DaLegacyCity::Runtime::BuildTask::run()
+{
+	// Only roads and biodomes need world projection/terrain during generation.
+	// Clone it on the worker under the existing ether lifetime guard. No task
+	// retains a live city, runtime or world pointer after that brief snapshot.
+	bool needsWorld = false;
+	for(const auto& dev : job->developments) needsWorld |= dev.industryId == 2 || dev.industryId == 129;
+	AuEther ether("Legacy city geometry worker");
+	DaWorldLL* world = nullptr;
+	if(needsWorld && !job->cancelled.load(std::memory_order_acquire))
+	{
+		const AuEther& live = g_Au.LockEtheriumDelete();
+		if(const auto* source = dynamic_cast<const DaWorldLL*>(live.FindNormalAtom(job->worldId)))
+		{
+			if(const auto* designer = source->FindParentDesignerInEnv()) ether.AddAtom(designer->Clone());
+			world = static_cast<DaWorldLL*>(source->Clone());
+			ether.AddAtom(world);
+		}
+		g_Au.UnlockEtheriumDelete();
+	}
+	if((!needsWorld || world) && !job->cancelled.load(std::memory_order_acquire))
+	{
+		Runtime result;
+		result.sites = job->sites;
+		result.Build(job->developments, world, job->previous, &job->cancelled, true);
+		job->result.swap(result.buildings);
+		job->succeeded = !job->cancelled.load(std::memory_order_acquire);
+	}
+	job->finished.store(true, std::memory_order_release);
+}
+
+void DaLegacyCity::Runtime::MinePostTask::run()
+{
+	// Terrain includes every city's site adjustments. Keep those sites in the
+	// private world snapshot, just as the terrain/flora workers do.
+	AuEther ether("Legacy mine post worker");
+	DaWorldLL* world = nullptr;
+	if(!job->cancelled.load(std::memory_order_acquire))
+	{
+		const AuEther& live = g_Au.LockEtheriumDelete();
+		if(const auto* source = dynamic_cast<const DaWorldLL*>(live.FindNormalAtom(job->worldId)))
+		{
+			const auto* designer = source->FindParentDesignerInEnv();
+			if(designer) ether.AddAtom(designer->Clone());
+			world = static_cast<DaWorldLL*>(source->Clone());
+			ether.AddAtom(world);
+			if(designer) world->ChangePos(AuAtomPos(designer->Id(), AuPoint(), AuPoint()));
+			DaAtomList children;
+			source->ListNormalSubatoms(children);
+			bool buildings = false;
+			for(const DaAtom* child : children)
+			{
+				if(job->cancelled.load(std::memory_order_acquire)) break;
+				const bool modernBuilding = dynamic_cast<const DaBd*>(child) != nullptr;
+				if(modernBuilding || dynamic_cast<const DaLegacyCity*>(child)) ether.AddAtom(child->Clone());
+				buildings |= modernBuilding;
+			}
+			if(buildings) world->BdAdded();
+		}
+		g_Au.UnlockEtheriumDelete();
+	}
+	if(world)
+	{
+		for(const auto& mine : job->mines)
+		{
+			if(job->cancelled.load(std::memory_order_acquire)) break;
+			const auto* recipe = ConstructionRecipe(mine.industryId, mine.constructionProcessId);
+			if(!recipe) continue;
+			const double radius = float(recipe->buildRadius * FeetPerMeter());
+			AuMatrix4x4 placement;
+			world->BuildingConstructionTransform(world->LocOfLL(mine.location, mine.altitudeMSL),
+				mine.facingRadians, nullptr, AuPoint(), placement);
+			// DpBldMine::RenderGreebles 0x591620: site corners follow terrain
+			// height and local globe up, independently of the authored floors.
+			for(const QPoint& corner : {QPoint(-1, -1), QPoint(-1, 1), QPoint(1, 1), QPoint(1, -1)})
+			{
+				if(job->cancelled.load(std::memory_order_acquire)) break;
+				AuGlobeLL ll;
+				if(!world->LLOfLoc(ll, placement.Project(AuPoint(radius * corner.x(), radius * corner.y(), 0)))) continue;
+				const AuPoint location = world->LocOfLL(ll, world->TerrainAltitudeMSL(ll));
+				AuMatrix4x4 post;
+				post.Translate(location);
+				post *= AuPoint(0, 0, 1).GetAlignmentTransform(-world->GravityDir(location));
+				job->result.append(post);
+			}
+		}
+		job->succeeded = !job->cancelled.load(std::memory_order_acquire);
+	}
+	job->finished.store(true, std::memory_order_release);
+}
+
+DaLegacyCity::DaLegacyCity() : m_Runtime(new Runtime) { m_Runtime->asynchronous = g_Au.IsSceneClient(); }
 DaLegacyCity::~DaLegacyCity() = default;
 DaLegacyCity::DaLegacyCity(const DaLegacyCity& city) : DaAtom(city), m_Runtime(new Runtime)
-{ QReadLocker lock(&city.m_CityLock); m_City = city.m_City; }
+{
+	QReadLocker lock(&city.m_CityLock); m_City = city.m_City;
+	// Scene replicas are separate from solo authority. LoadSubatoms copies a
+	// detached row, so its authoritative solo city keeps synchronous queries.
+	m_Runtime->asynchronous = g_Au.IsSceneClient() || (g_Au.IsSceneApp() && city.Ether());
+}
 DaAtom* DaLegacyCity::Clone() const { return new DaLegacyCity(*this); }
 AuLegacyCity::State DaLegacyCity::Snapshot() const { QReadLocker lock(&m_CityLock); return m_City; }
 bool DaLegacyCity::WriteReportHistory(const AuCityReportHistory& history, QByteArray& bytes, QString& error)
@@ -987,8 +1369,27 @@ void DaLegacyCity::UpdateSiteTerrain(AuAtomRenderInfo& ari, bool removed)
 	if(!removed && m_Runtime->terrainDrawRevision == m_Runtime->terrainRevision) return;
 	// Invalidate old sites as well, so moved/removed developments restore their
 	// natural terrain and flora. Release the city lock before terrain work.
-	QVector<Runtime::Site> dirty = m_Runtime->renderedSites;
-	dirty += m_Runtime->sites;
+	QVector<Runtime::Site> dirty;
+	QHash<quint32, const Runtime::Site*> previous, current;
+	for(const auto& site : m_Runtime->renderedSites) previous.insert(site.state.id, &site);
+	if(!removed) for(const auto& site : m_Runtime->sites) current.insert(site.state.id, &site);
+	for(auto it = previous.cbegin(); it != previous.cend(); ++it)
+	{
+		const auto found = current.constFind(it.key());
+		if(found == current.cend() || !SameTerrainSite((*it)->state, (*found)->state)) dirty.append(**it);
+	}
+	for(auto it = current.cbegin(); it != current.cend(); ++it)
+	{
+		const auto found = previous.constFind(it.key());
+		if(found == previous.cend()) dirty.append(**it);
+		else if(!SameTerrainSite((*it)->state, (*found)->state))
+		{
+			// One unchanged footprint covers both old and new surface states.
+			if((*it)->state.location != (*found)->state.location || (*it)->state.altitudeMSL != (*found)->state.altitudeMSL
+				|| (*it)->state.facingRadians != (*found)->state.facingRadians || (*it)->radius != (*found)->radius)
+				dirty.append(**it);
+		}
+	}
 	m_Runtime->renderedSites = removed ? QVector<Runtime::Site>() : m_Runtime->sites;
 	m_Runtime->terrainDrawRevision = removed ? 0 : m_Runtime->terrainRevision;
 	lock.unlock();
@@ -1887,7 +2288,18 @@ bool DaLegacyCity::Refresh(DaAtom* counterpart, AuAtomRenderInfo* ari)
 	DaAtom::Refresh(counterpart, ari);
 	auto state = city->Snapshot();
 	{ QWriteLocker lock(&m_CityLock); state.lastVisit = qMax(state.lastVisit, m_City.lastVisit); m_City = state; ++m_CityRevision; }
-	if(ari) UpdateSiteTerrain(*ari);
+	if(ari)
+	{
+		{
+			QMutexLocker lock(&m_Runtime->lock);
+			if(!m_Runtime->asynchronous)
+			{
+				m_Runtime->asynchronous = true;
+				m_Runtime->builtRevision = 0; // Synchronous results have no prepared graphics.
+			}
+		}
+		UpdateSiteTerrain(*ari);
+	}
 	return false;
 }
 
@@ -2338,103 +2750,47 @@ void DaLegacyCity::RenderCity(const AuMatrix4x4& projection, AuAtomRenderInfo& a
 	const bool enclosureNeeded = (world->Hydrographics() && world->AltitudeMSL(Transform().Translation()) <= -32)
 		|| !world->HasBreathableAtmosphere();
 	QMutexLocker lock(&m_Runtime->lock); m_Runtime->Ensure(*this);
+	if(m_Runtime->minePostJob)
+	{
+		const auto pending = m_Runtime->minePostJob;
+		if(pending->geometryRevision != m_Runtime->revision || pending->terrainRevision != m_Runtime->terrainRevision)
+			pending->cancelled.store(true, std::memory_order_release);
+		if(pending->finished.load(std::memory_order_acquire))
+		{
+			if(pending->succeeded && !pending->cancelled.load(std::memory_order_acquire))
+			{
+				m_Runtime->minePosts.swap(pending->result);
+				m_Runtime->minePostRevision = pending->geometryRevision;
+				m_Runtime->minePostTerrainRevision = pending->terrainRevision;
+			}
+			m_Runtime->minePostJob.reset();
+		}
+	}
 	if(m_Runtime->minePostRevision != m_Runtime->revision
 		|| m_Runtime->minePostTerrainRevision != m_Runtime->terrainRevision)
 	{
-		QVector<AuLegacyCity::Development> mines;
-		for(const auto& building : m_Runtime->buildings)
-			if(building.state.industryId == 50 && !building.state.demolished) mines.append(building.state);
-		const quint64 geometryRevision = m_Runtime->revision, terrainRevision = m_Runtime->terrainRevision;
-		// TerrainAltitudeMSL queries legacy sites, including this city.
-		lock.unlock();
-		QVector<AuMatrix4x4> posts;
-		for(const auto& mine : mines)
+		if(!m_Runtime->minePostJob)
 		{
-			const auto* recipe = ConstructionRecipe(mine.industryId, mine.constructionProcessId);
-			if(!recipe) continue;
-			const double radius = float(recipe->buildRadius * FeetPerMeter());
-			AuMatrix4x4 placement;
-			world->BuildingConstructionTransform(world->LocOfLL(mine.location, mine.altitudeMSL),
-				mine.facingRadians, nullptr, AuPoint(), placement);
-			// DpBldMine::RenderGreebles 0x591620 places one original model
-			// at each site corner, on the terrain and aligned with globe up.
-			for(const QPoint& corner : {QPoint(-1, -1), QPoint(-1, 1), QPoint(1, 1), QPoint(1, -1)})
+			QSharedPointer<Runtime::MinePostJob> pending(new Runtime::MinePostJob);
+			pending->worldId = world->Id();
+			pending->geometryRevision = m_Runtime->revision;
+			pending->terrainRevision = m_Runtime->terrainRevision;
+			for(const auto& building : m_Runtime->buildings)
+				if(building.state.industryId == 50 && !building.state.demolished) pending->mines.append(building.state);
+			if(pending->mines.isEmpty())
 			{
-				AuGlobeLL ll;
-				if(!world->LLOfLoc(ll, placement.Project(AuPoint(radius * corner.x(), radius * corner.y(), 0)))) continue;
-				const AuPoint location = world->LocOfLL(ll, world->TerrainAltitudeMSL(ll));
-				AuMatrix4x4 post;
-				post.Translate(location);
-				post *= AuPoint(0, 0, 1).GetAlignmentTransform(-world->GravityDir(location));
-				posts.append(post);
+				m_Runtime->minePosts.clear();
+				m_Runtime->minePostRevision = pending->geometryRevision;
+				m_Runtime->minePostTerrainRevision = pending->terrainRevision;
+			}
+			else
+			{
+				m_Runtime->minePostJob = pending;
+				QThreadPool::globalInstance()->start(new Runtime::MinePostTask(pending), 0);
 			}
 		}
-		lock.relock(); m_Runtime->Ensure(*this);
-		if(geometryRevision == m_Runtime->revision && terrainRevision == m_Runtime->terrainRevision)
-		{
-			m_Runtime->minePosts = std::move(posts);
-			m_Runtime->minePostRevision = geometryRevision;
-			m_Runtime->minePostTerrainRevision = terrainRevision;
-		}
 	}
-	if(m_Runtime->drawRevision != m_Runtime->revision)
-	{
-		m_Runtime->DeleteDraw(ari, Id());
-		for(const auto& building : m_Runtime->buildings)
-		{
-			// Asphalt is a pavement commodity, with no authored building atlas.
-			// Road fixtures still use the shared original building texture slots.
-			const quint16 atlasMaterial = building.state.industryId == 2 && building.state.materialId == 23
-				? 76 : building.state.materialId;
-			const QImage atlas(AuLegacyBd::Geometry::MaterialAtlas(atlasMaterial));
-			for(const auto& batch : building.mesh.batches)
-			{
-				if(batch.collisionOnly || batch.empireFlag) continue;
-				QList<AuTriTexNS> triangles;
-				const bool buildingAtlas = batch.textureFile.isEmpty() && batch.textureSlot >= 0;
-				const QVector2D inset = buildingAtlas
-					? AuLegacyBd::Geometry::TextureInset(batch.textureSlot) : QVector2D();
-				const auto vertex = [inset](const AuLegacyShip::Rendering::Vertex& v) {
-					const QPointF uv(inset.x() + v.uv.x() * (1 - 2 * inset.x()),
-						inset.y() + v.uv.y() * (1 - 2 * inset.y()));
-					return AuPointTexNS(Point(v.position), uv, Point(v.normal), 0); };
-				for(int i=0; i+2<batch.vertices.size(); i+=3)
-					// The shared CPU mesh uses CCW surfaces for collision. Submit
-					// native 2016 CW faces without changing normals or UV bindings.
-					triangles.append(AuTriTexNS(vertex(batch.vertices[i]), vertex(batch.vertices[i+2]), vertex(batch.vertices[i+1])));
-				Runtime::DrawBatch draw; draw.development = building.state.id; draw.twoSided = batch.twoSided;
-				draw.interior = batch.interior; draw.depthOnly = batch.depthOnly;
-				draw.exteriorLens = batch.textureSlot == 37 ? 1 : batch.textureSlot == 38 ? 2 : 0;
-				draw.vao.CreateForModelTexFog(*ari.re, triangles, GL_STATIC_DRAW);
-				QImage texture;
-				if(!batch.textureFile.isEmpty()) texture.load(batch.textureFile);
-				else if(batch.textureSlot < 0)
-				{ texture = QImage(1,1,QImage::Format_ARGB32); texture.fill(Qt::white); }
-				else
-				{
-					texture = atlas.copy(AuLegacyBd::Geometry::TextureTile(batch.textureSlot));
-					if(batch.textureSlot == 16) texture = texture.mirrored(true, false);
-					// Original effect 3 is a lamp lens, not a window cutout. Its
-					// half-alpha atlas must not disappear at the .91 window cutoff.
-					if(batch.textureSlot == 37 || batch.textureSlot == 38)
-						texture = texture.convertToFormat(QImage::Format_RGB32);
-				}
-				draw.tint = batch.tint; draw.selfIllumination = batch.selfIllumination;
-				// DpBuilding::RenderTexture (2016 AuAtom13 0x5eae80) uses
-				// GL_LINEAR for both filters and no mipmaps on building atlases.
-				draw.texture = ari.re->CreateTextureFromBitmap(Id().GetID(),
-					QStringLiteral("legacy-city/%1/%2/%3").arg(building.state.materialId).arg(batch.textureSlot)
-						.arg(batch.textureFile),
-					texture, GL_LINEAR, buildingAtlas ? GL_LINEAR : GL_LINEAR_MIPMAP_LINEAR, !buildingAtlas);
-				m_Runtime->drawBatches.append(draw);
-			}
-		}
-		// The original VAO reverses the generated list: depth masks follow
-		// visible interiors, so they cannot occlude the stairs already drawn.
-		std::stable_sort(m_Runtime->drawBatches.begin(), m_Runtime->drawBatches.end(),
-			[](const Runtime::DrawBatch& a, const Runtime::DrawBatch& b) { return a.depthOnly < b.depthOnly; });
-		m_Runtime->drawRevision = m_Runtime->revision;
-	}
+	m_Runtime->UploadDraw(ari, Id());
 	auto& shader = ari.re->GLSL().ModelTexColorShader();
 	shader.Select(projection, *ari.re);
 	float ambientR, ambientG, ambientB, fogDensity, fogR, fogG, fogB;

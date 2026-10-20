@@ -39,6 +39,12 @@ struct AuScVertexData
 };
 typedef QMap<quint8, AuScVertexData> AuScVertexDataMap;
 
+// CPU-only attributes for ModelTexFog-family shaders, packed as complete triangles.
+struct AuModelTexFogVertexData
+{
+	QVector<GLfloat> normal, position, texCoordShine;
+};
+
 //-+---+---+---+---+---+---+---+---+---|---+---+---+---+---+---+-==+---+---+---|---+---+---+---+---+---+---+---+---+---+---+---+---|
 // Texture palette supported by Sc shaders.
 // The Sc fragment shaders support 16 concurrent textures. This is how we use them. Most of them are arbitrarily selected by the
@@ -247,6 +253,8 @@ public:
 	// 'usage' is passed to glBufferData. e.g. GL_STREAM_DRAW or GL_STATIC_DRAW.
 	// DOES NOTHING if this VAO has already been created or if 'tris' is empty.
 	void CreateForModelTexFog(AuOpenGLFunctions& GLf, const QList<AuTriTexNS>& tris, GLenum usage);
+	// Upload worker-packed attributes without converting triangles on the GL thread.
+	void CreateForModelTexFog(AuOpenGLFunctions& GLf, const AuModelTexFogVertexData& data, GLenum usage);
 
 	// Creates this vertex array object from a list of triangles.
 	// The target shaders for this VAO are 'Sc' and 'ScFog'.

@@ -6,6 +6,8 @@
 #include <QFileInfo>
 #include <QMap>
 #include <QMatrix4x4>
+#include <QMutex>
+#include <QMutexLocker>
 #include <algorithm>
 #include <cmath>
 #include <initializer_list>
@@ -69,16 +71,30 @@ struct ResourceModel
 	bool loaded = false;
 };
 
-const ResourceModel& Model(const QString& name)
+ResourceModel Model(const QString& name)
 {
 	static QMap<QString, ResourceModel> cache;
-	const auto found = cache.constFind(name);
-	if (found != cache.constEnd())
-		return found.value();
+	static QMutex cacheMutex;
+	{
+		QMutexLocker lock(&cacheMutex);
+		const auto found = cache.constFind(name);
+		if (found != cache.constEnd())
+			return found.value();
+	}
 	ResourceModel result;
+	// Building and spacecraft preparation can request these assets concurrently.
+	// Return an implicitly shared snapshot rather than a reference into the map;
+	// loading outside the lock also leaves cached assets available to previews.
+	const auto publish = [&]() -> ResourceModel {
+		QMutexLocker lock(&cacheMutex);
+		const auto found = cache.constFind(name);
+		if (found != cache.constEnd()) return found.value();
+		cache.insert(name, result);
+		return result;
+	};
 	Au3dsGLSLModel model;
 	if (!QFile::exists(name) || !model.Load(name))
-		return cache.insert(name, result).value();
+		return publish();
 	result.minimum = Point(model.m_Min);
 	result.maximum = Point(model.m_Max);
 	QString modelTexture;
@@ -167,7 +183,7 @@ const ResourceModel& Model(const QString& name)
 		}
 	}
 	result.loaded = !result.batches.isEmpty();
-	return cache.insert(name, result).value();
+	return publish();
 }
 
 class Appender
@@ -255,7 +271,7 @@ QString ConsoleScreen(int type)
 void Console(Appender& append, const Detail& detail, const QVector3D& location)
 {
 	const QString seatName = QStringLiteral(":/data/mConsoleSeat.3dsN");
-	const ResourceModel& seat = Model(seatName);
+	const ResourceModel seat = Model(seatName);
 	if (!seat.loaded)
 	{
 		append.Missing(seatName);
@@ -271,7 +287,7 @@ void Console(Appender& append, const Detail& detail, const QVector3D& location)
 	if (detail.detailType == 73)
 		return;
 	const QString panelName = QStringLiteral(":/data/mConsoleScreen.3dsN");
-	const ResourceModel& panel = Model(panelName);
+	const ResourceModel panel = Model(panelName);
 	if (!panel.loaded)
 	{
 		append.Missing(panelName);
@@ -298,8 +314,8 @@ void GameTable(Appender& append, const Detail& detail, const QVector3D& location
 {
 	const QString tableName = QStringLiteral(":/data/mGameTable.3dsN");
 	const QString chairName = QStringLiteral(":/data/mGameChair.3dsN");
-	const ResourceModel& table = Model(tableName);
-	const ResourceModel& chair = Model(chairName);
+	const ResourceModel table = Model(tableName);
+	const ResourceModel chair = Model(chairName);
 	if (!table.loaded || !chair.loaded)
 	{
 		append.Missing(!table.loaded ? tableName : chairName);
@@ -328,7 +344,7 @@ void GameTable(Appender& append, const Detail& detail, const QVector3D& location
 void TurretGun(Appender& append, const Detail& detail, const QVector3D& location)
 {
 	const QString name = QStringLiteral(":/data/mTurretGun.3dsN");
-	const ResourceModel& gun = Model(name);
+	const ResourceModel gun = Model(name);
 	if (!gun.loaded)
 	{
 		append.Missing(name);
@@ -402,7 +418,7 @@ void AppendResourceEquipment(const Design& design, Mesh& mesh)
 				continue;
 			}
 			const QString name = QStringLiteral(":/data/") + QString::fromLatin1(asset->model);
-			const ResourceModel& model = Model(name);
+			const ResourceModel model = Model(name);
 			if (!model.loaded)
 			{
 				append.Missing(name);

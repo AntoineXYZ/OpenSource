@@ -492,6 +492,8 @@ public:
 	// shares the immutable model. Output retains pending/ready model ownership.
 	bool LegacySc(AuGLEffects& re, const AuScDesign& design, QSharedPointer<AuLegacyScModel>& model);
 	void BeginLegacyScFrame() { m_LegacyScUploadBudget.invalidate(); }
+	// Cities and spacecraft share the same per-frame GL upload allowance.
+	QElapsedTimer& LegacyUploadBudget() { return m_LegacyScUploadBudget; }
 	void DeleteLegacySc(quint32 designId);
 	void ClearLegacySc(); // Call with the owning GL context current before teardown.
 

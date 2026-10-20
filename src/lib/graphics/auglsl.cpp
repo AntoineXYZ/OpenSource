@@ -11,6 +11,7 @@
 #include "auscface.h"
 #include "hashpack.h"
 #include <QFile>
+#include <limits>
 
 const bool s_DebugGLSL = false;									// Set true to see debug messages generated in this file.
 
@@ -671,6 +672,31 @@ void AuGLVAO::CreateForModelTexFog(AuOpenGLFunctions& GLf, const QList<AuTriTexN
 	delete [] normal;
 	delete [] position;
 	delete [] texCoordShine;
+}
+
+void AuGLVAO::CreateForModelTexFog(AuOpenGLFunctions& GLf, const AuModelTexFogVertexData& data, GLenum usage)
+{
+	const int floats = data.normal.size();
+	if(VAO() || !floats || floats % 9 || data.position.size() != floats || data.texCoordShine.size() != floats)
+		return;
+	const quint64 vertices = quint64(floats) / 3;
+	const quint64 bytes = quint64(floats) * sizeof(GLfloat);
+	if(vertices > quint64(std::numeric_limits<GLsizei>::max())
+		|| vertices > quint64(std::numeric_limits<GLuint>::max())
+		|| bytes > quint64(std::numeric_limits<GLsizeiptr>::max()))
+		return;
+
+	CreateGL(GLf, GLuint(vertices), 3);
+	SelectGL();
+	const GLfloat* attributes[] = {data.normal.constData(), data.position.constData(), data.texCoordShine.constData()};
+	for(GLuint buffer = 0; buffer < 3; ++buffer)
+	{
+		GLf.glBindBuffer(GL_ARRAY_BUFFER, Buffer(buffer));
+		GLf.glBufferData(GL_ARRAY_BUFFER, GLsizeiptr(bytes), attributes[buffer], usage);
+		GLf.glVertexAttribPointer(buffer, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	}
+	GLf.glBindBuffer(GL_ARRAY_BUFFER, 0);
+	DeselectGL();
 }
 
 void AuGLVAO::CreateForModel(AuOpenGLFunctions& GLf, const QList<AuTriTexNS>& tris, GLenum usage)
