@@ -882,6 +882,11 @@ bool DtDb::InitGameGeneration(QSqlDatabase& db)
 	if((selected == AuGameGeneration::Legacy && modernBuildings)
 		|| (selected == AuGameGeneration::Modern && legacyCities))
 		return fail(QStringLiteral("Existing cities belong to the other game generation. No records were converted or deleted."));
+	// Saved inventory decoding resolves default item properties through the
+	// active commodity catalogue. Select the validated metadata overlay before
+	// preflight reads any items; gameplay listeners and atom loading still wait
+	// until this function returns successfully.
+	g_Au.SetGenerationIdentity(identity);
 	if(selected == AuGameGeneration::Legacy)
 	{
 		query.setForwardOnly(true);
@@ -969,9 +974,6 @@ bool DtDb::InitGameGeneration(QSqlDatabase& db)
 	query.finish();
 	query.setForwardOnly(false);
 
-	// Select the internal metadata overlay for immutable default verification.
-	// No gameplay listeners or atom loading start until this function returns successfully.
-	g_Au.SetGenerationIdentity(identity);
 	if(selected == AuGameGeneration::Legacy && !DaLegacyCity::RegisterPublicDesigns(db, error))
 		return fail(error);
 	if(!marked)

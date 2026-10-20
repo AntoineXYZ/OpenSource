@@ -1964,7 +1964,7 @@ bool DaLegacyCity::OperateConstruction(DaPerson* person, quint32 id, bool fetch,
 			|| height<(original->minimumDeck-1)*AuLegacyBd::DeckHeight
 			|| height>(original->industryId==129 ? AuLegacyBd::Biodome::RoofHeight(original->biodomeRadiusMeters*FeetPerMeter(),std::hypot(local.x,local.y))
 				: (original->maximumDeck+2)*AuLegacyBd::DeckHeight))
-		{ error = QStringLiteral("Stand inside the construction site to supply materials or contribute labor."); return false; }
+		{ error.clear(); return false; } // Leaving the site stops continuous work silently.
 	}
 	const int threat=ConstructionThreat(*world,Id(),*original,person ? person->EmpireId() : EmpireId());
 	if(threat)
@@ -2032,7 +2032,10 @@ bool DaLegacyCity::OperateConstruction(DaPerson* person, quint32 id, bool fetch,
 		|| (found->completedLevels+1<found->targetLevels && found->laborRemaining<=possibleLabor && original->laborRemaining>possibleLabor))
 	{ error=QStringLiteral("Construction advanced while the site was being checked. Its current status is ready for the next effort."); return false; }
 	if(accepted) *accepted=true;
-	if(person && labor && now-m_ConstructionLaborTimes.value(person->Id().GetID(),0) < 1000)
+	// One effort per whole second. Requiring 1000ms since the previous
+	// arrival drops alternate one-second UI ticks when network/timer jitter
+	// delivers an effort slightly early. Duplicate efforts in a tick still fail.
+	if(person && labor && now / 1000 <= m_ConstructionLaborTimes.value(person->Id().GetID(),0) / 1000)
 	{ error.clear(); return false; }
 	auto& dev = *found; bool changed = false, physicalChanged = false;
 	AuLegacyCity::ProductionProcess components;

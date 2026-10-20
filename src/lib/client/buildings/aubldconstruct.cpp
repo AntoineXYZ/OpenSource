@@ -139,6 +139,7 @@ void AuBldConstruct::showEvent(QShowEvent* event)
 	if(!m_timer)
 	{
 		m_timer = new QTimer(this);
+		if(m_LegacyMode) m_timer->setTimerType(Qt::PreciseTimer);
 		connect(m_timer, SIGNAL(timeout()), SLOT(UpdateContents()));
 	}
 	if(!m_timer->isActive())

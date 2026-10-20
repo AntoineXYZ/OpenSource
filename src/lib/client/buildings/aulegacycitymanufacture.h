@@ -31,7 +31,6 @@ protected:
 private:
 	quint32 m_CityId = 0, m_DevelopmentId = 0, m_PendingToken = 0;
 	bool m_HasIndustry = false, m_RefreshQueued = false;
-	AuLegacyCityProtocol::Request m_PendingRequest;
 	QVector<AuLegacyCityProtocol::Request> m_DeferredRequests;
 	QTimer *m_Timer, *m_Timeout, *m_DeferredTimer;
 	QLabel* m_Message;

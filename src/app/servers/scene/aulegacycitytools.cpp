@@ -474,7 +474,7 @@ void DtChatChannel::ProcessLegacyConstructionRequest(const AuLegacyCityProtocol:
 				// The runtime checks vertical reach against road grade or the
 				// constructed decks/dome, rather than the site's tangent plane.
 				if(!ContainsSite(*world, dev, origin))
-				{ reply.message = tr("Stand at the construction site to supply materials or contribute labor."); return; }
+					return; // Leaving the site stops continuous work without a Thoughts message.
 			}
 			break;
 		}

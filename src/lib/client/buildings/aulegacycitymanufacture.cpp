@@ -274,7 +274,7 @@ AuLegacyCityManufacture::AuLegacyCityManufacture(QWidget* parent) : QWidget(pare
 	m_DeferredTimer = new QTimer(this); m_DeferredTimer->setSingleShot(true); m_DeferredTimer->setInterval(250);
 	connect(m_Timer, &QTimer::timeout, this, &AuLegacyCityManufacture::Refresh);
 	connect(m_Timeout, &QTimer::timeout, this, [this]() {
-		m_PendingToken = 0; m_DeferredTimer->stop(); m_DeferredRequests.clear(); setEnabled(true);
+		m_PendingToken = 0; m_DeferredTimer->stop(); m_DeferredRequests.clear();
 		m_Message->setText(tr("No server response from the industry.")); m_Message->show();
 	});
 	connect(m_DeferredTimer, &QTimer::timeout, this, [this]() {
@@ -297,7 +297,7 @@ void AuLegacyCityManufacture::SetTarget(quint32 cityId, quint32 developmentId)
 	if(m_CityId == cityId && m_DevelopmentId == developmentId) return;
 	m_CityId = cityId; m_DevelopmentId = developmentId;
 	// Replies for the previous site cannot repopulate this page.
-	m_PendingToken = 0; m_Timeout->stop(); m_DeferredTimer->stop(); m_DeferredRequests.clear(); setEnabled(true);
+	m_PendingToken = 0; m_Timeout->stop(); m_DeferredTimer->stop(); m_DeferredRequests.clear();
 	for(auto* panel : m_Panels) panel->hide();
 	SetAvailable(false); m_Message->clear(); m_Message->hide();
 	if(cityId && developmentId) Refresh();
@@ -309,9 +309,10 @@ void AuLegacyCityManufacture::Submit(AuLegacyCityProtocol::Request request)
 	if(m_PendingToken || m_DeferredTimer->isActive() || !m_DeferredRequests.isEmpty())
 	{
 		if(request.action == AuLegacyCityProtocol::EconomyList) return;
+		// Serialize changes without disabling every process panel. Routine
+		// refreshes and request round trips must not flash the F10 controls.
 		if(m_DeferredRequests.size() < 32) m_DeferredRequests.append(request);
 		else { m_Message->setText(tr("Wait for the pending industry changes before making another change.")); m_Message->show(); }
-		setEnabled(false);
 		return;
 	}
 	SendRequest(request);
@@ -319,15 +320,14 @@ void AuLegacyCityManufacture::Submit(AuLegacyCityProtocol::Request request)
 
 void AuLegacyCityManufacture::SendRequest(AuLegacyCityProtocol::Request request)
 {
-	m_PendingRequest = request; m_PendingToken = auApp->RequestLegacyCityTool(request);
+	m_PendingToken = auApp->RequestLegacyCityTool(request);
 	if(m_PendingToken)
 	{
 		m_Timeout->start();
-		if(request.action != AuLegacyCityProtocol::EconomyList) setEnabled(false);
 	}
 	else
 	{
-		m_DeferredRequests.clear(); setEnabled(true);
+		m_DeferredRequests.clear();
 		m_Message->setText(tr("The industry request could not be sent.")); m_Message->show();
 	}
 }
@@ -351,7 +351,7 @@ void AuLegacyCityManufacture::ReceiveReply(QByteArray payload)
 {
 	AuLegacyCityProtocol::Reply reply;
 	if(!AuLegacyCityProtocol::DecodeReply(payload, reply) || !m_PendingToken || reply.token != m_PendingToken) return;
-	m_PendingToken = 0; m_Timeout->stop(); setEnabled(m_DeferredRequests.isEmpty());
+	m_PendingToken = 0; m_Timeout->stop();
 	if(reply.action != AuLegacyCityProtocol::EconomyList || !reply.message.isEmpty())
 	{ m_Message->setText(reply.message); m_Message->setVisible(!reply.message.isEmpty()); }
 	if(!m_DeferredRequests.isEmpty())
@@ -390,7 +390,7 @@ void AuLegacyCityManufacture::ReceiveReply(QByteArray payload)
 
 void AuLegacyCityManufacture::ResetTransport()
 {
-	m_PendingToken = 0; m_Timeout->stop(); m_DeferredTimer->stop(); m_DeferredRequests.clear(); setEnabled(true);
+	m_PendingToken = 0; m_Timeout->stop(); m_DeferredTimer->stop(); m_DeferredRequests.clear();
 	for(auto* panel : m_Panels) panel->hide(); SetAvailable(false);
 }
 
